@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Bell, LogOut, Search, User as UserIcon } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { logout } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,7 +19,7 @@ export function Topbar() {
   const { user } = useAuth();
 
   async function signOut() {
-    await supabase.auth.signOut();
+    await logout();
     navigate({ to: "/auth", replace: true });
   }
 

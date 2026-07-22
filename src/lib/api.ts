@@ -1,0 +1,154 @@
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+
+const ACCESS_TOKEN_KEY = "vertex_access_token";
+const REFRESH_TOKEN_KEY = "vertex_refresh_token";
+
+type AuthTokens = {
+  access_token: string;
+  refresh_token: string;
+};
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+  roles?: Array<{ role: string; companyId?: string | null }>;
+};
+
+function ensureApiUrl() {
+  if (!API_BASE_URL) {
+    throw new Error("Configure VITE_API_URL no frontend apontando para a URL pública do backend.");
+  }
+  return API_BASE_URL;
+}
+
+function canUseStorage() {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+export function getAccessToken() {
+  if (!canUseStorage()) return null;
+  return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+function getRefreshToken() {
+  if (!canUseStorage()) return null;
+  return window.localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function hasAuthTokens() {
+  return Boolean(getAccessToken() && getRefreshToken());
+}
+
+export function setAuthTokens(tokens: AuthTokens) {
+  if (!canUseStorage()) return;
+  window.localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
+  window.localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
+  window.dispatchEvent(new Event("vertex-auth-change"));
+}
+
+export function clearAuthTokens() {
+  if (!canUseStorage()) return;
+  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+  window.dispatchEvent(new Event("vertex-auth-change"));
+}
+
+async function refreshAccessToken() {
+  const refresh_token = getRefreshToken();
+  if (!refresh_token) return false;
+
+  const response = await fetch(`${ensureApiUrl()}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token }),
+  });
+
+  if (!response.ok) {
+    clearAuthTokens();
+    return false;
+  }
+
+  const tokens = (await response.json()) as AuthTokens;
+  setAuthTokens(tokens);
+  return true;
+}
+
+async function readError(response: Response) {
+  try {
+    const body = await response.json();
+    if (Array.isArray(body.message)) return body.message.join("\n");
+    return body.message || body.error || `Erro ${response.status}`;
+  } catch {
+    return `Erro ${response.status}`;
+  }
+}
+
+export async function apiRequest<T>(
+  path: string,
+  options: RequestInit & { auth?: boolean; retry?: boolean } = {},
+): Promise<T> {
+  const { auth = true, retry = true, headers, body, ...init } = options;
+  const requestHeaders = new Headers(headers);
+
+  if (body && !requestHeaders.has("Content-Type")) {
+    requestHeaders.set("Content-Type", "application/json");
+  }
+
+  if (auth) {
+    const token = getAccessToken();
+    if (token) requestHeaders.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${ensureApiUrl()}${path}`, {
+    ...init,
+    headers: requestHeaders,
+    body,
+  });
+
+  if (response.status === 401 && auth && retry && (await refreshAccessToken())) {
+    return apiRequest<T>(path, { ...options, retry: false });
+  }
+
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
+
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}
+
+export async function login(email: string, password: string) {
+  const tokens = await apiRequest<AuthTokens>("/auth/login", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify({ email, password }),
+  });
+  setAuthTokens(tokens);
+  return getCurrentUser();
+}
+
+export async function register(input: { email: string; password: string; fullName: string }) {
+  const tokens = await apiRequest<AuthTokens>("/auth/register", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify(input),
+  });
+  setAuthTokens(tokens);
+  return getCurrentUser();
+}
+
+export function getCurrentUser() {
+  return apiRequest<AuthUser>("/auth/me");
+}
+
+export async function logout() {
+  try {
+    if (getAccessToken()) {
+      await apiRequest<{ ok: boolean }>("/auth/logout", { method: "POST" });
+    }
+  } finally {
+    clearAuthTokens();
+  }
+}

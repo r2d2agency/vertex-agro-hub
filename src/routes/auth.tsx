@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Leaf } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { hasAuthTokens, login, register } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,46 +24,41 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard", replace: true });
-    });
+    if (hasAuthTokens()) navigate({ to: "/dashboard", replace: true });
   }, [navigate]);
 
   async function handleSignIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     const fd = new FormData(e.currentTarget);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: String(fd.get("email")),
-      password: String(fd.get("password")),
-    });
-    setLoading(false);
-    if (error) {
-      toast.error("Erro ao entrar", { description: error.message });
-      return;
+    try {
+      await login(String(fd.get("email")), String(fd.get("password")));
+      toast.success("Bem-vindo!");
+      navigate({ to: "/dashboard", replace: true });
+    } catch (error) {
+      toast.error("Erro ao entrar", { description: error instanceof Error ? error.message : "Tente novamente." });
+    } finally {
+      setLoading(false);
     }
-    toast.success("Bem-vindo!");
-    navigate({ to: "/dashboard", replace: true });
   }
 
   async function handleSignUp(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     const fd = new FormData(e.currentTarget);
-    const { error } = await supabase.auth.signUp({
-      email: String(fd.get("email")),
-      password: String(fd.get("password")),
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { full_name: String(fd.get("full_name") ?? "") },
-      },
-    });
-    setLoading(false);
-    if (error) {
-      toast.error("Erro ao criar conta", { description: error.message });
-      return;
+    try {
+      await register({
+        email: String(fd.get("email")),
+        password: String(fd.get("password")),
+        fullName: String(fd.get("full_name") ?? ""),
+      });
+      toast.success("Conta criada!");
+      navigate({ to: "/dashboard", replace: true });
+    } catch (error) {
+      toast.error("Erro ao criar conta", { description: error instanceof Error ? error.message : "Tente novamente." });
+    } finally {
+      setLoading(false);
     }
-    toast.success("Conta criada! Você já pode entrar.");
   }
 
   // Google OAuth desativado por enquanto.
