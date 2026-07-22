@@ -16,7 +16,7 @@ COPY package.json bun.lockb* package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 RUN if [ -f bun.lockb ]; then bun install --frozen-lockfile; \
     elif [ -f pnpm-lock.yaml ]; then corepack enable && pnpm install --frozen-lockfile; \
     elif [ -f yarn.lock ]; then corepack enable && yarn install --frozen-lockfile; \
-    else npm ci; fi
+    else (npm ci --no-audit --no-fund || npm install --no-audit --no-fund); fi
 
 # --- build ---
 FROM deps AS build
