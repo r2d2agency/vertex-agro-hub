@@ -9,6 +9,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { OperationsModule } from './operations/operations.module';
 import { PeopleModule } from './people/people.module';
 import { TeamsModule } from './teams/teams.module';
+import { ActivitiesModule } from './activities/activities.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -23,6 +24,7 @@ import { HealthController } from './health.controller';
     OperationsModule,
     PeopleModule,
     TeamsModule,
+    ActivitiesModule,
   ],
   controllers: [HealthController],
 })

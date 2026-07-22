@@ -105,6 +105,8 @@ model Company {
   tappingRecords TappingRecord[]
   productionDeliveries ProductionDelivery[]
   teams     Team[]
+  occurrences Occurrence[]
+  scheduledTasks ScheduledTask[]
 
   @@index([isDeleted])
   @@map("companies")
@@ -371,4 +373,71 @@ model TeamMember {
   @@index([teamId])
   @@index([userId])
   @@map("team_members")
+}
+
+model Occurrence {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  farmId      String?  @map("farm_id") @db.Uuid
+  plotId      String?  @map("plot_id") @db.Uuid
+  date        DateTime @db.Date
+  type        String
+  severity    String   @default("baixa")
+  status      String   @default("aberta")
+  title       String
+  description String?
+  responsible String?
+  resolvedAt  DateTime? @map("resolved_at")
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, isDeleted])
+  @@index([companyId, date])
+  @@index([farmId])
+  @@map("occurrences")
+}
+
+model ScheduledTask {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  farmId      String?  @map("farm_id") @db.Uuid
+  plotId      String?  @map("plot_id") @db.Uuid
+  teamId      String?  @map("team_id") @db.Uuid
+  title       String
+  description String?
+  category    String   @default("sangria")
+  priority    String   @default("media")
+  status      String   @default("planejada")
+  scheduledAt DateTime @map("scheduled_at")
+  dueAt       DateTime? @map("due_at")
+  completedAt DateTime? @map("completed_at")
+  responsible String?
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, isDeleted])
+  @@index([companyId, scheduledAt])
+  @@index([farmId])
+  @@index([teamId])
+  @@map("scheduled_tasks")
 }
