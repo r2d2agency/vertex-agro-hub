@@ -38,6 +38,7 @@ ENV HOST=0.0.0.0
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/server.mjs ./server.mjs
 
 EXPOSE 3000
-CMD ["sh", "-c", "./node_modules/.bin/vite preview --host 0.0.0.0 --port ${PORT:-3000}"]
+CMD ["node", "server.mjs"]
