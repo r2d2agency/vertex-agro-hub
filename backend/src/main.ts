@@ -33,6 +33,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(corsMiddleware);
+  app.enableCors({
+    origin: true,
+    credentials: false,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: DEFAULT_ALLOWED_HEADERS,
+    maxAge: 86400,
+  });
   app.use(helmet());
   app.useGlobalPipes(
     new ValidationPipe({
