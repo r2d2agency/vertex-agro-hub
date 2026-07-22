@@ -147,6 +147,7 @@ model Farm {
   longitude    Float?
   owner        String?
   notes        String?
+  boundary     Json?
 
   version      Int        @default(1)
   syncStatus   SyncStatus @default(synced) @map("sync_status")
@@ -179,6 +180,7 @@ model Plot {
   treeCount     Int?     @map("tree_count")
   tappingSystem String?  @map("tapping_system")
   notes         String?
+  boundary      Json?
 
   version      Int        @default(1)
   syncStatus   SyncStatus @default(synced) @map("sync_status")
