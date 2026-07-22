@@ -194,3 +194,61 @@ model Plot {
   @@index([farmId])
   @@map("plots")
 }
+
+model Clone {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  name           String
+  code           String?
+  origin         String?
+  productivity   String?
+  vigor          String?
+  diseaseResistance String? @map("disease_resistance")
+  recommendedRegion String? @map("recommended_region")
+  notes          String?
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, isDeleted])
+  @@map("clones")
+}
+
+model TappingTable {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  name           String
+  code           String?
+  notation       String?
+  cutType        String?  @map("cut_type")
+  frequencyDays  Int?     @map("frequency_days")
+  restDays       Int?     @map("rest_days")
+  workDaysCycle  Int?     @map("work_days_cycle")
+  stimulation    String?
+  description    String?
+  active         Boolean  @default(true)
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, isDeleted])
+  @@map("tapping_tables")
+}
