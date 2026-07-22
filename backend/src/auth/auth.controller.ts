@@ -1,19 +1,10 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
-import type { Request, Response } from 'express';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -46,26 +37,6 @@ export class AuthController {
     return this.auth.me(req.user.sub);
   }
 
-  // ---------- Google OAuth ----------
-  @Get('google')
-  @UseGuards(GoogleOAuthGuard)
-  googleAuth() {
-    /* redirect handled by passport */
-  }
-
-  @Get('google/callback')
-  @UseGuards(GoogleOAuthGuard)
-  async googleCallback(
-    @Req() req: Request & { user: any },
-    @Res() res: Response,
-  ) {
-    const tokens = await this.auth.loginWithGoogle(req.user);
-    const url = new URL(
-      '/auth/callback',
-      process.env.FRONTEND_URL ?? 'http://localhost:3000',
-    );
-    url.searchParams.set('access_token', tokens.access_token);
-    url.searchParams.set('refresh_token', tokens.refresh_token);
-    res.redirect(url.toString());
-  }
+  // Google OAuth desativado por enquanto.
 }
+
