@@ -255,3 +255,76 @@ model TappingTable {
   @@index([companyId, isDeleted])
   @@map("tapping_tables")
 }
+
+model TappingRecord {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  farmId         String?  @map("farm_id") @db.Uuid
+  plotId         String?  @map("plot_id") @db.Uuid
+  tappingTableId String?  @map("tapping_table_id") @db.Uuid
+  date           DateTime @db.Date
+  sangradorName  String   @map("sangrador_name")
+  treesTapped    Int?     @map("trees_tapped")
+  liters         Float?
+  drcPercent     Float?   @map("drc_percent")
+  dryKg          Float?   @map("dry_kg")
+  adherencePct   Float?   @map("adherence_pct")
+  notes          String?
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, isDeleted])
+  @@index([companyId, date])
+  @@index([farmId])
+  @@index([plotId])
+  @@map("tapping_records")
+}
+
+model ProductionDelivery {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  farmId         String?  @map("farm_id") @db.Uuid
+  season         String?
+  deliveryDate   DateTime @map("delivery_date") @db.Date
+  turnDay        Int?     @map("turn_day")
+  propertyName   String?  @map("property_name")
+  ownerName      String?  @map("owner_name")
+  status         String?
+  consultantName String?  @map("consultant_name")
+  monitorName    String?  @map("monitor_name")
+  coagulant      String?
+  latexType      String?  @map("latex_type")
+  grossWeightKg  Float?   @map("gross_weight_kg")
+  netWeightKg    Float?   @map("net_weight_kg")
+  drcAvgPercent  Float?   @map("drc_avg_percent")
+  dryKg          Float?   @map("dry_kg")
+  notes          String?
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, isDeleted])
+  @@index([companyId, deliveryDate])
+  @@index([farmId])
+  @@map("production_deliveries")
+}
+
