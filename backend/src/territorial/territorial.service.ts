@@ -76,7 +76,7 @@ export class TerritorialService {
       const r = await this.prisma.regional.findUnique({ where: { id: dto.regionalId } });
       if (!r || r.companyId !== dto.companyId) throw new ForbiddenException('Regional inválida');
     }
-    return this.prisma.farm.create({ data: { ...dto, createdById: userId, updatedById: userId } });
+    return this.prisma.farm.create({ data: { ...dto, createdById: userId, updatedById: userId } as any });
   }
 
   async updateFarm(userId: string, id: string, dto: UpdateFarmDto) {
