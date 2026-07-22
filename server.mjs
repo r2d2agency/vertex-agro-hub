@@ -8,6 +8,7 @@ import serverEntry from "./dist/server/server.js";
 const clientDir = resolve(process.cwd(), "dist/client");
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || "0.0.0.0";
+const apiProxyTarget = (process.env.API_PROXY_TARGET || process.env.BACKEND_URL || "").replace(/\/$/, "");
 const fetchHandler = typeof serverEntry === "function" ? serverEntry : serverEntry.fetch.bind(serverEntry);
 
 const mimeTypes = {
@@ -96,6 +97,33 @@ async function readRequestBody(request) {
   return Buffer.concat(chunks);
 }
 
+async function proxyApiRequest(request, response, pathname) {
+  if (!pathname.startsWith("/api/")) return false;
+
+  if (!apiProxyTarget) {
+    response.writeHead(502, { "content-type": "application/json; charset=utf-8" });
+    response.end(JSON.stringify({ message: "Configure API_PROXY_TARGET no frontend apontando para o backend." }));
+    return true;
+  }
+
+  const targetUrl = new URL(`${pathname.replace(/^\/api/, "")}${request.url?.includes("?") ? `?${request.url.split("?")[1]}` : ""}`, apiProxyTarget);
+  const headers = nodeHeadersToWebHeaders(request.headers);
+  headers.delete("host");
+  headers.delete("origin");
+  headers.delete("referer");
+
+  const proxyResponse = await fetch(targetUrl, {
+    method: request.method,
+    headers,
+    body: await readRequestBody(request),
+    duplex: "half",
+  });
+
+  const body = request.method === "HEAD" ? undefined : Buffer.from(await proxyResponse.arrayBuffer());
+  writeWebResponse(response, proxyResponse, body);
+  return true;
+}
+
 function writeWebResponse(nodeResponse, webResponse, body) {
   for (const [key, value] of webResponse.headers.entries()) {
     if (key.toLowerCase() !== "set-cookie") nodeResponse.setHeader(key, value);
@@ -114,6 +142,7 @@ createServer(async (request, response) => {
     const url = new URL(request.url || "/", origin);
 
     if (await serveStatic(request, response, url.pathname)) return;
+    if (await proxyApiRequest(request, response, url.pathname)) return;
 
     const webRequest = new Request(url, {
       method: request.method,

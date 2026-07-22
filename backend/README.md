@@ -21,7 +21,7 @@ API em `http://localhost:4000`.
 1. **Postgres** — crie um serviço "Postgres" no EasyPanel. Anote a connection string interna (ex.: `postgres://postgres:senha@vertex_db:5432/vertex`).
 2. **API** — crie um App do tipo "App", aponte para este repositório. O EasyPanel detecta o `Dockerfile` automaticamente. Configure as variáveis de ambiente da seção `.env.example`.
 3. **Domínio** — associe um domínio (ex.: `api.seudominio.com.br`) e ative HTTPS.
-4. **Frontend** — no repo do frontend, defina `VITE_API_URL=https://api.seudominio.com.br` no build.
+4. **Frontend** — no repo do frontend, defina `VITE_API_URL=/api` no build e `API_PROXY_TARGET=https://api.seudominio.com.br` no runtime.
 
 O container do backend executa `npx prisma migrate deploy` antes de iniciar a API. Se o domínio mostrar `Service is not reachable`, confira primeiro `DATABASE_URL`, `JWT_SECRET` e `JWT_REFRESH_SECRET` nos logs do app backend.
 

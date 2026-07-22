@@ -9,13 +9,14 @@ Design by **TNS R2D2**.
 Variáveis do app frontend no EasyPanel:
 
 ```env
-VITE_API_URL=https://api.seudominio.com.br
+VITE_API_URL=/api
 VITE_APP_NAME=Vertex Agro
+API_PROXY_TARGET=https://api.seudominio.com.br
 PORT=3000
 HOST=0.0.0.0
 ```
 
-`VITE_API_URL` precisa estar disponível no **build**. Depois de alterar essa variável, faça **Rebuild**.
+Use `VITE_API_URL=/api` para o navegador chamar o mesmo domínio do frontend. `API_PROXY_TARGET` é runtime e aponta para o backend; isso evita CORS no browser.
 
 ## Backend
 
