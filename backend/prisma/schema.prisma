@@ -40,6 +40,7 @@ model User {
   roles         UserRole[]
   refreshTokens RefreshToken[]
   companies     Company[]  @relation("CompanyCreatedBy")
+  teamMemberships TeamMember[]
 
   @@map("users")
 }
