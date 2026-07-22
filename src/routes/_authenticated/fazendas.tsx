@@ -24,6 +24,8 @@ import {
   createFarm, deleteFarm, listFarms, updateFarm, type Farm, type FarmInput,
 } from "@/lib/fazendas.functions";
 import { listRegionals } from "@/lib/regionais.functions";
+import { MapEditorClient } from "@/components/vertex/map-editor-client";
+import type { GeoPolygon } from "@/lib/geo";
 
 export const Route = createFileRoute("/_authenticated/fazendas")({
   head: () => ({
@@ -39,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/fazendas")({
 const empty: FarmInput = {
   regionalId: "", name: "", code: "", city: "", state: "",
   totalAreaHa: null, latitude: null, longitude: null, owner: "", notes: "",
+  boundary: null,
 };
 
 function FazendasPage() {
@@ -164,6 +167,7 @@ function FarmDialog({
       totalAreaHa: initial.totalAreaHa ?? null,
       latitude: initial.latitude ?? null, longitude: initial.longitude ?? null,
       owner: initial.owner ?? "", notes: initial.notes ?? "",
+      boundary: initial.boundary ?? null,
     });
     else setValues(empty);
   }, [open, initial]);
@@ -183,7 +187,7 @@ function FarmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{initial ? "Editar fazenda" : "Nova fazenda"}</DialogTitle></DialogHeader>
         <form
           onSubmit={(e) => { e.preventDefault(); if (!values.name.trim()) { toast.error("Nome obrigatório"); return; } mut.mutate(); }}
@@ -209,6 +213,27 @@ function FarmDialog({
             <div><Label>Latitude</Label><Input type="number" step="0.000001" value={values.latitude ?? ""} onChange={(e) => setValues((v) => ({ ...v, latitude: e.target.value ? Number(e.target.value) : null }))} /></div>
             <div><Label>Longitude</Label><Input type="number" step="0.000001" value={values.longitude ?? ""} onChange={(e) => setValues((v) => ({ ...v, longitude: e.target.value ? Number(e.target.value) : null }))} /></div>
             <div className="col-span-2"><Label>Observações</Label><Textarea rows={3} value={values.notes} onChange={(e) => setValues((v) => ({ ...v, notes: e.target.value }))} /></div>
+
+            <div className="col-span-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Polígono da fazenda</Label>
+                <p className="text-xs text-muted-foreground">
+                  Use as ferramentas do mapa para desenhar. A área calculada aparece como sugestão.
+                </p>
+              </div>
+              <MapEditorClient
+                value={values.boundary ?? null}
+                onChange={(poly: GeoPolygon | null, ha: number | null) => {
+                  setValues((v) => ({
+                    ...v,
+                    boundary: poly,
+                    totalAreaHa: ha ?? v.totalAreaHa,
+                  }));
+                  if (ha != null) toast.info(`Área sugerida: ${ha} ha`);
+                }}
+                height={380}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
