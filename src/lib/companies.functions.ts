@@ -1,6 +1,31 @@
-import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { apiRequest } from "@/lib/api";
+
+type BackendCompany = {
+  id: string;
+  name: string;
+  legalName?: string | null;
+  taxId?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  logoUrl?: string | null;
+  active: boolean;
+};
+
+export type Company = {
+  id: string;
+  razao_social: string;
+  nome_fantasia?: string | null;
+  cnpj?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  responsavel?: string | null;
+  endereco?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  observacoes?: string | null;
+  status: "ativa" | "inativa" | "bloqueada";
+};
 
 const companyInput = z.object({
   razao_social: z.string().trim().min(2).max(200),
@@ -17,74 +42,59 @@ const companyInput = z.object({
   status: z.enum(["ativa", "inativa", "bloqueada"]).default("ativa"),
 });
 
-export const listCompanies = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("companies")
-      .select("*")
-      .eq("is_deleted", false)
-      .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return data ?? [];
-  });
+function toCompany(row: BackendCompany): Company {
+  return {
+    id: row.id,
+    razao_social: row.legalName || row.name,
+    nome_fantasia: row.name,
+    cnpj: row.taxId,
+    email: row.email,
+    telefone: row.phone,
+    status: row.active ? "ativa" : "inativa",
+  };
+}
 
-export const getCompany = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { data: row, error } = await context.supabase
-      .from("companies")
-      .select("*")
-      .eq("id", data.id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return row;
-  });
+function toBackendPayload(input: z.infer<typeof companyInput>) {
+  return {
+    name: input.nome_fantasia?.trim() || input.razao_social,
+    legalName: input.razao_social,
+    taxId: input.cnpj || undefined,
+    email: input.email || undefined,
+    phone: input.telefone || undefined,
+    active: input.status === "ativa",
+  };
+}
 
-export const createCompany = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) => companyInput.parse(input))
-  .handler(async ({ data, context }) => {
-    const payload = {
-      ...data,
-      email: data.email || null,
-      created_by: context.userId,
-      updated_by: context.userId,
-    };
-    const { data: row, error } = await context.supabase
-      .from("companies")
-      .insert(payload)
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return row;
-  });
+export async function listCompanies() {
+  const rows = await apiRequest<BackendCompany[]>("/companies");
+  return rows.map(toCompany);
+}
 
-export const updateCompany = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ id: z.string().uuid(), values: companyInput }).parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    const { data: row, error } = await context.supabase
-      .from("companies")
-      .update({ ...data.values, email: data.values.email || null, updated_by: context.userId })
-      .eq("id", data.id)
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return row;
-  });
+export async function getCompany(input: { id: string }) {
+  const data = z.object({ id: z.string().uuid() }).parse(input);
+  const row = await apiRequest<BackendCompany>(`/companies/${data.id}`);
+  return toCompany(row);
+}
 
-export const deleteCompany = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("companies")
-      .update({ is_deleted: true, deleted_at: new Date().toISOString(), updated_by: context.userId })
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+export async function createCompany(input: z.infer<typeof companyInput>) {
+  const data = companyInput.parse(input);
+  const row = await apiRequest<BackendCompany>("/companies", {
+    method: "POST",
+    body: JSON.stringify(toBackendPayload(data)),
   });
+  return toCompany(row);
+}
+
+export async function updateCompany(input: { id: string; values: z.infer<typeof companyInput> }) {
+  const data = z.object({ id: z.string().uuid(), values: companyInput }).parse(input);
+  const row = await apiRequest<BackendCompany>(`/companies/${data.id}`, {
+    method: "PATCH",
+    body: JSON.stringify(toBackendPayload(data.values)),
+  });
+  return toCompany(row);
+}
+
+export async function deleteCompany(input: { id: string }) {
+  const data = z.object({ id: z.string().uuid() }).parse(input);
+  return apiRequest<{ ok: true }>(`/companies/${data.id}`, { method: "DELETE" });
+}

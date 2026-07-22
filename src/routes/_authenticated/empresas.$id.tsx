@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { getCompany } from "@/lib/companies.functions";
 import { PageHeader } from "@/components/vertex/page-header";
 import { CompanyForm } from "@/components/vertex/company-form";
@@ -13,10 +12,9 @@ export const Route = createFileRoute("/_authenticated/empresas/$id")({
 
 function EditarEmpresaPage() {
   const { id } = Route.useParams();
-  const get = useServerFn(getCompany);
   const { data, isLoading } = useQuery({
     queryKey: ["company", id],
-    queryFn: () => get({ data: { id } }),
+    queryFn: () => getCompany({ id }),
   });
 
   return (
