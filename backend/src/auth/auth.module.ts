@@ -4,11 +4,9 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { GoogleStrategy } from './strategies/google.strategy';
 
-const googleOAuthEnabled = Boolean(
-  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
-);
+// Google OAuth desativado por enquanto — reative importando GoogleStrategy
+// e adicionando de volta em providers quando as credenciais estiverem prontas.
 
 @Module({
   imports: [
@@ -19,11 +17,7 @@ const googleOAuthEnabled = Boolean(
     }),
   ],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    JwtStrategy,
-    ...(googleOAuthEnabled ? [GoogleStrategy] : []),
-  ],
+  providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}
