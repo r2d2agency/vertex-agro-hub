@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { createCompany, updateCompany } from "@/lib/companies.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,13 +48,11 @@ export function CompanyForm({
   const [values, setValues] = useState<CompanyFormValues>({ ...empty, ...initial });
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const create = useServerFn(createCompany);
-  const update = useServerFn(updateCompany);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (id) return update({ data: { id, values } });
-      return create({ data: values });
+      if (id) return updateCompany({ id, values });
+      return createCompany(values);
     },
     onSuccess: () => {
       toast.success(id ? "Empresa atualizada" : "Empresa criada");

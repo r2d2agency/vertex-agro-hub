@@ -12,8 +12,8 @@ WORKDIR /app
 
 # --- deps ---
 FROM base AS deps
-COPY package.json bun.lockb* package-lock.json* pnpm-lock.yaml* yarn.lock* ./
-RUN if [ -f bun.lockb ]; then bun install --frozen-lockfile; \
+COPY package.json bun.lock bun.lockb* package-lock.json* pnpm-lock.yaml* yarn.lock* ./
+RUN if [ -f bun.lock ] || [ -f bun.lockb ]; then bun install --frozen-lockfile; \
     elif [ -f pnpm-lock.yaml ]; then corepack enable && pnpm install --frozen-lockfile; \
     elif [ -f yarn.lock ]; then corepack enable && yarn install --frozen-lockfile; \
     else (npm ci --no-audit --no-fund || npm install --no-audit --no-fund); fi
@@ -26,14 +26,8 @@ ENV NITRO_PRESET=node-server
 # VITE_* precisam estar disponíveis em build time — passe via --build-arg
 ARG VITE_API_URL
 ARG VITE_APP_NAME="Vertex Agro"
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_PUBLISHABLE_KEY
-ARG VITE_SUPABASE_PROJECT_ID
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_APP_NAME=${VITE_APP_NAME}
-ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
-ENV VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
-ENV VITE_SUPABASE_PROJECT_ID=${VITE_SUPABASE_PROJECT_ID}
 RUN npm run build
 
 # --- runtime ---

@@ -1,29 +1,47 @@
-# Welcome to your Lovable project
+# Vertex Agro
 
-This project was built with [Lovable](https://lovable.dev).
+Plataforma web para gestão administrativa de seringais, com frontend TanStack Start e backend NestJS/Prisma/PostgreSQL preparado para EasyPanel.
 
-## Build with Lovable
+Design by **TNS R2D2**.
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+## Frontend
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+Variáveis do app frontend no EasyPanel:
 
-## Development
+```env
+VITE_API_URL=https://api.seudominio.com.br
+VITE_APP_NAME=Vertex Agro
+PORT=3000
+HOST=0.0.0.0
+```
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+`VITE_API_URL` precisa estar disponível no **build**. Depois de alterar essa variável, faça **Rebuild**.
+
+## Backend
+
+O backend fica em `backend/` e usa PostgreSQL via `DATABASE_URL`.
+
+```env
+DATABASE_URL=postgresql://usuario:senha@postgres:5432/vertex
+JWT_SECRET=troque_por_um_segredo_forte
+JWT_REFRESH_SECRET=troque_por_outro_segredo_forte
+CORS_ORIGIN=https://app.seudominio.com.br
+FRONTEND_URL=https://app.seudominio.com.br
+```
+
+## Desenvolvimento local
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+npm install
 npm run dev
 ```
 
-## Built with
+## Stack
 
 - TanStack Start
-- TypeScript
 - React
+- TypeScript
 - Tailwind CSS
+- NestJS
+- Prisma
+- PostgreSQL

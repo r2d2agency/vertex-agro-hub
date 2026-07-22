@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Plus, Search, MoreHorizontal, Trash2, Pencil } from "lucide-react";
 import {
@@ -45,16 +44,14 @@ function EmpresasPage() {
   const [q, setQ] = useState("");
   const [toDelete, setToDelete] = useState<string | null>(null);
   const qc = useQueryClient();
-  const list = useServerFn(listCompanies);
-  const del = useServerFn(deleteCompany);
 
   const { data, isLoading } = useQuery({
     queryKey: ["companies"],
-    queryFn: () => list(),
+    queryFn: listCompanies,
   });
 
   const mutation = useMutation({
-    mutationFn: (id: string) => del({ data: { id } }),
+    mutationFn: (id: string) => deleteCompany({ id }),
     onSuccess: () => {
       toast.success("Empresa excluída");
       qc.invalidateQueries({ queryKey: ["companies"] });

@@ -1,29 +1,37 @@
 import { useEffect, useState } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUser, hasAuthTokens, type AuthUser } from "@/lib/api";
 
 export function useAuth() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-    });
+    const load = async () => {
+      if (!hasAuthTokens()) {
+        if (!mounted) return;
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const current = await getCurrentUser();
+        if (mounted) setUser(current);
+      } catch {
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    void load();
+    window.addEventListener("vertex-auth-change", load);
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      window.removeEventListener("vertex-auth-change", load);
     };
   }, []);
 
-  return { session, user, loading };
+  return { user, loading };
 }

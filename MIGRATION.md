@@ -1,9 +1,9 @@
-# Migração Vertex Agro — Lovable Cloud → EasyPanel (Docker)
+# Vertex Agro — Deploy no EasyPanel (Docker)
 
 ## Ordem recomendada (sem downtime)
 
-### 1. Preparar o backend novo (este PR)
-- [x] `backend/` com NestJS + Prisma + JWT + Google OAuth + CRUD Empresas
+### 1. Preparar o backend
+- [x] `backend/` com NestJS + Prisma + JWT + CRUD Empresas
 - [x] `Dockerfile` do frontend com preset Nitro `node-server`
 - [x] `docker-compose.yml` local para ambos
 
@@ -16,8 +16,6 @@
    - `JWT_SECRET`, `JWT_REFRESH_SECRET` — `openssl rand -hex 32` cada
    - `CORS_ORIGIN` — domínio do frontend (ex.: `https://app.seudominio.com.br`)
    - `FRONTEND_URL` — mesmo domínio
-   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — opcionais; deixe vazio para subir primeiro só com e-mail/senha
-   - `GOOGLE_CALLBACK_URL` — obrigatório apenas se Google OAuth estiver ativo: `https://api.seudominio.com.br/auth/google/callback`
 5. Vincule um domínio (ex.: `api.seudominio.com.br`) e ative HTTPS (Let's Encrypt).
 6. Deploy — o container roda `prisma migrate deploy` automaticamente na inicialização.
 7. Crie o primeiro usuário e promova a `admin_global` manualmente:
@@ -26,18 +24,14 @@
    VALUES (gen_random_uuid(), '<user-id>', 'admin_global');
    ```
 
-### 3. Migrar o frontend
-Hoje o frontend usa `@/integrations/supabase/client` e `createServerFn` com `requireSupabaseAuth`. Para apontar para a nova API:
+### 3. Frontend apontando para a API própria
 
-1. **Remova** as dependências: `@supabase/supabase-js`, `@lovable.dev/cloud-auth-js`.
-2. **Substitua** o cliente Supabase por um wrapper `fetch` para a API NestJS (`src/lib/api-client.ts`) que anexa `Authorization: Bearer <access_token>` de `localStorage`.
-3. **Reescreva** `src/lib/companies.functions.ts` chamando `GET /companies`, `POST /companies`, etc.
-4. **Reescreva** `src/routes/auth.tsx` e `src/routes/reset-password.tsx` chamando `POST /auth/login`, `POST /auth/register`, e redirecionando para `GET /auth/google` no Google.
-5. **Reescreva** `src/hooks/use-auth.ts` para ler o access token do `localStorage` + chamar `GET /auth/me`.
-6. Remova `src/integrations/supabase/*` e `src/integrations/lovable/*`.
-7. Remova `nitro`/CF do build e confie no `NITRO_PRESET=node-server` já no Dockerfile.
+O frontend já usa a API NestJS via `VITE_API_URL`:
 
-> **Esta etapa é grande (~30 arquivos)**. Posso executar em uma próxima rodada após o backend estar no ar — quando o EasyPanel estiver respondendo em `https://api.seudominio.com.br/health`, me avise que faço a migração completa do frontend em um único PR.
+1. Auth: `POST /auth/login`, `POST /auth/register`, `GET /auth/me`, `POST /auth/logout`.
+2. Empresas: `GET /companies`, `POST /companies`, `PATCH /companies/:id`, `DELETE /companies/:id`.
+3. Configure `VITE_API_URL=https://api.seudominio.com.br` no app frontend.
+4. Faça **Rebuild** depois de alterar `VITE_API_URL`.
 
 ### 4. Publicar o frontend no EasyPanel
 1. Mova o repo do frontend para um novo GitHub separado (sem a pasta `backend/`).
@@ -47,14 +41,8 @@ Hoje o frontend usa `@/integrations/supabase/client` e `createServerFn` com `req
    - `VITE_APP_NAME=Vertex Agro`
 4. Vincule domínio (ex.: `app.seudominio.com.br`) + HTTPS.
 
-### 5. Desconectar o Lovable Cloud
-Somente depois que o novo stack estiver rodando e validado:
-- **Cloud → Advanced → Disconnect** (⚠️ irreversível — apaga banco/auth/storage do Lovable).
+### 5. Banco de dados
+Use o PostgreSQL do EasyPanel no backend via `DATABASE_URL`. O frontend não acessa o banco diretamente.
 
-## Google OAuth — configuração
-O backend agora inicia normalmente sem Google OAuth. Se `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` não forem definidos, a rota `/auth/google` fica indisponível temporariamente, mas login por e-mail/senha continua funcionando.
-
-No Google Cloud Console, em **Credenciais → OAuth 2.0 Client IDs → Web application**:
-- **Authorized redirect URIs**:
-  - `http://localhost:4000/auth/google/callback` (dev)
-  - `https://api.seudominio.com.br/auth/google/callback` (prod)
+## OAuth
+OAuth social está desativado por enquanto. O login ativo é e-mail/senha com JWT.
