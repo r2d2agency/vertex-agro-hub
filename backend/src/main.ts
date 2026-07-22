@@ -35,6 +35,11 @@ function corsMiddleware(request: Request, response: Response, next: NextFunction
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const prisma = app.get(PrismaService);
+  await ensureSuperadmin(prisma);
+
+
+
   app.use(corsMiddleware);
   app.enableCors({
     origin: true,
