@@ -32,6 +32,7 @@ import { Route as AuthenticatedFazendasRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedFotografiasRouteImport } from './routes/_authenticated/fotografias'
 import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
 import { Route as AuthenticatedIaRouteImport } from './routes/_authenticated/ia'
+import { Route as AuthenticatedImportarRouteImport } from './routes/_authenticated/importar'
 import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenticated/indicadores'
 import { Route as AuthenticatedInspecoesRouteImport } from './routes/_authenticated/inspecoes'
 import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
@@ -173,6 +174,11 @@ const AuthenticatedHistoricoRoute = AuthenticatedHistoricoRouteImport.update({
 const AuthenticatedIaRoute = AuthenticatedIaRouteImport.update({
   id: '/ia',
   path: '/ia',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedImportarRoute = AuthenticatedImportarRouteImport.update({
+  id: '/importar',
+  path: '/importar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedIndicadoresRoute =
@@ -320,6 +326,7 @@ export interface FileRoutesByFullPath {
   '/fotografias': typeof AuthenticatedFotografiasRoute
   '/historico': typeof AuthenticatedHistoricoRoute
   '/ia': typeof AuthenticatedIaRoute
+  '/importar': typeof AuthenticatedImportarRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/inspecoes': typeof AuthenticatedInspecoesRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
@@ -367,6 +374,7 @@ export interface FileRoutesByTo {
   '/fotografias': typeof AuthenticatedFotografiasRoute
   '/historico': typeof AuthenticatedHistoricoRoute
   '/ia': typeof AuthenticatedIaRoute
+  '/importar': typeof AuthenticatedImportarRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/inspecoes': typeof AuthenticatedInspecoesRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
@@ -416,6 +424,7 @@ export interface FileRoutesById {
   '/_authenticated/fotografias': typeof AuthenticatedFotografiasRoute
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
   '/_authenticated/ia': typeof AuthenticatedIaRoute
+  '/_authenticated/importar': typeof AuthenticatedImportarRoute
   '/_authenticated/indicadores': typeof AuthenticatedIndicadoresRoute
   '/_authenticated/inspecoes': typeof AuthenticatedInspecoesRoute
   '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
@@ -465,6 +474,7 @@ export interface FileRouteTypes {
     | '/fotografias'
     | '/historico'
     | '/ia'
+    | '/importar'
     | '/indicadores'
     | '/inspecoes'
     | '/integracoes'
@@ -512,6 +522,7 @@ export interface FileRouteTypes {
     | '/fotografias'
     | '/historico'
     | '/ia'
+    | '/importar'
     | '/indicadores'
     | '/inspecoes'
     | '/integracoes'
@@ -560,6 +571,7 @@ export interface FileRouteTypes {
     | '/_authenticated/fotografias'
     | '/_authenticated/historico'
     | '/_authenticated/ia'
+    | '/_authenticated/importar'
     | '/_authenticated/indicadores'
     | '/_authenticated/inspecoes'
     | '/_authenticated/integracoes'
@@ -754,6 +766,13 @@ declare module '@tanstack/react-router' {
       path: '/ia'
       fullPath: '/ia'
       preLoaderRoute: typeof AuthenticatedIaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/importar': {
+      id: '/_authenticated/importar'
+      path: '/importar'
+      fullPath: '/importar'
+      preLoaderRoute: typeof AuthenticatedImportarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/indicadores': {
@@ -954,6 +973,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFotografiasRoute: typeof AuthenticatedFotografiasRoute
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
   AuthenticatedIaRoute: typeof AuthenticatedIaRoute
+  AuthenticatedImportarRoute: typeof AuthenticatedImportarRoute
   AuthenticatedIndicadoresRoute: typeof AuthenticatedIndicadoresRoute
   AuthenticatedInspecoesRoute: typeof AuthenticatedInspecoesRoute
   AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
@@ -996,6 +1016,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFotografiasRoute: AuthenticatedFotografiasRoute,
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,
   AuthenticatedIaRoute: AuthenticatedIaRoute,
+  AuthenticatedImportarRoute: AuthenticatedImportarRoute,
   AuthenticatedIndicadoresRoute: AuthenticatedIndicadoresRoute,
   AuthenticatedInspecoesRoute: AuthenticatedInspecoesRoute,
   AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,

@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { CompaniesModule } from './companies/companies.module';
 import { TerritorialModule } from './territorial/territorial.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { OperationsModule } from './operations/operations.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -17,7 +18,9 @@ import { HealthController } from './health.controller';
     CompaniesModule,
     TerritorialModule,
     CatalogModule,
+    OperationsModule,
   ],
   controllers: [HealthController],
 })
 export class AppModule {}
+
