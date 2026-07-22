@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Leaf } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,19 +66,7 @@ function AuthPage() {
     toast.success("Conta criada! Você já pode entrar.");
   }
 
-  async function handleGoogle() {
-    setLoading(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
-      setLoading(false);
-      toast.error("Erro no login Google", { description: String(result.error) });
-      return;
-    }
-    if (result.redirected) return;
-    navigate({ to: "/dashboard", replace: true });
-  }
+  // Google OAuth desativado por enquanto.
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
@@ -139,20 +126,13 @@ function AuthPage() {
               </form>
             </TabsContent>
           </Tabs>
-
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">ou</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <Button variant="outline" className="w-full" onClick={handleGoogle} disabled={loading}>
-            Continuar com Google
-          </Button>
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           <Link to="/" className="hover:text-foreground">← Voltar</Link>
+        </p>
+        <p className="mt-2 text-center text-[11px] text-muted-foreground/70">
+          Design by TNS R2D2
         </p>
       </div>
     </div>

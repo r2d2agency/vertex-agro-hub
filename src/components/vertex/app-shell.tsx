@@ -14,6 +14,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Topbar />
           </header>
           <main className="flex-1 p-6">{children}</main>
+          <footer className="border-t border-border px-6 py-4 text-center text-xs text-muted-foreground">
+            © {new Date().getFullYear()} Vertex Agro · Design by <span className="font-medium text-foreground">TNS R2D2</span>
+          </footer>
         </div>
       </div>
     </SidebarProvider>
