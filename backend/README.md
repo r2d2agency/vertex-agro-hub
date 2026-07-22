@@ -14,7 +14,7 @@ npx prisma migrate dev
 npm run start:dev
 ```
 
-API em `http://localhost:4000`.
+API em `http://localhost:4000` no Docker Compose local. Dentro do container a API escuta em `PORT=3000`.
 
 ## Deploy no EasyPanel
 
@@ -24,6 +24,8 @@ API em `http://localhost:4000`.
 4. **Frontend** — no repo do frontend, defina `VITE_API_URL=/api` no build e `API_PROXY_TARGET=https://api.seudominio.com.br` no runtime.
 
 O container do backend executa `npx prisma migrate deploy` antes de iniciar a API. Se o domínio mostrar `Service is not reachable`, confira primeiro `DATABASE_URL`, `JWT_SECRET` e `JWT_REFRESH_SECRET` nos logs do app backend.
+
+No EasyPanel, configure a porta/proxy interno do backend para **3000**.
 
 Exemplo para o backend no EasyPanel:
 

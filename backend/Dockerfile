@@ -32,6 +32,6 @@ COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 
-EXPOSE 4000
+EXPOSE 3000
 # Roda migrações Prisma antes de iniciar (idempotente)
 CMD sh -c "npx prisma migrate deploy && node dist/main.js"

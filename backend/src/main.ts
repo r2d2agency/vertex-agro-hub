@@ -50,7 +50,7 @@ async function bootstrap() {
   );
   app.setGlobalPrefix('', { exclude: ['health'] });
 
-  const port = parseInt(process.env.PORT ?? '4000', 10);
+  const port = parseInt(process.env.PORT ?? '3000', 10);
   await app.listen(port, '0.0.0.0');
   console.log(`Vertex API listening on :${port}`);
 }

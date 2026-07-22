@@ -16,10 +16,10 @@ services:
     depends_on:
       - db
     ports:
-      - "4000:4000"
+      - "4000:3000"
     environment:
       NODE_ENV: production
-      PORT: 4000
+      PORT: 3000
       DATABASE_URL: postgres://vertex:vertex@db:5432/vertex
       JWT_SECRET: ${JWT_SECRET:-change-me-in-prod}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-refresh}
