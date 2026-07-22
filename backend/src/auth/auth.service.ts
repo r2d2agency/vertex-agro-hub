@@ -59,7 +59,24 @@ export class AuthService {
         fullName: dto.fullName ?? dto.email,
       },
     });
+    await this.ensureSuperadminRole(user.id, user.email);
     return this.signTokens(user.id, user.email);
+  }
+
+  private async ensureSuperadminRole(userId: string, email: string) {
+    const superEmail = (process.env.SUPERADMIN_EMAIL ?? 'tnicodemos@gmail.com')
+      .trim()
+      .toLowerCase();
+    if (email.trim().toLowerCase() !== superEmail) return;
+    const existing = await this.prisma.userRole.findFirst({
+      where: { userId, role: 'admin_global', companyId: null },
+    });
+    if (existing) return;
+    await this.prisma.userRole.create({
+      data: { userId, role: 'admin_global' },
+    });
+    console.log(`[superadmin] ${email} promovido a admin_global no registro.`);
+
   }
 
   async login(email: string, password: string) {
