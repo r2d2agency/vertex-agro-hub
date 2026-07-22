@@ -16,8 +16,8 @@
    - `JWT_SECRET`, `JWT_REFRESH_SECRET` — `openssl rand -hex 32` cada
    - `CORS_ORIGIN` — domínio do frontend (ex.: `https://app.seudominio.com.br`)
    - `FRONTEND_URL` — mesmo domínio
-   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — do [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-   - `GOOGLE_CALLBACK_URL` — `https://api.seudominio.com.br/auth/google/callback`
+   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — opcionais; deixe vazio para subir primeiro só com e-mail/senha
+   - `GOOGLE_CALLBACK_URL` — obrigatório apenas se Google OAuth estiver ativo: `https://api.seudominio.com.br/auth/google/callback`
 5. Vincule um domínio (ex.: `api.seudominio.com.br`) e ative HTTPS (Let's Encrypt).
 6. Deploy — o container roda `prisma migrate deploy` automaticamente na inicialização.
 7. Crie o primeiro usuário e promova a `admin_global` manualmente:
@@ -52,6 +52,8 @@ Somente depois que o novo stack estiver rodando e validado:
 - **Cloud → Advanced → Disconnect** (⚠️ irreversível — apaga banco/auth/storage do Lovable).
 
 ## Google OAuth — configuração
+O backend agora inicia normalmente sem Google OAuth. Se `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` não forem definidos, a rota `/auth/google` fica indisponível temporariamente, mas login por e-mail/senha continua funcionando.
+
 No Google Cloud Console, em **Credenciais → OAuth 2.0 Client IDs → Web application**:
 - **Authorized redirect URIs**:
   - `http://localhost:4000/auth/google/callback` (dev)
