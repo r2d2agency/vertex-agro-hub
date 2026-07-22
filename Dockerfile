@@ -7,7 +7,7 @@
 # ----------------------------------------------------------------------------
 
 FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare bun@latest --activate || true
+RUN npm install -g bun@1.1.42
 WORKDIR /app
 
 # --- deps ---
