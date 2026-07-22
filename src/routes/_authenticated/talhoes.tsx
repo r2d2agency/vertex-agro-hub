@@ -16,10 +16,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
-import { listFarms } from "@/lib/fazendas.functions";
+import { listFarms, type Farm } from "@/lib/fazendas.functions";
 import {
   createPlot, deletePlot, listPlots, updatePlot, type Plot, type PlotInput,
 } from "@/lib/talhoes.functions";
+import { MapEditorClient } from "@/components/vertex/map-editor-client";
+import type { GeoPolygon } from "@/lib/geo";
 
 export const Route = createFileRoute("/_authenticated/talhoes")({
   head: () => ({
@@ -35,6 +37,7 @@ export const Route = createFileRoute("/_authenticated/talhoes")({
 const empty: PlotInput = {
   farmId: "", name: "", code: "", areaHa: null,
   cloneName: "", plantingYear: null, treeCount: null, tappingSystem: "", notes: "",
+  boundary: null,
 };
 
 function TalhoesPage() {
@@ -168,7 +171,7 @@ function PlotDialog({
   onOpenChange: (o: boolean) => void;
   initial?: Plot;
   companyId: string | null;
-  farms: { id: string; name: string }[];
+  farms: Farm[];
   defaultFarmId?: string;
   onSaved: () => void;
 }) {
@@ -185,9 +188,12 @@ function PlotDialog({
       treeCount: initial.treeCount ?? null,
       tappingSystem: initial.tappingSystem ?? "",
       notes: initial.notes ?? "",
+      boundary: initial.boundary ?? null,
     });
     else setValues({ ...empty, farmId: defaultFarmId ?? farms[0]?.id ?? "" });
   }, [open, initial, defaultFarmId, farms]);
+
+  const selectedFarm = farms.find((f) => f.id === values.farmId);
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -204,7 +210,7 @@ function PlotDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{initial ? "Editar talhão" : "Novo talhão"}</DialogTitle></DialogHeader>
         <form
           onSubmit={(e) => {
@@ -233,6 +239,30 @@ function PlotDialog({
             <div><Label>Nº de árvores</Label><Input type="number" value={values.treeCount ?? ""} onChange={(e) => setValues((v) => ({ ...v, treeCount: e.target.value ? Number(e.target.value) : null }))} /></div>
             <div><Label>Sistema de sangria</Label><Input value={values.tappingSystem} onChange={(e) => setValues((v) => ({ ...v, tappingSystem: e.target.value }))} placeholder="Ex.: 1/2S d/3" /></div>
             <div className="col-span-2"><Label>Observações</Label><Textarea rows={3} value={values.notes} onChange={(e) => setValues((v) => ({ ...v, notes: e.target.value }))} /></div>
+
+            <div className="col-span-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Polígono do talhão</Label>
+                <p className="text-xs text-muted-foreground">
+                  {selectedFarm?.boundary
+                    ? "Contorno da fazenda em destaque. Desenhe o talhão dentro."
+                    : "Desenhe o polígono do talhão no mapa."}
+                </p>
+              </div>
+              <MapEditorClient
+                value={values.boundary ?? null}
+                reference={selectedFarm?.boundary ?? null}
+                onChange={(poly: GeoPolygon | null, ha: number | null) => {
+                  setValues((v) => ({
+                    ...v,
+                    boundary: poly,
+                    areaHa: ha ?? v.areaHa,
+                  }));
+                  if (ha != null) toast.info(`Área sugerida: ${ha} ha`);
+                }}
+                height={380}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>

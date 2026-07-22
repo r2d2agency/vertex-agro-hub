@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api";
+import type { GeoPolygon } from "@/lib/geo";
 
 export type Plot = {
   id: string;
@@ -13,6 +14,7 @@ export type Plot = {
   treeCount?: number | null;
   tappingSystem?: string | null;
   notes?: string | null;
+  boundary?: GeoPolygon | null;
 };
 
 export type PlotInput = {
@@ -25,6 +27,7 @@ export type PlotInput = {
   treeCount?: number | null;
   tappingSystem?: string;
   notes?: string;
+  boundary?: GeoPolygon | null;
 };
 
 export function listPlots(companyId: string, farmId?: string) {
@@ -62,5 +65,6 @@ function clean(v: PlotInput) {
     treeCount: v.treeCount ?? undefined,
     tappingSystem: v.tappingSystem?.trim() || undefined,
     notes: v.notes?.trim() || undefined,
+    boundary: v.boundary ?? undefined,
   };
 }

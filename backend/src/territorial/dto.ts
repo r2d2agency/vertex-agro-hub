@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsNumber, IsObject, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateRegionalDto {
   @IsUUID() companyId!: string;
@@ -27,6 +27,7 @@ export class CreateFarmDto {
   @IsOptional() @IsNumber() longitude?: number;
   @IsOptional() @IsString() @MaxLength(200) owner?: string;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsObject() boundary?: Record<string, unknown>;
 }
 
 export class UpdateFarmDto {
@@ -40,6 +41,7 @@ export class UpdateFarmDto {
   @IsOptional() @IsNumber() longitude?: number;
   @IsOptional() @IsString() @MaxLength(200) owner?: string;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsObject() boundary?: Record<string, unknown> | null;
 }
 
 export class CreatePlotDto {
@@ -53,6 +55,7 @@ export class CreatePlotDto {
   @IsOptional() @IsNumber() treeCount?: number;
   @IsOptional() @IsString() @MaxLength(50) tappingSystem?: string;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsObject() boundary?: Record<string, unknown>;
 }
 
 export class UpdatePlotDto {
@@ -65,4 +68,5 @@ export class UpdatePlotDto {
   @IsOptional() @IsNumber() treeCount?: number;
   @IsOptional() @IsString() @MaxLength(50) tappingSystem?: string;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsObject() boundary?: Record<string, unknown> | null;
 }
