@@ -39,7 +39,9 @@ import {
   PlugZap,
   Smartphone,
   ScrollText,
+  Upload,
   Leaf,
+
 } from "lucide-react";
 import {
   Sidebar,
@@ -98,8 +100,10 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Ocorrências", url: "/ocorrencias", icon: AlertTriangle },
       { title: "Fotografias", url: "/fotografias", icon: Camera },
       { title: "Histórico", url: "/historico", icon: History },
+      { title: "Importar CSV", url: "/importar", icon: Upload },
     ],
   },
+
   {
     label: "Consultoria Técnica",
     items: [
