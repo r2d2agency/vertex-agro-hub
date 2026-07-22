@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vertex
+      POSTGRES_PASSWORD: vertex
+      POSTGRES_DB: vertex
+    ports:
+      - "5432:5432"
+    volumes:
+      - vertex_db:/var/lib/postgresql/data
+
+  api:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgres://vertex:vertex@db:5432/vertex
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-prod}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-refresh}
+      JWT_ACCESS_TTL: 900
+      JWT_REFRESH_TTL: 2592000
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:4000/auth/google/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    restart: unless-stopped
+
+volumes:
+  vertex_db:
