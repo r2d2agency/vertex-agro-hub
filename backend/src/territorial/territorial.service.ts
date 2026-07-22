@@ -117,7 +117,7 @@ export class TerritorialService {
     await this.access.ensureCompany(userId, dto.companyId);
     const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
     if (!farm || farm.companyId !== dto.companyId) throw new ForbiddenException('Fazenda inválida');
-    return this.prisma.plot.create({ data: { ...dto, createdById: userId, updatedById: userId } });
+    return this.prisma.plot.create({ data: { ...dto, createdById: userId, updatedById: userId } as any });
   }
 
   async updatePlot(userId: string, id: string, dto: UpdatePlotDto) {
