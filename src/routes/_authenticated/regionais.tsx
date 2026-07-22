@@ -168,14 +168,16 @@ function RegionalDialog({
 }) {
   const [values, setValues] = useState<RegionalInput>(empty);
 
-  useState(() => {
+  useEffect(() => {
+    if (!open) return;
     if (initial) setValues({
       name: initial.name,
       code: initial.code ?? "",
       description: initial.description ?? "",
       manager: initial.manager ?? "",
     });
-  });
+    else setValues(empty);
+  }, [open, initial]);
 
   const mut = useMutation({
     mutationFn: async () => {
