@@ -23,6 +23,8 @@ API em `http://localhost:4000`.
 3. **Domínio** — associe um domínio (ex.: `api.seudominio.com.br`) e ative HTTPS.
 4. **Frontend** — no repo do frontend, defina `VITE_API_URL=https://api.seudominio.com.br` no build.
 
+O container do backend executa `npx prisma migrate deploy` antes de iniciar a API. Se o domínio mostrar `Service is not reachable`, confira primeiro `DATABASE_URL`, `JWT_SECRET` e `JWT_REFRESH_SECRET` nos logs do app backend.
+
 Exemplo para o backend no EasyPanel:
 
 ```env
