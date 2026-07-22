@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
 
 const ACCESS_TOKEN_KEY = "vertex_access_token";
 const REFRESH_TOKEN_KEY = "vertex_refresh_token";
@@ -18,7 +18,7 @@ export type AuthUser = {
 
 function ensureApiUrl() {
   if (!API_BASE_URL) {
-    throw new Error("Configure VITE_API_URL no frontend apontando para a URL pública do backend.");
+    throw new Error("Configure VITE_API_URL=/api no frontend e API_PROXY_TARGET apontando para o backend.");
   }
   return API_BASE_URL;
 }

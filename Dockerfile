@@ -20,8 +20,9 @@ RUN if [ -f package-lock.json ]; then \
 # --- build ---
 FROM deps AS build
 COPY . .
-# VITE_* precisam estar disponíveis em build time — passe via --build-arg
-ARG VITE_API_URL
+# Por padrão o navegador chama /api no mesmo domínio do frontend.
+# O server.mjs faz proxy para API_PROXY_TARGET em runtime, evitando CORS.
+ARG VITE_API_URL="/api"
 ARG VITE_APP_NAME="Vertex Agro"
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_APP_NAME=${VITE_APP_NAME}
@@ -33,6 +34,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
+ENV API_PROXY_TARGET=""
 
 # TanStack Start + Vite gera dist/client e dist/server.
 COPY --from=build /app/dist ./dist

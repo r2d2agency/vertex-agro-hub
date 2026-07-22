@@ -26,19 +26,21 @@
 
 ### 3. Frontend apontando para a API própria
 
-O frontend já usa a API NestJS via `VITE_API_URL`:
+O frontend usa proxy local para a API NestJS:
 
 1. Auth: `POST /auth/login`, `POST /auth/register`, `GET /auth/me`, `POST /auth/logout`.
 2. Empresas: `GET /companies`, `POST /companies`, `PATCH /companies/:id`, `DELETE /companies/:id`.
-3. Configure `VITE_API_URL=https://api.seudominio.com.br` no app frontend.
-4. Faça **Rebuild** depois de alterar `VITE_API_URL`.
+3. Configure `VITE_API_URL=/api` no app frontend.
+4. Configure `API_PROXY_TARGET=https://api.seudominio.com.br` no runtime do frontend.
+5. Faça **Rebuild sem cache** depois de alterar `VITE_API_URL`.
 
 ### 4. Publicar o frontend no EasyPanel
 1. Mova o repo do frontend para um novo GitHub separado (sem a pasta `backend/`).
 2. No EasyPanel, crie um segundo App apontando para o repo do frontend.
 3. Configure as variáveis de build:
-   - `VITE_API_URL=https://api.seudominio.com.br`
+   - `VITE_API_URL=/api`
    - `VITE_APP_NAME=Vertex Agro`
+   - `API_PROXY_TARGET=https://api.seudominio.com.br`
 4. Vincule domínio (ex.: `app.seudominio.com.br`) + HTTPS.
 
 ### 5. Banco de dados
