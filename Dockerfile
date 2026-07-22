@@ -1,9 +1,8 @@
 # ============================================================================
 # Vertex Agro — Frontend (TanStack Start SSR) — Docker para EasyPanel
 # ============================================================================
-# Build multi-stage com Node 20. O TanStack Start é empacotado pelo Nitro;
-# usamos o preset "node-server" para gerar um servidor Node standalone em
-# .output/server/index.mjs
+# Build multi-stage com Node 20. O TanStack Start gera a saída em dist/
+# e o runtime serve essa saída via Vite preview na porta 3000.
 # ----------------------------------------------------------------------------
 
 FROM node:20-alpine AS base
@@ -21,8 +20,6 @@ RUN if [ -f package-lock.json ]; then \
 # --- build ---
 FROM deps AS build
 COPY . .
-# Nitro node-server preset (Node standalone em vez de Cloudflare Worker)
-ENV NITRO_PRESET=node-server
 # VITE_* precisam estar disponíveis em build time — passe via --build-arg
 ARG VITE_API_URL
 ARG VITE_APP_NAME="Vertex Agro"
@@ -37,9 +34,10 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
-# O Nitro empacota tudo em .output/ (server + assets estáticos)
-COPY --from=build /app/.output ./.output
+# TanStack Start + Vite gera dist/client e dist/server.
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 
 EXPOSE 3000
-CMD ["node", ".output/server/index.mjs"]
+CMD ["sh", "-c", "./node_modules/.bin/vite preview --host 0.0.0.0 --port ${PORT:-3000}"]
