@@ -18,7 +18,6 @@ bun.lock
 bun.lockb
 .DS_Store
 coverage
-.lovable
 backend
 README.md
 MIGRATION.md
