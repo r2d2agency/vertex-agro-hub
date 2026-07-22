@@ -1,36 +1,39 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 
-function parseAllowedOrigins() {
-  return [process.env.CORS_ORIGIN, process.env.FRONTEND_URL]
-    .filter(Boolean)
-    .flatMap((value) => String(value).split(','))
-    .map((origin) => origin.trim().replace(/\/$/, ''))
-    .filter(Boolean);
+const DEFAULT_ALLOWED_HEADERS = 'Content-Type, Authorization, Accept, Origin, X-Requested-With';
+
+function corsMiddleware(request: Request, response: Response, next: NextFunction) {
+  const origin = request.headers.origin;
+  const requestedHeaders = request.headers['access-control-request-headers'];
+
+  response.header('Access-Control-Allow-Origin', origin || '*');
+  response.header('Vary', 'Origin');
+  response.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+  response.header(
+    'Access-Control-Allow-Headers',
+    Array.isArray(requestedHeaders)
+      ? requestedHeaders.join(', ')
+      : requestedHeaders || DEFAULT_ALLOWED_HEADERS,
+  );
+  response.header('Access-Control-Max-Age', '86400');
+
+  if (request.method === 'OPTIONS') {
+    response.status(204).send();
+    return;
+  }
+
+  next();
 }
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.use(corsMiddleware);
   app.use(helmet());
-  const allowedOrigins = parseAllowedOrigins();
-  app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-
-      const normalizedOrigin = origin.replace(/\/$/, '');
-      if (allowedOrigins.length === 0 || allowedOrigins.includes('*')) {
-        return callback(null, true);
-      }
-
-      return callback(null, allowedOrigins.includes(normalizedOrigin));
-    },
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-    optionsSuccessStatus: 204,
-  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
