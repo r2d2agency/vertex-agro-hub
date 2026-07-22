@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
+const CONFIGURED_API_BASE_URL = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
 
 const ACCESS_TOKEN_KEY = "vertex_access_token";
 const REFRESH_TOKEN_KEY = "vertex_refresh_token";
@@ -17,10 +17,26 @@ export type AuthUser = {
 };
 
 function ensureApiUrl() {
-  if (!API_BASE_URL) {
+  if (!CONFIGURED_API_BASE_URL) {
     throw new Error("Configure VITE_API_URL=/api no frontend e API_PROXY_TARGET apontando para o backend.");
   }
-  return API_BASE_URL;
+
+  if (typeof window !== "undefined") {
+    try {
+      const configuredUrl = new URL(CONFIGURED_API_BASE_URL, window.location.origin);
+
+      // Em produção, chamadas diretas do browser para outro domínio voltam a depender de CORS.
+      // Portanto, mesmo que o EasyPanel injete por engano a URL pública do backend no build,
+      // o frontend usa o proxy same-origin /api e o server.mjs repassa para API_PROXY_TARGET.
+      if (configuredUrl.origin !== window.location.origin) {
+        return "/api";
+      }
+    } catch {
+      return "/api";
+    }
+  }
+
+  return CONFIGURED_API_BASE_URL;
 }
 
 function canUseStorage() {
