@@ -14,16 +14,171 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      companies: {
+        Row: {
+          cidade: string | null
+          cnpj: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          device_id: string | null
+          email: string | null
+          endereco: string | null
+          estado: string | null
+          id: string
+          is_deleted: boolean
+          logo_url: string | null
+          nome_fantasia: string | null
+          observacoes: string | null
+          razao_social: string
+          responsavel: string | null
+          status: string
+          sync_status: Database["public"]["Enums"]["sync_status"]
+          telefone: string | null
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          cidade?: string | null
+          cnpj?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          device_id?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          is_deleted?: boolean
+          logo_url?: string | null
+          nome_fantasia?: string | null
+          observacoes?: string | null
+          razao_social: string
+          responsavel?: string | null
+          status?: string
+          sync_status?: Database["public"]["Enums"]["sync_status"]
+          telefone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          cidade?: string | null
+          cnpj?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          device_id?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          is_deleted?: boolean
+          logo_url?: string | null
+          nome_fantasia?: string | null
+          observacoes?: string | null
+          razao_social?: string
+          responsavel?: string | null
+          status?: string
+          sync_status?: Database["public"]["Enums"]["sync_status"]
+          telefone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin_global: { Args: { _user_id: string }; Returns: boolean }
+      is_member_of_company: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "admin_global"
+        | "admin_empresa"
+        | "gestor"
+        | "supervisor_regional"
+        | "monitor"
+        | "consultor"
+        | "consulta"
+      sync_status: "synced" | "pending" | "conflict" | "error"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +305,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "admin_global",
+        "admin_empresa",
+        "gestor",
+        "supervisor_regional",
+        "monitor",
+        "consultor",
+        "consulta",
+      ],
+      sync_status: ["synced", "pending", "conflict", "error"],
+    },
   },
 } as const
