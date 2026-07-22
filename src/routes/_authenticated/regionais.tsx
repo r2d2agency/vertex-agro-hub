@@ -194,18 +194,8 @@ function RegionalDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setValues(empty); }}>
-      <DialogContent
-        onOpenAutoFocus={() => {
-          if (initial) setValues({
-            name: initial.name,
-            code: initial.code ?? "",
-            description: initial.description ?? "",
-            manager: initial.manager ?? "",
-          });
-          else setValues(empty);
-        }}
-      >
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <DialogHeader><DialogTitle>{initial ? "Editar regional" : "Nova regional"}</DialogTitle></DialogHeader>
         <form
           onSubmit={(e) => { e.preventDefault(); if (!values.name.trim()) { toast.error("Nome obrigatório"); return; } mut.mutate(); }}
