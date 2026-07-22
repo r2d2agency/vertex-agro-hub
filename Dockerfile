@@ -7,16 +7,16 @@
 # ----------------------------------------------------------------------------
 
 FROM node:20-alpine AS base
-RUN npm install -g bun@1.1.42
 WORKDIR /app
 
 # --- deps ---
 FROM base AS deps
-COPY package.json bun.lock bun.lockb* package-lock.json* pnpm-lock.yaml* yarn.lock* ./
-RUN if [ -f bun.lock ] || [ -f bun.lockb ]; then bun install --frozen-lockfile; \
-    elif [ -f pnpm-lock.yaml ]; then corepack enable && pnpm install --frozen-lockfile; \
-    elif [ -f yarn.lock ]; then corepack enable && yarn install --frozen-lockfile; \
-    else (npm ci --no-audit --no-fund || npm install --no-audit --no-fund); fi
+COPY package.json package-lock.json* ./
+RUN if [ -f package-lock.json ]; then \
+      npm ci --no-audit --no-fund; \
+    else \
+      npm install --no-audit --no-fund; \
+    fi
 
 # --- build ---
 FROM deps AS build
