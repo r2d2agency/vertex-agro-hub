@@ -99,6 +99,8 @@ model Company {
   regionals Regional[]
   farms     Farm[]
   plots     Plot[]
+  clones    Clone[]
+  tappingTables TappingTable[]
 
   @@index([isDeleted])
   @@map("companies")
