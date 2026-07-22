@@ -101,10 +101,13 @@ model Company {
   plots     Plot[]
   clones    Clone[]
   tappingTables TappingTable[]
+  tappingRecords TappingRecord[]
+  productionDeliveries ProductionDelivery[]
 
   @@index([isDeleted])
   @@map("companies")
 }
+
 
 model Regional {
   id          String     @id @default(uuid()) @db.Uuid
