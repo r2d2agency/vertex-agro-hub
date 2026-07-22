@@ -105,6 +105,8 @@ model Company {
   tappingRecords TappingRecord[]
   productionDeliveries ProductionDelivery[]
   teams     Team[]
+  occurrences Occurrence[]
+  scheduledTasks ScheduledTask[]
 
   @@index([isDeleted])
   @@map("companies")
