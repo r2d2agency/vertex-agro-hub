@@ -23,6 +23,13 @@ API em `http://localhost:4000`.
 3. **Domínio** — associe um domínio (ex.: `api.seudominio.com.br`) e ative HTTPS.
 4. **Frontend** — no repo do frontend, defina `VITE_API_URL=https://api.seudominio.com.br` no build.
 
+Exemplo para o backend no EasyPanel:
+
+```env
+CORS_ORIGIN=https://blaster-vertex-front.isyhhh.easypanel.host
+FRONTEND_URL=https://blaster-vertex-front.isyhhh.easypanel.host
+```
+
 ## Estrutura
 
 ```
