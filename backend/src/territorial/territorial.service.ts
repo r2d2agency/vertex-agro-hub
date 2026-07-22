@@ -89,7 +89,7 @@ export class TerritorialService {
     }
     return this.prisma.farm.update({
       where: { id },
-      data: { ...dto, updatedById: userId, version: { increment: 1 } },
+      data: { ...dto, updatedById: userId, version: { increment: 1 } } as any,
     });
   }
 
