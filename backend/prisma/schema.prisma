@@ -1,0 +1,103 @@
+// Prisma schema — Vertex Agro
+// Reproduz o modelo multiempresa com colunas offline-first
+// (version, sync_status, device_id, is_deleted, deleted_at)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppRole {
+  admin_global
+  admin_empresa
+  gestor
+  supervisor_regional
+  monitor
+  consultor
+  consulta
+}
+
+enum SyncStatus {
+  synced
+  pending
+  conflict
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  fullName     String?  @map("full_name")
+  avatarUrl    String?  @map("avatar_url")
+  googleId     String?  @unique @map("google_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  roles         UserRole[]
+  refreshTokens RefreshToken[]
+  companies     Company[]  @relation("CompanyCreatedBy")
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  companyId String?  @map("company_id") @db.Uuid
+  role      AppRole
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId, role])
+  @@index([userId])
+  @@index([companyId])
+  @@map("user_roles")
+}
+
+model Company {
+  id           String     @id @default(uuid()) @db.Uuid
+  name         String
+  legalName    String?    @map("legal_name")
+  taxId        String?    @map("tax_id")
+  email        String?
+  phone        String?
+  logoUrl      String?    @map("logo_url")
+  active       Boolean    @default(true)
+
+  // offline-first
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  createdBy User?      @relation("CompanyCreatedBy", fields: [createdById], references: [id])
+  members   UserRole[]
+
+  @@index([isDeleted])
+  @@map("companies")
+}
