@@ -16,10 +16,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
-import { listFarms } from "@/lib/fazendas.functions";
+import { listFarms, type Farm } from "@/lib/fazendas.functions";
 import {
   createPlot, deletePlot, listPlots, updatePlot, type Plot, type PlotInput,
 } from "@/lib/talhoes.functions";
+import { MapEditorClient } from "@/components/vertex/map-editor-client";
+import type { GeoPolygon } from "@/lib/geo";
 
 export const Route = createFileRoute("/_authenticated/talhoes")({
   head: () => ({
@@ -35,6 +37,7 @@ export const Route = createFileRoute("/_authenticated/talhoes")({
 const empty: PlotInput = {
   farmId: "", name: "", code: "", areaHa: null,
   cloneName: "", plantingYear: null, treeCount: null, tappingSystem: "", notes: "",
+  boundary: null,
 };
 
 function TalhoesPage() {
