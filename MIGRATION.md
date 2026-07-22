@@ -4,7 +4,7 @@
 
 ### 1. Preparar o backend
 - [x] `backend/` com NestJS + Prisma + JWT + CRUD Empresas
-- [x] `Dockerfile` do frontend com preset Nitro `node-server`
+- [x] `Dockerfile` do frontend servindo o build TanStack Start gerado em `dist/`
 - [x] `docker-compose.yml` local para ambos
 
 ### 2. Subir a infra no EasyPanel
