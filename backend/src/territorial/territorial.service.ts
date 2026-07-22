@@ -76,7 +76,7 @@ export class TerritorialService {
       const r = await this.prisma.regional.findUnique({ where: { id: dto.regionalId } });
       if (!r || r.companyId !== dto.companyId) throw new ForbiddenException('Regional inválida');
     }
-    return this.prisma.farm.create({ data: { ...dto, createdById: userId, updatedById: userId } });
+    return this.prisma.farm.create({ data: { ...dto, createdById: userId, updatedById: userId } as any });
   }
 
   async updateFarm(userId: string, id: string, dto: UpdateFarmDto) {
@@ -89,7 +89,7 @@ export class TerritorialService {
     }
     return this.prisma.farm.update({
       where: { id },
-      data: { ...dto, updatedById: userId, version: { increment: 1 } },
+      data: { ...dto, updatedById: userId, version: { increment: 1 } } as any,
     });
   }
 
@@ -117,7 +117,7 @@ export class TerritorialService {
     await this.access.ensureCompany(userId, dto.companyId);
     const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
     if (!farm || farm.companyId !== dto.companyId) throw new ForbiddenException('Fazenda inválida');
-    return this.prisma.plot.create({ data: { ...dto, createdById: userId, updatedById: userId } });
+    return this.prisma.plot.create({ data: { ...dto, createdById: userId, updatedById: userId } as any });
   }
 
   async updatePlot(userId: string, id: string, dto: UpdatePlotDto) {
@@ -130,7 +130,7 @@ export class TerritorialService {
     }
     return this.prisma.plot.update({
       where: { id },
-      data: { ...dto, updatedById: userId, version: { increment: 1 } },
+      data: { ...dto, updatedById: userId, version: { increment: 1 } } as any,
     });
   }
 
