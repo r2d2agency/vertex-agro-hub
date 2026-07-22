@@ -1,5 +1,5 @@
 // Prisma schema — Vertex Agro
-// Reproduz o modelo multiempresa com colunas offline-first
+// Modelo multiempresa com colunas offline-first
 // (version, sync_status, device_id, is_deleted, deleted_at)
 
 generator client {
@@ -84,7 +84,6 @@ model Company {
   logoUrl      String?    @map("logo_url")
   active       Boolean    @default(true)
 
-  // offline-first
   version      Int        @default(1)
   syncStatus   SyncStatus @default(synced) @map("sync_status")
   deviceId     String?    @map("device_id")
@@ -97,7 +96,99 @@ model Company {
 
   createdBy User?      @relation("CompanyCreatedBy", fields: [createdById], references: [id])
   members   UserRole[]
+  regionals Regional[]
+  farms     Farm[]
+  plots     Plot[]
 
   @@index([isDeleted])
   @@map("companies")
+}
+
+model Regional {
+  id          String     @id @default(uuid()) @db.Uuid
+  companyId   String     @map("company_id") @db.Uuid
+  name        String
+  code        String?
+  description String?
+  manager     String?
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  farms   Farm[]
+
+  @@index([companyId, isDeleted])
+  @@map("regionals")
+}
+
+model Farm {
+  id           String   @id @default(uuid()) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  regionalId   String?  @map("regional_id") @db.Uuid
+  name         String
+  code         String?
+  city         String?
+  state        String?
+  totalAreaHa  Float?   @map("total_area_ha")
+  latitude     Float?
+  longitude    Float?
+  owner        String?
+  notes        String?
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  regional Regional? @relation(fields: [regionalId], references: [id], onDelete: SetNull)
+  plots    Plot[]
+
+  @@index([companyId, isDeleted])
+  @@index([regionalId])
+  @@map("farms")
+}
+
+model Plot {
+  id            String   @id @default(uuid()) @db.Uuid
+  companyId     String   @map("company_id") @db.Uuid
+  farmId        String   @map("farm_id") @db.Uuid
+  name          String
+  code          String?
+  areaHa        Float?   @map("area_ha")
+  cloneName     String?  @map("clone_name")
+  plantingYear  Int?     @map("planting_year")
+  treeCount     Int?     @map("tree_count")
+  tappingSystem String?  @map("tapping_system")
+  notes         String?
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  farm    Farm    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, isDeleted])
+  @@index([farmId])
+  @@map("plots")
 }
