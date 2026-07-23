@@ -143,10 +143,16 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
   }, [ready, reference]);
 
   // Focus (usar minha localização / geocode)
+  const focusLat = focus?.lat ?? null;
+  const focusLng = focus?.lng ?? null;
+  const didInitialFocus = useRef(false);
   useEffect(() => {
-    if (!ready || !mapRef.current || !focus) return;
-    mapRef.current.setView([focus.lat, focus.lng], 15);
-  }, [ready, focus]);
+    if (!ready || !mapRef.current || focusLat == null || focusLng == null) return;
+    // Só move a view no primeiro focus recebido; depois disso o usuário controla.
+    if (didInitialFocus.current) return;
+    didInitialFocus.current = true;
+    mapRef.current.setView([focusLat, focusLng], 15);
+  }, [ready, focusLat, focusLng]);
 
   function addPolygon(p: GeoPolygon, group: L.FeatureGroup, style: L.PathOptions) {
     const latlngs = p.coordinates[0].map(([lng, lat]) => L.latLng(lat, lng));
