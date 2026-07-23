@@ -38,6 +38,8 @@ async function bootstrap() {
 
   const prisma = app.get(PrismaService);
   await ensureSuperadmin(prisma);
+  await seedAllCompaniesCatalog(prisma);
+
 
 
 
