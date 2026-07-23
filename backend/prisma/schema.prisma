@@ -41,6 +41,7 @@ model User {
   refreshTokens RefreshToken[]
   companies     Company[]  @relation("CompanyCreatedBy")
   teamMemberships TeamMember[]
+  managedRegionals Regional[] @relation("RegionalManager")
 
   @@map("users")
 }
@@ -114,12 +115,13 @@ model Company {
 
 
 model Regional {
-  id          String     @id @default(uuid()) @db.Uuid
-  companyId   String     @map("company_id") @db.Uuid
-  name        String
-  code        String?
-  description String?
-  manager     String?
+  id            String     @id @default(uuid()) @db.Uuid
+  companyId     String     @map("company_id") @db.Uuid
+  name          String
+  code          String?
+  description   String?
+  manager       String?
+  managerUserId String?    @map("manager_user_id") @db.Uuid
 
   version      Int        @default(1)
   syncStatus   SyncStatus @default(synced) @map("sync_status")
@@ -131,10 +133,12 @@ model Regional {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  farms   Farm[]
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  managerUser User?   @relation("RegionalManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  farms       Farm[]
 
   @@index([companyId, isDeleted])
+  @@index([managerUserId])
   @@map("regionals")
 }
 

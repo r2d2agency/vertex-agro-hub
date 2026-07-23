@@ -6,6 +6,7 @@ export class CreateRegionalDto {
   @IsOptional() @IsString() @MaxLength(50) code?: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsString() @MaxLength(120) manager?: string;
+  @IsOptional() @IsUUID() managerUserId?: string | null;
 }
 
 export class UpdateRegionalDto {
@@ -13,6 +14,7 @@ export class UpdateRegionalDto {
   @IsOptional() @IsString() @MaxLength(50) code?: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsString() @MaxLength(120) manager?: string;
+  @IsOptional() @IsUUID() managerUserId?: string | null;
 }
 
 export class CreateFarmDto {
