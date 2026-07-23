@@ -52,9 +52,15 @@ export class CompaniesService {
 
   async create(userId: string, dto: CreateCompanyDto) {
     if (!(await this.isAdminGlobal(userId))) throw new ForbiddenException();
-    return this.prisma.company.create({
+    const company = await this.prisma.company.create({
       data: { ...dto, createdById: userId, updatedById: userId },
     });
+    try {
+      await seedCompanyCatalog(this.prisma, company.id);
+    } catch (err) {
+      console.error('[companies.create] seed catálogo falhou:', err);
+    }
+    return company;
   }
 
   async update(userId: string, id: string, dto: UpdateCompanyDto) {
