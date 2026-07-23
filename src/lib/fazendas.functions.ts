@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/api";
-import type { GeoPolygon } from "@/lib/geo";
+import type { GeoBoundary } from "@/lib/geo";
+import { toBoundary } from "@/lib/geo";
 
 export type Farm = {
   id: string;
@@ -15,7 +16,7 @@ export type Farm = {
   longitude?: number | null;
   owner?: string | null;
   notes?: string | null;
-  boundary?: GeoPolygon | null;
+  boundary?: GeoBoundary | null;
 };
 
 export type FarmInput = {
@@ -29,7 +30,7 @@ export type FarmInput = {
   longitude?: number | null;
   owner?: string;
   notes?: string;
-  boundary?: GeoPolygon | null;
+  boundary?: GeoBoundary | null;
 };
 
 export function listFarms(companyId: string, regionalId?: string) {
