@@ -54,6 +54,7 @@ import { Route as AuthenticatedTabelasRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedTalhoesRouteImport } from './routes/_authenticated/talhoes'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedVisitasRouteImport } from './routes/_authenticated/visitas'
+import { Route as AuthenticatedEmpresasIndexRouteImport } from './routes/_authenticated/empresas.index'
 import { Route as AuthenticatedEmpresasIdRouteImport } from './routes/_authenticated/empresas.$id'
 import { Route as AuthenticatedEmpresasNovoRouteImport } from './routes/_authenticated/empresas.novo'
 
@@ -291,6 +292,12 @@ const AuthenticatedVisitasRoute = AuthenticatedVisitasRouteImport.update({
   path: '/visitas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedEmpresasIndexRoute =
+  AuthenticatedEmpresasIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedEmpresasRoute,
+  } as any)
 const AuthenticatedEmpresasIdRoute = AuthenticatedEmpresasIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -350,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/visitas': typeof AuthenticatedVisitasRoute
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
+  '/empresas/': typeof AuthenticatedEmpresasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -367,7 +375,6 @@ export interface FileRoutesByTo {
   '/consultores': typeof AuthenticatedConsultoresRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dispositivos': typeof AuthenticatedDispositivosRoute
-  '/empresas': typeof AuthenticatedEmpresasRouteWithChildren
   '/equipes': typeof AuthenticatedEquipesRoute
   '/estimulacoes': typeof AuthenticatedEstimulacoesRoute
   '/fazendas': typeof AuthenticatedFazendasRoute
@@ -398,6 +405,7 @@ export interface FileRoutesByTo {
   '/visitas': typeof AuthenticatedVisitasRoute
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
+  '/empresas': typeof AuthenticatedEmpresasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -448,6 +456,7 @@ export interface FileRoutesById {
   '/_authenticated/visitas': typeof AuthenticatedVisitasRoute
   '/_authenticated/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/_authenticated/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
+  '/_authenticated/empresas/': typeof AuthenticatedEmpresasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -498,6 +507,7 @@ export interface FileRouteTypes {
     | '/visitas'
     | '/empresas/$id'
     | '/empresas/novo'
+    | '/empresas/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -515,7 +525,6 @@ export interface FileRouteTypes {
     | '/consultores'
     | '/dashboard'
     | '/dispositivos'
-    | '/empresas'
     | '/equipes'
     | '/estimulacoes'
     | '/fazendas'
@@ -546,6 +555,7 @@ export interface FileRouteTypes {
     | '/visitas'
     | '/empresas/$id'
     | '/empresas/novo'
+    | '/empresas'
   id:
     | '__root__'
     | '/'
@@ -595,6 +605,7 @@ export interface FileRouteTypes {
     | '/_authenticated/visitas'
     | '/_authenticated/empresas/$id'
     | '/_authenticated/empresas/novo'
+    | '/_authenticated/empresas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -922,6 +933,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVisitasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/empresas/': {
+      id: '/_authenticated/empresas/'
+      path: '/'
+      fullPath: '/empresas/'
+      preLoaderRoute: typeof AuthenticatedEmpresasIndexRouteImport
+      parentRoute: typeof AuthenticatedEmpresasRoute
+    }
     '/_authenticated/empresas/$id': {
       id: '/_authenticated/empresas/$id'
       path: '/$id'
@@ -942,11 +960,13 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedEmpresasRouteChildren {
   AuthenticatedEmpresasIdRoute: typeof AuthenticatedEmpresasIdRoute
   AuthenticatedEmpresasNovoRoute: typeof AuthenticatedEmpresasNovoRoute
+  AuthenticatedEmpresasIndexRoute: typeof AuthenticatedEmpresasIndexRoute
 }
 
 const AuthenticatedEmpresasRouteChildren: AuthenticatedEmpresasRouteChildren = {
   AuthenticatedEmpresasIdRoute: AuthenticatedEmpresasIdRoute,
   AuthenticatedEmpresasNovoRoute: AuthenticatedEmpresasNovoRoute,
+  AuthenticatedEmpresasIndexRoute: AuthenticatedEmpresasIndexRoute,
 }
 
 const AuthenticatedEmpresasRouteWithChildren =
