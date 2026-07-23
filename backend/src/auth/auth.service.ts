@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { jwtAccessTtl, jwtRefreshTtlSeconds, jwtSecret } from './auth.config';
+import { ensureSuperadminForUser } from '../bootstrap/ensure-superadmin';
 
 export type GoogleProfile = {
   googleId: string;
@@ -49,6 +50,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas');
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Credenciais inválidas');
+    await ensureSuperadminForUser(this.prisma, user.id, user.email);
     return this.signTokens(user.id, user.email);
   }
 

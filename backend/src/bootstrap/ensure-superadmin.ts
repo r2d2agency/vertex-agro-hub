@@ -27,21 +27,40 @@ export async function ensureSuperadmin(prisma: PrismaClient) {
       return;
     }
 
-    const existing = await prisma.userRole.findFirst({
-      where: { userId: user.id, role: 'admin_global', companyId: null },
-    });
-    if (existing) {
-      console.log(`[superadmin] ${email} já é admin_global.`);
-      return;
-    }
-
-    await prisma.userRole.create({
-      data: { userId: user.id, role: 'admin_global' },
-    });
-    console.log(`[superadmin] papel admin_global atribuído a ${email}.`);
+    const promoted = await ensureSuperadminForUser(prisma, user.id, user.email);
+    console.log(
+      promoted
+        ? `[superadmin] papel admin_global atribuído a ${email}.`
+        : `[superadmin] ${email} já é admin_global.`,
+    );
   } catch (err) {
     console.error('[superadmin] falha ao garantir superadmin:', err);
   }
+}
+
+export function configuredSuperadminEmail() {
+  return (process.env.SUPERADMIN_EMAIL ?? 'tnicodemos@gmail.com')
+    .trim()
+    .toLowerCase();
+}
+
+export async function ensureSuperadminForUser(
+  prisma: PrismaClient,
+  userId: string,
+  email: string,
+) {
+  const superEmail = configuredSuperadminEmail();
+  if (!superEmail || email.trim().toLowerCase() !== superEmail) return false;
+
+  const existing = await prisma.userRole.findFirst({
+    where: { userId, role: 'admin_global', companyId: null },
+  });
+  if (existing) return false;
+
+  await prisma.userRole.create({
+    data: { userId, role: 'admin_global' },
+  });
+  return true;
 }
 
 /**
@@ -50,9 +69,7 @@ export async function ensureSuperadmin(prisma: PrismaClient) {
  * ou remover papel `admin_global`.
  */
 export function assertNotSuperadmin(email: string | null | undefined) {
-  const superEmail = (process.env.SUPERADMIN_EMAIL ?? 'tnicodemos@gmail.com')
-    .trim()
-    .toLowerCase();
+  const superEmail = configuredSuperadminEmail();
   if (email && email.trim().toLowerCase() === superEmail) {
     throw new Error('Superadmin não pode ser removido ou rebaixado.');
   }

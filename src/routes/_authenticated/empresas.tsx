@@ -75,11 +75,11 @@ function EmpresasPage() {
         title="Empresas"
         description="Cadastro de empresas, grupos e produtores rurais."
         actions={
-          <Link to="/empresas/novo">
-            <Button>
+          <Button asChild>
+            <Link to="/empresas/novo">
               <Plus className="mr-2 h-4 w-4" /> Nova empresa
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         }
       />
 
@@ -107,11 +107,11 @@ function EmpresasPage() {
             <p className="text-sm text-muted-foreground">
               Nenhuma empresa cadastrada. Comece criando a primeira.
             </p>
-            <Link to="/empresas/novo" className="mt-4 inline-block">
-              <Button>
+            <Button asChild className="mt-4">
+              <Link to="/empresas/novo">
                 <Plus className="mr-2 h-4 w-4" /> Nova empresa
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (

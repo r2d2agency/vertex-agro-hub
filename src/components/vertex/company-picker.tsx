@@ -74,11 +74,11 @@ export function NoCompanyCard() {
         <p className="text-sm text-muted-foreground">
           Nenhuma empresa cadastrada. Crie uma empresa primeiro para acessar este módulo.
         </p>
-        <Link to="/empresas/novo" className="mt-4 inline-block">
-          <Button>
+        <Button asChild className="mt-4">
+          <Link to="/empresas/novo">
             <Plus className="mr-2 h-4 w-4" /> Nova empresa
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );
