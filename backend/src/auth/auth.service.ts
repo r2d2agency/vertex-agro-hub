@@ -1,12 +1,9 @@
-import {
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { jwtAccessTtl, jwtRefreshTtlSeconds, jwtSecret } from './auth.config';
 
 export type GoogleProfile = {
   googleId: string;
@@ -26,8 +23,8 @@ export class AuthService {
     const access_token = await this.jwt.signAsync(
       { sub: userId, email },
       {
-        secret: process.env.JWT_SECRET,
-        expiresIn: `${process.env.JWT_ACCESS_TTL ?? 900}s`,
+        secret: jwtSecret(),
+        expiresIn: jwtAccessTtl(),
       },
     );
     const refreshRaw = crypto.randomBytes(48).toString('hex');
@@ -35,7 +32,7 @@ export class AuthService {
       .createHash('sha256')
       .update(refreshRaw)
       .digest('hex');
-    const ttl = parseInt(process.env.JWT_REFRESH_TTL ?? '2592000', 10);
+    const ttl = jwtRefreshTtlSeconds();
     await this.prisma.refreshToken.create({
       data: {
         userId,
@@ -44,39 +41,6 @@ export class AuthService {
       },
     });
     return { access_token, refresh_token: refreshRaw };
-  }
-
-  async register(dto: { email: string; password: string; fullName?: string }) {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
-    if (existing) throw new ConflictException('E-mail já cadastrado');
-    const passwordHash = await bcrypt.hash(dto.password, 12);
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        passwordHash,
-        fullName: dto.fullName ?? dto.email,
-      },
-    });
-    await this.ensureSuperadminRole(user.id, user.email);
-    return this.signTokens(user.id, user.email);
-  }
-
-  private async ensureSuperadminRole(userId: string, email: string) {
-    const superEmail = (process.env.SUPERADMIN_EMAIL ?? 'tnicodemos@gmail.com')
-      .trim()
-      .toLowerCase();
-    if (email.trim().toLowerCase() !== superEmail) return;
-    const existing = await this.prisma.userRole.findFirst({
-      where: { userId, role: 'admin_global', companyId: null },
-    });
-    if (existing) return;
-    await this.prisma.userRole.create({
-      data: { userId, role: 'admin_global' },
-    });
-    console.log(`[superadmin] ${email} promovido a admin_global no registro.`);
-
   }
 
   async login(email: string, password: string) {

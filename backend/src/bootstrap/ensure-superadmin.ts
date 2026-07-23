@@ -5,8 +5,8 @@ import { PrismaClient } from '@prisma/client';
  * tenha o papel `admin_global`. Executa a cada boot do backend, é idempotente
  * e nunca remove o papel — apenas garante que ele exista.
  *
- * O usuário só é promovido depois que ele mesmo criar a conta pelo /auth/register
- * (ou Google, futuramente). Enquanto não existir, o boot apenas loga um aviso.
+ * O usuário só é promovido depois que existir no cadastro interno de usuários.
+ * Enquanto não existir, o boot apenas loga um aviso.
  */
 export async function ensureSuperadmin(prisma: PrismaClient) {
   const email = (process.env.SUPERADMIN_EMAIL ?? 'tnicodemos@gmail.com')
@@ -22,7 +22,7 @@ export async function ensureSuperadmin(prisma: PrismaClient) {
 
     if (!user) {
       console.log(
-        `[superadmin] usuário ${email} ainda não existe — cadastre-se pelo app para ser promovido automaticamente no próximo boot ou registro.`,
+        `[superadmin] usuário ${email} ainda não existe — crie-o internamente para ser promovido automaticamente no próximo boot.`,
       );
       return;
     }

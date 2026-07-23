@@ -142,20 +142,11 @@ export async function apiRequest<T>(
 }
 
 export async function login(email: string, password: string) {
+  clearAuthTokens();
   const tokens = await apiRequest<AuthTokens>("/auth/login", {
     method: "POST",
     auth: false,
     body: JSON.stringify({ email, password }),
-  });
-  setAuthTokens(tokens);
-  return getCurrentUser();
-}
-
-export async function register(input: { email: string; password: string; fullName: string }) {
-  const tokens = await apiRequest<AuthTokens>("/auth/register", {
-    method: "POST",
-    auth: false,
-    body: JSON.stringify(input),
   });
   setAuthTokens(tokens);
   return getCurrentUser();

@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { jwtAccessTtl, jwtSecret } from './auth.config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 // Google OAuth desativado por enquanto — reative importando GoogleStrategy
@@ -12,8 +13,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   imports: [
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'dev-secret',
-      signOptions: { expiresIn: `${process.env.JWT_ACCESS_TTL ?? 900}s` },
+      secret: jwtSecret(),
+      signOptions: { expiresIn: jwtAccessTtl() },
     }),
   ],
   controllers: [AuthController],
