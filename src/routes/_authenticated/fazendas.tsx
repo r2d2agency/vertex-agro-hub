@@ -25,7 +25,7 @@ import {
 } from "@/lib/fazendas.functions";
 import { listRegionals } from "@/lib/regionais.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
-import { toBoundary, type GeoBoundary } from "@/lib/geo";
+import { toBoundary, boundaryCentroid, type GeoBoundary } from "@/lib/geo";
 import { CepInput } from "@/components/vertex/cep-input";
 import { UfSelect } from "@/components/vertex/uf-select";
 import { MapPin } from "lucide-react";
@@ -262,12 +262,15 @@ function FarmDialog({
                 value={toBoundary(values.boundary)}
                 focus={values.latitude != null && values.longitude != null ? { lat: values.latitude, lng: values.longitude } : null}
                 onChange={(b: GeoBoundary | null, ha: number | null) => {
+                  const c = boundaryCentroid(b);
                   setValues((v) => ({
                     ...v,
                     boundary: b,
                     totalAreaHa: ha ?? v.totalAreaHa,
+                    latitude: c ? Number(c.lat.toFixed(6)) : v.latitude,
+                    longitude: c ? Number(c.lng.toFixed(6)) : v.longitude,
                   }));
-                  if (ha != null) toast.info(`Área sugerida: ${ha} ha`);
+                  if (ha != null) toast.info(`Área sugerida: ${ha} ha • centro georreferenciado para check-in`);
                 }}
                 height={380}
               />
