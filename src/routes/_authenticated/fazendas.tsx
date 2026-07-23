@@ -25,7 +25,11 @@ import {
 } from "@/lib/fazendas.functions";
 import { listRegionals } from "@/lib/regionais.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
-import type { GeoPolygon } from "@/lib/geo";
+import { toBoundary, type GeoBoundary } from "@/lib/geo";
+import { CepInput } from "@/components/vertex/cep-input";
+import { UfSelect } from "@/components/vertex/uf-select";
+import { MapPin } from "lucide-react";
+import { geocodeAddress } from "@/lib/via-cep";
 
 export const Route = createFileRoute("/_authenticated/fazendas")({
   head: () => ({
@@ -222,11 +226,12 @@ function FarmDialog({
                 </p>
               </div>
               <MapEditorClient
-                value={values.boundary ?? null}
-                onChange={(poly: GeoPolygon | null, ha: number | null) => {
+                value={toBoundary(values.boundary)}
+                focus={values.latitude != null && values.longitude != null ? { lat: values.latitude, lng: values.longitude } : null}
+                onChange={(b: GeoBoundary | null, ha: number | null) => {
                   setValues((v) => ({
                     ...v,
-                    boundary: poly,
+                    boundary: b,
                     totalAreaHa: ha ?? v.totalAreaHa,
                   }));
                   if (ha != null) toast.info(`Área sugerida: ${ha} ha`);
