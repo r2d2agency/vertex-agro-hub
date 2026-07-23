@@ -41,6 +41,10 @@ import {
   ScrollText,
   Upload,
   Leaf,
+  BookOpen,
+  AppWindow,
+
+
 
 } from "lucide-react";
 import {
@@ -137,6 +141,13 @@ const groups: { label: string; items: Item[] }[] = [
   {
     label: "IA",
     items: [{ title: "Central IA", url: "/ia", icon: Brain }],
+  },
+  {
+    label: "Apps e Ajuda",
+    items: [
+      { title: "Apps móveis", url: "/apps", icon: AppWindow },
+      { title: "Documentação", url: "/documentacao", icon: BookOpen },
+    ],
   },
 ];
 

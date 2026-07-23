@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/api";
-import type { GeoPolygon } from "@/lib/geo";
+import type { GeoBoundary } from "@/lib/geo";
+import { toBoundary } from "@/lib/geo";
 
 export type Plot = {
   id: string;
@@ -14,7 +15,7 @@ export type Plot = {
   treeCount?: number | null;
   tappingSystem?: string | null;
   notes?: string | null;
-  boundary?: GeoPolygon | null;
+  boundary?: GeoBoundary | null;
 };
 
 export type PlotInput = {
@@ -27,7 +28,7 @@ export type PlotInput = {
   treeCount?: number | null;
   tappingSystem?: string;
   notes?: string;
-  boundary?: GeoPolygon | null;
+  boundary?: GeoBoundary | null;
 };
 
 export function listPlots(companyId: string, farmId?: string) {

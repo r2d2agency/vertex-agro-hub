@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { CepInput } from "@/components/vertex/cep-input";
+import { UfSelect } from "@/components/vertex/uf-select";
 
 export type CompanyFormValues = {
   razao_social: string;
@@ -94,6 +96,18 @@ export function CompanyForm({
           <Field label="Responsável">
             <Input value={values.responsavel} onChange={(e) => set("responsavel", e.target.value)} />
           </Field>
+          <Field label="CEP">
+            <CepInput
+              value={""}
+              onChange={() => { /* estado local não persistido */ }}
+              onFilled={(d) => setValues((s) => ({
+                ...s,
+                endereco: [d.endereco, d.bairro].filter(Boolean).join(" — ") || s.endereco,
+                cidade: d.cidade || s.cidade,
+                estado: d.uf || s.estado,
+              }))}
+            />
+          </Field>
           <Field label="Endereço" full>
             <Input value={values.endereco} onChange={(e) => set("endereco", e.target.value)} />
           </Field>
@@ -101,7 +115,7 @@ export function CompanyForm({
             <Input value={values.cidade} onChange={(e) => set("cidade", e.target.value)} />
           </Field>
           <Field label="Estado (UF)">
-            <Input maxLength={2} value={values.estado} onChange={(e) => set("estado", e.target.value.toUpperCase())} />
+            <UfSelect value={values.estado} onChange={(v) => set("estado", v)} />
           </Field>
           <Field label="Status">
             <Select value={values.status} onValueChange={(v) => set("status", v as CompanyFormValues["status"])}>

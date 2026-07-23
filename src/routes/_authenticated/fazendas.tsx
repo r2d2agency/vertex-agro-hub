@@ -25,7 +25,11 @@ import {
 } from "@/lib/fazendas.functions";
 import { listRegionals } from "@/lib/regionais.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
-import type { GeoPolygon } from "@/lib/geo";
+import { toBoundary, type GeoBoundary } from "@/lib/geo";
+import { CepInput } from "@/components/vertex/cep-input";
+import { UfSelect } from "@/components/vertex/uf-select";
+import { MapPin } from "lucide-react";
+import { geocodeAddress } from "@/lib/via-cep";
 
 export const Route = createFileRoute("/_authenticated/fazendas")({
   head: () => ({
@@ -157,6 +161,7 @@ function FarmDialog({
   onSaved: () => void;
 }) {
   const [values, setValues] = useState<FarmInput>(empty);
+  const [cep, setCep] = useState<string>("");
 
   useEffect(() => {
     if (!open) return;
@@ -206,12 +211,44 @@ function FarmDialog({
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>CEP</Label>
+              <CepInput
+                value={cep}
+                onChange={setCep}
+                onFilled={(d) => {
+                  setCep(d.cep);
+                  setValues((s) => ({
+                    ...s,
+                    city: d.cidade || s.city,
+                    state: d.uf || s.state,
+                    notes: s.notes || (d.endereco ? `Endereço: ${d.endereco}${d.bairro ? ` — ${d.bairro}` : ""}` : ""),
+                  }));
+                }}
+              />
+            </div>
             <div><Label>Cidade</Label><Input value={values.city} onChange={(e) => setValues((v) => ({ ...v, city: e.target.value }))} /></div>
-            <div><Label>UF</Label><Input maxLength={2} value={values.state} onChange={(e) => setValues((v) => ({ ...v, state: e.target.value.toUpperCase() }))} /></div>
+            <div><Label>UF</Label><UfSelect value={values.state ?? ""} onChange={(v) => setValues((s) => ({ ...s, state: v }))} /></div>
             <div><Label>Área total (ha)</Label><Input type="number" step="0.01" value={values.totalAreaHa ?? ""} onChange={(e) => setValues((v) => ({ ...v, totalAreaHa: e.target.value ? Number(e.target.value) : null }))} /></div>
             <div><Label>Proprietário</Label><Input value={values.owner} onChange={(e) => setValues((v) => ({ ...v, owner: e.target.value }))} /></div>
-            <div><Label>Latitude</Label><Input type="number" step="0.000001" value={values.latitude ?? ""} onChange={(e) => setValues((v) => ({ ...v, latitude: e.target.value ? Number(e.target.value) : null }))} /></div>
-            <div><Label>Longitude</Label><Input type="number" step="0.000001" value={values.longitude ?? ""} onChange={(e) => setValues((v) => ({ ...v, longitude: e.target.value ? Number(e.target.value) : null }))} /></div>
+            <div className="col-span-2 flex flex-wrap items-end gap-2">
+              <div className="flex-1 min-w-[140px]"><Label>Latitude</Label><Input type="number" step="0.000001" value={values.latitude ?? ""} onChange={(e) => setValues((v) => ({ ...v, latitude: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <div className="flex-1 min-w-[140px]"><Label>Longitude</Label><Input type="number" step="0.000001" value={values.longitude ?? ""} onChange={(e) => setValues((v) => ({ ...v, longitude: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <Button type="button" variant="outline" size="sm" onClick={() => {
+                if (!navigator.geolocation) return toast.error("Geolocalização indisponível no navegador");
+                navigator.geolocation.getCurrentPosition(
+                  (p) => { setValues((v) => ({ ...v, latitude: p.coords.latitude, longitude: p.coords.longitude })); toast.success("Localização capturada"); },
+                  () => toast.error("Não foi possível obter a localização"),
+                );
+              }}><MapPin className="mr-1 h-3.5 w-3.5" /> Usar minha localização</Button>
+              <Button type="button" variant="outline" size="sm" onClick={async () => {
+                const q = [values.name, values.city, values.state, "Brasil"].filter(Boolean).join(", ");
+                const g = await geocodeAddress(q);
+                if (!g) return toast.error("Endereço não encontrado");
+                setValues((v) => ({ ...v, latitude: g.lat, longitude: g.lng }));
+                toast.success("Localização do endereço aplicada");
+              }}>Buscar pelo endereço</Button>
+            </div>
             <div className="col-span-2"><Label>Observações</Label><Textarea rows={3} value={values.notes} onChange={(e) => setValues((v) => ({ ...v, notes: e.target.value }))} /></div>
 
             <div className="col-span-2 space-y-2">
@@ -222,11 +259,12 @@ function FarmDialog({
                 </p>
               </div>
               <MapEditorClient
-                value={values.boundary ?? null}
-                onChange={(poly: GeoPolygon | null, ha: number | null) => {
+                value={toBoundary(values.boundary)}
+                focus={values.latitude != null && values.longitude != null ? { lat: values.latitude, lng: values.longitude } : null}
+                onChange={(b: GeoBoundary | null, ha: number | null) => {
                   setValues((v) => ({
                     ...v,
-                    boundary: poly,
+                    boundary: b,
                     totalAreaHa: ha ?? v.totalAreaHa,
                   }));
                   if (ha != null) toast.info(`Área sugerida: ${ha} ha`);

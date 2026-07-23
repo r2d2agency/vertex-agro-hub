@@ -21,7 +21,7 @@ import {
   createPlot, deletePlot, listPlots, updatePlot, type Plot, type PlotInput,
 } from "@/lib/talhoes.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
-import type { GeoPolygon } from "@/lib/geo";
+import { toBoundary, type GeoBoundary } from "@/lib/geo";
 
 export const Route = createFileRoute("/_authenticated/talhoes")({
   head: () => ({
@@ -250,12 +250,12 @@ function PlotDialog({
                 </p>
               </div>
               <MapEditorClient
-                value={values.boundary ?? null}
-                reference={selectedFarm?.boundary ?? null}
-                onChange={(poly: GeoPolygon | null, ha: number | null) => {
+                value={toBoundary(values.boundary)}
+                reference={toBoundary(selectedFarm?.boundary)}
+                onChange={(b: GeoBoundary | null, ha: number | null) => {
                   setValues((v) => ({
                     ...v,
-                    boundary: poly,
+                    boundary: b,
                     areaHa: ha ?? v.areaHa,
                   }));
                   if (ha != null) toast.info(`Área sugerida: ${ha} ha`);
