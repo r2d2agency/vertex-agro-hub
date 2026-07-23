@@ -25,7 +25,7 @@ import {
 } from "@/lib/fazendas.functions";
 import { listRegionals } from "@/lib/regionais.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
-import { toBoundary, type GeoBoundary } from "@/lib/geo";
+import { toBoundary, boundaryCentroid, type GeoBoundary } from "@/lib/geo";
 import { CepInput } from "@/components/vertex/cep-input";
 import { UfSelect } from "@/components/vertex/uf-select";
 import { MapPin } from "lucide-react";
