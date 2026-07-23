@@ -23,6 +23,7 @@ export class TerritorialService {
     return this.prisma.regional.findMany({
       where: { companyId, isDeleted: false },
       orderBy: { name: 'asc' },
+      include: { managerUser: { select: { id: true, fullName: true, email: true } } },
     });
   }
 
@@ -30,6 +31,7 @@ export class TerritorialService {
     await this.access.ensureCompany(userId, dto.companyId);
     return this.prisma.regional.create({
       data: { ...dto, createdById: userId, updatedById: userId },
+      include: { managerUser: { select: { id: true, fullName: true, email: true } } },
     });
   }
 
@@ -40,6 +42,7 @@ export class TerritorialService {
     return this.prisma.regional.update({
       where: { id },
       data: { ...dto, updatedById: userId, version: { increment: 1 } },
+      include: { managerUser: { select: { id: true, fullName: true, email: true } } },
     });
   }
 
