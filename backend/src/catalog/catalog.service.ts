@@ -19,10 +19,25 @@ export class CatalogService {
   // ---------- Clones ----------
   async listClones(userId: string, companyId: string) {
     await this.access.ensureCompany(userId, companyId);
+    await this.ensureSeeded(companyId);
     return this.prisma.clone.findMany({
       where: { companyId, isDeleted: false },
       orderBy: { name: 'asc' },
     });
+  }
+
+  private async ensureSeeded(companyId: string) {
+    const [c, t] = await Promise.all([
+      this.prisma.clone.count({ where: { companyId, isDeleted: false } }),
+      this.prisma.tappingTable.count({ where: { companyId, isDeleted: false } }),
+    ]);
+    if (c === 0 || t === 0) {
+      try {
+        await seedCompanyCatalog(this.prisma, companyId);
+      } catch (err) {
+        console.error('[catalog] seed on-demand falhou:', err);
+      }
+    }
   }
 
   async createClone(userId: string, dto: CreateCloneDto) {
