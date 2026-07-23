@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
+import { seedCompanyCatalog } from '../bootstrap/seed-catalog';
 import {
   CreateCloneDto,
   CreateTappingTableDto,
