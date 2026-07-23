@@ -91,7 +91,13 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
     const ctrl = new L.Control.Draw({
       position: "topright",
       draw: {
-        polygon: { allowIntersection: false, showArea: true, shapeOptions: drawTarget === "exclusion" ? EXCL_STYLE : MAIN_STYLE },
+        polygon: {
+          allowIntersection: true,
+          showArea: true,
+          metric: true,
+          shapeOptions: drawTarget === "exclusion" ? EXCL_STYLE : MAIN_STYLE,
+          drawError: { color: "#dc2626", message: "As linhas não podem se cruzar" },
+        } as L.DrawOptions.PolygonOptions,
         rectangle: { shapeOptions: drawTarget === "exclusion" ? EXCL_STYLE : MAIN_STYLE } as L.DrawOptions.RectangleOptions,
         polyline: false, circle: false, marker: false, circlemarker: false,
       },
