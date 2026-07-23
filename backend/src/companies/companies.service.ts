@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { seedCompanyCatalog } from '../bootstrap/seed-catalog';
 
 @Injectable()
 export class CompaniesService {
