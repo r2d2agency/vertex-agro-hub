@@ -7,6 +7,8 @@ export type Regional = {
   code?: string | null;
   description?: string | null;
   manager?: string | null;
+  managerUserId?: string | null;
+  managerUser?: { id: string; fullName: string | null; email: string } | null;
 };
 
 export type RegionalInput = {
@@ -14,6 +16,7 @@ export type RegionalInput = {
   code?: string;
   description?: string;
   manager?: string;
+  managerUserId?: string | null;
 };
 
 export function listRegionals(companyId: string) {
@@ -44,5 +47,6 @@ function cleanup(v: RegionalInput) {
     code: v.code?.trim() || undefined,
     description: v.description?.trim() || undefined,
     manager: v.manager?.trim() || undefined,
+    managerUserId: v.managerUserId || null,
   };
 }

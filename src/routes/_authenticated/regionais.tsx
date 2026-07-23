@@ -39,6 +39,8 @@ import {
   type Regional,
   type RegionalInput,
 } from "@/lib/regionais.functions";
+import { listPeople, type Person } from "@/lib/people.functions";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/regionais")({
   head: () => ({
@@ -51,7 +53,7 @@ export const Route = createFileRoute("/_authenticated/regionais")({
   component: RegionaisPage,
 });
 
-const empty: RegionalInput = { name: "", code: "", description: "", manager: "" };
+const empty: RegionalInput = { name: "", code: "", description: "", manager: "", managerUserId: null };
 
 function RegionaisPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
@@ -111,7 +113,11 @@ function RegionaisPage() {
                           <p className="truncate font-semibold">{r.name}</p>
                         </div>
                         {r.code && <p className="mt-1 font-mono text-xs text-muted-foreground">{r.code}</p>}
-                        {r.manager && <p className="mt-2 text-xs text-muted-foreground">Responsável: {r.manager}</p>}
+                        {(r.managerUser?.fullName || r.managerUser?.email || r.manager) && (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Responsável: {r.managerUser?.fullName || r.managerUser?.email || r.manager}
+                          </p>
+                        )}
                         {r.description && <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{r.description}</p>}
                       </div>
                       <div className="flex flex-col gap-1">
@@ -168,6 +174,12 @@ function RegionalDialog({
 }) {
   const [values, setValues] = useState<RegionalInput>(empty);
 
+  const { data: people = [] } = useQuery({
+    queryKey: ["people", companyId],
+    queryFn: () => listPeople(companyId!),
+    enabled: !!companyId && open,
+  });
+
   useEffect(() => {
     if (!open) return;
     if (initial) setValues({
@@ -175,6 +187,7 @@ function RegionalDialog({
       code: initial.code ?? "",
       description: initial.description ?? "",
       manager: initial.manager ?? "",
+      managerUserId: initial.managerUserId ?? null,
     });
     else setValues(empty);
   }, [open, initial]);
@@ -204,7 +217,29 @@ function RegionalDialog({
           <div><Label>Nome *</Label><Input value={values.name} onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))} required /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Código</Label><Input value={values.code} onChange={(e) => setValues((v) => ({ ...v, code: e.target.value }))} /></div>
-            <div><Label>Responsável</Label><Input value={values.manager} onChange={(e) => setValues((v) => ({ ...v, manager: e.target.value }))} /></div>
+            <div>
+              <Label>Responsável (usuário)</Label>
+              <Select
+                value={values.managerUserId ?? "__none__"}
+                onValueChange={(v) => setValues((s) => ({ ...s, managerUserId: v === "__none__" ? null : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder={people.length ? "Selecione" : "Nenhum usuário cadastrado"} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Sem responsável —</SelectItem>
+                  {people.map((p: Person) => (
+                    <SelectItem key={p.id} value={p.id}>{p.fullName || p.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label>Responsável (nome livre / legado)</Label>
+            <Input
+              value={values.manager}
+              onChange={(e) => setValues((v) => ({ ...v, manager: e.target.value }))}
+              placeholder="Usado quando não há usuário cadastrado"
+            />
           </div>
           <div><Label>Descrição</Label><Textarea rows={3} value={values.description} onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))} /></div>
           <DialogFooter>
