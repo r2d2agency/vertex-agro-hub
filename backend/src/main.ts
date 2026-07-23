@@ -5,6 +5,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { ensureSuperadmin } from './bootstrap/ensure-superadmin';
+import { seedAllCompaniesCatalog } from './bootstrap/seed-catalog';
 
 
 const DEFAULT_ALLOWED_HEADERS = 'Content-Type, Authorization, Accept, Origin, X-Requested-With';
