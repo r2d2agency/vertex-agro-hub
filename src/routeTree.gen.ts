@@ -17,6 +17,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated/agenda'
 import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticated/alertas'
 import { Route as AuthenticatedAlertasIaRouteImport } from './routes/_authenticated/alertas-ia'
+import { Route as AuthenticatedAppsRouteImport } from './routes/_authenticated/apps'
 import { Route as AuthenticatedAssistenteRouteImport } from './routes/_authenticated/assistente'
 import { Route as AuthenticatedAtividadesRouteImport } from './routes/_authenticated/atividades'
 import { Route as AuthenticatedAuditoriaRouteImport } from './routes/_authenticated/auditoria'
@@ -25,6 +26,7 @@ import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authen
 import { Route as AuthenticatedConsultoresRouteImport } from './routes/_authenticated/consultores'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDispositivosRouteImport } from './routes/_authenticated/dispositivos'
+import { Route as AuthenticatedDocumentacaoRouteImport } from './routes/_authenticated/documentacao'
 import { Route as AuthenticatedEmpresasRouteImport } from './routes/_authenticated/empresas'
 import { Route as AuthenticatedEquipesRouteImport } from './routes/_authenticated/equipes'
 import { Route as AuthenticatedEstimulacoesRouteImport } from './routes/_authenticated/estimulacoes'
@@ -54,6 +56,7 @@ import { Route as AuthenticatedTabelasRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedTalhoesRouteImport } from './routes/_authenticated/talhoes'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedVisitasRouteImport } from './routes/_authenticated/visitas'
+import { Route as AuthenticatedDocumentacaoSlugRouteImport } from './routes/_authenticated/documentacao.$slug'
 import { Route as AuthenticatedEmpresasIndexRouteImport } from './routes/_authenticated/empresas.index'
 import { Route as AuthenticatedEmpresasIdRouteImport } from './routes/_authenticated/empresas.$id'
 import { Route as AuthenticatedEmpresasNovoRouteImport } from './routes/_authenticated/empresas.novo'
@@ -97,6 +100,11 @@ const AuthenticatedAlertasIaRoute = AuthenticatedAlertasIaRouteImport.update({
   path: '/alertas-ia',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAppsRoute = AuthenticatedAppsRouteImport.update({
+  id: '/apps',
+  path: '/apps',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAssistenteRoute = AuthenticatedAssistenteRouteImport.update({
   id: '/assistente',
   path: '/assistente',
@@ -138,6 +146,12 @@ const AuthenticatedDispositivosRoute =
   AuthenticatedDispositivosRouteImport.update({
     id: '/dispositivos',
     path: '/dispositivos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDocumentacaoRoute =
+  AuthenticatedDocumentacaoRouteImport.update({
+    id: '/documentacao',
+    path: '/documentacao',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedEmpresasRoute = AuthenticatedEmpresasRouteImport.update({
@@ -292,6 +306,12 @@ const AuthenticatedVisitasRoute = AuthenticatedVisitasRouteImport.update({
   path: '/visitas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDocumentacaoSlugRoute =
+  AuthenticatedDocumentacaoSlugRouteImport.update({
+    id: '/$slug',
+    path: '/$slug',
+    getParentRoute: () => AuthenticatedDocumentacaoRoute,
+  } as any)
 const AuthenticatedEmpresasIndexRoute =
   AuthenticatedEmpresasIndexRouteImport.update({
     id: '/',
@@ -318,6 +338,7 @@ export interface FileRoutesByFullPath {
   '/agenda': typeof AuthenticatedAgendaRoute
   '/alertas': typeof AuthenticatedAlertasRoute
   '/alertas-ia': typeof AuthenticatedAlertasIaRoute
+  '/apps': typeof AuthenticatedAppsRoute
   '/assistente': typeof AuthenticatedAssistenteRoute
   '/atividades': typeof AuthenticatedAtividadesRoute
   '/auditoria': typeof AuthenticatedAuditoriaRoute
@@ -326,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/consultores': typeof AuthenticatedConsultoresRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dispositivos': typeof AuthenticatedDispositivosRoute
+  '/documentacao': typeof AuthenticatedDocumentacaoRouteWithChildren
   '/empresas': typeof AuthenticatedEmpresasRouteWithChildren
   '/equipes': typeof AuthenticatedEquipesRoute
   '/estimulacoes': typeof AuthenticatedEstimulacoesRoute
@@ -355,6 +377,7 @@ export interface FileRoutesByFullPath {
   '/talhoes': typeof AuthenticatedTalhoesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visitas': typeof AuthenticatedVisitasRoute
+  '/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
   '/empresas/': typeof AuthenticatedEmpresasIndexRoute
@@ -367,6 +390,7 @@ export interface FileRoutesByTo {
   '/agenda': typeof AuthenticatedAgendaRoute
   '/alertas': typeof AuthenticatedAlertasRoute
   '/alertas-ia': typeof AuthenticatedAlertasIaRoute
+  '/apps': typeof AuthenticatedAppsRoute
   '/assistente': typeof AuthenticatedAssistenteRoute
   '/atividades': typeof AuthenticatedAtividadesRoute
   '/auditoria': typeof AuthenticatedAuditoriaRoute
@@ -375,6 +399,7 @@ export interface FileRoutesByTo {
   '/consultores': typeof AuthenticatedConsultoresRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dispositivos': typeof AuthenticatedDispositivosRoute
+  '/documentacao': typeof AuthenticatedDocumentacaoRouteWithChildren
   '/equipes': typeof AuthenticatedEquipesRoute
   '/estimulacoes': typeof AuthenticatedEstimulacoesRoute
   '/fazendas': typeof AuthenticatedFazendasRoute
@@ -403,6 +428,7 @@ export interface FileRoutesByTo {
   '/talhoes': typeof AuthenticatedTalhoesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visitas': typeof AuthenticatedVisitasRoute
+  '/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
   '/empresas': typeof AuthenticatedEmpresasIndexRoute
@@ -417,6 +443,7 @@ export interface FileRoutesById {
   '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
   '/_authenticated/alertas': typeof AuthenticatedAlertasRoute
   '/_authenticated/alertas-ia': typeof AuthenticatedAlertasIaRoute
+  '/_authenticated/apps': typeof AuthenticatedAppsRoute
   '/_authenticated/assistente': typeof AuthenticatedAssistenteRoute
   '/_authenticated/atividades': typeof AuthenticatedAtividadesRoute
   '/_authenticated/auditoria': typeof AuthenticatedAuditoriaRoute
@@ -425,6 +452,7 @@ export interface FileRoutesById {
   '/_authenticated/consultores': typeof AuthenticatedConsultoresRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/dispositivos': typeof AuthenticatedDispositivosRoute
+  '/_authenticated/documentacao': typeof AuthenticatedDocumentacaoRouteWithChildren
   '/_authenticated/empresas': typeof AuthenticatedEmpresasRouteWithChildren
   '/_authenticated/equipes': typeof AuthenticatedEquipesRoute
   '/_authenticated/estimulacoes': typeof AuthenticatedEstimulacoesRoute
@@ -454,6 +482,7 @@ export interface FileRoutesById {
   '/_authenticated/talhoes': typeof AuthenticatedTalhoesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/visitas': typeof AuthenticatedVisitasRoute
+  '/_authenticated/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/_authenticated/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/_authenticated/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
   '/_authenticated/empresas/': typeof AuthenticatedEmpresasIndexRoute
@@ -468,6 +497,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/alertas'
     | '/alertas-ia'
+    | '/apps'
     | '/assistente'
     | '/atividades'
     | '/auditoria'
@@ -476,6 +506,7 @@ export interface FileRouteTypes {
     | '/consultores'
     | '/dashboard'
     | '/dispositivos'
+    | '/documentacao'
     | '/empresas'
     | '/equipes'
     | '/estimulacoes'
@@ -505,6 +536,7 @@ export interface FileRouteTypes {
     | '/talhoes'
     | '/usuarios'
     | '/visitas'
+    | '/documentacao/$slug'
     | '/empresas/$id'
     | '/empresas/novo'
     | '/empresas/'
@@ -517,6 +549,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/alertas'
     | '/alertas-ia'
+    | '/apps'
     | '/assistente'
     | '/atividades'
     | '/auditoria'
@@ -525,6 +558,7 @@ export interface FileRouteTypes {
     | '/consultores'
     | '/dashboard'
     | '/dispositivos'
+    | '/documentacao'
     | '/equipes'
     | '/estimulacoes'
     | '/fazendas'
@@ -553,6 +587,7 @@ export interface FileRouteTypes {
     | '/talhoes'
     | '/usuarios'
     | '/visitas'
+    | '/documentacao/$slug'
     | '/empresas/$id'
     | '/empresas/novo'
     | '/empresas'
@@ -566,6 +601,7 @@ export interface FileRouteTypes {
     | '/_authenticated/agenda'
     | '/_authenticated/alertas'
     | '/_authenticated/alertas-ia'
+    | '/_authenticated/apps'
     | '/_authenticated/assistente'
     | '/_authenticated/atividades'
     | '/_authenticated/auditoria'
@@ -574,6 +610,7 @@ export interface FileRouteTypes {
     | '/_authenticated/consultores'
     | '/_authenticated/dashboard'
     | '/_authenticated/dispositivos'
+    | '/_authenticated/documentacao'
     | '/_authenticated/empresas'
     | '/_authenticated/equipes'
     | '/_authenticated/estimulacoes'
@@ -603,6 +640,7 @@ export interface FileRouteTypes {
     | '/_authenticated/talhoes'
     | '/_authenticated/usuarios'
     | '/_authenticated/visitas'
+    | '/_authenticated/documentacao/$slug'
     | '/_authenticated/empresas/$id'
     | '/_authenticated/empresas/novo'
     | '/_authenticated/empresas/'
@@ -674,6 +712,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAlertasIaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/apps': {
+      id: '/_authenticated/apps'
+      path: '/apps'
+      fullPath: '/apps'
+      preLoaderRoute: typeof AuthenticatedAppsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/assistente': {
       id: '/_authenticated/assistente'
       path: '/assistente'
@@ -728,6 +773,13 @@ declare module '@tanstack/react-router' {
       path: '/dispositivos'
       fullPath: '/dispositivos'
       preLoaderRoute: typeof AuthenticatedDispositivosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/documentacao': {
+      id: '/_authenticated/documentacao'
+      path: '/documentacao'
+      fullPath: '/documentacao'
+      preLoaderRoute: typeof AuthenticatedDocumentacaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/empresas': {
@@ -933,6 +985,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVisitasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/documentacao/$slug': {
+      id: '/_authenticated/documentacao/$slug'
+      path: '/$slug'
+      fullPath: '/documentacao/$slug'
+      preLoaderRoute: typeof AuthenticatedDocumentacaoSlugRouteImport
+      parentRoute: typeof AuthenticatedDocumentacaoRoute
+    }
     '/_authenticated/empresas/': {
       id: '/_authenticated/empresas/'
       path: '/'
@@ -957,6 +1016,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedDocumentacaoRouteChildren {
+  AuthenticatedDocumentacaoSlugRoute: typeof AuthenticatedDocumentacaoSlugRoute
+}
+
+const AuthenticatedDocumentacaoRouteChildren: AuthenticatedDocumentacaoRouteChildren =
+  {
+    AuthenticatedDocumentacaoSlugRoute: AuthenticatedDocumentacaoSlugRoute,
+  }
+
+const AuthenticatedDocumentacaoRouteWithChildren =
+  AuthenticatedDocumentacaoRoute._addFileChildren(
+    AuthenticatedDocumentacaoRouteChildren,
+  )
+
 interface AuthenticatedEmpresasRouteChildren {
   AuthenticatedEmpresasIdRoute: typeof AuthenticatedEmpresasIdRoute
   AuthenticatedEmpresasNovoRoute: typeof AuthenticatedEmpresasNovoRoute
@@ -978,6 +1051,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAgendaRoute: typeof AuthenticatedAgendaRoute
   AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
   AuthenticatedAlertasIaRoute: typeof AuthenticatedAlertasIaRoute
+  AuthenticatedAppsRoute: typeof AuthenticatedAppsRoute
   AuthenticatedAssistenteRoute: typeof AuthenticatedAssistenteRoute
   AuthenticatedAtividadesRoute: typeof AuthenticatedAtividadesRoute
   AuthenticatedAuditoriaRoute: typeof AuthenticatedAuditoriaRoute
@@ -986,6 +1060,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedConsultoresRoute: typeof AuthenticatedConsultoresRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDispositivosRoute: typeof AuthenticatedDispositivosRoute
+  AuthenticatedDocumentacaoRoute: typeof AuthenticatedDocumentacaoRouteWithChildren
   AuthenticatedEmpresasRoute: typeof AuthenticatedEmpresasRouteWithChildren
   AuthenticatedEquipesRoute: typeof AuthenticatedEquipesRoute
   AuthenticatedEstimulacoesRoute: typeof AuthenticatedEstimulacoesRoute
@@ -1021,6 +1096,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAgendaRoute: AuthenticatedAgendaRoute,
   AuthenticatedAlertasRoute: AuthenticatedAlertasRoute,
   AuthenticatedAlertasIaRoute: AuthenticatedAlertasIaRoute,
+  AuthenticatedAppsRoute: AuthenticatedAppsRoute,
   AuthenticatedAssistenteRoute: AuthenticatedAssistenteRoute,
   AuthenticatedAtividadesRoute: AuthenticatedAtividadesRoute,
   AuthenticatedAuditoriaRoute: AuthenticatedAuditoriaRoute,
@@ -1029,6 +1105,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConsultoresRoute: AuthenticatedConsultoresRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDispositivosRoute: AuthenticatedDispositivosRoute,
+  AuthenticatedDocumentacaoRoute: AuthenticatedDocumentacaoRouteWithChildren,
   AuthenticatedEmpresasRoute: AuthenticatedEmpresasRouteWithChildren,
   AuthenticatedEquipesRoute: AuthenticatedEquipesRoute,
   AuthenticatedEstimulacoesRoute: AuthenticatedEstimulacoesRoute,

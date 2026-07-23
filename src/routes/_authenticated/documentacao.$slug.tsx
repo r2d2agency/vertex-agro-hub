@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/documentacao/$slug")({
 });
 
 function DocPage() {
-  const doc = Route.useLoaderData();
+  const doc = Route.useLoaderData()!;
   return (
     <div>
       <div className="mb-3">
