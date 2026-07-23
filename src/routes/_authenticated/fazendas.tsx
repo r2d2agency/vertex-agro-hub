@@ -161,6 +161,7 @@ function FarmDialog({
   onSaved: () => void;
 }) {
   const [values, setValues] = useState<FarmInput>(empty);
+  const [cep, setCep] = useState<string>("");
 
   useEffect(() => {
     if (!open) return;
@@ -213,15 +214,17 @@ function FarmDialog({
             <div>
               <Label>CEP</Label>
               <CepInput
-                value={values.cep ?? ""}
-                onChange={(v) => setValues((s) => ({ ...s, cep: v }))}
-                onFilled={(d) => setValues((s) => ({
-                  ...s,
-                  cep: d.cep,
-                  city: d.cidade || s.city,
-                  state: d.uf || s.state,
-                  notes: s.notes || (d.endereco ? `Endereço: ${d.endereco}${d.bairro ? ` — ${d.bairro}` : ""}` : ""),
-                }))}
+                value={cep}
+                onChange={setCep}
+                onFilled={(d) => {
+                  setCep(d.cep);
+                  setValues((s) => ({
+                    ...s,
+                    city: d.cidade || s.city,
+                    state: d.uf || s.state,
+                    notes: s.notes || (d.endereco ? `Endereço: ${d.endereco}${d.bairro ? ` — ${d.bairro}` : ""}` : ""),
+                  }));
+                }}
               />
             </div>
             <div><Label>Cidade</Label><Input value={values.city} onChange={(e) => setValues((v) => ({ ...v, city: e.target.value }))} /></div>
