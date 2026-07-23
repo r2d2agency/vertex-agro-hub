@@ -75,6 +75,7 @@ export class CatalogService {
   // ---------- Tapping Tables ----------
   async listTables(userId: string, companyId: string) {
     await this.access.ensureCompany(userId, companyId);
+    await this.ensureSeeded(companyId);
     return this.prisma.tappingTable.findMany({
       where: { companyId, isDeleted: false },
       orderBy: { name: 'asc' },
