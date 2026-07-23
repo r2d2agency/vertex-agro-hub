@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { jwtAccessTtl, jwtRefreshTtlSeconds, jwtSecret } from './auth.config';
 
 export type GoogleProfile = {
   googleId: string;
@@ -26,8 +27,8 @@ export class AuthService {
     const access_token = await this.jwt.signAsync(
       { sub: userId, email },
       {
-        secret: process.env.JWT_SECRET,
-        expiresIn: `${process.env.JWT_ACCESS_TTL ?? 900}s`,
+        secret: jwtSecret(),
+        expiresIn: jwtAccessTtl(),
       },
     );
     const refreshRaw = crypto.randomBytes(48).toString('hex');
@@ -35,7 +36,7 @@ export class AuthService {
       .createHash('sha256')
       .update(refreshRaw)
       .digest('hex');
-    const ttl = parseInt(process.env.JWT_REFRESH_TTL ?? '2592000', 10);
+    const ttl = jwtRefreshTtlSeconds();
     await this.prisma.refreshToken.create({
       data: {
         userId,

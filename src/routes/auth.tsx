@@ -1,11 +1,10 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Leaf } from "lucide-react";
-import { hasAuthTokens, login, register } from "@/lib/api";
+import { hasAuthTokens, login } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -42,25 +41,6 @@ function AuthPage() {
     }
   }
 
-  async function handleSignUp(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    const fd = new FormData(e.currentTarget);
-    try {
-      await register({
-        email: String(fd.get("email")),
-        password: String(fd.get("password")),
-        fullName: String(fd.get("full_name") ?? ""),
-      });
-      toast.success("Conta criada!");
-      navigate({ to: "/dashboard", replace: true });
-    } catch (error) {
-      toast.error("Erro ao criar conta", { description: error instanceof Error ? error.message : "Tente novamente." });
-    } finally {
-      setLoading(false);
-    }
-  }
-
   // Google OAuth desativado por enquanto.
 
   return (
@@ -74,53 +54,24 @@ function AuthPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <Tabs defaultValue="signin">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Criar conta</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="signin" className="mt-6">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" name="email" type="email" required autoComplete="email" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <Input id="password" name="password" type="password" required autoComplete="current-password" />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Entrando..." : "Entrar"}
-                </Button>
-              </form>
-              <div className="mt-3 text-right">
-                <Link to="/reset-password" className="text-xs text-muted-foreground hover:text-foreground">
-                  Esqueci minha senha
-                </Link>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="signup" className="mt-6">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="full_name">Nome completo</Label>
-                  <Input id="full_name" name="full_name" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email2">E-mail</Label>
-                  <Input id="email2" name="email" type="email" required autoComplete="email" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password2">Senha</Label>
-                  <Input id="password2" name="password" type="password" required minLength={8} autoComplete="new-password" />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Criando..." : "Criar conta"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <form onSubmit={handleSignIn} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input id="email" name="email" type="email" required autoComplete="email" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <Input id="password" name="password" type="password" required autoComplete="current-password" />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Entrando..." : "Entrar"}
+            </Button>
+          </form>
+          <div className="mt-3 text-right">
+            <Link to="/reset-password" className="text-xs text-muted-foreground hover:text-foreground">
+              Esqueci minha senha
+            </Link>
+          </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
