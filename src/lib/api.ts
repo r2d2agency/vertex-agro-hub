@@ -123,8 +123,14 @@ export async function apiRequest<T>(
     body,
   });
 
-  if (response.status === 401 && auth && retry && (await refreshAccessToken())) {
-    return apiRequest<T>(path, { ...options, retry: false });
+  if (response.status === 401 && auth && retry) {
+    if (await refreshAccessToken()) {
+      return apiRequest<T>(path, { ...options, retry: false });
+    }
+    clearAuthTokens();
+    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/auth")) {
+      window.location.replace("/auth");
+    }
   }
 
   if (!response.ok) {
