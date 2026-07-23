@@ -29,7 +29,8 @@ export const Route = createFileRoute("/_authenticated/documentacao/$slug")({
 });
 
 function DocPage() {
-  const doc = Route.useLoaderData()!;
+  const { slug } = Route.useParams();
+  const doc = docs.find((d) => d.slug === slug)!;
   return (
     <div>
       <div className="mb-3">
