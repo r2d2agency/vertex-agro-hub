@@ -145,12 +145,8 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
   // Focus (usar minha localização / geocode)
   const focusLat = focus?.lat ?? null;
   const focusLng = focus?.lng ?? null;
-  const didInitialFocus = useRef(false);
   useEffect(() => {
     if (!ready || !mapRef.current || focusLat == null || focusLng == null) return;
-    // Só move a view no primeiro focus recebido; depois disso o usuário controla.
-    if (didInitialFocus.current) return;
-    didInitialFocus.current = true;
     mapRef.current.setView([focusLat, focusLng], 15);
   }, [ready, focusLat, focusLng]);
 
