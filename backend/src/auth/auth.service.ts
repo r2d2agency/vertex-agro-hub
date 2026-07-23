@@ -110,6 +110,7 @@ export class AuthService {
       include: { roles: true },
     });
     if (!user) throw new UnauthorizedException();
+    await ensureSuperadminForUser(this.prisma, user.id, user.email);
     const { passwordHash, ...safe } = user;
     return safe;
   }
