@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { PersonEditor } from "@/components/vertex/person-editor";
+import { Pencil } from "lucide-react";
 import { Plus, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
@@ -45,6 +47,7 @@ function PeoplePage() {
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<Person | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data = [], isLoading: loadingList } = useQuery({
     queryKey: ["people", companyId],
@@ -127,6 +130,9 @@ function PeoplePage() {
                           </SelectContent>
                         </Select>
                       </div>
+                      <Button variant="ghost" size="icon" onClick={() => setEditingId(p.id)} title="Editar ficha">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setToDelete(p)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -145,6 +151,16 @@ function PeoplePage() {
         companyId={companyId}
         onSaved={() => qc.invalidateQueries({ queryKey: ["people", companyId] })}
       />
+
+      {companyId && (
+        <PersonEditor
+          open={!!editingId}
+          onOpenChange={(o) => !o && setEditingId(null)}
+          userId={editingId}
+          companyId={companyId}
+        />
+      )}
+
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>

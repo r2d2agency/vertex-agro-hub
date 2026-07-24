@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, UserRound, Mail, Search } from "lucide-react";
+import { Plus, Trash2, UserRound, Mail, Search, Pencil } from "lucide-react";
+import { PersonEditor } from "@/components/vertex/person-editor";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ export function PeopleByRolePage({
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<Person | null>(null);
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const roleLabel = COMPANY_ROLES.find((r) => r.value === role)?.label ?? role;
 
   const { data = [], isLoading: loadingList } = useQuery({
@@ -120,6 +122,14 @@ export function PeopleByRolePage({
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => setEditingId(p.id)}
+                      title="Editar ficha"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="text-destructive"
                       onClick={() => setToDelete(p)}
                       title="Remover da empresa"
@@ -142,6 +152,16 @@ export function PeopleByRolePage({
         companyId={companyId}
         onSaved={() => qc.invalidateQueries({ queryKey: ["people", companyId] })}
       />
+
+      {companyId && (
+        <PersonEditor
+          open={!!editingId}
+          onOpenChange={(o) => !o && setEditingId(null)}
+          userId={editingId}
+          companyId={companyId}
+        />
+      )}
+
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>

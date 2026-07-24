@@ -34,6 +34,27 @@ model User {
   fullName     String?  @map("full_name")
   avatarUrl    String?  @map("avatar_url")
   googleId     String?  @unique @map("google_id")
+
+  // Ficha pessoal
+  cpf                   String?  @unique
+  rg                    String?
+  birthDate             DateTime? @map("birth_date") @db.Date
+  gender                String?
+  maritalStatus         String?  @map("marital_status")
+  nationality           String?
+  phone                 String?
+  phoneAlt              String?  @map("phone_alt")
+  addressCep            String?  @map("address_cep")
+  addressStreet         String?  @map("address_street")
+  addressNumber         String?  @map("address_number")
+  addressComplement     String?  @map("address_complement")
+  addressDistrict       String?  @map("address_district")
+  addressCity           String?  @map("address_city")
+  addressState          String?  @map("address_state")
+  emergencyContactName  String?  @map("emergency_contact_name")
+  emergencyContactPhone String?  @map("emergency_contact_phone")
+  notes                 String?
+
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -42,8 +63,60 @@ model User {
   companies     Company[]  @relation("CompanyCreatedBy")
   teamMemberships TeamMember[]
   managedRegionals Regional[] @relation("RegionalManager")
+  employments   PersonEmployment[]
+  documents     PersonDocument[]
 
   @@map("users")
+}
+
+model PersonEmployment {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  companyId       String   @map("company_id") @db.Uuid
+  position        String?
+  employeeCode    String?  @map("employee_code")
+  admissionDate   DateTime? @map("admission_date") @db.Date
+  terminationDate DateTime? @map("termination_date") @db.Date
+  contractType    String?  @map("contract_type")
+  salary          Decimal? @db.Decimal(12, 2)
+  pisNumber       String?  @map("pis_number")
+  ctpsNumber      String?  @map("ctps_number")
+  bankName        String?  @map("bank_name")
+  bankAgency      String?  @map("bank_agency")
+  bankAccount     String?  @map("bank_account")
+  bankPixKey      String?  @map("bank_pix_key")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@map("person_employments")
+}
+
+model PersonDocument {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  companyId  String?  @map("company_id") @db.Uuid
+  kind       String
+  name       String
+  number     String?
+  fileUrl    String?  @map("file_url")
+  issuedAt   DateTime? @map("issued_at") @db.Date
+  expiresAt  DateTime? @map("expires_at") @db.Date
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([companyId])
+  @@map("person_documents")
 }
 
 model RefreshToken {
@@ -108,6 +181,8 @@ model Company {
   teams     Team[]
   occurrences Occurrence[]
   scheduledTasks ScheduledTask[]
+  employments   PersonEmployment[]
+  personDocuments PersonDocument[]
 
   @@index([isDeleted])
   @@map("companies")

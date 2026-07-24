@@ -1,4 +1,8 @@
-import { IsEmail, IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import {
+  IsArray, IsBooleanString, IsDateString, IsEmail, IsEnum, IsNumber, IsOptional,
+  IsString, IsUUID, MinLength, ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 const ROLES = [
   'admin_empresa',
@@ -10,7 +14,60 @@ const ROLES = [
 ] as const;
 export type CompanyRole = (typeof ROLES)[number];
 
-export class InvitePersonDto {
+export class PersonalDataDto {
+  @IsOptional() @IsString() fullName?: string;
+  @IsOptional() @IsString() cpf?: string;
+  @IsOptional() @IsString() rg?: string;
+  @IsOptional() @IsDateString() birthDate?: string;
+  @IsOptional() @IsString() gender?: string;
+  @IsOptional() @IsString() maritalStatus?: string;
+  @IsOptional() @IsString() nationality?: string;
+  @IsOptional() @IsString() avatarUrl?: string;
+  @IsOptional() @IsString() notes?: string;
+
+  // contato + endereço
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() phoneAlt?: string;
+  @IsOptional() @IsString() addressCep?: string;
+  @IsOptional() @IsString() addressStreet?: string;
+  @IsOptional() @IsString() addressNumber?: string;
+  @IsOptional() @IsString() addressComplement?: string;
+  @IsOptional() @IsString() addressDistrict?: string;
+  @IsOptional() @IsString() addressCity?: string;
+  @IsOptional() @IsString() addressState?: string;
+  @IsOptional() @IsString() emergencyContactName?: string;
+  @IsOptional() @IsString() emergencyContactPhone?: string;
+}
+
+export class EmploymentDto {
+  @IsUUID() companyId!: string;
+  @IsOptional() @IsString() position?: string;
+  @IsOptional() @IsString() employeeCode?: string;
+  @IsOptional() @IsDateString() admissionDate?: string;
+  @IsOptional() @IsDateString() terminationDate?: string;
+  @IsOptional() @IsString() contractType?: string;
+  @IsOptional() @IsNumber() salary?: number;
+  @IsOptional() @IsString() pisNumber?: string;
+  @IsOptional() @IsString() ctpsNumber?: string;
+  @IsOptional() @IsString() bankName?: string;
+  @IsOptional() @IsString() bankAgency?: string;
+  @IsOptional() @IsString() bankAccount?: string;
+  @IsOptional() @IsString() bankPixKey?: string;
+  @IsOptional() @IsString() notes?: string;
+}
+
+export class DocumentDto {
+  @IsOptional() @IsUUID() companyId?: string;
+  @IsString() kind!: string;
+  @IsString() @MinLength(1) name!: string;
+  @IsOptional() @IsString() number?: string;
+  @IsOptional() @IsString() fileUrl?: string;
+  @IsOptional() @IsDateString() issuedAt?: string;
+  @IsOptional() @IsDateString() expiresAt?: string;
+  @IsOptional() @IsString() notes?: string;
+}
+
+export class InvitePersonDto extends PersonalDataDto {
   @IsUUID() companyId!: string;
   @IsEmail() email!: string;
   @IsString() @MinLength(2) fullName!: string;
