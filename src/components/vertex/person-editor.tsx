@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, ExternalLink } from "lucide-react";
+import { Loader2, Plus, Trash2, ExternalLink, Star, ShieldOff, ShieldCheck } from "lucide-react";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -12,17 +12,22 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CepInput } from "@/components/vertex/cep-input";
 import { UfSelect } from "@/components/vertex/uf-select";
+import { listFarms } from "@/lib/fazendas.functions";
 import {
-  CONTRACT_TYPES, DOCUMENT_KINDS, GENDERS, MARITAL_STATUSES,
-  createPersonDocument, deletePersonDocument, getPerson, listPersonDocuments,
+  ASSIGNMENT_ROLES, CONTRACT_TYPES, DOCUMENT_KINDS, GENDERS, MARITAL_STATUSES,
+  createPersonAssignment, createPersonDocument, createPersonEvaluation,
+  deletePersonAssignment, deletePersonDocument, deletePersonEvaluation,
+  endPersonAssignment, getPerson, listPeople, listPersonAssignments,
+  listPersonDocuments, listPersonEvaluations, setPersonActive,
   updatePersonPersonal, upsertPersonEmployment,
-  type Employment, type PersonalData,
+  type AssignmentRole, type Employment, type PersonalData,
 } from "@/lib/people.functions";
 
 type Props = {
@@ -104,6 +109,17 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const toggleActive = useMutation({
+    mutationFn: (v: { active: boolean; reason?: string }) =>
+      setPersonActive(userId!, companyId, v.active, v.reason),
+    onSuccess: (_r, v) => {
+      toast.success(v.active ? "Acesso reativado" : "Acesso desativado");
+      qc.invalidateQueries({ queryKey: ["people", companyId] });
+      qc.invalidateQueries({ queryKey: ["person", userId, companyId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const set = (patch: PersonalData) => setPersonal((p) => ({ ...p, ...patch }));
   const setE = (patch: Partial<Employment>) => setEmployment((p) => ({ ...p, ...patch }));
 
@@ -111,22 +127,56 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Ficha cadastral{data?.fullName ? ` — ${data.fullName}` : ""}</DialogTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <DialogTitle>Ficha cadastral{data?.fullName ? ` — ${data.fullName}` : ""}</DialogTitle>
+            {data && (
+              <div className="flex items-center gap-3">
+                <Badge variant={data.active ? "default" : "destructive"}>
+                  {data.active ? (
+                    <><ShieldCheck className="mr-1 h-3 w-3" /> Ativo</>
+                  ) : (
+                    <><ShieldOff className="mr-1 h-3 w-3" /> Inativo</>
+                  )}
+                </Badge>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={data.active}
+                    disabled={toggleActive.isPending}
+                    onCheckedChange={(v) => {
+                      if (!v) {
+                        const reason = window.prompt("Motivo do desligamento (opcional):") ?? undefined;
+                        toggleActive.mutate({ active: false, reason });
+                      } else {
+                        toggleActive.mutate({ active: true });
+                      }
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground">Acesso ao sistema</span>
+                </div>
+              </div>
+            )}
+          </div>
+          {data && !data.active && data.deactivationReason && (
+            <p className="text-xs text-destructive">
+              Desligado{data.deactivatedAt ? ` em ${String(data.deactivatedAt).slice(0, 10)}` : ""}: {data.deactivationReason}
+            </p>
+          )}
         </DialogHeader>
 
         {isLoading ? (
           <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin" /></div>
         ) : (
           <Tabs defaultValue="personal">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="personal">Pessoal</TabsTrigger>
               <TabsTrigger value="contact">Contato</TabsTrigger>
               <TabsTrigger value="employment">Profissional</TabsTrigger>
+              <TabsTrigger value="assignments">Fazendas</TabsTrigger>
+              <TabsTrigger value="evaluations">Avaliações</TabsTrigger>
               <TabsTrigger value="documents">Documentos</TabsTrigger>
             </TabsList>
 
             <ScrollArea className="max-h-[65vh] pr-4">
-              {/* PESSOAL */}
               <TabsContent value="personal" className="mt-4 grid gap-4 md:grid-cols-2">
                 <Field label="Nome completo *">
                   <Input value={personal.fullName ?? ""} onChange={(e) => set({ fullName: e.target.value })} />
@@ -169,7 +219,6 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                 </div>
               </TabsContent>
 
-              {/* CONTATO */}
               <TabsContent value="contact" className="mt-4 grid gap-4 md:grid-cols-2">
                 <Field label="Telefone principal">
                   <Input value={personal.phone ?? ""} onChange={(e) => set({ phone: e.target.value })} placeholder="(00) 00000-0000" />
@@ -215,7 +264,6 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                 </Field>
               </TabsContent>
 
-              {/* PROFISSIONAL */}
               <TabsContent value="employment" className="mt-4 grid gap-4 md:grid-cols-2">
                 <Field label="Cargo / função">
                   <Input value={employment.position ?? ""} onChange={(e) => setE({ position: e.target.value })} />
@@ -270,7 +318,14 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                 </div>
               </TabsContent>
 
-              {/* DOCUMENTOS */}
+              <TabsContent value="assignments" className="mt-4">
+                <AssignmentsTab userId={userId!} companyId={companyId} personRoles={data?.roles ?? []} />
+              </TabsContent>
+
+              <TabsContent value="evaluations" className="mt-4">
+                <EvaluationsTab userId={userId!} companyId={companyId} />
+              </TabsContent>
+
               <TabsContent value="documents" className="mt-4">
                 <DocumentsTab userId={userId!} companyId={companyId} />
               </TabsContent>
@@ -386,6 +441,305 @@ function DocumentsTab({ userId, companyId }: { userId: string; companyId: string
                   </a>
                 )}
                 <Button variant="ghost" size="icon" className="text-destructive" onClick={() => del.mutate(d.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AssignmentsTab({ userId, companyId, personRoles }: { userId: string; companyId: string; personRoles: string[] }) {
+  const qc = useQueryClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const defaultRole: AssignmentRole =
+    personRoles.includes("consultor") ? "consultor" :
+    personRoles.includes("monitor") ? "monitor" : "sangrador";
+  const [role, setRole] = useState<AssignmentRole>(defaultRole);
+  const [farmId, setFarmId] = useState<string>("");
+  const [consultorUserId, setConsultorUserId] = useState<string>("");
+  const [startAt, setStartAt] = useState<string>(today);
+  const [notes, setNotes] = useState("");
+
+  const { data: assignments = [], isLoading } = useQuery({
+    queryKey: ["person-assignments", userId, companyId],
+    queryFn: () => listPersonAssignments(userId, companyId),
+  });
+
+  const { data: farms = [] } = useQuery({
+    queryKey: ["farms", companyId],
+    queryFn: () => listFarms(companyId),
+  });
+
+  const { data: people = [] } = useQuery({
+    queryKey: ["people", companyId],
+    queryFn: () => listPeople(companyId),
+  });
+
+  const consultores = useMemo(
+    () => people.filter((p) => p.roles.includes("consultor")),
+    [people],
+  );
+
+  const create = useMutation({
+    mutationFn: () => createPersonAssignment(userId, {
+      companyId, farmId, role,
+      consultorUserId: role === "consultor" ? undefined : (consultorUserId || undefined),
+      startAt, notes: notes || undefined,
+    }),
+    onSuccess: () => {
+      toast.success("Vínculo cadastrado");
+      setFarmId(""); setConsultorUserId(""); setNotes("");
+      qc.invalidateQueries({ queryKey: ["person-assignments", userId, companyId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const end = useMutation({
+    mutationFn: (id: string) => {
+      const reason = window.prompt("Motivo do desligamento deste vínculo (opcional):") ?? undefined;
+      return endPersonAssignment(userId, id, companyId, today, reason);
+    },
+    onSuccess: () => {
+      toast.success("Vínculo encerrado");
+      qc.invalidateQueries({ queryKey: ["person-assignments", userId, companyId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: (id: string) => deletePersonAssignment(userId, id, companyId),
+    onSuccess: () => {
+      toast.success("Vínculo removido do histórico");
+      qc.invalidateQueries({ queryKey: ["person-assignments", userId, companyId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const active = assignments.filter((a) => !a.endAt);
+  const history = assignments.filter((a) => a.endAt);
+
+  return (
+    <div className="grid gap-4">
+      <Card>
+        <CardContent className="grid gap-3 p-4 md:grid-cols-3">
+          <Field label="Papel na fazenda">
+            <Select value={role} onValueChange={(v) => setRole(v as AssignmentRole)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ASSIGNMENT_ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Fazenda *">
+            <Select value={farmId} onValueChange={setFarmId}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                {farms.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.name}{f.code ? ` (${f.code})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Data de início *">
+            <Input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+          </Field>
+          {role !== "consultor" && (
+            <Field label="Consultor responsável">
+              <Select value={consultorUserId} onValueChange={setConsultorUserId}>
+                <SelectTrigger><SelectValue placeholder="Sem consultor" /></SelectTrigger>
+                <SelectContent>
+                  {consultores.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.fullName || c.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+          <div className="md:col-span-3">
+            <Field label="Observações">
+              <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex.: atua nas quadras 1 a 3" />
+            </Field>
+          </div>
+          <div className="md:col-span-3 flex justify-end">
+            <Button size="sm" onClick={() => farmId ? create.mutate() : toast.error("Selecione a fazenda")} disabled={create.isPending}>
+              <Plus className="mr-2 h-4 w-4" /> Vincular à fazenda
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
+      ) : (
+        <>
+          <div>
+            <h4 className="mb-2 text-sm font-semibold">Vínculos ativos ({active.length})</h4>
+            {active.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum vínculo ativo.</p>
+            ) : (
+              <div className="grid gap-2">
+                {active.map((a) => (
+                  <AssignmentRow key={a.id} a={a} onEnd={() => end.mutate(a.id)} onDelete={() => del.mutate(a.id)} />
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <h4 className="mb-2 text-sm font-semibold">Histórico ({history.length})</h4>
+            {history.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem histórico.</p>
+            ) : (
+              <div className="grid gap-2">
+                {history.map((a) => (
+                  <AssignmentRow key={a.id} a={a} historical onDelete={() => del.mutate(a.id)} />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AssignmentRow({
+  a, historical, onEnd, onDelete,
+}: {
+  a: any; historical?: boolean; onEnd?: () => void; onDelete: () => void;
+}) {
+  const roleLabel = ASSIGNMENT_ROLES.find((r) => r.value === a.role)?.label ?? a.role;
+  return (
+    <Card>
+      <CardContent className="flex flex-wrap items-center gap-3 p-3">
+        <Badge variant={historical ? "secondary" : "default"}>{roleLabel}</Badge>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">
+            {a.farm?.name ?? "Fazenda"}{a.farm?.code ? ` — ${a.farm.code}` : ""}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {String(a.startAt).slice(0, 10)} → {a.endAt ? String(a.endAt).slice(0, 10) : "atual"}
+            {a.consultor ? ` • Consultor: ${a.consultor.fullName || a.consultor.email}` : ""}
+            {a.notes ? ` • ${a.notes}` : ""}
+            {a.endReason ? ` • Motivo: ${a.endReason}` : ""}
+          </p>
+        </div>
+        {!historical && onEnd && (
+          <Button variant="outline" size="sm" onClick={onEnd}>Encerrar</Button>
+        )}
+        <Button variant="ghost" size="icon" className="text-destructive" onClick={onDelete} title="Excluir registro">
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EvaluationsTab({ userId, companyId }: { userId: string; companyId: string }) {
+  const qc = useQueryClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const [ratedAt, setRatedAt] = useState<string>(today);
+  const [rating, setRating] = useState<number>(5);
+  const [category, setCategory] = useState<string>("Desempenho");
+  const [title, setTitle] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["person-evals", userId, companyId],
+    queryFn: () => listPersonEvaluations(userId, companyId),
+  });
+
+  const create = useMutation({
+    mutationFn: () => createPersonEvaluation(userId, {
+      companyId, ratedAt, rating,
+      category: category || undefined,
+      title: title || undefined,
+      notes: notes || undefined,
+    }),
+    onSuccess: () => {
+      toast.success("Avaliação registrada");
+      setTitle(""); setNotes("");
+      qc.invalidateQueries({ queryKey: ["person-evals", userId, companyId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: (id: string) => deletePersonEvaluation(userId, id, companyId),
+    onSuccess: () => {
+      toast.success("Avaliação removida");
+      qc.invalidateQueries({ queryKey: ["person-evals", userId, companyId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const avg = data.length ? (data.reduce((s, e) => s + e.rating, 0) / data.length).toFixed(1) : "—";
+
+  return (
+    <div className="grid gap-4">
+      <Card>
+        <CardContent className="grid gap-3 p-4 md:grid-cols-4">
+          <Field label="Data">
+            <Input type="date" value={ratedAt} onChange={(e) => setRatedAt(e.target.value)} />
+          </Field>
+          <Field label="Nota (1 a 5)">
+            <Select value={String(rating)} onValueChange={(v) => setRating(Number(v))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5].map((n) => <SelectItem key={n} value={String(n)}>{n} ★</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Categoria">
+            <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Desempenho, conduta, técnica..." />
+          </Field>
+          <Field label="Título">
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </Field>
+          <div className="md:col-span-4">
+            <Field label="Observações">
+              <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </Field>
+          </div>
+          <div className="md:col-span-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Média geral: <span className="font-semibold text-foreground">{avg}</span></p>
+            <Button size="sm" onClick={() => create.mutate()} disabled={create.isPending}>
+              <Plus className="mr-2 h-4 w-4" /> Adicionar avaliação
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
+      ) : data.length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma avaliação cadastrada.</p>
+      ) : (
+        <div className="grid gap-2">
+          {data.map((e) => (
+            <Card key={e.id}>
+              <CardContent className="flex flex-wrap items-center gap-3 p-3">
+                <div className="flex items-center gap-0.5 text-amber-500">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className={`h-4 w-4 ${i < e.rating ? "fill-current" : "opacity-30"}`} />
+                  ))}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {e.title || e.category || "Avaliação"}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {String(e.ratedAt).slice(0, 10)}
+                    {e.evaluator ? ` • por ${e.evaluator.fullName || e.evaluator.email}` : ""}
+                    {e.notes ? ` • ${e.notes}` : ""}
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => del.mutate(e.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </CardContent>
