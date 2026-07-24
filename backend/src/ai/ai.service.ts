@@ -87,7 +87,7 @@ export class AiService {
     }
   }
 
-  private async resolveConfig(companyId: string, override?: Partial<AiConfig>): Promise<Required<Pick<AiConfig, 'provider' | 'model'>> & { apiKey: string; endpoint: string }> {
+  private async resolveConfig(companyId: string, override?: Partial<AiConfig>): Promise<{ provider: Provider; model: string; apiKey: string; endpoint: string }> {
     const s = await this.prisma.companySettings.findUnique({ where: { companyId } });
     const stored = ((s?.extra as any)?.ai ?? {}) as Partial<AiConfig>;
     const provider = (override?.provider ?? stored.provider ?? 'lovable') as Provider;
