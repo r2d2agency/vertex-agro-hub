@@ -126,7 +126,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <DialogTitle>Ficha cadastral{data?.fullName ? ` — ${data.fullName}` : ""}</DialogTitle>
