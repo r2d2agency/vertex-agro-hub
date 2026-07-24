@@ -192,6 +192,9 @@ model Company {
   scheduledTasks ScheduledTask[]
   employments   PersonEmployment[]
   personDocuments PersonDocument[]
+  stimulations Stimulation[]
+  photos      Photo[]
+
 
   @@index([isDeleted])
   @@map("companies")
@@ -585,3 +588,71 @@ model ScheduledTask {
   @@index([teamId])
   @@map("scheduled_tasks")
 }
+
+model Stimulation {
+  id              String   @id @default(uuid()) @db.Uuid
+  companyId       String   @map("company_id") @db.Uuid
+  farmId          String?  @map("farm_id") @db.Uuid
+  plotId          String?  @map("plot_id") @db.Uuid
+  date            DateTime @db.Date
+  product         String
+  concentration   String?
+  method          String?
+  applicator      String?
+  treesStimulated Int?     @map("trees_stimulated")
+  doseMlPerTree   Float?   @map("dose_ml_per_tree")
+  areaHa          Float?   @map("area_ha")
+  weather         String?
+  notes           String?
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, isDeleted])
+  @@index([companyId, date])
+  @@index([farmId])
+  @@map("stimulations")
+}
+
+model Photo {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  farmId     String?  @map("farm_id") @db.Uuid
+  plotId     String?  @map("plot_id") @db.Uuid
+  takenAt    DateTime @map("taken_at")
+  url        String
+  thumbUrl   String?  @map("thumb_url")
+  latitude   Float?
+  longitude  Float?
+  accuracyM  Float?   @map("accuracy_m")
+  category   String?
+  caption    String?
+  author     String?
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, isDeleted])
+  @@index([companyId, takenAt])
+  @@index([farmId])
+  @@map("photos")
+}
+
