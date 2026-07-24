@@ -181,6 +181,8 @@ model Company {
   teams     Team[]
   occurrences Occurrence[]
   scheduledTasks ScheduledTask[]
+  employments   PersonEmployment[]
+  personDocuments PersonDocument[]
 
   @@index([isDeleted])
   @@map("companies")
