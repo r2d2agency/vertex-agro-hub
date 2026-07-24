@@ -126,7 +126,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <DialogTitle>Ficha cadastral{data?.fullName ? ` — ${data.fullName}` : ""}</DialogTitle>
@@ -167,7 +167,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
         {isLoading ? (
           <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin" /></div>
         ) : (
-          <Tabs defaultValue="personal">
+          <Tabs defaultValue="personal" className="flex flex-1 flex-col overflow-hidden">
             <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="personal">Pessoal</TabsTrigger>
               <TabsTrigger value="contact">Contato</TabsTrigger>
@@ -177,7 +177,8 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
               <TabsTrigger value="documents">Documentos</TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="max-h-[65vh] pr-4">
+            <div className="flex-1 overflow-y-auto pr-4 -mr-2">
+
               <TabsContent value="personal" className="mt-4 grid gap-4 md:grid-cols-2">
                 <Field label="Nome completo *">
                   <Input value={personal.fullName ?? ""} onChange={(e) => set({ fullName: e.target.value })} />
@@ -339,7 +340,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
               <TabsContent value="documents" className="mt-4">
                 <DocumentsTab userId={userId!} companyId={companyId} />
               </TabsContent>
-            </ScrollArea>
+            </div>
           </Tabs>
         )}
 
