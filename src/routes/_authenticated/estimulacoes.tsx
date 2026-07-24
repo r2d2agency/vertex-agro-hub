@@ -99,14 +99,35 @@ function EstimulacoesPage() {
   }
 
   function exportCsv() {
-    downloadCsv(`estimulacoes_${companyId}.csv`,
-      ["Data", "Fazenda", "Produto", "Concentração", "Método", "Aplicador", "Árvores", "ml/árvore", "Área (ha)", "Observações"],
-      items.map((s) => [
-        fmtDateBR(s.date), farmName(s.farmId), s.product, s.concentration ?? "", s.method ?? "",
-        s.applicator ?? "", s.treesStimulated ?? "", s.doseMlPerTree ?? "", s.areaHa ?? "", s.notes ?? "",
-      ]),
+    downloadCsv(
+      `estimulacoes_${companyId}.csv`,
+      items.map((s) => ({
+        data: fmtDateBR(s.date),
+        fazenda: farmName(s.farmId),
+        produto: s.product,
+        concentracao: s.concentration ?? "",
+        metodo: s.method ?? "",
+        aplicador: s.applicator ?? "",
+        arvores: s.treesStimulated ?? "",
+        ml_arvore: s.doseMlPerTree ?? "",
+        area_ha: s.areaHa ?? "",
+        observacoes: s.notes ?? "",
+      })),
+      [
+        { key: "data", label: "Data" },
+        { key: "fazenda", label: "Fazenda" },
+        { key: "produto", label: "Produto" },
+        { key: "concentracao", label: "Concentração" },
+        { key: "metodo", label: "Método" },
+        { key: "aplicador", label: "Aplicador" },
+        { key: "arvores", label: "Árvores" },
+        { key: "ml_arvore", label: "ml/árvore" },
+        { key: "area_ha", label: "Área (ha)" },
+        { key: "observacoes", label: "Observações" },
+      ],
     );
   }
+
 
   const canSave = form.product.trim().length > 0 && form.date;
 
