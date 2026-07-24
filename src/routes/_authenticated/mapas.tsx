@@ -40,8 +40,10 @@ function MapasPage() {
   const [search, setSearch] = useState("");
   const [showFarms, setShowFarms] = useState(true);
   const [showPlots, setShowPlots] = useState(true);
+  const [onlyMissingBoundary, setOnlyMissingBoundary] = useState(false);
   const [focus, setFocus] = useState<{ lat: number; lng: number } | null>(null);
   const [addressQuery, setAddressQuery] = useState("");
+
 
   const { data: regionals = [] } = useQuery({
     queryKey: ["regionals", companyId],
@@ -69,10 +71,12 @@ function MapasPage() {
     const q = search.trim().toLowerCase();
     return farms.filter((f) => {
       if (regionalFilter !== "__all__" && (f.regionalId ?? "") !== regionalFilter) return false;
+      if (onlyMissingBoundary && toBoundary(f.boundary)) return false;
       if (!q) return true;
       return [f.name, f.code, f.city, f.owner].filter(Boolean).some((s) => (s as string).toLowerCase().includes(q));
     });
-  }, [farms, regionalFilter, search]);
+  }, [farms, regionalFilter, search, onlyMissingBoundary]);
+
 
   const farmMarkers: FarmMarker[] = useMemo(() => filteredFarms.map((f, i) => ({
     id: f.id,
