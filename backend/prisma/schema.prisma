@@ -55,6 +55,11 @@ model User {
   emergencyContactPhone String?  @map("emergency_contact_phone")
   notes                 String?
 
+  // Acesso ao sistema
+  active                Boolean  @default(true)
+  deactivatedAt         DateTime? @map("deactivated_at")
+  deactivationReason    String?  @map("deactivation_reason")
+
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -65,6 +70,10 @@ model User {
   managedRegionals Regional[] @relation("RegionalManager")
   employments   PersonEmployment[]
   documents     PersonDocument[]
+  assignments   FarmAssignment[]  @relation("AssignmentUser")
+  consultingAssignments FarmAssignment[] @relation("AssignmentConsultor")
+  evaluations   PersonEvaluation[] @relation("EvaluationUser")
+  evaluationsGiven PersonEvaluation[] @relation("EvaluationEvaluator")
 
   @@map("users")
 }
@@ -249,10 +258,58 @@ model Farm {
   company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   regional Regional? @relation(fields: [regionalId], references: [id], onDelete: SetNull)
   plots    Plot[]
+  assignments FarmAssignment[]
 
   @@index([companyId, isDeleted])
   @@index([regionalId])
   @@map("farms")
+}
+
+model FarmAssignment {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  farmId           String   @map("farm_id") @db.Uuid
+  companyId        String   @map("company_id") @db.Uuid
+  role             String
+  consultorUserId  String?  @map("consultor_user_id") @db.Uuid
+  startAt          DateTime @map("start_at") @db.Date
+  endAt            DateTime? @map("end_at") @db.Date
+  endReason        String?  @map("end_reason")
+  notes            String?
+  createdById      String?  @map("created_by") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user      User @relation("AssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
+  farm      Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  consultor User? @relation("AssignmentConsultor", fields: [consultorUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([farmId])
+  @@index([companyId, role])
+  @@index([farmId, endAt])
+  @@map("farm_assignments")
+}
+
+model PersonEvaluation {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  companyId       String   @map("company_id") @db.Uuid
+  evaluatorUserId String?  @map("evaluator_user_id") @db.Uuid
+  ratedAt         DateTime @map("rated_at") @db.Date
+  rating          Int
+  category        String?
+  title           String?
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user      User  @relation("EvaluationUser", fields: [userId], references: [id], onDelete: Cascade)
+  evaluator User? @relation("EvaluationEvaluator", fields: [evaluatorUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([companyId])
+  @@map("person_evaluations")
 }
 
 model Plot {

@@ -3,7 +3,8 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
 import {
-  DocumentDto, EmploymentDto, InvitePersonDto, PersonalDataDto,
+  CreateAssignmentDto, CreateEvaluationDto, DocumentDto, EmploymentDto,
+  EndAssignmentDto, InvitePersonDto, PersonalDataDto, ToggleActiveDto,
   UpdatePersonRoleDto, CompanyRole,
 } from './dto';
 
@@ -42,6 +43,11 @@ export class PeopleService {
     if (!isCompanyAdmin) throw new ForbiddenException('Sem permissão para gerenciar pessoas');
   }
 
+  private async ensureMember(targetUserId: string, companyId: string) {
+    const link = await this.prisma.userRole.findFirst({ where: { userId: targetUserId, companyId } });
+    if (!link) throw new ForbiddenException('Pessoa não pertence a esta empresa');
+  }
+
   async list(userId: string, companyId: string) {
     await this.access.ensureCompany(userId, companyId);
     const roles = await this.prisma.userRole.findMany({
@@ -50,7 +56,7 @@ export class PeopleService {
         user: {
           select: {
             id: true, email: true, fullName: true, avatarUrl: true, createdAt: true,
-            cpf: true, phone: true,
+            cpf: true, phone: true, active: true,
           },
         },
       },
@@ -115,9 +121,7 @@ export class PeopleService {
 
   async updatePersonal(userId: string, targetUserId: string, companyId: string, dto: PersonalDataDto) {
     await this.ensureManager(userId, companyId);
-    // permite editar dados do usuário desde que ele seja membro da empresa
-    const isMember = await this.prisma.userRole.findFirst({ where: { userId: targetUserId, companyId } });
-    if (!isMember) throw new ForbiddenException('Pessoa não pertence a esta empresa');
+    await this.ensureMember(targetUserId, companyId);
     const data = pickPersonal(dto);
     if (Object.keys(data).length === 0) return { ok: true };
     try {
@@ -131,8 +135,7 @@ export class PeopleService {
 
   async upsertEmployment(userId: string, targetUserId: string, dto: EmploymentDto) {
     await this.ensureManager(userId, dto.companyId);
-    const isMember = await this.prisma.userRole.findFirst({ where: { userId: targetUserId, companyId: dto.companyId } });
-    if (!isMember) throw new ForbiddenException('Pessoa não pertence a esta empresa');
+    await this.ensureMember(targetUserId, dto.companyId);
     const data: any = {
       position: dto.position ?? null,
       employeeCode: dto.employeeCode ?? null,
@@ -210,6 +213,151 @@ export class PeopleService {
       throw new ForbiddenException('Superadmin não pode ser removido');
     }
     await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId } });
+    return { ok: true };
+  }
+
+  // ===== Ativar/Desativar acesso ao sistema =====
+  async setActive(userId: string, targetUserId: string, companyId: string, dto: ToggleActiveDto) {
+    await this.ensureManager(userId, companyId);
+    await this.ensureMember(targetUserId, companyId);
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException();
+    if (target.email.toLowerCase() === SUPERADMIN_EMAIL && !dto.active) {
+      throw new ForbiddenException('Superadmin não pode ser desativado');
+    }
+    await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: {
+        active: dto.active,
+        deactivatedAt: dto.active ? null : new Date(),
+        deactivationReason: dto.active ? null : (dto.reason ?? null),
+      },
+    });
+    if (!dto.active) {
+      // encerra sessões
+      await this.prisma.refreshToken.updateMany({
+        where: { userId: targetUserId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+    return { ok: true };
+  }
+
+  // ===== Vínculos com fazendas (histórico) =====
+  async listAssignments(userId: string, targetUserId: string, companyId: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const items = await this.prisma.farmAssignment.findMany({
+      where: { userId: targetUserId, companyId },
+      include: {
+        farm: { select: { id: true, name: true, code: true } },
+        consultor: { select: { id: true, fullName: true, email: true } },
+      },
+      orderBy: [{ endAt: 'asc' }, { startAt: 'desc' }],
+    });
+    return items;
+  }
+
+  async listFarmTeam(userId: string, farmId: string, companyId: string, includeHistory = false) {
+    await this.access.ensureCompany(userId, companyId);
+    const farm = await this.prisma.farm.findFirst({ where: { id: farmId, companyId } });
+    if (!farm) throw new NotFoundException('Fazenda não encontrada');
+    return this.prisma.farmAssignment.findMany({
+      where: { farmId, companyId, ...(includeHistory ? {} : { endAt: null }) },
+      include: {
+        user: { select: { id: true, fullName: true, email: true, avatarUrl: true, active: true } },
+        consultor: { select: { id: true, fullName: true, email: true } },
+      },
+      orderBy: [{ endAt: 'asc' }, { role: 'asc' }, { startAt: 'desc' }],
+    });
+  }
+
+  async createAssignment(userId: string, targetUserId: string, dto: CreateAssignmentDto) {
+    await this.ensureManager(userId, dto.companyId);
+    await this.ensureMember(targetUserId, dto.companyId);
+    const farm = await this.prisma.farm.findFirst({ where: { id: dto.farmId, companyId: dto.companyId } });
+    if (!farm) throw new BadRequestException('Fazenda inválida');
+    if (dto.consultorUserId) {
+      const ok = await this.prisma.userRole.findFirst({
+        where: { userId: dto.consultorUserId, companyId: dto.companyId },
+      });
+      if (!ok) throw new BadRequestException('Consultor não pertence à empresa');
+    }
+    // Encerra vínculo aberto anterior da mesma pessoa/fazenda/role
+    await this.prisma.farmAssignment.updateMany({
+      where: {
+        userId: targetUserId, farmId: dto.farmId, role: dto.role, endAt: null,
+      },
+      data: { endAt: new Date(dto.startAt), endReason: 'Substituído por novo vínculo' },
+    });
+    return this.prisma.farmAssignment.create({
+      data: {
+        userId: targetUserId,
+        farmId: dto.farmId,
+        companyId: dto.companyId,
+        role: dto.role,
+        consultorUserId: dto.consultorUserId ?? null,
+        startAt: new Date(dto.startAt),
+        notes: dto.notes ?? null,
+        createdById: userId,
+      },
+    });
+  }
+
+  async endAssignment(userId: string, targetUserId: string, assignmentId: string, dto: EndAssignmentDto) {
+    await this.ensureManager(userId, dto.companyId);
+    const a = await this.prisma.farmAssignment.findUnique({ where: { id: assignmentId } });
+    if (!a || a.userId !== targetUserId || a.companyId !== dto.companyId) {
+      throw new NotFoundException();
+    }
+    return this.prisma.farmAssignment.update({
+      where: { id: assignmentId },
+      data: {
+        endAt: dto.endAt ? new Date(dto.endAt) : new Date(),
+        endReason: dto.endReason ?? null,
+      },
+    });
+  }
+
+  async deleteAssignment(userId: string, targetUserId: string, assignmentId: string, companyId: string) {
+    await this.ensureManager(userId, companyId);
+    await this.prisma.farmAssignment.deleteMany({
+      where: { id: assignmentId, userId: targetUserId, companyId },
+    });
+    return { ok: true };
+  }
+
+  // ===== Avaliações =====
+  async listEvaluations(userId: string, targetUserId: string, companyId: string) {
+    await this.access.ensureCompany(userId, companyId);
+    return this.prisma.personEvaluation.findMany({
+      where: { userId: targetUserId, companyId },
+      include: { evaluator: { select: { id: true, fullName: true, email: true } } },
+      orderBy: { ratedAt: 'desc' },
+    });
+  }
+
+  async createEvaluation(userId: string, targetUserId: string, dto: CreateEvaluationDto) {
+    await this.ensureManager(userId, dto.companyId);
+    await this.ensureMember(targetUserId, dto.companyId);
+    return this.prisma.personEvaluation.create({
+      data: {
+        userId: targetUserId,
+        companyId: dto.companyId,
+        evaluatorUserId: userId,
+        ratedAt: new Date(dto.ratedAt),
+        rating: dto.rating,
+        category: dto.category ?? null,
+        title: dto.title ?? null,
+        notes: dto.notes ?? null,
+      },
+    });
+  }
+
+  async deleteEvaluation(userId: string, targetUserId: string, evaluationId: string, companyId: string) {
+    await this.ensureManager(userId, companyId);
+    await this.prisma.personEvaluation.deleteMany({
+      where: { id: evaluationId, userId: targetUserId, companyId },
+    });
     return { ok: true };
   }
 }
