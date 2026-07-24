@@ -14,6 +14,7 @@ import { FieldModule } from './field/field.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { GovernanceModule } from './governance/governance.module';
 import { AiModule } from './ai/ai.module';
+import { FleetModule } from './fleet/fleet.module';
 
 import { HealthController } from './health.controller';
 
@@ -34,6 +35,7 @@ import { HealthController } from './health.controller';
     UploadsModule,
     GovernanceModule,
     AiModule,
+    FleetModule,
   ],
 
   controllers: [HealthController],
