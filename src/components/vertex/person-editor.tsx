@@ -19,6 +19,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CepInput } from "@/components/vertex/cep-input";
 import { UfSelect } from "@/components/vertex/uf-select";
+import { FileDropzone } from "@/components/vertex/file-dropzone";
 import { listFarms } from "@/lib/fazendas.functions";
 import {
   ASSIGNMENT_ROLES, CONTRACT_TYPES, DOCUMENT_KINDS, GENDERS, MARITAL_STATUSES,
