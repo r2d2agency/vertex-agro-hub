@@ -50,6 +50,8 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas');
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Credenciais inválidas');
+    if (user.active === false)
+      throw new UnauthorizedException('Usuário inativo. Contate o administrador.');
     await ensureSuperadminForUser(this.prisma, user.id, user.email);
     return this.signTokens(user.id, user.email);
   }
