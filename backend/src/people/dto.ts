@@ -70,7 +70,7 @@ export class DocumentDto {
 export class InvitePersonDto extends PersonalDataDto {
   @IsUUID() companyId!: string;
   @IsEmail() email!: string;
-  @IsString() @MinLength(2) fullName!: string;
+  @IsString() @MinLength(2) declare fullName: string;
   @IsOptional() @IsString() @MinLength(6) password?: string;
   @IsEnum(ROLES) role!: CompanyRole;
 }
