@@ -55,6 +55,11 @@ model User {
   emergencyContactPhone String?  @map("emergency_contact_phone")
   notes                 String?
 
+  // Acesso ao sistema
+  active                Boolean  @default(true)
+  deactivatedAt         DateTime? @map("deactivated_at")
+  deactivationReason    String?  @map("deactivation_reason")
+
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -65,6 +70,10 @@ model User {
   managedRegionals Regional[] @relation("RegionalManager")
   employments   PersonEmployment[]
   documents     PersonDocument[]
+  assignments   FarmAssignment[]  @relation("AssignmentUser")
+  consultingAssignments FarmAssignment[] @relation("AssignmentConsultor")
+  evaluations   PersonEvaluation[] @relation("EvaluationUser")
+  evaluationsGiven PersonEvaluation[] @relation("EvaluationEvaluator")
 
   @@map("users")
 }
