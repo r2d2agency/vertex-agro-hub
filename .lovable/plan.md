@@ -1,76 +1,72 @@
-# Sprint 5 — Gestão + Sincronização Offline
+# Sprint 6 — Inteligência Artificial, Assistente e Previsões
 
-Consolida a camada de governança da plataforma e prepara o contrato de dados que os apps de campo (Monitor/Consultor) usarão para operar sem conexão.
+Coloca a camada de IA sobre a base operacional que já existe (produção, ocorrências, sangrias, fotos, histórico). Usa o Lovable AI Gateway (`LOVABLE_API_KEY` já cadastrado) — sem depender de chave do usuário.
 
 ## Objetivos
 
-1. **Auditoria** — trilha imutável de quem fez o quê, quando e onde.
-2. **Logs de sistema** — visibilidade operacional (erros, jobs, sync).
-3. **Sincronização offline** — endpoints de *pull*/*push* com resolução de conflitos por versão.
-4. **Painel de sincronização** — monitoramento por dispositivo/usuário.
-5. **Alertas & Integrações** — base para regras automáticas e webhooks (AGS).
-6. **Configurações da empresa** — preferências gerais + política de retenção.
+1. **Alertas Inteligentes (`/alertas-ia`)** — detecção de anomalias com IA (queda de produção, DRC fora do padrão, ocorrências recorrentes).
+2. **Assistente Vertex (`/assistente`)** — chat contextual que responde sobre dados da empresa (KPIs, fazendas, produção, colaboradores) via function-calling.
+3. **Previsões (`/previsoes`)** — projeção de produção por fazenda/talhão (próximos 30/60/90 dias) baseada em histórico.
+4. **Planos de Ação (`/planos-acao`)** — sugestões automáticas a partir das anomalias detectadas (o que fazer, quem, prazo).
+5. **Painel IA (`/ia`)** — visão consolidada: uso, custo estimado, últimos insights.
+6. **Análise de fotos** — endpoint que roda visão computacional em fotos de campo (Sprint 4) e extrai observações (sangria irregular, painel danificado).
 
 ## Entregas por módulo
 
-### 1. Auditoria (`/auditoria`)
-- Tabela `audit_log` (actor, action, entity, entityId, companyId, diff JSON, ip, userAgent, createdAt).
-- Interceptor NestJS grava CREATE/UPDATE/DELETE dos módulos operacionais e de pessoas.
-- UI: filtros por usuário, entidade, período; export CSV.
+### 1. Backend — módulo `ai/`
+- `AiService` centraliza chamadas ao Lovable AI Gateway (`https://ai.gateway.lovable.dev/v1/chat/completions`), header `Authorization: Bearer ${LOVABLE_API_KEY}`.
+- Modelos default: `google/gemini-2.5-flash` para chat/insights (grátis até 06/out/2025), `google/gemini-2.5-flash-image-preview` para visão.
+- Rate limiting: trata 429/402 e devolve erro amigável.
+- Endpoints:
+  - `POST /ai/insights` — recebe `{ companyId, scope }`, monta contexto (KPIs, últimas ocorrências, produção 30d) e devolve JSON `{ anomalies[], suggestions[] }`.
+  - `POST /ai/chat` — `{ companyId, messages[] }` com function-calling (`get_kpis`, `list_farms`, `list_occurrences`, `production_by_farm`).
+  - `POST /ai/forecast` — `{ companyId, farmId?, horizonDays }` → projeção diária (média móvel + tendência + prompt de ajuste sazonal via IA).
+  - `POST /ai/vision/photo/:photoId` — roda o modelo de visão sobre a foto e persiste `photo.aiTags` + `photo.aiSummary`.
+  - `POST /ai/action-plans/generate` — cria `ActionPlan` a partir de `AlertEvent` selecionado.
 
-### 2. Logs (`/logs`)
-- Tabela `system_log` (level, source, message, meta, createdAt).
-- Logger central no backend (substitui `console.*` nos serviços críticos).
-- UI: filtros por nível/fonte, busca textual, paginação.
+### 2. Backend — persistência
+- Migration `20260805090000_ai`:
+  - `ai_insight` (companyId, scope, kind, severity, title, summary, data JSON, createdAt).
+  - `ai_conversation` + `ai_message` (companyId, userId, role, content, toolCalls).
+  - `ai_forecast` (companyId, farmId?, horizonDays, series JSON, generatedAt).
+  - `action_plan` (companyId, title, description, priority, dueDate, assigneeUserId?, status, sourceAlertId?, createdBy).
+  - Colunas em `photo`: `aiTags` (string[]), `aiSummary` (text), `aiAnalyzedAt`.
 
-### 3. Sincronização
-- **Contrato**: cada entidade sincronizável já tem `version`, `syncStatus`, `deviceId`, `isDeleted`, `updatedAt`.
-- **Endpoints** (`/sync/*`):
-  - `GET /sync/pull?companyId&since&entities` → devolve deltas por entidade.
-  - `POST /sync/push` → recebe lote `{ entity, op, payload, clientVersion, deviceId }`, retorna resultado por item (ok / conflict / rejected) com a versão canônica.
-  - Estratégia: *last-writer-wins* por default, `409 conflict` quando `clientVersion < serverVersion` → app decide merge.
-- **Registro de sync**: tabela `sync_session` (deviceId, userId, startedAt, finishedAt, pulled, pushed, conflicts).
+### 3. Frontend — telas novas/atualizadas
+- `/alertas-ia` — lista de `ai_insight` + botão "Gerar novos insights" (chama `/ai/insights`), cards com severidade e drilldown.
+- `/assistente` — chat com histórico persistido, sugestões rápidas ("Qual fazenda produziu menos essa semana?"), streaming SSE.
+- `/previsoes` — seleciona fazenda + horizonte, gráfico linha (real vs previsto) usando Recharts (já instalado).
+- `/planos-acao` — kanban (Aberto / Em andamento / Concluído), criação manual ou "gerar a partir do alerta".
+- `/ia` — painel: total de insights, tokens/custos (estimativa), últimos 5 diálogos, atalhos.
+- `/fotografias` — adiciona botão "Analisar com IA" por foto; badges com tags detectadas.
 
-### 4. Painel de Sincronização (`/sincronizacao`)
-- Cards de saúde: dispositivos ativos, última sync, itens pendentes, conflitos 24h.
-- Lista de sessões recentes com drill-down por dispositivo.
-- Ação: forçar re-sync (marca todos os registros da empresa como `syncStatus=stale` para o device).
-
-### 5. Alertas (`/alertas` + `/alertas-ia`)
-- Tabela `alert_rule` (companyId, kind, threshold, channel, active).
-- Motor simples avaliado no cron: DRC fora da faixa, produção abaixo da média, ocorrência crítica aberta > X dias.
-- UI: lista de regras + histórico de disparos. `/alertas-ia` continua placeholder para Sprint 6/7.
-
-### 6. Integrações (`/integracoes`)
-- Tabela `integration` (provider, config JSON, secret, active) + `webhook_delivery`.
-- Suporte inicial: webhook genérico (POST JSON) disparado em eventos de produção/ocorrência.
-- Placeholder configurável para AGS.
-
-### 7. Configurações (`/configuracoes`)
-- Preferências da empresa: fuso, unidade padrão (kg/L), política de retenção de fotos, moeda.
-- Persistidas em `company_settings` (1:1 com Company).
+### 4. Integração com Sprint 5
+- Alertas do motor de regras (`AlertEvent`) alimentam `/ai/action-plans/generate`.
+- Insights gerados pela IA também escrevem em `AlertEvent` (level=`info|warning|critical`) para aparecer no sino do topbar.
 
 ## Detalhes técnicos
 
-**Migration `20260804090000_governance`** cria: `audit_log`, `system_log`, `sync_session`, `alert_rule`, `alert_event`, `integration`, `webhook_delivery`, `company_settings`. Todas com `companyId` + índices por `(companyId, createdAt desc)` e GRANTs implícitos (Prisma → Postgres direto, sem RLS aqui pois autenticação é JWT no NestJS).
+- **Sem novas chaves**: usa o secret `LOVABLE_API_KEY` já configurado.
+- **Contexto do prompt**: `AiContextBuilder` agrega KPIs/últimos 30 dias com queries agregadas já disponíveis em `KpisService` — evita reprocessar.
+- **Function-calling**: schema OpenAI-compat, cada tool mapeia para um método existente no backend (reuso puro).
+- **Streaming**: `/ai/chat` devolve `text/event-stream` para o assistente; endpoints de insight/forecast retornam JSON síncrono.
+- **Sidebar**: os itens `/alertas-ia`, `/assistente`, `/previsoes`, `/planos-acao`, `/ia` já existem como ComingSoon — trocam pelas telas reais.
 
-**Backend novos módulos**: `audit/`, `logs/`, `sync/`, `alerts/`, `integrations/`, `settings/`. Cada um com `controller + service + dto`, protegidos por `JwtAuthGuard` + `CompanyAccess`.
+```text
+[Ocorrências] ─┐
+[Produção]    ─┼─► AiContextBuilder ─► LovableGateway ─► Insights ─► AlertEvent + ActionPlan
+[Sangrias]    ─┘                                     └► Chat (SSE) ─► UI
+[Fotos]       ────────────────► Vision ─► photo.aiTags/aiSummary
+```
 
-**Auditoria transversal**: `AuditInterceptor` global registrado em `AppModule` que lê metadata `@Audited('entity')` nos handlers de escrita — evita boilerplate em cada service.
-
-**Frontend novos helpers**: `src/lib/{auditoria,logs,sync,alertas,integracoes,configuracoes}.functions.ts` seguindo o padrão `apiRequest`.
-
-**Sidebar**: os itens já existem (Auditoria, Logs, Sincronização, Alertas, Integrações, Configurações) — substituem `ComingSoon` pelas telas reais.
-
-## Fora do escopo (fica para Sprint 6/7)
-- Assinatura digital dos logs de auditoria.
-- IA de anomalias em `/alertas-ia`.
-- App Monitor/Consultor consumindo o `/sync` (backend fica pronto, app é sprint futura).
-- Integração AGS real — apenas conector genérico agora.
+## Fora do escopo (Sprint 7)
+- Treino de modelo próprio / fine-tuning.
+- Push notifications dos alertas IA.
+- Consumo de IA nos apps mobile (backend fica pronto).
 
 ## Deploy
-1. `bun install` no backend (sem novas deps além do que já existe).
-2. Aplicar migration `20260804090000_governance`.
-3. Rebuild sem cache no front e back no EasyPanel.
+1. Aplicar migration `20260805090000_ai`.
+2. Rebuild backend e frontend no EasyPanel.
+3. `LOVABLE_API_KEY` já está no ambiente — nenhum passo extra.
 
 Confirma que sigo com essa entrega?
