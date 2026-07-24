@@ -74,11 +74,15 @@ export type Person = {
   createdAt: string;
   cpf?: string | null;
   phone?: string | null;
+  active?: boolean;
   roles: CompanyRole[];
 };
 
 export type PersonDetail = Person & PersonalData & {
   employment: Employment | null;
+  active: boolean;
+  deactivatedAt: string | null;
+  deactivationReason: string | null;
 };
 
 export function listPeople(companyId: string) {
