@@ -57,7 +57,8 @@ async function bootstrap() {
     allowedHeaders: DEFAULT_ALLOWED_HEADERS,
     maxAge: 86400,
   });
-  app.use(helmet());
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '7d', fallthrough: false }));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
