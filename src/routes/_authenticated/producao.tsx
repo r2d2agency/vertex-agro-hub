@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, BarChart3 } from "lucide-react";
+import { Plus, Pencil, Trash2, BarChart3, Download } from "lucide-react";
+import { downloadCsv, fmtDateBR } from "@/lib/csv";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,8 @@ function ProducaoPage() {
   const qc = useQueryClient();
   const [farmFilter, setFarmFilter] = useState("__all");
   const [seasonFilter, setSeasonFilter] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Delivery | null>(null);
   const [toDelete, setToDelete] = useState<Delivery | null>(null);
@@ -63,13 +66,36 @@ function ProducaoPage() {
   });
 
   const { data = [], isLoading: loading } = useQuery({
-    queryKey: ["deliveries", companyId, farmFilter, seasonFilter],
+    queryKey: ["deliveries", companyId, farmFilter, seasonFilter, from, to],
     queryFn: () => listDeliveries(companyId!, {
       farmId: farmFilter !== "__all" ? farmFilter : undefined,
       season: seasonFilter || undefined,
+      from: from || undefined,
+      to: to || undefined,
     }),
     enabled: !!companyId,
   });
+
+  const exportCsv = () => {
+    const farmName = (id?: string | null) => farms.find((f) => f.id === id)?.name ?? "";
+    downloadCsv(`producao-${new Date().toISOString().slice(0, 10)}`, data, [
+      { key: "deliveryDate", label: "Data", format: fmtDateBR },
+      { key: "season", label: "Safra" },
+      { key: "farmId", label: "Fazenda", format: (v) => farmName(v) },
+      { key: "propertyName", label: "Propriedade" },
+      { key: "ownerName", label: "Proprietário" },
+      { key: "latexType", label: "Tipo" },
+      { key: "coagulant", label: "Coagulante" },
+      { key: "grossWeightKg", label: "Peso bruto (kg)" },
+      { key: "netWeightKg", label: "Peso líquido (kg)" },
+      { key: "drcAvgPercent", label: "DRC %" },
+      { key: "dryKg", label: "Kg secos" },
+      { key: "consultantName", label: "Consultor" },
+      { key: "monitorName", label: "Monitor" },
+      { key: "notes", label: "Observações" },
+    ]);
+  };
+
 
   const del = useMutation({
     mutationFn: (id: string) => deleteDelivery(id),
