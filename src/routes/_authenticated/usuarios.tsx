@@ -47,6 +47,7 @@ function PeoplePage() {
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<Person | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data = [], isLoading: loadingList } = useQuery({
     queryKey: ["people", companyId],
