@@ -90,11 +90,11 @@ function FotografiasPage() {
       <PageHeader
         title="Fotografias"
         description="Registro fotográfico do campo com localização."
-        icon={Camera}
+        
         actions={<Button onClick={openNew} disabled={!companyId}><Plus className="h-4 w-4" /> Nova foto</Button>}
       />
 
-      <CompanyPicker value={companyId} onChange={setCompanyId} companies={companies} isLoading={isLoading} />
+      <CompanyPicker companies={companies} companyId={companyId} onChange={setCompanyId} />
       {!isLoading && companies.length === 0 && <NoCompanyCard />}
 
       {companyId && (

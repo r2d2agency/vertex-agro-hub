@@ -73,10 +73,10 @@ function HistoricoPage() {
       <PageHeader
         title="Histórico"
         description="Linha do tempo unificada dos eventos operacionais."
-        icon={History}
+        
       />
 
-      <CompanyPicker value={companyId} onChange={setCompanyId} companies={companies} isLoading={isLoading} />
+      <CompanyPicker companies={companies} companyId={companyId} onChange={setCompanyId} />
       {!isLoading && companies.length === 0 && <NoCompanyCard />}
 
       {companyId && (

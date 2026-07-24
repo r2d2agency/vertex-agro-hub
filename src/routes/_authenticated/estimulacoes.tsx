@@ -115,7 +115,7 @@ function EstimulacoesPage() {
       <PageHeader
         title="Estimulações"
         description="Registro de aplicações de estimulantes."
-        icon={FlaskConical}
+        
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={exportCsv} disabled={!items.length}>
@@ -128,7 +128,7 @@ function EstimulacoesPage() {
         }
       />
 
-      <CompanyPicker value={companyId} onChange={setCompanyId} companies={companies} isLoading={isLoading} />
+      <CompanyPicker companies={companies} companyId={companyId} onChange={setCompanyId} />
       {!isLoading && companies.length === 0 && <NoCompanyCard />}
 
       {companyId && (
