@@ -20,6 +20,8 @@ import { listFarms, type Farm } from "@/lib/fazendas.functions";
 import {
   createPlot, deletePlot, listPlots, updatePlot, type Plot, type PlotInput,
 } from "@/lib/talhoes.functions";
+import { listClones } from "@/lib/clones.functions";
+import { listTappingTables } from "@/lib/tabelas.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
 import { toBoundary, type GeoBoundary } from "@/lib/geo";
 
@@ -177,6 +179,17 @@ function PlotDialog({
 }) {
   const [values, setValues] = useState<PlotInput>(empty);
 
+  const { data: clones = [] } = useQuery({
+    queryKey: ["clones", companyId],
+    queryFn: () => listClones(companyId!),
+    enabled: !!companyId && open,
+  });
+  const { data: tables = [] } = useQuery({
+    queryKey: ["tapping-tables", companyId],
+    queryFn: () => listTappingTables(companyId!),
+    enabled: !!companyId && open,
+  });
+
   useEffect(() => {
     if (!open) return;
     if (initial) setValues({
@@ -234,10 +247,38 @@ function PlotDialog({
             <div className="col-span-2"><Label>Nome *</Label><Input value={values.name} onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))} required /></div>
             <div><Label>Código</Label><Input value={values.code} onChange={(e) => setValues((v) => ({ ...v, code: e.target.value }))} /></div>
             <div><Label>Área (ha)</Label><Input type="number" step="0.01" value={values.areaHa ?? ""} onChange={(e) => setValues((v) => ({ ...v, areaHa: e.target.value ? Number(e.target.value) : null }))} /></div>
-            <div><Label>Clone</Label><Input value={values.cloneName} onChange={(e) => setValues((v) => ({ ...v, cloneName: e.target.value }))} /></div>
+            <div>
+              <Label>Clone</Label>
+              <Select
+                value={values.cloneName || "__none"}
+                onValueChange={(v) => setValues((s) => ({ ...s, cloneName: v === "__none" ? "" : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder={clones.length ? "Selecione o clone" : "Nenhum clone cadastrado"} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Sem clone —</SelectItem>
+                  {clones.map((c) => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div><Label>Ano de plantio</Label><Input type="number" value={values.plantingYear ?? ""} onChange={(e) => setValues((v) => ({ ...v, plantingYear: e.target.value ? Number(e.target.value) : null }))} /></div>
             <div><Label>Nº de árvores</Label><Input type="number" value={values.treeCount ?? ""} onChange={(e) => setValues((v) => ({ ...v, treeCount: e.target.value ? Number(e.target.value) : null }))} /></div>
-            <div><Label>Sistema de sangria</Label><Input value={values.tappingSystem} onChange={(e) => setValues((v) => ({ ...v, tappingSystem: e.target.value }))} placeholder="Ex.: 1/2S d/3" /></div>
+            <div>
+              <Label>Sistema de sangria</Label>
+              <Select
+                value={values.tappingSystem || "__none"}
+                onValueChange={(v) => setValues((s) => ({ ...s, tappingSystem: v === "__none" ? "" : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder={tables.length ? "Selecione a tabela" : "Nenhuma tabela cadastrada"} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Sem sistema —</SelectItem>
+                  {tables.map((t) => (
+                    <SelectItem key={t.id} value={t.notation || t.name}>
+                      {t.name}{t.notation ? ` — ${t.notation}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="col-span-2"><Label>Observações</Label><Textarea rows={3} value={values.notes} onChange={(e) => setValues((v) => ({ ...v, notes: e.target.value }))} /></div>
 
             <div className="col-span-2 space-y-2">
