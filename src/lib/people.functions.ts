@@ -163,3 +163,113 @@ export const DOCUMENT_KINDS = [
   "Certificado de reservista", "Comprovante de residência", "Diploma",
   "Certificado NR", "Contrato", "Outro",
 ] as const;
+
+// ===== Vínculos e Avaliações =====
+export const ASSIGNMENT_ROLES = [
+  { value: "consultor", label: "Consultor" },
+  { value: "monitor", label: "Monitor" },
+  { value: "sangrador", label: "Sangrador" },
+] as const;
+export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number]["value"];
+
+export type FarmAssignment = {
+  id: string;
+  userId: string;
+  farmId: string;
+  companyId: string;
+  role: AssignmentRole;
+  consultorUserId: string | null;
+  startAt: string;
+  endAt: string | null;
+  endReason: string | null;
+  notes: string | null;
+  farm: { id: string; name: string; code: string | null } | null;
+  consultor: { id: string; fullName: string | null; email: string } | null;
+  user?: { id: string; fullName: string | null; email: string; avatarUrl: string | null; active: boolean };
+};
+
+export type PersonEvaluation = {
+  id: string;
+  userId: string;
+  companyId: string;
+  evaluatorUserId: string | null;
+  ratedAt: string;
+  rating: number;
+  category: string | null;
+  title: string | null;
+  notes: string | null;
+  createdAt: string;
+  evaluator: { id: string; fullName: string | null; email: string } | null;
+};
+
+export function setPersonActive(userId: string, companyId: string, active: boolean, reason?: string) {
+  return apiRequest(`/people/${userId}/active?companyId=${encodeURIComponent(companyId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ active, reason }),
+  });
+}
+
+export function listPersonAssignments(userId: string, companyId: string) {
+  return apiRequest<FarmAssignment[]>(
+    `/people/${userId}/assignments?companyId=${encodeURIComponent(companyId)}`,
+  );
+}
+
+export function createPersonAssignment(userId: string, input: {
+  companyId: string;
+  farmId: string;
+  role: AssignmentRole;
+  consultorUserId?: string;
+  startAt: string;
+  notes?: string;
+}) {
+  return apiRequest<FarmAssignment>(`/people/${userId}/assignments`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function endPersonAssignment(userId: string, assignmentId: string, companyId: string, endAt?: string, endReason?: string) {
+  return apiRequest(`/people/${userId}/assignments/${assignmentId}/end`, {
+    method: "PATCH",
+    body: JSON.stringify({ companyId, endAt, endReason }),
+  });
+}
+
+export function deletePersonAssignment(userId: string, assignmentId: string, companyId: string) {
+  return apiRequest(`/people/${userId}/assignments/${assignmentId}?companyId=${encodeURIComponent(companyId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function listFarmTeam(farmId: string, companyId: string, history = false) {
+  const q = new URLSearchParams({ companyId, ...(history ? { history: "true" } : {}) });
+  return apiRequest<FarmAssignment[]>(`/people/farm/${farmId}/team?${q.toString()}`);
+}
+
+export function listPersonEvaluations(userId: string, companyId: string) {
+  return apiRequest<PersonEvaluation[]>(
+    `/people/${userId}/evaluations?companyId=${encodeURIComponent(companyId)}`,
+  );
+}
+
+export function createPersonEvaluation(userId: string, input: {
+  companyId: string;
+  ratedAt: string;
+  rating: number;
+  category?: string;
+  title?: string;
+  notes?: string;
+}) {
+  return apiRequest<PersonEvaluation>(`/people/${userId}/evaluations`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function deletePersonEvaluation(userId: string, evaluationId: string, companyId: string) {
+  return apiRequest(`/people/${userId}/evaluations/${evaluationId}?companyId=${encodeURIComponent(companyId)}`, {
+    method: "DELETE",
+  });
+}
+
