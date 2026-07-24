@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Calendar as CalendarIcon, CheckCircle2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar as CalendarIcon, CheckCircle2, Download } from "lucide-react";
+import { downloadCsv } from "@/lib/csv";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
@@ -137,7 +138,7 @@ function AgendaPage() {
             <SummaryCard label="Concluídas" value={summary.concluidas.toString()} />
           </div>
 
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <span className="text-sm text-muted-foreground">Status:</span>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
@@ -146,7 +147,28 @@ function AgendaPage() {
                 {TASK_STATUS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            <div className="ml-auto">
+              <Button variant="outline" onClick={() => {
+                const farmName = (id?: string | null) => farms.find((f) => f.id === id)?.name ?? "";
+                const teamName = (id?: string | null) => teams.find((t) => t.id === id)?.name ?? "";
+                downloadCsv(`agenda-${new Date().toISOString().slice(0, 10)}`, data, [
+                  { key: "scheduledAt", label: "Início", format: (v) => v ? new Date(v).toLocaleString("pt-BR") : "" },
+                  { key: "dueAt", label: "Prazo", format: (v) => v ? new Date(v).toLocaleString("pt-BR") : "" },
+                  { key: "title", label: "Título" },
+                  { key: "farmId", label: "Fazenda", format: (v) => farmName(v) },
+                  { key: "teamId", label: "Equipe", format: (v) => teamName(v) },
+                  { key: "category", label: "Categoria", format: (v) => label(TASK_CATEGORIES, v) },
+                  { key: "priority", label: "Prioridade", format: (v) => label(TASK_PRIORITIES, v) },
+                  { key: "status", label: "Status", format: (v) => label(TASK_STATUS, v) },
+                  { key: "responsible", label: "Responsável" },
+                  { key: "description", label: "Descrição" },
+                ]);
+              }} disabled={!data.length}>
+                <Download className="mr-2 h-4 w-4" /> Exportar CSV
+              </Button>
+            </div>
           </div>
+
 
           {loading ? (
             <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Carregando...</CardContent></Card>
