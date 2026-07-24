@@ -136,18 +136,36 @@ function ProducaoPage() {
             <SummaryCard label="DRC médio" value={summary.drc ? `${summary.drc.toFixed(1)}%` : "—"} />
           </div>
 
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Fazenda:</span>
-            <Select value={farmFilter} onValueChange={setFarmFilter}>
-              <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todas</SelectItem>
-                {farms.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <span className="text-sm text-muted-foreground">Safra:</span>
-            <Input className="w-32" placeholder="ex: 2025" value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)} />
+          <div className="mb-4 flex flex-wrap items-end gap-2">
+            <div>
+              <span className="mb-1 block text-xs text-muted-foreground">Fazenda</span>
+              <Select value={farmFilter} onValueChange={setFarmFilter}>
+                <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">Todas</SelectItem>
+                  {farms.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <span className="mb-1 block text-xs text-muted-foreground">Safra</span>
+              <Input className="w-28" placeholder="2025" value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)} />
+            </div>
+            <div>
+              <span className="mb-1 block text-xs text-muted-foreground">De</span>
+              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" />
+            </div>
+            <div>
+              <span className="mb-1 block text-xs text-muted-foreground">Até</span>
+              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
+            </div>
+            <div className="ml-auto">
+              <Button variant="outline" onClick={exportCsv} disabled={!data.length}>
+                <Download className="mr-2 h-4 w-4" /> Exportar CSV
+              </Button>
+            </div>
           </div>
+
 
           <Card>
             <CardContent className="p-0">
