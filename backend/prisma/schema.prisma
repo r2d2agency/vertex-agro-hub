@@ -201,6 +201,11 @@ model Company {
   alertEvents AlertEvent[]
   integrations Integration[]
   settings    CompanySettings?
+  aiInsights  AiInsight[]
+  aiForecasts AiForecast[]
+  actionPlans ActionPlan[]
+
+
 
 
   @@index([isDeleted])
@@ -644,6 +649,11 @@ model Photo {
   category   String?
   caption    String?
   author     String?
+  aiTags     Json?    @map("ai_tags")
+  aiSummary  String?  @map("ai_summary")
+  aiAnalyzedAt DateTime? @map("ai_analyzed_at")
+
+
 
   version      Int        @default(1)
   syncStatus   SyncStatus @default(synced) @map("sync_status")
