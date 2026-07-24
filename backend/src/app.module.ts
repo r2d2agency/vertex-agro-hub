@@ -26,6 +26,7 @@ import { HealthController } from './health.controller';
     PeopleModule,
     TeamsModule,
     ActivitiesModule,
+    UploadsModule,
   ],
   controllers: [HealthController],
 })
