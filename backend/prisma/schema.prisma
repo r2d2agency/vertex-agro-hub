@@ -663,3 +663,145 @@ model Photo {
   @@map("photos")
 }
 
+
+// ============================================================
+// Governança & Sincronização (Sprint 5)
+// ============================================================
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String?  @map("company_id") @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String
+  entity     String
+  entityId   String?  @map("entity_id")
+  diff       Json?
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([entity, entityId])
+  @@map("audit_log")
+}
+
+model SystemLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String?  @map("company_id") @db.Uuid
+  level     String   @default("info")
+  source    String
+  message   String
+  meta      Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([level, createdAt])
+  @@map("system_log")
+}
+
+model SyncSession {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  deviceId   String   @map("device_id")
+  startedAt  DateTime @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  pulled     Int      @default(0)
+  pushed     Int      @default(0)
+  conflicts  Int      @default(0)
+  note       String?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, startedAt])
+  @@index([deviceId])
+  @@map("sync_session")
+}
+
+model AlertRule {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  kind       String
+  name       String
+  threshold  Json?
+  channel    String   @default("in_app")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  events  AlertEvent[]
+
+  @@index([companyId, active])
+  @@map("alert_rule")
+}
+
+model AlertEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  ruleId    String?  @map("rule_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  level     String   @default("info")
+  title     String
+  message   String?
+  meta      Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  rule    AlertRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  company Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@map("alert_event")
+}
+
+model Integration {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  provider   String
+  name       String
+  config     Json?
+  secret     String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@index([companyId, active])
+  @@map("integration")
+}
+
+model WebhookDelivery {
+  id            String   @id @default(uuid()) @db.Uuid
+  integrationId String   @map("integration_id") @db.Uuid
+  event         String
+  payload       Json
+  status        String   @default("pending")
+  statusCode    Int?     @map("status_code")
+  responseBody  String?  @map("response_body")
+  attemptedAt   DateTime @default(now()) @map("attempted_at")
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, attemptedAt])
+  @@map("webhook_delivery")
+}
+
+model CompanySettings {
+  companyId          String   @id @map("company_id") @db.Uuid
+  timezone           String   @default("America/Sao_Paulo")
+  unitWeight         String   @default("kg") @map("unit_weight")
+  unitVolume         String   @default("L")  @map("unit_volume")
+  currency           String   @default("BRL")
+  photoRetentionDays Int      @default(365) @map("photo_retention_days")
+  extra              Json?
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_settings")
+}
