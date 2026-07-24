@@ -63,7 +63,7 @@ export class AiService {
       }),
       this.prisma.occurrence.findMany({
         where: { companyId, isDeleted: false, date: { gte: from } },
-        select: { date: true, kind: true, severity: true, status: true, farmId: true, description: true },
+        select: { date: true, type: true, severity: true, status: true, farmId: true, description: true },
         orderBy: { date: 'desc' },
         take: 30,
       }),
@@ -96,7 +96,7 @@ export class AiService {
       total_kg_secos: +ctx.totals.totalDry.toFixed(2),
       drc_medio: +ctx.totals.drcAvg.toFixed(2),
       fazendas: farms.map((f) => ({ nome: f.name, kg_secos: +f.dry.toFixed(1), dias_sangria: f.days })),
-      ocorrencias_recentes: ctx.occ.map((o) => ({ data: o.date.toISOString().slice(0, 10), tipo: o.kind, severidade: o.severity, status: o.status, descricao: o.description })).slice(0, 15),
+      ocorrencias_recentes: ctx.occ.map((o) => ({ data: o.date.toISOString().slice(0, 10), tipo: o.type, severidade: o.severity, status: o.status, descricao: o.description })).slice(0, 15),
     };
   }
 
