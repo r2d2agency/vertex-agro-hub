@@ -93,7 +93,7 @@ export async function seedCompanyCatalog(prisma: PrismaClient, companyId: string
 export async function seedAllCompaniesCatalog(prisma: PrismaClient) {
   const companies = await prisma.company.findMany({
     where: { isDeleted: false },
-    select: { id: true, razaoSocial: true },
+    select: { id: true, name: true },
   });
   let totalClones = 0;
   let totalTables = 0;
@@ -103,7 +103,7 @@ export async function seedAllCompaniesCatalog(prisma: PrismaClient) {
       totalClones += r.clones;
       totalTables += r.tables;
     } catch (err) {
-      console.error(`[seed-catalog] falha em ${c.razaoSocial}:`, err);
+      console.error(`[seed-catalog] falha em ${c.name}:`, err);
     }
   }
   if (totalClones || totalTables) {
