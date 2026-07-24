@@ -13,6 +13,7 @@ import { ActivitiesModule } from './activities/activities.module';
 import { FieldModule } from './field/field.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { GovernanceModule } from './governance/governance.module';
+import { AiModule } from './ai/ai.module';
 
 import { HealthController } from './health.controller';
 
@@ -32,9 +33,9 @@ import { HealthController } from './health.controller';
     FieldModule,
     UploadsModule,
     GovernanceModule,
-
-
+    AiModule,
   ],
+
   controllers: [HealthController],
 })
 export class AppModule {}
