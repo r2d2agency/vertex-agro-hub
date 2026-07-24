@@ -1,72 +1,63 @@
-# Sprint 6 — Inteligência Artificial, Assistente e Previsões
+# Sprint 7 — Frota, Combustível, Estoques e Manutenção
 
-Coloca a camada de IA sobre a base operacional que já existe (produção, ocorrências, sangrias, fotos, histórico). Usa o Lovable AI Gateway (`LOVABLE_API_KEY` já cadastrado) — sem depender de chave do usuário.
+Adiciona ao Vertex Agro toda a camada operacional de **máquinas, implementos, operadores, operações, abastecimento, estoque de diesel, produtos/insumos e manutenção**, integrada à arquitetura multiempresa, RLS por fazenda, auditoria, sync offline e permissões já existentes. Nenhum app novo — o App do Monitor (futuro) consumirá os mesmos endpoints.
 
-## Objetivos
+Dada a extensão do escopo (27 seções do briefing), a entrega será feita em **5 sub-sprints sequenciais**, cada uma compilável e navegável no EasyPanel ao final. Só sigo para a próxima após validação sua.
 
-1. **Alertas Inteligentes (`/alertas-ia`)** — detecção de anomalias com IA (queda de produção, DRC fora do padrão, ocorrências recorrentes).
-2. **Assistente Vertex (`/assistente`)** — chat contextual que responde sobre dados da empresa (KPIs, fazendas, produção, colaboradores) via function-calling.
-3. **Previsões (`/previsoes`)** — projeção de produção por fazenda/talhão (próximos 30/60/90 dias) baseada em histórico.
-4. **Planos de Ação (`/planos-acao`)** — sugestões automáticas a partir das anomalias detectadas (o que fazer, quem, prazo).
-5. **Painel IA (`/ia`)** — visão consolidada: uso, custo estimado, últimos insights.
-6. **Análise de fotos** — endpoint que roda visão computacional em fotos de campo (Sprint 4) e extrai observações (sangria irregular, painel danificado).
+---
 
-## Entregas por módulo
+## Sub-sprint 7.1 — Cadastros base (esta entrega)
 
-### 1. Backend — módulo `ai/`
-- `AiService` centraliza chamadas ao Lovable AI Gateway (`https://ai.gateway.lovable.dev/v1/chat/completions`), header `Authorization: Bearer ${LOVABLE_API_KEY}`.
-- Modelos default: `google/gemini-2.5-flash` para chat/insights (grátis até 06/out/2025), `google/gemini-2.5-flash-image-preview` para visão.
-- Rate limiting: trata 429/402 e devolve erro amigável.
-- Endpoints:
-  - `POST /ai/insights` — recebe `{ companyId, scope }`, monta contexto (KPIs, últimas ocorrências, produção 30d) e devolve JSON `{ anomalies[], suggestions[] }`.
-  - `POST /ai/chat` — `{ companyId, messages[] }` com function-calling (`get_kpis`, `list_farms`, `list_occurrences`, `production_by_farm`).
-  - `POST /ai/forecast` — `{ companyId, farmId?, horizonDays }` → projeção diária (média móvel + tendência + prompt de ajuste sazonal via IA).
-  - `POST /ai/vision/photo/:photoId` — roda o modelo de visão sobre a foto e persiste `photo.aiTags` + `photo.aiSummary`.
-  - `POST /ai/action-plans/generate` — cria `ActionPlan` a partir de `AlertEvent` selecionado.
+Escopo mínimo para destravar o restante:
 
-### 2. Backend — persistência
-- Migration `20260805090000_ai`:
-  - `ai_insight` (companyId, scope, kind, severity, title, summary, data JSON, createdAt).
-  - `ai_conversation` + `ai_message` (companyId, userId, role, content, toolCalls).
-  - `ai_forecast` (companyId, farmId?, horizonDays, series JSON, generatedAt).
-  - `action_plan` (companyId, title, description, priority, dueDate, assigneeUserId?, status, sourceAlertId?, createdBy).
-  - Colunas em `photo`: `aiTags` (string[]), `aiSummary` (text), `aiAnalyzedAt`.
+### Backend (NestJS + Prisma)
+- Migration `20260806090000_fleet_core`:
+  - `machine` (categoria, marca, modelo, ano, série, placa, tanque, combustível, horímetro, status, operador padrão, monitor responsável, fazenda, fotos, aquisição, fornecedor).
+  - `implement` (implementos sem motor: categoria, série, máquina vinculada, responsável, status).
+  - `operator` (pessoa vinculada à fazenda; CPF, habilitação, validade, máquinas/categorias autorizadas, monitor responsável, status).
+  - `operation_type` (operações pré-cadastradas: código, categoria, flags exige horímetro/operador/foto/GPS/combustível, máquinas e implementos permitidos, unidade).
+  - `machine_photo`, `machine_document`, `machine_status_log` (histórico de status/horímetro).
+  - Tabelas de junção `machine_authorized_operator`, `monitor_machine_access`, `monitor_temp_farm_access` (autorização temporária com validade e motivo).
+  - Campos padrão de sync: `id UUID`, `version`, `syncStatus`, `deviceId`, `createdAt`, `updatedAt`, `createdBy`, `updatedBy`, `deletedAt`.
+- Novo módulo `FleetModule` (`machines`, `implements`, `operators`, `operation-types`) com CRUDs, filtros por empresa/fazenda/status e enforcement de acesso via `CompanyAccess`.
+- Seed de operações iniciais (transporte de produção, roçada, manutenção de estrada, etc.) e categorias, executado on-demand como já feito em `catalog.service`.
+- Seed demo opcional (Trator 01/02, Caminhão 01, Gerador 01, Carreta 01/02, Roçadeira 01, operadores Carlos/Marcos/Pedro) somente quando a empresa não tiver nenhuma máquina.
 
-### 3. Frontend — telas novas/atualizadas
-- `/alertas-ia` — lista de `ai_insight` + botão "Gerar novos insights" (chama `/ai/insights`), cards com severidade e drilldown.
-- `/assistente` — chat com histórico persistido, sugestões rápidas ("Qual fazenda produziu menos essa semana?"), streaming SSE.
-- `/previsoes` — seleciona fazenda + horizonte, gráfico linha (real vs previsto) usando Recharts (já instalado).
-- `/planos-acao` — kanban (Aberto / Em andamento / Concluído), criação manual ou "gerar a partir do alerta".
-- `/ia` — painel: total de insights, tokens/custos (estimativa), últimos 5 diálogos, atalhos.
-- `/fotografias` — adiciona botão "Analisar com IA" por foto; badges com tags detectadas.
+### Frontend (TanStack Start)
+- Novo grupo no sidebar **"Máquinas e Equipamentos"** com: Visão Geral, Máquinas, Implementos, Operadores, Operações.
+- Rotas em `src/routes/_authenticated/`:
+  - `frota.tsx` (dashboard placeholder com contagem por status — evolui em 7.5).
+  - `maquinas.tsx` (lista + filtros + botão Nova).
+  - `maquinas.$id.tsx` (detalhe com abas Resumo/Fotos/Documentos/Histórico — abas Abastecimentos/Operações/Manutenções ficam vazias até 7.2–7.4).
+  - `implementos.tsx`, `operadores.tsx`, `operacoes.tsx` (CRUDs completos).
+- Libs cliente: `src/lib/frota.functions.ts` (machines, implements, operators, operationTypes).
+- Componentes reaproveitando `PageHeader`, `CompanyPicker`, `FileDropzone`, `FarmPicker`, padrão visual verde Vertex.
 
-### 4. Integração com Sprint 5
-- Alertas do motor de regras (`AlertEvent`) alimentam `/ai/action-plans/generate`.
-- Insights gerados pela IA também escrevem em `AlertEvent` (level=`info|warning|critical`) para aparecer no sino do topbar.
+### Fora desta sub-sprint (vem depois)
+- 7.2: Abastecimento + Estoque de Diesel + tanques + entradas + inventário + alertas.
+- 7.3: Produtos/Insumos + depósitos + entradas/saídas + transferências + lotes/validade.
+- 7.4: Manutenção (corretiva/preventiva) + peças + planos preventivos + custos.
+- 7.5: Dashboards consolidados de máquinas e estoques, relatórios (PDF/Excel/CSV), auditoria específica, endpoints e regras de conflito para o App do Monitor.
+
+---
 
 ## Detalhes técnicos
 
-- **Sem novas chaves**: usa o secret `LOVABLE_API_KEY` já configurado.
-- **Contexto do prompt**: `AiContextBuilder` agrega KPIs/últimos 30 dias com queries agregadas já disponíveis em `KpisService` — evita reprocessar.
-- **Function-calling**: schema OpenAI-compat, cada tool mapeia para um método existente no backend (reuso puro).
-- **Streaming**: `/ai/chat` devolve `text/event-stream` para o assistente; endpoints de insight/forecast retornam JSON síncrono.
-- **Sidebar**: os itens `/alertas-ia`, `/assistente`, `/previsoes`, `/planos-acao`, `/ia` já existem como ComingSoon — trocam pelas telas reais.
+- **Multiempresa/RLS**: toda tabela nova carrega `companyId` + `farmId` (quando aplicável) e passa por `CompanyAccess.assertMember`. Monitor só enxerga fazendas autorizadas (`monitor_machine_access` + `monitor_temp_farm_access` com validade).
+- **Sync offline**: colunas `version` / `syncStatus` / `deviceId` já no schema para 7.5 plugar no `SyncService` existente sem migration adicional.
+- **Auditoria**: mutations críticas (mudança de status, horímetro, autorização) escrevem em `audit_log` via `AuditService` já disponível.
+- **Sem exclusão física**: máquinas/implementos/operadores usam `status='inativa'` e `deletedAt`; operações usam flag `status`.
+- **Horímetro**: coluna `hourmeter` decimal + `hourmeterUnit` (`h`/`km`), com histórico em `machine_status_log` para auditoria de ajustes.
+- **Fotos e documentos**: reusa `UploadsModule` e `FileDropzone` já implementados na Sprint 3.
+- **Categorias/status**: enums Postgres (`machine_category`, `machine_status`, `implement_category`, `operation_category`) para consistência.
+- **Compatibilidade**: nada em `pessoas` é alterado — `operator` é entidade separada por ora, e vinculação futura ao `Person` fica prevista via `personId?` nullable.
 
-```text
-[Ocorrências] ─┐
-[Produção]    ─┼─► AiContextBuilder ─► LovableGateway ─► Insights ─► AlertEvent + ActionPlan
-[Sangrias]    ─┘                                     └► Chat (SSE) ─► UI
-[Fotos]       ────────────────► Vision ─► photo.aiTags/aiSummary
-```
-
-## Fora do escopo (Sprint 7)
-- Treino de modelo próprio / fine-tuning.
-- Push notifications dos alertas IA.
-- Consumo de IA nos apps mobile (backend fica pronto).
+---
 
 ## Deploy
-1. Aplicar migration `20260805090000_ai`.
-2. Rebuild backend e frontend no EasyPanel.
-3. `LOVABLE_API_KEY` já está no ambiente — nenhum passo extra.
 
-Confirma que sigo com essa entrega?
+1. Aplicar migration `20260806090000_fleet_core` no EasyPanel.
+2. Rebuild backend + frontend.
+3. Seed automático popula operações e (se vazio) demo de máquinas na primeira listagem.
+
+Confirma que sigo com a sub-sprint 7.1 nesses termos?
