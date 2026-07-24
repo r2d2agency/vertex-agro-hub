@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, Download } from "lucide-react";
+import { downloadCsv, fmtDateBR } from "@/lib/csv";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,9 @@ function OccurrencesPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("__all");
+  const [farmFilter, setFarmFilter] = useState("__all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Occurrence | null>(null);
   const [toDelete, setToDelete] = useState<Occurrence | null>(null);
@@ -68,10 +72,30 @@ function OccurrencesPage() {
   });
 
   const { data = [], isLoading: loading } = useQuery({
-    queryKey: ["occurrences", companyId, statusFilter],
-    queryFn: () => listOccurrences(companyId!, { status: statusFilter !== "__all" ? statusFilter : undefined }),
+    queryKey: ["occurrences", companyId, statusFilter, farmFilter, from, to],
+    queryFn: () => listOccurrences(companyId!, {
+      status: statusFilter !== "__all" ? statusFilter : undefined,
+      farmId: farmFilter !== "__all" ? farmFilter : undefined,
+      from: from || undefined,
+      to: to || undefined,
+    }),
     enabled: !!companyId,
   });
+
+  const exportCsv = () => {
+    const farmName = (id?: string | null) => farms.find((f) => f.id === id)?.name ?? "";
+    downloadCsv(`ocorrencias-${new Date().toISOString().slice(0, 10)}`, data, [
+      { key: "date", label: "Data", format: fmtDateBR },
+      { key: "title", label: "Título" },
+      { key: "farmId", label: "Fazenda", format: (v) => farmName(v) },
+      { key: "type", label: "Tipo", format: (v) => label(OCC_TYPES, v) },
+      { key: "severity", label: "Severidade", format: (v) => label(OCC_SEVERITIES, v) },
+      { key: "status", label: "Status", format: (v) => label(OCC_STATUS, v) },
+      { key: "responsible", label: "Responsável" },
+      { key: "description", label: "Descrição" },
+    ]);
+  };
+
 
   const del = useMutation({
     mutationFn: (id: string) => deleteOccurrence(id),
@@ -107,16 +131,42 @@ function OccurrencesPage() {
             <SummaryCard label="Críticas ativas" value={summary.criticas.toString()} />
           </div>
 
-          <div className="mb-4 flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Status:</span>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todos</SelectItem>
-                {OCC_STATUS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="mb-4 flex flex-wrap items-end gap-2">
+            <div>
+              <span className="mb-1 block text-xs text-muted-foreground">Status</span>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">Todos</SelectItem>
+                  {OCC_STATUS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <span className="mb-1 block text-xs text-muted-foreground">Fazenda</span>
+              <Select value={farmFilter} onValueChange={setFarmFilter}>
+                <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">Todas</SelectItem>
+                  {farms.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <span className="mb-1 block text-xs text-muted-foreground">De</span>
+              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" />
+            </div>
+            <div>
+              <span className="mb-1 block text-xs text-muted-foreground">Até</span>
+              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
+            </div>
+            <div className="ml-auto">
+              <Button variant="outline" onClick={exportCsv} disabled={!data.length}>
+                <Download className="mr-2 h-4 w-4" /> Exportar CSV
+              </Button>
+            </div>
           </div>
+
 
           <Card>
             <CardContent className="p-0">
