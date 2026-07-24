@@ -201,6 +201,11 @@ model Company {
   alertEvents AlertEvent[]
   integrations Integration[]
   settings    CompanySettings?
+  aiInsights  AiInsight[]
+  aiForecasts AiForecast[]
+  actionPlans ActionPlan[]
+
+
 
 
   @@index([isDeleted])
@@ -644,6 +649,11 @@ model Photo {
   category   String?
   caption    String?
   author     String?
+  aiTags     Json?    @map("ai_tags")
+  aiSummary  String?  @map("ai_summary")
+  aiAnalyzedAt DateTime? @map("ai_analyzed_at")
+
+
 
   version      Int        @default(1)
   syncStatus   SyncStatus @default(synced) @map("sync_status")
@@ -804,4 +814,72 @@ model CompanySettings {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("company_settings")
+}
+
+
+// ============================================================
+// Inteligência Artificial (Sprint 6)
+// ============================================================
+
+model AiInsight {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  farmId      String?  @map("farm_id") @db.Uuid
+  kind        String
+  severity    String   @default("info")
+  title       String
+  summary     String?
+  details     Json?
+  periodFrom  DateTime? @map("period_from")
+  periodTo    DateTime? @map("period_to")
+  model       String?
+  acknowledged Boolean @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  actionPlans ActionPlan[]
+
+  @@index([companyId, createdAt(sort: Desc)])
+  @@map("ai_insight")
+}
+
+model AiForecast {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  farmId         String?  @map("farm_id") @db.Uuid
+  horizonDays    Int      @map("horizon_days")
+  predictedDryKg Float    @map("predicted_dry_kg")
+  baselineDryKg  Float    @map("baseline_dry_kg")
+  confidence     Float?
+  method         String   @default("trend")
+  series         Json?
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt(sort: Desc)])
+  @@map("ai_forecast")
+}
+
+model ActionPlan {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  farmId      String?  @map("farm_id") @db.Uuid
+  insightId   String?  @map("insight_id") @db.Uuid
+  title       String
+  description String?
+  priority    String   @default("media")
+  status      String   @default("aberto")
+  dueDate     DateTime? @map("due_date")
+  assignee    String?
+  steps       Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  insight AiInsight? @relation(fields: [insightId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@map("action_plan")
 }
