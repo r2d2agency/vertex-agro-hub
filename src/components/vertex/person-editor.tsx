@@ -417,9 +417,20 @@ function DocumentsTab({ userId, companyId }: { userId: string; companyId: string
           <Field label="Validade">
             <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
           </Field>
-          <Field label="URL do arquivo">
-            <Input value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://..." />
-          </Field>
+          <div className="md:col-span-3">
+            <Field label="Arquivo do documento">
+              <FileDropzone
+                value={fileUrl}
+                preview="file"
+                label="Arraste o arquivo (PDF, imagem, DOC...) ou clique para carregar do PC"
+                onUploaded={(url, meta) => {
+                  setFileUrl(url);
+                  if (!name) setName(meta.originalName);
+                }}
+                onClear={() => setFileUrl("")}
+              />
+            </Field>
+          </div>
           <div className="md:col-span-3 flex justify-end">
             <Button size="sm" onClick={() => create.mutate()} disabled={create.isPending}>
               <Plus className="mr-2 h-4 w-4" /> Adicionar documento
