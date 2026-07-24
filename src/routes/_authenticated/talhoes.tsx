@@ -179,6 +179,17 @@ function PlotDialog({
 }) {
   const [values, setValues] = useState<PlotInput>(empty);
 
+  const { data: clones = [] } = useQuery({
+    queryKey: ["clones", companyId],
+    queryFn: () => listClones(companyId!),
+    enabled: !!companyId && open,
+  });
+  const { data: tables = [] } = useQuery({
+    queryKey: ["tapping-tables", companyId],
+    queryFn: () => listTappingTables(companyId!),
+    enabled: !!companyId && open,
+  });
+
   useEffect(() => {
     if (!open) return;
     if (initial) setValues({
