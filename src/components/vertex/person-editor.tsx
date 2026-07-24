@@ -19,6 +19,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CepInput } from "@/components/vertex/cep-input";
 import { UfSelect } from "@/components/vertex/uf-select";
+import { FileDropzone } from "@/components/vertex/file-dropzone";
 import { listFarms } from "@/lib/fazendas.functions";
 import {
   ASSIGNMENT_ROLES, CONTRACT_TYPES, DOCUMENT_KINDS, GENDERS, MARITAL_STATUSES,
@@ -209,9 +210,18 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                 <Field label="Nacionalidade">
                   <Input value={personal.nationality ?? ""} onChange={(e) => set({ nationality: e.target.value })} placeholder="Brasileira" />
                 </Field>
-                <Field label="URL da foto">
-                  <Input value={personal.avatarUrl ?? ""} onChange={(e) => set({ avatarUrl: e.target.value })} placeholder="https://..." />
-                </Field>
+                <div className="md:col-span-2">
+                  <Field label="Foto do colaborador">
+                    <FileDropzone
+                      value={personal.avatarUrl ?? ""}
+                      preview="image"
+                      accept="image/*"
+                      label="Arraste a foto aqui ou clique para carregar do PC"
+                      onUploaded={(url) => set({ avatarUrl: url })}
+                      onClear={() => set({ avatarUrl: "" })}
+                    />
+                  </Field>
+                </div>
                 <div className="md:col-span-2">
                   <Field label="Observações">
                     <Textarea rows={3} value={personal.notes ?? ""} onChange={(e) => set({ notes: e.target.value })} />
@@ -407,9 +417,20 @@ function DocumentsTab({ userId, companyId }: { userId: string; companyId: string
           <Field label="Validade">
             <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
           </Field>
-          <Field label="URL do arquivo">
-            <Input value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://..." />
-          </Field>
+          <div className="md:col-span-3">
+            <Field label="Arquivo do documento">
+              <FileDropzone
+                value={fileUrl}
+                preview="file"
+                label="Arraste o arquivo (PDF, imagem, DOC...) ou clique para carregar do PC"
+                onUploaded={(url, meta) => {
+                  setFileUrl(url);
+                  if (!name) setName(meta.originalName);
+                }}
+                onClear={() => setFileUrl("")}
+              />
+            </Field>
+          </div>
           <div className="md:col-span-3 flex justify-end">
             <Button size="sm" onClick={() => create.mutate()} disabled={create.isPending}>
               <Plus className="mr-2 h-4 w-4" /> Adicionar documento

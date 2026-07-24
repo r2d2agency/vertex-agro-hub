@@ -1,12 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { ensureSuperadmin } from './bootstrap/ensure-superadmin';
 import { seedAllCompaniesCatalog } from './bootstrap/seed-catalog';
 import { backfillGeo } from './bootstrap/backfill-geo';
+import { UPLOADS_DIR } from './uploads/uploads.controller';
 
 
 
@@ -55,7 +57,8 @@ async function bootstrap() {
     allowedHeaders: DEFAULT_ALLOWED_HEADERS,
     maxAge: 86400,
   });
-  app.use(helmet());
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '7d', fallthrough: false }));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

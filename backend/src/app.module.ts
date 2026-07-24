@@ -10,6 +10,7 @@ import { OperationsModule } from './operations/operations.module';
 import { PeopleModule } from './people/people.module';
 import { TeamsModule } from './teams/teams.module';
 import { ActivitiesModule } from './activities/activities.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -25,6 +26,7 @@ import { HealthController } from './health.controller';
     PeopleModule,
     TeamsModule,
     ActivitiesModule,
+    UploadsModule,
   ],
   controllers: [HealthController],
 })
