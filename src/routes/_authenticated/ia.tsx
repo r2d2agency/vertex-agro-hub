@@ -68,9 +68,9 @@ function IaPage() {
         <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4" /> Como funciona</CardTitle></CardHeader>
         <CardContent className="grid gap-2 text-sm text-muted-foreground">
           <p>A IA da Vertex Agro é alimentada pelos dados operacionais da sua empresa: entregas de produção, dias de sangria, DRC, ocorrências e fazendas.</p>
-          <p>Utiliza o gateway Lovable AI (modelo padrão Gemini) e requer a variável <code>LOVABLE_API_KEY</code> configurada no backend.</p>
         </CardContent>
       </Card>
+
     </div>
   );
 }
