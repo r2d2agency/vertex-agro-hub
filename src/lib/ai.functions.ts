@@ -61,3 +61,25 @@ export const planFromInsight = (insightId: string) =>
 export const analyzePhoto = (photoId: string) =>
   apiRequest<{ id: string; aiTags?: string[]; aiSummary?: string; aiAnalyzedAt?: string }>(
     `/ai/photos/${photoId}/analyze`, { method: "POST" });
+
+// ---------------- Config do provedor ----------------
+export type AiProvider = "lovable" | "openai" | "gemini";
+export type AiConfig = {
+  provider: AiProvider;
+  model?: string | null;
+  apiKey?: string | null;
+  useEnvKey?: boolean;
+  hasKey?: boolean;
+  envKeyAvailable?: boolean;
+};
+
+export const getAiConfig = (companyId: string) =>
+  apiRequest<AiConfig>(`/ai/config?companyId=${companyId}`);
+export const updateAiConfig = (companyId: string, dto: Partial<AiConfig>) =>
+  apiRequest<AiConfig>(`/ai/config?companyId=${companyId}`, {
+    method: "PATCH", body: JSON.stringify(dto),
+  });
+export const testAiConfig = (dto: { companyId: string } & Partial<AiConfig>) =>
+  apiRequest<{ ok: boolean; provider: string; model: string; sample?: string; error?: string }>(
+    `/ai/config/test`, { method: "POST", body: JSON.stringify(dto) });
+
