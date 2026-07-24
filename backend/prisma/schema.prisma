@@ -192,6 +192,9 @@ model Company {
   scheduledTasks ScheduledTask[]
   employments   PersonEmployment[]
   personDocuments PersonDocument[]
+  stimulations Stimulation[]
+  photos      Photo[]
+
 
   @@index([isDeleted])
   @@map("companies")
