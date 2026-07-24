@@ -165,3 +165,34 @@ export async function logout() {
     clearAuthTokens();
   }
 }
+
+export type UploadedFile = {
+  url: string;
+  filename: string;
+  originalName: string;
+  size: number;
+  mime: string;
+};
+
+export async function uploadFile(file: File): Promise<UploadedFile> {
+  const form = new FormData();
+  form.append("file", file);
+  const headers = new Headers();
+  const token = getAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(`${ensureApiUrl()}/uploads`, {
+    method: "POST",
+    headers,
+    body: form,
+  });
+
+  if (response.status === 401 && (await refreshAccessToken())) {
+    return uploadFile(file);
+  }
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
+  return (await response.json()) as UploadedFile;
+}
+
