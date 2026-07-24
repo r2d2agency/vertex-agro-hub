@@ -156,7 +156,7 @@ export class TerritorialService {
     await this.access.ensureCompany(userId, dto.companyId);
     const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
     if (!farm || farm.companyId !== dto.companyId) throw new ForbiddenException('Fazenda inválida');
-    return this.prisma.plot.create({ data: { ...dto, createdById: userId, updatedById: userId } as any });
+    return this.prisma.plot.create({ data: { ...withPlotGeo(dto), createdById: userId, updatedById: userId } as any });
   }
 
   async updatePlot(userId: string, id: string, dto: UpdatePlotDto) {
@@ -169,9 +169,10 @@ export class TerritorialService {
     }
     return this.prisma.plot.update({
       where: { id },
-      data: { ...dto, updatedById: userId, version: { increment: 1 } } as any,
+      data: { ...withPlotGeo(dto), updatedById: userId, version: { increment: 1 } } as any,
     });
   }
+
 
   async deletePlot(userId: string, id: string) {
     const current = await this.prisma.plot.findUnique({ where: { id } });
