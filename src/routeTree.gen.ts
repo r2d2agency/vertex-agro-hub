@@ -32,16 +32,21 @@ import { Route as AuthenticatedEquipesRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedEstimulacoesRouteImport } from './routes/_authenticated/estimulacoes'
 import { Route as AuthenticatedFazendasRouteImport } from './routes/_authenticated/fazendas'
 import { Route as AuthenticatedFotografiasRouteImport } from './routes/_authenticated/fotografias'
+import { Route as AuthenticatedFrotaRouteImport } from './routes/_authenticated/frota'
 import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
 import { Route as AuthenticatedIaRouteImport } from './routes/_authenticated/ia'
+import { Route as AuthenticatedImplementosRouteImport } from './routes/_authenticated/implementos'
 import { Route as AuthenticatedImportarRouteImport } from './routes/_authenticated/importar'
 import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenticated/indicadores'
 import { Route as AuthenticatedInspecoesRouteImport } from './routes/_authenticated/inspecoes'
 import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
 import { Route as AuthenticatedLogsRouteImport } from './routes/_authenticated/logs'
 import { Route as AuthenticatedMapasRouteImport } from './routes/_authenticated/mapas'
+import { Route as AuthenticatedMaquinasRouteImport } from './routes/_authenticated/maquinas'
 import { Route as AuthenticatedMonitoresRouteImport } from './routes/_authenticated/monitores'
 import { Route as AuthenticatedOcorrenciasRouteImport } from './routes/_authenticated/ocorrencias'
+import { Route as AuthenticatedOperacoesRouteImport } from './routes/_authenticated/operacoes'
+import { Route as AuthenticatedOperadoresRouteImport } from './routes/_authenticated/operadores'
 import { Route as AuthenticatedPermissoesRouteImport } from './routes/_authenticated/permissoes'
 import { Route as AuthenticatedPlanosAcaoRouteImport } from './routes/_authenticated/planos-acao'
 import { Route as AuthenticatedPrevisoesRouteImport } from './routes/_authenticated/previsoes'
@@ -60,6 +65,7 @@ import { Route as AuthenticatedDocumentacaoSlugRouteImport } from './routes/_aut
 import { Route as AuthenticatedEmpresasIndexRouteImport } from './routes/_authenticated/empresas.index'
 import { Route as AuthenticatedEmpresasIdRouteImport } from './routes/_authenticated/empresas.$id'
 import { Route as AuthenticatedEmpresasNovoRouteImport } from './routes/_authenticated/empresas.novo'
+import { Route as AuthenticatedMaquinasIdRouteImport } from './routes/_authenticated/maquinas.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -181,6 +187,11 @@ const AuthenticatedFotografiasRoute =
     path: '/fotografias',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFrotaRoute = AuthenticatedFrotaRouteImport.update({
+  id: '/frota',
+  path: '/frota',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedHistoricoRoute = AuthenticatedHistoricoRouteImport.update({
   id: '/historico',
   path: '/historico',
@@ -191,6 +202,12 @@ const AuthenticatedIaRoute = AuthenticatedIaRouteImport.update({
   path: '/ia',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedImplementosRoute =
+  AuthenticatedImplementosRouteImport.update({
+    id: '/implementos',
+    path: '/implementos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedImportarRoute = AuthenticatedImportarRouteImport.update({
   id: '/importar',
   path: '/importar',
@@ -223,6 +240,11 @@ const AuthenticatedMapasRoute = AuthenticatedMapasRouteImport.update({
   path: '/mapas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMaquinasRoute = AuthenticatedMaquinasRouteImport.update({
+  id: '/maquinas',
+  path: '/maquinas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMonitoresRoute = AuthenticatedMonitoresRouteImport.update({
   id: '/monitores',
   path: '/monitores',
@@ -234,6 +256,16 @@ const AuthenticatedOcorrenciasRoute =
     path: '/ocorrencias',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedOperacoesRoute = AuthenticatedOperacoesRouteImport.update({
+  id: '/operacoes',
+  path: '/operacoes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOperadoresRoute = AuthenticatedOperadoresRouteImport.update({
+  id: '/operadores',
+  path: '/operadores',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPermissoesRoute = AuthenticatedPermissoesRouteImport.update({
   id: '/permissoes',
   path: '/permissoes',
@@ -329,6 +361,11 @@ const AuthenticatedEmpresasNovoRoute =
     path: '/novo',
     getParentRoute: () => AuthenticatedEmpresasRoute,
   } as any)
+const AuthenticatedMaquinasIdRoute = AuthenticatedMaquinasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedMaquinasRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -353,16 +390,21 @@ export interface FileRoutesByFullPath {
   '/estimulacoes': typeof AuthenticatedEstimulacoesRoute
   '/fazendas': typeof AuthenticatedFazendasRoute
   '/fotografias': typeof AuthenticatedFotografiasRoute
+  '/frota': typeof AuthenticatedFrotaRoute
   '/historico': typeof AuthenticatedHistoricoRoute
   '/ia': typeof AuthenticatedIaRoute
+  '/implementos': typeof AuthenticatedImplementosRoute
   '/importar': typeof AuthenticatedImportarRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/inspecoes': typeof AuthenticatedInspecoesRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/logs': typeof AuthenticatedLogsRoute
   '/mapas': typeof AuthenticatedMapasRoute
+  '/maquinas': typeof AuthenticatedMaquinasRouteWithChildren
   '/monitores': typeof AuthenticatedMonitoresRoute
   '/ocorrencias': typeof AuthenticatedOcorrenciasRoute
+  '/operacoes': typeof AuthenticatedOperacoesRoute
+  '/operadores': typeof AuthenticatedOperadoresRoute
   '/permissoes': typeof AuthenticatedPermissoesRoute
   '/planos-acao': typeof AuthenticatedPlanosAcaoRoute
   '/previsoes': typeof AuthenticatedPrevisoesRoute
@@ -380,6 +422,7 @@ export interface FileRoutesByFullPath {
   '/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
+  '/maquinas/$id': typeof AuthenticatedMaquinasIdRoute
   '/empresas/': typeof AuthenticatedEmpresasIndexRoute
 }
 export interface FileRoutesByTo {
@@ -404,16 +447,21 @@ export interface FileRoutesByTo {
   '/estimulacoes': typeof AuthenticatedEstimulacoesRoute
   '/fazendas': typeof AuthenticatedFazendasRoute
   '/fotografias': typeof AuthenticatedFotografiasRoute
+  '/frota': typeof AuthenticatedFrotaRoute
   '/historico': typeof AuthenticatedHistoricoRoute
   '/ia': typeof AuthenticatedIaRoute
+  '/implementos': typeof AuthenticatedImplementosRoute
   '/importar': typeof AuthenticatedImportarRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/inspecoes': typeof AuthenticatedInspecoesRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/logs': typeof AuthenticatedLogsRoute
   '/mapas': typeof AuthenticatedMapasRoute
+  '/maquinas': typeof AuthenticatedMaquinasRouteWithChildren
   '/monitores': typeof AuthenticatedMonitoresRoute
   '/ocorrencias': typeof AuthenticatedOcorrenciasRoute
+  '/operacoes': typeof AuthenticatedOperacoesRoute
+  '/operadores': typeof AuthenticatedOperadoresRoute
   '/permissoes': typeof AuthenticatedPermissoesRoute
   '/planos-acao': typeof AuthenticatedPlanosAcaoRoute
   '/previsoes': typeof AuthenticatedPrevisoesRoute
@@ -431,6 +479,7 @@ export interface FileRoutesByTo {
   '/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
+  '/maquinas/$id': typeof AuthenticatedMaquinasIdRoute
   '/empresas': typeof AuthenticatedEmpresasIndexRoute
 }
 export interface FileRoutesById {
@@ -458,16 +507,21 @@ export interface FileRoutesById {
   '/_authenticated/estimulacoes': typeof AuthenticatedEstimulacoesRoute
   '/_authenticated/fazendas': typeof AuthenticatedFazendasRoute
   '/_authenticated/fotografias': typeof AuthenticatedFotografiasRoute
+  '/_authenticated/frota': typeof AuthenticatedFrotaRoute
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
   '/_authenticated/ia': typeof AuthenticatedIaRoute
+  '/_authenticated/implementos': typeof AuthenticatedImplementosRoute
   '/_authenticated/importar': typeof AuthenticatedImportarRoute
   '/_authenticated/indicadores': typeof AuthenticatedIndicadoresRoute
   '/_authenticated/inspecoes': typeof AuthenticatedInspecoesRoute
   '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
   '/_authenticated/logs': typeof AuthenticatedLogsRoute
   '/_authenticated/mapas': typeof AuthenticatedMapasRoute
+  '/_authenticated/maquinas': typeof AuthenticatedMaquinasRouteWithChildren
   '/_authenticated/monitores': typeof AuthenticatedMonitoresRoute
   '/_authenticated/ocorrencias': typeof AuthenticatedOcorrenciasRoute
+  '/_authenticated/operacoes': typeof AuthenticatedOperacoesRoute
+  '/_authenticated/operadores': typeof AuthenticatedOperadoresRoute
   '/_authenticated/permissoes': typeof AuthenticatedPermissoesRoute
   '/_authenticated/planos-acao': typeof AuthenticatedPlanosAcaoRoute
   '/_authenticated/previsoes': typeof AuthenticatedPrevisoesRoute
@@ -485,6 +539,7 @@ export interface FileRoutesById {
   '/_authenticated/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/_authenticated/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/_authenticated/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
+  '/_authenticated/maquinas/$id': typeof AuthenticatedMaquinasIdRoute
   '/_authenticated/empresas/': typeof AuthenticatedEmpresasIndexRoute
 }
 export interface FileRouteTypes {
@@ -512,16 +567,21 @@ export interface FileRouteTypes {
     | '/estimulacoes'
     | '/fazendas'
     | '/fotografias'
+    | '/frota'
     | '/historico'
     | '/ia'
+    | '/implementos'
     | '/importar'
     | '/indicadores'
     | '/inspecoes'
     | '/integracoes'
     | '/logs'
     | '/mapas'
+    | '/maquinas'
     | '/monitores'
     | '/ocorrencias'
+    | '/operacoes'
+    | '/operadores'
     | '/permissoes'
     | '/planos-acao'
     | '/previsoes'
@@ -539,6 +599,7 @@ export interface FileRouteTypes {
     | '/documentacao/$slug'
     | '/empresas/$id'
     | '/empresas/novo'
+    | '/maquinas/$id'
     | '/empresas/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -563,16 +624,21 @@ export interface FileRouteTypes {
     | '/estimulacoes'
     | '/fazendas'
     | '/fotografias'
+    | '/frota'
     | '/historico'
     | '/ia'
+    | '/implementos'
     | '/importar'
     | '/indicadores'
     | '/inspecoes'
     | '/integracoes'
     | '/logs'
     | '/mapas'
+    | '/maquinas'
     | '/monitores'
     | '/ocorrencias'
+    | '/operacoes'
+    | '/operadores'
     | '/permissoes'
     | '/planos-acao'
     | '/previsoes'
@@ -590,6 +656,7 @@ export interface FileRouteTypes {
     | '/documentacao/$slug'
     | '/empresas/$id'
     | '/empresas/novo'
+    | '/maquinas/$id'
     | '/empresas'
   id:
     | '__root__'
@@ -616,16 +683,21 @@ export interface FileRouteTypes {
     | '/_authenticated/estimulacoes'
     | '/_authenticated/fazendas'
     | '/_authenticated/fotografias'
+    | '/_authenticated/frota'
     | '/_authenticated/historico'
     | '/_authenticated/ia'
+    | '/_authenticated/implementos'
     | '/_authenticated/importar'
     | '/_authenticated/indicadores'
     | '/_authenticated/inspecoes'
     | '/_authenticated/integracoes'
     | '/_authenticated/logs'
     | '/_authenticated/mapas'
+    | '/_authenticated/maquinas'
     | '/_authenticated/monitores'
     | '/_authenticated/ocorrencias'
+    | '/_authenticated/operacoes'
+    | '/_authenticated/operadores'
     | '/_authenticated/permissoes'
     | '/_authenticated/planos-acao'
     | '/_authenticated/previsoes'
@@ -643,6 +715,7 @@ export interface FileRouteTypes {
     | '/_authenticated/documentacao/$slug'
     | '/_authenticated/empresas/$id'
     | '/_authenticated/empresas/novo'
+    | '/_authenticated/maquinas/$id'
     | '/_authenticated/empresas/'
   fileRoutesById: FileRoutesById
 }
@@ -817,6 +890,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFotografiasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/frota': {
+      id: '/_authenticated/frota'
+      path: '/frota'
+      fullPath: '/frota'
+      preLoaderRoute: typeof AuthenticatedFrotaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/historico': {
       id: '/_authenticated/historico'
       path: '/historico'
@@ -829,6 +909,13 @@ declare module '@tanstack/react-router' {
       path: '/ia'
       fullPath: '/ia'
       preLoaderRoute: typeof AuthenticatedIaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/implementos': {
+      id: '/_authenticated/implementos'
+      path: '/implementos'
+      fullPath: '/implementos'
+      preLoaderRoute: typeof AuthenticatedImplementosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/importar': {
@@ -873,6 +960,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMapasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/maquinas': {
+      id: '/_authenticated/maquinas'
+      path: '/maquinas'
+      fullPath: '/maquinas'
+      preLoaderRoute: typeof AuthenticatedMaquinasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/monitores': {
       id: '/_authenticated/monitores'
       path: '/monitores'
@@ -885,6 +979,20 @@ declare module '@tanstack/react-router' {
       path: '/ocorrencias'
       fullPath: '/ocorrencias'
       preLoaderRoute: typeof AuthenticatedOcorrenciasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/operacoes': {
+      id: '/_authenticated/operacoes'
+      path: '/operacoes'
+      fullPath: '/operacoes'
+      preLoaderRoute: typeof AuthenticatedOperacoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/operadores': {
+      id: '/_authenticated/operadores'
+      path: '/operadores'
+      fullPath: '/operadores'
+      preLoaderRoute: typeof AuthenticatedOperadoresRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/permissoes': {
@@ -1013,6 +1121,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmpresasNovoRouteImport
       parentRoute: typeof AuthenticatedEmpresasRoute
     }
+    '/_authenticated/maquinas/$id': {
+      id: '/_authenticated/maquinas/$id'
+      path: '/$id'
+      fullPath: '/maquinas/$id'
+      preLoaderRoute: typeof AuthenticatedMaquinasIdRouteImport
+      parentRoute: typeof AuthenticatedMaquinasRoute
+    }
   }
 }
 
@@ -1047,6 +1162,19 @@ const AuthenticatedEmpresasRouteWithChildren =
     AuthenticatedEmpresasRouteChildren,
   )
 
+interface AuthenticatedMaquinasRouteChildren {
+  AuthenticatedMaquinasIdRoute: typeof AuthenticatedMaquinasIdRoute
+}
+
+const AuthenticatedMaquinasRouteChildren: AuthenticatedMaquinasRouteChildren = {
+  AuthenticatedMaquinasIdRoute: AuthenticatedMaquinasIdRoute,
+}
+
+const AuthenticatedMaquinasRouteWithChildren =
+  AuthenticatedMaquinasRoute._addFileChildren(
+    AuthenticatedMaquinasRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAgendaRoute: typeof AuthenticatedAgendaRoute
   AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
@@ -1066,16 +1194,21 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEstimulacoesRoute: typeof AuthenticatedEstimulacoesRoute
   AuthenticatedFazendasRoute: typeof AuthenticatedFazendasRoute
   AuthenticatedFotografiasRoute: typeof AuthenticatedFotografiasRoute
+  AuthenticatedFrotaRoute: typeof AuthenticatedFrotaRoute
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
   AuthenticatedIaRoute: typeof AuthenticatedIaRoute
+  AuthenticatedImplementosRoute: typeof AuthenticatedImplementosRoute
   AuthenticatedImportarRoute: typeof AuthenticatedImportarRoute
   AuthenticatedIndicadoresRoute: typeof AuthenticatedIndicadoresRoute
   AuthenticatedInspecoesRoute: typeof AuthenticatedInspecoesRoute
   AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
   AuthenticatedLogsRoute: typeof AuthenticatedLogsRoute
   AuthenticatedMapasRoute: typeof AuthenticatedMapasRoute
+  AuthenticatedMaquinasRoute: typeof AuthenticatedMaquinasRouteWithChildren
   AuthenticatedMonitoresRoute: typeof AuthenticatedMonitoresRoute
   AuthenticatedOcorrenciasRoute: typeof AuthenticatedOcorrenciasRoute
+  AuthenticatedOperacoesRoute: typeof AuthenticatedOperacoesRoute
+  AuthenticatedOperadoresRoute: typeof AuthenticatedOperadoresRoute
   AuthenticatedPermissoesRoute: typeof AuthenticatedPermissoesRoute
   AuthenticatedPlanosAcaoRoute: typeof AuthenticatedPlanosAcaoRoute
   AuthenticatedPrevisoesRoute: typeof AuthenticatedPrevisoesRoute
@@ -1111,16 +1244,21 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEstimulacoesRoute: AuthenticatedEstimulacoesRoute,
   AuthenticatedFazendasRoute: AuthenticatedFazendasRoute,
   AuthenticatedFotografiasRoute: AuthenticatedFotografiasRoute,
+  AuthenticatedFrotaRoute: AuthenticatedFrotaRoute,
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,
   AuthenticatedIaRoute: AuthenticatedIaRoute,
+  AuthenticatedImplementosRoute: AuthenticatedImplementosRoute,
   AuthenticatedImportarRoute: AuthenticatedImportarRoute,
   AuthenticatedIndicadoresRoute: AuthenticatedIndicadoresRoute,
   AuthenticatedInspecoesRoute: AuthenticatedInspecoesRoute,
   AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,
   AuthenticatedLogsRoute: AuthenticatedLogsRoute,
   AuthenticatedMapasRoute: AuthenticatedMapasRoute,
+  AuthenticatedMaquinasRoute: AuthenticatedMaquinasRouteWithChildren,
   AuthenticatedMonitoresRoute: AuthenticatedMonitoresRoute,
   AuthenticatedOcorrenciasRoute: AuthenticatedOcorrenciasRoute,
+  AuthenticatedOperacoesRoute: AuthenticatedOperacoesRoute,
+  AuthenticatedOperadoresRoute: AuthenticatedOperadoresRoute,
   AuthenticatedPermissoesRoute: AuthenticatedPermissoesRoute,
   AuthenticatedPlanosAcaoRoute: AuthenticatedPlanosAcaoRoute,
   AuthenticatedPrevisoesRoute: AuthenticatedPrevisoesRoute,

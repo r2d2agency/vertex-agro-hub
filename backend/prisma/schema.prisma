@@ -883,3 +883,182 @@ model ActionPlan {
   @@index([companyId, status])
   @@map("action_plan")
 }
+
+
+// ============================================================
+// Frota, Implementos, Operadores e Operações (Sprint 7)
+// ============================================================
+
+model Machine {
+  id                String   @id @default(uuid()) @db.Uuid
+  companyId         String   @map("company_id") @db.Uuid
+  regionalId        String?  @map("regional_id") @db.Uuid
+  farmId            String?  @map("farm_id") @db.Uuid
+  code              String?
+  patrimony         String?
+  name              String
+  category          String   @default("trator")
+  brand             String?
+  model             String?
+  year              Int?
+  serial            String?
+  plate             String?
+  tankCapacity      Float?   @map("tank_capacity")
+  fuelType          String?  @map("fuel_type")
+  hourmeter         Float?
+  hourmeterUnit     String?  @map("hourmeter_unit")
+  defaultOperatorId String?  @map("default_operator_id") @db.Uuid
+  monitorUserId     String?  @map("monitor_user_id") @db.Uuid
+  acquisitionDate   DateTime? @map("acquisition_date") @db.Date
+  supplier          String?
+  photoUrl          String?  @map("photo_url")
+  status            String   @default("disponivel")
+  notes             String?
+
+  version      Int        @default(1)
+  syncStatus   String     @default("synced") @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  implements    Implement[]
+  documents     MachineDocument[]
+  statusLogs    MachineStatusLog[]
+
+  @@index([companyId, isDeleted])
+  @@index([farmId])
+  @@index([companyId, status])
+  @@map("machines")
+}
+
+model Implement {
+  id                  String   @id @default(uuid()) @db.Uuid
+  companyId           String   @map("company_id") @db.Uuid
+  farmId              String?  @map("farm_id") @db.Uuid
+  machineId           String?  @map("machine_id") @db.Uuid
+  code                String?
+  patrimony           String?
+  name                String
+  category            String   @default("outro")
+  brand               String?
+  model               String?
+  year                Int?
+  serial              String?
+  responsibleUserId   String?  @map("responsible_user_id") @db.Uuid
+  photoUrl            String?  @map("photo_url")
+  status              String   @default("disponivel")
+  notes               String?
+
+  version      Int        @default(1)
+  syncStatus   String     @default("synced") @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  machine Machine? @relation(fields: [machineId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, isDeleted])
+  @@index([farmId])
+  @@map("implements")
+}
+
+model Operator {
+  id                     String   @id @default(uuid()) @db.Uuid
+  companyId              String   @map("company_id") @db.Uuid
+  farmId                 String?  @map("farm_id") @db.Uuid
+  name                   String
+  cpf                    String?
+  phone                  String?
+  email                  String?
+  monitorUserId          String?  @map("monitor_user_id") @db.Uuid
+  cnhCategory            String?  @map("cnh_category")
+  cnhExpiresAt           DateTime? @map("cnh_expires_at") @db.Date
+  admissionDate          DateTime? @map("admission_date") @db.Date
+  photoUrl               String?  @map("photo_url")
+  status                 String   @default("ativo")
+  authorizedCategories   Json?    @map("authorized_categories")
+  notes                  String?
+
+  version      Int        @default(1)
+  syncStatus   String     @default("synced") @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@index([companyId, isDeleted])
+  @@index([farmId])
+  @@map("operators")
+}
+
+model OperationType {
+  id                 String   @id @default(uuid()) @db.Uuid
+  companyId          String   @map("company_id") @db.Uuid
+  code               String?
+  name               String
+  category           String?
+  description        String?
+  unit               String?
+  requiresHourmeter  Boolean  @default(true) @map("requires_hourmeter")
+  requiresOperator   Boolean  @default(true) @map("requires_operator")
+  requiresPhoto      Boolean  @default(false) @map("requires_photo")
+  requiresLocation   Boolean  @default(true) @map("requires_location")
+  consumesFuel       Boolean  @default(true) @map("consumes_fuel")
+  active             Boolean  @default(true)
+
+  version      Int        @default(1)
+  syncStatus   String     @default("synced") @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@index([companyId, isDeleted])
+  @@map("operation_types")
+}
+
+model MachineDocument {
+  id        String   @id @default(uuid()) @db.Uuid
+  machineId String   @map("machine_id") @db.Uuid
+  kind      String   @default("document")
+  name      String
+  fileUrl   String?  @map("file_url")
+  notes     String?
+  createdById String? @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  machine Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  @@index([machineId])
+  @@map("machine_documents")
+}
+
+model MachineStatusLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  machineId String   @map("machine_id") @db.Uuid
+  kind      String
+  fromValue String?  @map("from_value")
+  toValue   String?  @map("to_value")
+  notes     String?
+  byUserId  String?  @map("by_user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  machine Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  @@index([machineId, createdAt(sort: Desc)])
+  @@map("machine_status_logs")
+}

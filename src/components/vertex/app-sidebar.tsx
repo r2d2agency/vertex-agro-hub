@@ -43,6 +43,8 @@ import {
   Leaf,
   BookOpen,
   AppWindow,
+  Wrench,
+  Truck,
 
 
 
@@ -107,6 +109,17 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Importar CSV", url: "/importar", icon: Upload },
     ],
   },
+  {
+    label: "Máquinas e Equipamentos",
+    items: [
+      { title: "Frota (visão geral)", url: "/frota", icon: Gauge },
+      { title: "Máquinas", url: "/maquinas", icon: Truck },
+      { title: "Implementos", url: "/implementos", icon: Wrench },
+      { title: "Operadores", url: "/operadores", icon: UserCog },
+      { title: "Operações", url: "/operacoes", icon: ClipboardList },
+    ],
+  },
+
 
   {
     label: "Consultoria Técnica",
