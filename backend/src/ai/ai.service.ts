@@ -2,32 +2,121 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
 
-const GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-const DEFAULT_MODEL = 'google/gemini-3.6-flash';
+type Provider = 'lovable' | 'openai' | 'gemini';
 
-type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+type AiConfig = {
+  provider: Provider;
+  apiKey?: string | null;
+  model?: string | null;
+  useEnvKey?: boolean;
+};
+
+const DEFAULT_MODELS: Record<Provider, string> = {
+  lovable: 'google/gemini-3.6-flash',
+  openai: 'gpt-4o-mini',
+  gemini: 'gemini-2.5-flash',
+};
+
+const PROVIDER_ENDPOINTS: Record<Provider, string> = {
+  lovable: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+  openai: 'https://api.openai.com/v1/chat/completions',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+};
+
+type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: any };
 
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   constructor(private readonly prisma: PrismaService, private readonly access: CompanyAccess) {}
 
-  private apiKey() {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new BadRequestException('LOVABLE_API_KEY não configurado no backend');
-    return key;
+  // ---------------- Provider config ----------------
+  async getConfig(userId: string, companyId: string): Promise<AiConfig & { hasKey: boolean; envKeyAvailable: boolean }> {
+    await this.access.ensureCompany(userId, companyId);
+    const s = await this.prisma.companySettings.findUnique({ where: { companyId } });
+    const raw = ((s?.extra as any)?.ai ?? {}) as Partial<AiConfig>;
+    const provider = (raw.provider as Provider) || 'lovable';
+    return {
+      provider,
+      model: raw.model || DEFAULT_MODELS[provider],
+      useEnvKey: raw.useEnvKey ?? (provider === 'lovable' && !raw.apiKey),
+      apiKey: null, // nunca devolvemos a chave
+      hasKey: !!raw.apiKey,
+      envKeyAvailable: !!process.env.LOVABLE_API_KEY,
+    };
   }
 
-  private async callGateway(messages: ChatMessage[], opts: { model?: string; json?: boolean } = {}) {
-    const body: any = {
-      model: opts.model ?? DEFAULT_MODEL,
-      messages,
+  async updateConfig(userId: string, companyId: string, dto: AiConfig) {
+    await this.access.ensureCompany(userId, companyId);
+    const provider = (dto.provider as Provider) || 'lovable';
+    if (!['lovable', 'openai', 'gemini'].includes(provider)) {
+      throw new BadRequestException('Provedor inválido');
+    }
+    const cur = await this.prisma.companySettings.findUnique({ where: { companyId } });
+    const extra = { ...(cur?.extra as any) };
+    const prevAi = (extra.ai ?? {}) as Partial<AiConfig>;
+    const useEnvKey = dto.useEnvKey ?? false;
+    const nextKey = useEnvKey
+      ? null
+      : (dto.apiKey && dto.apiKey.trim() ? dto.apiKey.trim() : prevAi.apiKey ?? null);
+    extra.ai = {
+      provider,
+      model: dto.model?.trim() || DEFAULT_MODELS[provider],
+      apiKey: nextKey,
+      useEnvKey,
     };
+    await this.prisma.companySettings.upsert({
+      where: { companyId },
+      create: { companyId, extra },
+      update: { extra },
+    });
+    return this.getConfig(userId, companyId);
+  }
+
+  async testConfig(userId: string, companyId: string, dto?: Partial<AiConfig>) {
+    await this.access.ensureCompany(userId, companyId);
+    const cfg = await this.resolveConfig(companyId, dto);
+    try {
+      const content = await this.callProvider(cfg, [
+        { role: 'system', content: 'Responda apenas com a palavra: ok' },
+        { role: 'user', content: 'teste de conexão' },
+      ]);
+      return { ok: true, provider: cfg.provider, model: cfg.model, sample: String(content).slice(0, 120) };
+    } catch (e: any) {
+      return { ok: false, provider: cfg.provider, model: cfg.model, error: e?.message ?? 'erro desconhecido' };
+    }
+  }
+
+  private async resolveConfig(companyId: string, override?: Partial<AiConfig>): Promise<{ provider: Provider; model: string; apiKey: string; endpoint: string }> {
+    const s = await this.prisma.companySettings.findUnique({ where: { companyId } });
+    const stored = ((s?.extra as any)?.ai ?? {}) as Partial<AiConfig>;
+    const provider = (override?.provider ?? stored.provider ?? 'lovable') as Provider;
+    const model = override?.model?.trim() || stored.model || DEFAULT_MODELS[provider];
+    const useEnvKey = override?.useEnvKey ?? stored.useEnvKey ?? (provider === 'lovable' && !stored.apiKey);
+    let apiKey = (override?.apiKey && override.apiKey.trim()) || (!useEnvKey ? stored.apiKey ?? '' : '');
+    if (!apiKey && provider === 'lovable') apiKey = process.env.LOVABLE_API_KEY ?? '';
+    if (!apiKey && useEnvKey && provider === 'lovable') apiKey = process.env.LOVABLE_API_KEY ?? '';
+    if (!apiKey) {
+      throw new BadRequestException(
+        provider === 'lovable'
+          ? 'Configure a chave da IA em Central IA → Configuração do provedor (ou defina LOVABLE_API_KEY no backend).'
+          : `Configure a chave do provedor ${provider} em Central IA → Configuração do provedor.`,
+      );
+    }
+    return { provider, model, apiKey, endpoint: PROVIDER_ENDPOINTS[provider] };
+  }
+
+  private async callProvider(
+    cfg: { provider: Provider; model: string; apiKey: string; endpoint: string },
+    messages: ChatMessage[],
+    opts: { json?: boolean } = {},
+  ) {
+    const body: any = { model: cfg.model, messages };
     if (opts.json) body.response_format = { type: 'json_object' };
-    const res = await fetch(GATEWAY_URL, {
+    const res = await fetch(cfg.endpoint, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${this.apiKey()}`,
+        Authorization: `Bearer ${cfg.apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -35,11 +124,17 @@ export class AiService {
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       if (res.status === 429) throw new BadRequestException('Limite de requisições atingido. Tente novamente em instantes.');
-      if (res.status === 402) throw new BadRequestException('Créditos de IA esgotados. Adicione créditos ao workspace.');
-      throw new BadRequestException(`Gateway IA: ${res.status} ${text.slice(0, 200)}`);
+      if (res.status === 402) throw new BadRequestException('Créditos de IA esgotados no provedor.');
+      if (res.status === 401) throw new BadRequestException('Chave da IA inválida ou expirada.');
+      throw new BadRequestException(`IA (${cfg.provider}): ${res.status} ${text.slice(0, 200)}`);
     }
     const json: any = await res.json();
     return json.choices?.[0]?.message?.content ?? '';
+  }
+
+  private async callAi(companyId: string, messages: ChatMessage[], opts: { json?: boolean } = {}) {
+    const cfg = await this.resolveConfig(companyId);
+    return { content: await this.callProvider(cfg, messages, opts), model: cfg.model };
   }
 
   // ---------------- Context builder ----------------
@@ -128,7 +223,7 @@ export class AiService {
       { role: 'user', content: `Dados:\n${JSON.stringify(summary, null, 2)}` },
     ];
 
-    const raw = await this.callGateway(prompt, { json: true });
+    const { content: raw, model } = await this.callAi(companyId, prompt, { json: true });
     let parsed: any;
     try { parsed = JSON.parse(raw); } catch { throw new BadRequestException('Resposta da IA inválida'); }
     const items: any[] = Array.isArray(parsed?.insights) ? parsed.insights : [];
@@ -146,7 +241,7 @@ export class AiService {
           title: String(it.title ?? '').slice(0, 200) || 'Insight',
           summary: it.summary ? String(it.summary).slice(0, 2000) : null,
           details: it,
-          model: DEFAULT_MODEL,
+          model,
         },
       });
       created.push(row);
@@ -167,7 +262,7 @@ export class AiService {
         'Seja objetivo, use números e cite fazendas por nome. Se a informação não estiver disponível, diga claramente. Responda em português.\n\n' +
         `Contexto operacional (últimos 90 dias):\n${JSON.stringify(summary)}`,
     };
-    const content = await this.callGateway([system, ...messages.slice(-12)]);
+    const { content } = await this.callAi(companyId, [system, ...messages.slice(-12)]);
     return { role: 'assistant' as const, content };
   }
 
@@ -182,7 +277,6 @@ export class AiService {
     }
     const series = Array.from(daily.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([date, kg]) => ({ date, kg }));
 
-    // Média móvel + tendência linear simples
     const n = series.length;
     const baseline = n > 0 ? series.reduce((a, s) => a + s.kg, 0) / n : 0;
     let slope = 0;
@@ -275,7 +369,7 @@ export class AiService {
       },
       { role: 'user', content: JSON.stringify({ title: insight.title, summary: insight.summary, details: insight.details }) },
     ];
-    const raw = await this.callGateway(prompt, { json: true });
+    const { content: raw } = await this.callAi(insight.companyId, prompt, { json: true });
     let parsed: any = {};
     try { parsed = JSON.parse(raw); } catch { /* fallback */ }
     return this.prisma.actionPlan.create({
@@ -291,20 +385,18 @@ export class AiService {
     });
   }
 
-  // ---------------- Vision (análise de fotos) ----------------
+  // ---------------- Vision ----------------
   async analyzePhoto(userId: string, photoId: string) {
     const photo = await this.prisma.photo.findUnique({ where: { id: photoId } });
     if (!photo) throw new BadRequestException('Fotografia não encontrada');
     await this.access.ensureCompany(userId, photo.companyId);
 
-    const res = await fetch(GATEWAY_URL, {
+    const cfg = await this.resolveConfig(photo.companyId);
+    const res = await fetch(cfg.endpoint, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey()}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-3.6-flash',
+        model: cfg.model,
         response_format: { type: 'json_object' },
         messages: [
           {
@@ -322,7 +414,7 @@ export class AiService {
         ],
       }),
     });
-    if (!res.ok) throw new BadRequestException(`Gateway IA: ${res.status}`);
+    if (!res.ok) throw new BadRequestException(`IA (${cfg.provider}): ${res.status}`);
     const json: any = await res.json();
     const content = json.choices?.[0]?.message?.content ?? '{}';
     let parsed: any = {};
