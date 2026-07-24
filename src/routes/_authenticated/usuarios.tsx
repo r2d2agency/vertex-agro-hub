@@ -130,6 +130,9 @@ function PeoplePage() {
                           </SelectContent>
                         </Select>
                       </div>
+                      <Button variant="ghost" size="icon" onClick={() => setEditingId(p.id)} title="Editar ficha">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setToDelete(p)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -148,6 +151,16 @@ function PeoplePage() {
         companyId={companyId}
         onSaved={() => qc.invalidateQueries({ queryKey: ["people", companyId] })}
       />
+
+      {companyId && (
+        <PersonEditor
+          open={!!editingId}
+          onOpenChange={(o) => !o && setEditingId(null)}
+          userId={editingId}
+          companyId={companyId}
+        />
+      )}
+
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
