@@ -156,6 +156,10 @@ model Farm {
   owner        String?
   notes        String?
   boundary     Json?
+  centroidLat  Float?   @map("centroid_lat")
+  centroidLng  Float?   @map("centroid_lng")
+  bboxJson     Json?    @map("bbox")
+
 
   version      Int        @default(1)
   syncStatus   SyncStatus @default(synced) @map("sync_status")
@@ -189,6 +193,10 @@ model Plot {
   tappingSystem String?  @map("tapping_system")
   notes         String?
   boundary      Json?
+  centroidLat   Float?   @map("centroid_lat")
+  centroidLng   Float?   @map("centroid_lng")
+  bboxJson      Json?    @map("bbox")
+
 
   version      Int        @default(1)
   syncStatus   SyncStatus @default(synced) @map("sync_status")

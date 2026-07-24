@@ -6,6 +6,8 @@ import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { ensureSuperadmin } from './bootstrap/ensure-superadmin';
 import { seedAllCompaniesCatalog } from './bootstrap/seed-catalog';
+import { backfillGeo } from './bootstrap/backfill-geo';
+
 
 
 const DEFAULT_ALLOWED_HEADERS = 'Content-Type, Authorization, Accept, Origin, X-Requested-With';
@@ -39,6 +41,8 @@ async function bootstrap() {
   const prisma = app.get(PrismaService);
   await ensureSuperadmin(prisma);
   await seedAllCompaniesCatalog(prisma);
+  await backfillGeo(prisma);
+
 
 
 

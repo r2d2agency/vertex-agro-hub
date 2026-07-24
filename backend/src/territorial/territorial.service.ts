@@ -9,6 +9,41 @@ import {
   UpdatePlotDto,
   UpdateRegionalDto,
 } from './dto';
+import { computeGeo } from './geo.util';
+
+// Se boundary vem no payload, calcula centroid/bbox e (para farm) preenche
+// latitude/longitude quando não informadas manualmente.
+function withFarmGeo<T extends Record<string, any>>(dto: T): T {
+  if (dto.boundary === undefined) return dto;
+  if (dto.boundary === null) {
+    return { ...dto, centroidLat: null, centroidLng: null, bboxJson: null };
+  }
+  const geo = computeGeo(dto.boundary);
+  const patched: Record<string, any> = {
+    ...dto,
+    centroidLat: geo.centroidLat,
+    centroidLng: geo.centroidLng,
+    bboxJson: geo.bboxJson,
+  };
+  if (dto.latitude === undefined && geo.centroidLat != null) patched.latitude = geo.centroidLat;
+  if (dto.longitude === undefined && geo.centroidLng != null) patched.longitude = geo.centroidLng;
+  return patched as T;
+}
+
+function withPlotGeo<T extends Record<string, any>>(dto: T): T {
+  if (dto.boundary === undefined) return dto;
+  if (dto.boundary === null) {
+    return { ...dto, centroidLat: null, centroidLng: null, bboxJson: null };
+  }
+  const geo = computeGeo(dto.boundary);
+  return {
+    ...dto,
+    centroidLat: geo.centroidLat,
+    centroidLng: geo.centroidLng,
+    bboxJson: geo.bboxJson,
+  };
+}
+
 
 @Injectable()
 export class TerritorialService {
@@ -79,7 +114,7 @@ export class TerritorialService {
       const r = await this.prisma.regional.findUnique({ where: { id: dto.regionalId } });
       if (!r || r.companyId !== dto.companyId) throw new ForbiddenException('Regional inválida');
     }
-    return this.prisma.farm.create({ data: { ...dto, createdById: userId, updatedById: userId } as any });
+    return this.prisma.farm.create({ data: { ...withFarmGeo(dto), createdById: userId, updatedById: userId } as any });
   }
 
   async updateFarm(userId: string, id: string, dto: UpdateFarmDto) {
@@ -92,7 +127,7 @@ export class TerritorialService {
     }
     return this.prisma.farm.update({
       where: { id },
-      data: { ...dto, updatedById: userId, version: { increment: 1 } } as any,
+      data: { ...withFarmGeo(dto), updatedById: userId, version: { increment: 1 } } as any,
     });
   }
 
@@ -100,6 +135,7 @@ export class TerritorialService {
     const current = await this.prisma.farm.findUnique({ where: { id } });
     if (!current || current.isDeleted) throw new NotFoundException();
     await this.access.ensureCompany(userId, current.companyId);
+
     return this.prisma.farm.update({
       where: { id },
       data: { isDeleted: true, deletedAt: new Date(), updatedById: userId, version: { increment: 1 } },
@@ -120,7 +156,7 @@ export class TerritorialService {
     await this.access.ensureCompany(userId, dto.companyId);
     const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
     if (!farm || farm.companyId !== dto.companyId) throw new ForbiddenException('Fazenda inválida');
-    return this.prisma.plot.create({ data: { ...dto, createdById: userId, updatedById: userId } as any });
+    return this.prisma.plot.create({ data: { ...withPlotGeo(dto), createdById: userId, updatedById: userId } as any });
   }
 
   async updatePlot(userId: string, id: string, dto: UpdatePlotDto) {
@@ -133,9 +169,10 @@ export class TerritorialService {
     }
     return this.prisma.plot.update({
       where: { id },
-      data: { ...dto, updatedById: userId, version: { increment: 1 } } as any,
+      data: { ...withPlotGeo(dto), updatedById: userId, version: { increment: 1 } } as any,
     });
   }
+
 
   async deletePlot(userId: string, id: string) {
     const current = await this.prisma.plot.findUnique({ where: { id } });
