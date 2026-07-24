@@ -210,9 +210,18 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                 <Field label="Nacionalidade">
                   <Input value={personal.nationality ?? ""} onChange={(e) => set({ nationality: e.target.value })} placeholder="Brasileira" />
                 </Field>
-                <Field label="URL da foto">
-                  <Input value={personal.avatarUrl ?? ""} onChange={(e) => set({ avatarUrl: e.target.value })} placeholder="https://..." />
-                </Field>
+                <div className="md:col-span-2">
+                  <Field label="Foto do colaborador">
+                    <FileDropzone
+                      value={personal.avatarUrl ?? ""}
+                      preview="image"
+                      accept="image/*"
+                      label="Arraste a foto aqui ou clique para carregar do PC"
+                      onUploaded={(url) => set({ avatarUrl: url })}
+                      onClear={() => set({ avatarUrl: "" })}
+                    />
+                  </Field>
+                </div>
                 <div className="md:col-span-2">
                   <Field label="Observações">
                     <Textarea rows={3} value={personal.notes ?? ""} onChange={(e) => set({ notes: e.target.value })} />
