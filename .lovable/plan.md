@@ -1,82 +1,76 @@
-# Plano — Melhorias de Operação Vertex Agro
+# Sprint 5 — Gestão + Sincronização Offline
 
-## 1. Endereços mais fáceis (CEP → auto-preenche)
+Consolida a camada de governança da plataforma e prepara o contrato de dados que os apps de campo (Monitor/Consultor) usarão para operar sem conexão.
 
-- Novo componente `CepInput`: ao digitar 8 dígitos, consulta **ViaCEP** (`https://viacep.com.br/ws/{cep}/json/`) e preenche automaticamente endereço, cidade e UF.
-- Aplicar em: cadastro de **Empresa**, **Fazenda** e (futuro) Pessoas.
-- Novo componente `UfSelect` com **todos os 27 UFs pré-cadastrados** (dropdown), substituindo o input de texto atual.
-- Botão "Usar minha localização" (geolocation API do browser) para preencher lat/lng em Fazendas.
-- Botão "Buscar no mapa pelo endereço" (geocoding via Nominatim/OSM — sem chave) que centraliza o mapa nas coordenadas do endereço digitado.
+## Objetivos
 
-## 2. Multi-polígonos no editor de mapa
+1. **Auditoria** — trilha imutável de quem fez o quê, quando e onde.
+2. **Logs de sistema** — visibilidade operacional (erros, jobs, sync).
+3. **Sincronização offline** — endpoints de *pull*/*push* com resolução de conflitos por versão.
+4. **Painel de sincronização** — monitoramento por dispositivo/usuário.
+5. **Alertas & Integrações** — base para regras automáticas e webhooks (AGS).
+6. **Configurações da empresa** — preferências gerais + política de retenção.
 
-Atualização de `MapEditor` com dois modos (toggle):
-- **Multi-polígono livre**: usuário desenha vários polígonos, cada um é adicionado à lista. Botão "Concluir" finaliza. Área total = soma.
-- **Principal + exclusões**: 1 polígono verde (contorno) + N polígonos vermelhos (reservas/estradas). Área = principal - exclusões.
+## Entregas por módulo
 
-Alterações:
-- `GeoPolygon` vira `GeoBoundary` (union): `{ mode: "multi", polygons: GeoPolygon[] }` ou `{ mode: "with-exclusions", main: GeoPolygon, exclusions: GeoPolygon[] }`.
-- Backend continua salvando em `boundary JSONB` (schema já suporta).
-- Camada de compatibilidade: se `boundary` vier no formato antigo (`{type:"Polygon"...}`), converter para `{mode:"multi", polygons:[...]}` no load.
+### 1. Auditoria (`/auditoria`)
+- Tabela `audit_log` (actor, action, entity, entityId, companyId, diff JSON, ip, userAgent, createdAt).
+- Interceptor NestJS grava CREATE/UPDATE/DELETE dos módulos operacionais e de pessoas.
+- UI: filtros por usuário, entidade, período; export CSV.
 
-## 3. Responsável da Regional vinculado
+### 2. Logs (`/logs`)
+- Tabela `system_log` (level, source, message, meta, createdAt).
+- Logger central no backend (substitui `console.*` nos serviços críticos).
+- UI: filtros por nível/fonte, busca textual, paginação.
 
-- Campo `manager` (texto livre) vira **dois campos opcionais**:
-  - `managerUserId` → FK para `User` (qualquer usuário do sistema)
-  - `managerPersonId` → FK para `Person` (consultor/técnico pré-cadastrado)
-- Migration adiciona colunas + FKs `ON DELETE SET NULL`.
-- Form: dois seletores (Autocomplete) — "Usuário do sistema" e "Consultor/Técnico". Pelo menos um deve estar preenchido.
-- Backend valida existência e retorna dados populados via `include`.
+### 3. Sincronização
+- **Contrato**: cada entidade sincronizável já tem `version`, `syncStatus`, `deviceId`, `isDeleted`, `updatedAt`.
+- **Endpoints** (`/sync/*`):
+  - `GET /sync/pull?companyId&since&entities` → devolve deltas por entidade.
+  - `POST /sync/push` → recebe lote `{ entity, op, payload, clientVersion, deviceId }`, retorna resultado por item (ok / conflict / rejected) com a versão canônica.
+  - Estratégia: *last-writer-wins* por default, `409 conflict` quando `clientVersion < serverVersion` → app decide merge.
+- **Registro de sync**: tabela `sync_session` (deviceId, userId, startedAt, finishedAt, pulled, pushed, conflicts).
 
-## 4. Menu de Apps
+### 4. Painel de Sincronização (`/sincronizacao`)
+- Cards de saúde: dispositivos ativos, última sync, itens pendentes, conflitos 24h.
+- Lista de sessões recentes com drill-down por dispositivo.
+- Ação: forçar re-sync (marca todos os registros da empresa como `syncStatus=stale` para o device).
 
-Nova rota `/apps` (já existe placeholder em `dispositivos.tsx` mas vamos criar dedicada):
-- Card "Painel Web" com URL atual + botão "Copiar link" + QR code (biblioteca `qrcode` — gera SVG inline sem dependência de servidor).
-- Cards "App Monitor" e "App Consultor" com badge **Em breve**, descrição do que farão e ícone de download desabilitado.
-- Item novo na sidebar: **Apps** (ícone `Smartphone`).
+### 5. Alertas (`/alertas` + `/alertas-ia`)
+- Tabela `alert_rule` (companyId, kind, threshold, channel, active).
+- Motor simples avaliado no cron: DRC fora da faixa, produção abaixo da média, ocorrência crítica aberta > X dias.
+- UI: lista de regras + histórico de disparos. `/alertas-ia` continua placeholder para Sprint 6/7.
 
-## 5. Área de Documentação
+### 6. Integrações (`/integracoes`)
+- Tabela `integration` (provider, config JSON, secret, active) + `webhook_delivery`.
+- Suporte inicial: webhook genérico (POST JSON) disparado em eventos de produção/ocorrência.
+- Placeholder configurável para AGS.
 
-Nova rota `/documentacao` (layout com sidebar interna):
-- Índice de artigos em Markdown estático (pasta `src/docs/*.md` importada via Vite `?raw`).
-- Renderização com `react-markdown` + `remark-gfm`.
-- Artigos iniciais:
-  1. Primeiros passos (login, superadmin)
-  2. Cadastro de Empresas (com CEP)
-  3. Estrutura Territorial (Regional → Fazenda → Talhão)
-  4. Desenhando áreas no mapa (multi-polígono e exclusões)
-  5. Pessoas e Equipes
-  6. Sangrias, Produção e Ocorrências
-  7. Importação via CSV
-  8. Sincronização e apps de campo (visão geral)
-- Item novo na sidebar: **Documentação** (ícone `BookOpen`).
+### 7. Configurações (`/configuracoes`)
+- Preferências da empresa: fuso, unidade padrão (kg/L), política de retenção de fotos, moeda.
+- Persistidas em `company_settings` (1:1 com Company).
 
 ## Detalhes técnicos
 
-**Novos pacotes**
-- Frontend: `qrcode` (QR SVG), `react-markdown` + `remark-gfm` (docs). Nominatim e ViaCEP são fetch direto, sem SDK.
+**Migration `20260804090000_governance`** cria: `audit_log`, `system_log`, `sync_session`, `alert_rule`, `alert_event`, `integration`, `webhook_delivery`, `company_settings`. Todas com `companyId` + índices por `(companyId, createdAt desc)` e GRANTs implícitos (Prisma → Postgres direto, sem RLS aqui pois autenticação é JWT no NestJS).
 
-**Backend**
-- Migration `20260729090000_regional_managers`: colunas `manager_user_id`, `manager_person_id` em `regionals` (mantém `manager` como legado para não quebrar dados).
-- DTOs atualizados; service retorna `include: { managerUser, managerPerson }`.
+**Backend novos módulos**: `audit/`, `logs/`, `sync/`, `alerts/`, `integrations/`, `settings/`. Cada um com `controller + service + dto`, protegidos por `JwtAuthGuard` + `CompanyAccess`.
 
-**Frontend — arquivos novos**
-- `src/components/vertex/cep-input.tsx`
-- `src/components/vertex/uf-select.tsx` (lista dos 27 UFs)
-- `src/components/vertex/qr-card.tsx`
-- `src/lib/via-cep.ts`, `src/lib/geocode.ts`
-- `src/lib/geo.ts` — estender tipos (`GeoBoundary`, adaptadores legacy)
-- `src/routes/_authenticated/apps.tsx`
-- `src/routes/_authenticated/documentacao.tsx` + `src/routes/_authenticated/documentacao.$slug.tsx`
-- `src/docs/*.md` (8 artigos)
+**Auditoria transversal**: `AuditInterceptor` global registrado em `AppModule` que lê metadata `@Audited('entity')` nos handlers de escrita — evita boilerplate em cada service.
 
-**Frontend — arquivos alterados**
-- `MapEditor` + `MapEditorClient` (modos multi/exclusions, botão Concluir, painel de polígonos)
-- `CompanyForm`, `FarmForm`, `RegionalForm` (CEP, UF select, geolocation, seletores de responsável)
-- `AppSidebar` (novos itens Apps e Documentação)
+**Frontend novos helpers**: `src/lib/{auditoria,logs,sync,alertas,integracoes,configuracoes}.functions.ts` seguindo o padrão `apiRequest`.
 
-## Escopo fora deste plano
-- Cadastro de "Pessoas / Consultores" ainda usa tela existente; se não houver consultores cadastrados, apenas o campo "Usuário" fica funcional (o de Consultor fica desabilitado com dica "Cadastre em Consultores").
-- App mobile (Monitor/Consultor) permanece como placeholder.
+**Sidebar**: os itens já existem (Auditoria, Logs, Sincronização, Alertas, Integrações, Configurações) — substituem `ComingSoon` pelas telas reais.
 
-Ao aprovar, implemento em sequência: (1) backend + tipos, (2) componentes utilitários (CEP/UF/QR/geocode), (3) MapEditor multi-polígono, (4) forms, (5) Apps, (6) Documentação.
+## Fora do escopo (fica para Sprint 6/7)
+- Assinatura digital dos logs de auditoria.
+- IA de anomalias em `/alertas-ia`.
+- App Monitor/Consultor consumindo o `/sync` (backend fica pronto, app é sprint futura).
+- Integração AGS real — apenas conector genérico agora.
+
+## Deploy
+1. `bun install` no backend (sem novas deps além do que já existe).
+2. Aplicar migration `20260804090000_governance`.
+3. Rebuild sem cache no front e back no EasyPanel.
+
+Confirma que sigo com essa entrega?

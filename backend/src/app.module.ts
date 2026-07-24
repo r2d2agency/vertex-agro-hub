@@ -12,6 +12,7 @@ import { TeamsModule } from './teams/teams.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { FieldModule } from './field/field.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { GovernanceModule } from './governance/governance.module';
 
 import { HealthController } from './health.controller';
 
@@ -30,6 +31,8 @@ import { HealthController } from './health.controller';
     ActivitiesModule,
     FieldModule,
     UploadsModule,
+    GovernanceModule,
+
 
   ],
   controllers: [HealthController],
