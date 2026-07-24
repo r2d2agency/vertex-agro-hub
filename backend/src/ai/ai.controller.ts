@@ -7,6 +7,19 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class AiController {
   constructor(private readonly ai: AiService) {}
 
+  @Get('ai/config')
+  getConfig(@Req() req: any, @Query('companyId') companyId: string) {
+    return this.ai.getConfig(req.user.userId, companyId);
+  }
+  @Patch('ai/config')
+  updateConfig(@Req() req: any, @Query('companyId') companyId: string, @Body() dto: any) {
+    return this.ai.updateConfig(req.user.userId, companyId, dto);
+  }
+  @Post('ai/config/test')
+  testConfig(@Req() req: any, @Body() dto: { companyId: string; provider?: string; model?: string; apiKey?: string; useEnvKey?: boolean }) {
+    return this.ai.testConfig(req.user.userId, dto.companyId, dto as any);
+  }
+
   @Get('ai/insights')
   listInsights(@Req() req: any, @Query('companyId') companyId: string) {
     return this.ai.listInsights(req.user.userId, companyId);
