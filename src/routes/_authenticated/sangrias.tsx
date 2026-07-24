@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Droplets } from "lucide-react";
+import { Plus, Pencil, Trash2, Droplets, Download } from "lucide-react";
+import { downloadCsv, fmtDateBR } from "@/lib/csv";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,8 @@ function SangriasPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
   const qc = useQueryClient();
   const [farmFilter, setFarmFilter] = useState("__all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TappingRecord | null>(null);
   const [toDelete, setToDelete] = useState<TappingRecord | null>(null);
@@ -62,10 +65,30 @@ function SangriasPage() {
   });
 
   const { data = [], isLoading: loading } = useQuery({
-    queryKey: ["taps", companyId, farmFilter],
-    queryFn: () => listTappingRecords(companyId!, { farmId: farmFilter !== "__all" ? farmFilter : undefined }),
+    queryKey: ["taps", companyId, farmFilter, from, to],
+    queryFn: () => listTappingRecords(companyId!, {
+      farmId: farmFilter !== "__all" ? farmFilter : undefined,
+      from: from || undefined,
+      to: to || undefined,
+    }),
     enabled: !!companyId,
   });
+
+  const exportCsv = () => {
+    const farmName = (id?: string | null) => farms.find((f) => f.id === id)?.name ?? "";
+    downloadCsv(`sangrias-${new Date().toISOString().slice(0, 10)}`, data, [
+      { key: "date", label: "Data", format: fmtDateBR },
+      { key: "sangradorName", label: "Sangrador" },
+      { key: "farmId", label: "Fazenda", format: (v) => farmName(v) },
+      { key: "treesTapped", label: "Árvores" },
+      { key: "liters", label: "Litros" },
+      { key: "drcPercent", label: "DRC %" },
+      { key: "dryKg", label: "Kg secos" },
+      { key: "adherencePct", label: "Aderência %" },
+      { key: "notes", label: "Observações" },
+    ]);
+  };
+
 
   const del = useMutation({
     mutationFn: (id: string) => deleteTappingRecord(id),
