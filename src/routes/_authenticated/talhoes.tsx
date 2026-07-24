@@ -20,6 +20,8 @@ import { listFarms, type Farm } from "@/lib/fazendas.functions";
 import {
   createPlot, deletePlot, listPlots, updatePlot, type Plot, type PlotInput,
 } from "@/lib/talhoes.functions";
+import { listClones } from "@/lib/clones.functions";
+import { listTappingTables } from "@/lib/tabelas.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
 import { toBoundary, type GeoBoundary } from "@/lib/geo";
 
