@@ -174,10 +174,11 @@ function MapasPage() {
               <Input placeholder="Buscar endereço, cidade, CEP..." value={addressQuery} onChange={(e) => setAddressQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); searchAddress(); } }} />
               <Button type="button" variant="outline" onClick={searchAddress}><Search className="mr-1 h-4 w-4" /> Buscar</Button>
             </div>
-            <div className="flex items-center gap-4 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center gap-4 rounded-md border bg-muted/30 px-3 py-2 text-sm">
               <Layers className="h-4 w-4 text-muted-foreground" />
               <label className="flex items-center gap-2"><Switch checked={showFarms} onCheckedChange={setShowFarms} /> Fazendas</label>
               <label className="flex items-center gap-2"><Switch checked={showPlots} onCheckedChange={setShowPlots} /> Talhões</label>
+              <label className="flex items-center gap-2"><Switch checked={onlyMissingBoundary} onCheckedChange={setOnlyMissingBoundary} /> Só sem polígono</label>
             </div>
           </div>
 
@@ -187,18 +188,64 @@ function MapasPage() {
             <Kpi label="Talhões no mapa" value={String(plotsInScope)} />
           </div>
 
-          {loadingFarms ? (
-            <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Carregando mapa...</CardContent></Card>
-          ) : (
-            <MapViewerClient
-              farms={farmMarkers}
-              plots={plotMarkers}
-              showFarms={showFarms}
-              showPlots={showPlots}
-              focus={focus}
-              height={600}
-            />
-          )}
+          <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+            {loadingFarms ? (
+              <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Carregando mapa...</CardContent></Card>
+            ) : (
+              <MapViewerClient
+                farms={farmMarkers}
+                plots={plotMarkers}
+                showFarms={showFarms}
+                showPlots={showPlots}
+                focus={focus}
+                height={600}
+              />
+            )}
+
+            <Card className="max-h-[600px] overflow-hidden">
+              <CardContent className="flex h-full flex-col gap-2 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold">Fazendas ({filteredFarms.length})</p>
+                  <span className="text-xs text-muted-foreground">clique p/ focar</span>
+                </div>
+                <div className="-mx-1 flex-1 overflow-y-auto pr-1">
+                  {filteredFarms.length === 0 ? (
+                    <p className="p-3 text-center text-xs text-muted-foreground">Nenhuma fazenda no filtro.</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {filteredFarms.map((f, i) => {
+                        const b = toBoundary(f.boundary);
+                        const canFocus = !!(b || (f.latitude != null && f.longitude != null));
+                        const color = f.regionalId ? (regionalColor.get(f.regionalId) ?? colorFor(i)) : colorFor(i);
+                        return (
+                          <li key={f.id}>
+                            <button
+                              type="button"
+                              disabled={!canFocus}
+                              onClick={() => {
+                                if (f.latitude != null && f.longitude != null) setFocus({ lat: f.latitude, lng: f.longitude });
+                              }}
+                              className="w-full rounded-md border border-transparent px-2 py-1.5 text-left hover:border-border hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="inline-block h-2.5 w-2.5 flex-none rounded-full" style={{ background: color }} />
+                                <span className="truncate text-sm font-medium">{f.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2 pl-4.5 text-xs text-muted-foreground">
+                                <span className="truncate">{f.regional?.name ?? "sem regional"}</span>
+                                {!b && <Badge variant="outline" className="ml-auto h-5 border-amber-500/40 text-amber-600">sem polígono</Badge>}
+                              </div>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
 
           {regionals.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
