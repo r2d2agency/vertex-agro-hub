@@ -340,7 +340,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
               <TabsContent value="documents" className="mt-4">
                 <DocumentsTab userId={userId!} companyId={companyId} />
               </TabsContent>
-            </ScrollArea>
+            </div>
           </Tabs>
         )}
 
