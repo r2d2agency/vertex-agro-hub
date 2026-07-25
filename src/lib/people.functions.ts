@@ -111,6 +111,8 @@ export function resetPersonPassword(userId: string, companyId: string) {
     `/people/${userId}/reset-password?companyId=${encodeURIComponent(companyId)}`,
     { method: "POST" },
   );
+}
+
 
 export function updatePersonPersonal(userId: string, companyId: string, data: PersonalData) {
   return apiRequest(`/people/${userId}/personal?companyId=${encodeURIComponent(companyId)}`, {
