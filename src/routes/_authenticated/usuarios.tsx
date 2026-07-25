@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PersonEditor } from "@/components/vertex/person-editor";
-import { Pencil } from "lucide-react";
-import { Plus, Trash2, UserRound } from "lucide-react";
+import { Copy, KeyRound, Pencil, Plus, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -23,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import {
-  COMPANY_ROLES, invitePerson, listPeople, removePerson, updatePersonRole,
+  COMPANY_ROLES, invitePerson, listPeople, removePerson, resetPersonPassword, updatePersonRole,
   type CompanyRole, type Person,
 } from "@/lib/people.functions";
 
