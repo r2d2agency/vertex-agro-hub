@@ -90,16 +90,23 @@ export class PeopleService {
     };
   }
 
+  private generateTempPassword() {
+    // Formato: vertex + 4 dígitos (ex: vertex7392)
+    const n = Math.floor(1000 + Math.random() * 9000);
+    return `vertex${n}`;
+  }
+
   async invite(userId: string, dto: InvitePersonDto) {
     await this.ensureManager(userId, dto.companyId);
     const email = dto.email.toLowerCase().trim();
     const personal = pickPersonal(dto);
 
+    const generatedPassword = dto.password ? null : this.generateTempPassword();
+    const effectivePassword = dto.password ?? generatedPassword!;
+
     let user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
-      const passwordHash = dto.password
-        ? await bcrypt.hash(dto.password, 10)
-        : await bcrypt.hash(Math.random().toString(36).slice(2) + 'A1!', 10);
+      const passwordHash = await bcrypt.hash(effectivePassword, 10);
       user = await this.prisma.user.create({
         data: { email, fullName: dto.fullName, passwordHash, ...personal },
       });
@@ -116,7 +123,28 @@ export class PeopleService {
     } catch (e: any) {
       if (e.code !== 'P2002') throw e;
     }
-    return { id: user.id, email: user.email, fullName: user.fullName };
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      generatedPassword: generatedPassword ?? undefined,
+    };
+  }
+
+  async resetPassword(userId: string, targetUserId: string, companyId: string) {
+    await this.ensureManager(userId, companyId);
+    await this.ensureMember(targetUserId, companyId);
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException();
+    if (target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
+      throw new ForbiddenException('Não é possível redefinir a senha do superadmin');
+    }
+    const password = this.generateTempPassword();
+    const passwordHash = await bcrypt.hash(password, 10);
+    await this.prisma.user.update({ where: { id: targetUserId }, data: { passwordHash } });
+    // Invalida sessões existentes
+    await this.prisma.refreshToken.deleteMany({ where: { userId: targetUserId } }).catch(() => undefined);
+    return { email: target.email, fullName: target.fullName, password };
   }
 
   async updatePersonal(userId: string, targetUserId: string, companyId: string, dto: PersonalDataDto) {
