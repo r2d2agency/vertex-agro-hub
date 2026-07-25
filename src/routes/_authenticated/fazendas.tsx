@@ -30,6 +30,8 @@ import { CepInput } from "@/components/vertex/cep-input";
 import { UfSelect } from "@/components/vertex/uf-select";
 import { MapPin } from "lucide-react";
 import { geocodeAddress } from "@/lib/via-cep";
+import { FarmDetailDialog } from "@/components/vertex/farm-detail-dialog";
+import { listPlots } from "@/lib/talhoes.functions";
 
 export const Route = createFileRoute("/_authenticated/fazendas")({
   head: () => ({
@@ -54,6 +56,7 @@ function FazendasPage() {
   const [editing, setEditing] = useState<Farm | null>(null);
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<Farm | null>(null);
+  const [detail, setDetail] = useState<Farm | null>(null);
 
   const { data = [], isLoading: loadingList } = useQuery({
     queryKey: ["farms", companyId],
@@ -96,7 +99,11 @@ function FazendasPage() {
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {data.map((f) => (
-                <Card key={f.id} className="transition-colors hover:border-primary/40">
+                <Card
+                  key={f.id}
+                  className="cursor-pointer transition-colors hover:border-primary/60 hover:shadow-sm"
+                  onClick={() => setDetail(f)}
+                >
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
@@ -111,8 +118,9 @@ function FazendasPage() {
                           {f.totalAreaHa != null && <p>{f.totalAreaHa} ha</p>}
                           {f.owner && <p>Proprietário: {f.owner}</p>}
                         </div>
+                        <FarmPlotsPreview companyId={companyId!} farmId={f.id} />
                       </div>
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(f)}><Pencil className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setToDelete(f)}><Trash2 className="h-4 w-4" /></Button>
                       </div>
@@ -124,6 +132,13 @@ function FazendasPage() {
           )}
         </>
       )}
+
+      <FarmDetailDialog
+        farm={detail}
+        companyId={companyId}
+        onOpenChange={(o) => !o && setDetail(null)}
+      />
+
 
       <FarmDialog
         open={creating || !!editing}
@@ -146,6 +161,28 @@ function FazendasPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function FarmPlotsPreview({ companyId, farmId }: { companyId: string; farmId: string }) {
+  const { data } = useQuery({
+    queryKey: ["farm-plots-preview", farmId],
+    queryFn: () => listPlots(companyId, farmId),
+    enabled: !!companyId,
+  });
+  if (!data) return null;
+  if (data.length === 0) return <p className="mt-2 text-xs italic text-muted-foreground">Sem talhões cadastrados</p>;
+  const shown = data.slice(0, 3);
+  const rest = data.length - shown.length;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1">
+      {shown.map((p) => (
+        <span key={p.id} className="rounded-md bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+          {p.name}{p.areaHa != null ? ` · ${p.areaHa}ha` : ""}
+        </span>
+      ))}
+      {rest > 0 && <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">+{rest}</span>}
     </div>
   );
 }
