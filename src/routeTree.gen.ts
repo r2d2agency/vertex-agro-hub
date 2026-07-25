@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CampoRouteRouteImport } from './routes/campo/route'
+import { Route as ConsultorRouteImport } from './routes/consultor'
+import { Route as MonitorRouteImport } from './routes/monitor'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedAbastecimentoRouteImport } from './routes/_authenticated/abastecimento'
@@ -100,6 +102,16 @@ const AuthRoute = AuthRouteImport.update({
 const CampoRouteRoute = CampoRouteRouteImport.update({
   id: '/campo',
   path: '/campo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsultorRoute = ConsultorRouteImport.update({
+  id: '/consultor',
+  path: '/consultor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MonitorRoute = MonitorRouteImport.update({
+  id: '/monitor',
+  path: '/monitor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -469,6 +481,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/campo': typeof CampoRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/consultor': typeof ConsultorRoute
+  '/monitor': typeof MonitorRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/abastecimento': typeof AuthenticatedAbastecimentoRoute
@@ -542,6 +556,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/consultor': typeof ConsultorRoute
+  '/monitor': typeof MonitorRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/abastecimento': typeof AuthenticatedAbastecimentoRoute
@@ -617,6 +633,8 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/campo': typeof CampoRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/consultor': typeof ConsultorRoute
+  '/monitor': typeof MonitorRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/abastecimento': typeof AuthenticatedAbastecimentoRoute
@@ -693,6 +711,8 @@ export interface FileRouteTypes {
     | '/'
     | '/campo'
     | '/auth'
+    | '/consultor'
+    | '/monitor'
     | '/reset-password'
     | '/sitemap.xml'
     | '/abastecimento'
@@ -766,6 +786,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/consultor'
+    | '/monitor'
     | '/reset-password'
     | '/sitemap.xml'
     | '/abastecimento'
@@ -840,6 +862,8 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/campo'
     | '/auth'
+    | '/consultor'
+    | '/monitor'
     | '/reset-password'
     | '/sitemap.xml'
     | '/_authenticated/abastecimento'
@@ -916,6 +940,8 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   CampoRouteRoute: typeof CampoRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ConsultorRoute: typeof ConsultorRoute
+  MonitorRoute: typeof MonitorRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
@@ -948,6 +974,20 @@ declare module '@tanstack/react-router' {
       path: '/campo'
       fullPath: '/campo'
       preLoaderRoute: typeof CampoRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consultor': {
+      id: '/consultor'
+      path: '/consultor'
+      fullPath: '/consultor'
+      preLoaderRoute: typeof ConsultorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/monitor': {
+      id: '/monitor'
+      path: '/monitor'
+      fullPath: '/monitor'
+      preLoaderRoute: typeof MonitorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1628,6 +1668,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   CampoRouteRoute: CampoRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ConsultorRoute: ConsultorRoute,
+  MonitorRoute: MonitorRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
 }
