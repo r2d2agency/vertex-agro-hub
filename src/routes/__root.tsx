@@ -103,6 +103,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css",
       },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/favicon.ico" },
     ],
   }),
   shellComponent: RootShell,
