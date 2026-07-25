@@ -31,18 +31,19 @@ export class AiService {
   constructor(private readonly prisma: PrismaService, private readonly access: CompanyAccess) {}
 
   // ---------------- Provider config ----------------
-  async getConfig(userId: string, companyId: string): Promise<AiConfig & { hasKey: boolean; envKeyAvailable: boolean }> {
+  async getConfig(userId: string, companyId: string): Promise<AiConfig & { hasKey: boolean; envKeyAvailable: boolean; lastTest?: any }> {
     await this.access.ensureCompany(userId, companyId);
     const s = await this.prisma.companySettings.findUnique({ where: { companyId } });
-    const raw = ((s?.extra as any)?.ai ?? {}) as Partial<AiConfig>;
+    const raw = ((s?.extra as any)?.ai ?? {}) as Partial<AiConfig> & { lastTest?: any };
     const provider = (raw.provider as Provider) || 'lovable';
     return {
       provider,
       model: raw.model || DEFAULT_MODELS[provider],
       useEnvKey: raw.useEnvKey ?? (provider === 'lovable' && !raw.apiKey),
-      apiKey: null, // nunca devolvemos a chave
+      apiKey: null,
       hasKey: !!raw.apiKey,
       envKeyAvailable: !!process.env.LOVABLE_API_KEY,
+      lastTest: raw.lastTest ?? null,
     };
   }
 
@@ -60,6 +61,7 @@ export class AiService {
       ? null
       : (dto.apiKey && dto.apiKey.trim() ? dto.apiKey.trim() : prevAi.apiKey ?? null);
     extra.ai = {
+      ...prevAi,
       provider,
       model: dto.model?.trim() || DEFAULT_MODELS[provider],
       apiKey: nextKey,
@@ -76,16 +78,35 @@ export class AiService {
   async testConfig(userId: string, companyId: string, dto?: Partial<AiConfig>) {
     await this.access.ensureCompany(userId, companyId);
     const cfg = await this.resolveConfig(companyId, dto);
+    const startedAt = Date.now();
+    let result: any;
     try {
       const content = await this.callProvider(cfg, [
         { role: 'system', content: 'Responda apenas com a palavra: ok' },
         { role: 'user', content: 'teste de conexão' },
       ]);
-      return { ok: true, provider: cfg.provider, model: cfg.model, sample: String(content).slice(0, 120) };
+      const latencyMs = Date.now() - startedAt;
+      result = { ok: true, provider: cfg.provider, model: cfg.model, sample: String(content).slice(0, 120), latencyMs, testedAt: new Date().toISOString() };
     } catch (e: any) {
-      return { ok: false, provider: cfg.provider, model: cfg.model, error: e?.message ?? 'erro desconhecido' };
+      const latencyMs = Date.now() - startedAt;
+      result = { ok: false, provider: cfg.provider, model: cfg.model, error: e?.message ?? 'erro desconhecido', latencyMs, testedAt: new Date().toISOString() };
     }
+    // Persistir último resultado
+    try {
+      const cur = await this.prisma.companySettings.findUnique({ where: { companyId } });
+      const extra = { ...(cur?.extra as any) };
+      extra.ai = { ...(extra.ai ?? {}), lastTest: result };
+      await this.prisma.companySettings.upsert({
+        where: { companyId },
+        create: { companyId, extra },
+        update: { extra },
+      });
+    } catch (e) {
+      this.logger.warn(`Falha ao persistir lastTest: ${(e as any)?.message}`);
+    }
+    return result;
   }
+
 
   private async resolveConfig(companyId: string, override?: Partial<AiConfig>): Promise<{ provider: Provider; model: string; apiKey: string; endpoint: string }> {
     const s = await this.prisma.companySettings.findUnique({ where: { companyId } });

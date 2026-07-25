@@ -71,6 +71,15 @@ export type AiConfig = {
   useEnvKey?: boolean;
   hasKey?: boolean;
   envKeyAvailable?: boolean;
+  lastTest?: {
+    ok: boolean;
+    provider: string;
+    model: string;
+    sample?: string;
+    error?: string;
+    latencyMs: number;
+    testedAt: string;
+  } | null;
 };
 
 export const getAiConfig = (companyId: string) =>

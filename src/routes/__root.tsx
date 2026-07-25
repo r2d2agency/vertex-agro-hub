@@ -7,9 +7,11 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
 import appCss from "../styles.css?url";
+import { registerServiceWorker } from "@/lib/offline/register-sw";
+import { installOfflineAutoFlush } from "@/lib/offline/network";
 
 function NotFoundComponent() {
   return (
@@ -101,6 +103,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css",
       },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/favicon.ico" },
     ],
   }),
   shellComponent: RootShell,
@@ -125,6 +129,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    registerServiceWorker();
+    installOfflineAutoFlush();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
