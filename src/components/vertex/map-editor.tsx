@@ -30,7 +30,7 @@ const PALETTE = ["#16a34a", "#2563eb", "#dc2626", "#f59e0b", "#7c3aed", "#0891b2
 const mainStyle = (c: string) => ({ color: c, weight: 3, fillColor: c, fillOpacity: 0.2 });
 const EXCL_STYLE = { color: "#ffffff", weight: 2, fillColor: "#dc2626", fillOpacity: 0.25, dashArray: "6 4" };
 
-export default function MapEditor({ value, onChange, reference, height = 400, focus }: MapEditorProps) {
+export default function MapEditor({ value, onChange, reference, height = 400, focus, color: colorProp, onColorChange }: MapEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const mainLayerRef = useRef<L.FeatureGroup | null>(null);
@@ -39,6 +39,10 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
   const [mode, setMode] = useState<Mode>(value?.mode ?? "multi");
   const [ready, setReady] = useState(false);
   const [drawTarget, setDrawTarget] = useState<"main" | "exclusion">("main");
+  const [color, setColor] = useState<string>(colorProp || DEFAULT_COLOR);
+  const colorRef = useRef(color);
+  useEffect(() => { colorRef.current = color; }, [color]);
+  useEffect(() => { if (colorProp && colorProp !== color) setColor(colorProp); /* eslint-disable-next-line */ }, [colorProp]);
 
   // Init map
   useEffect(() => {
