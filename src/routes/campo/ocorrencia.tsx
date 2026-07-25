@@ -53,7 +53,7 @@ function OcorrenciaPage() {
       date: new Date().toISOString().slice(0, 10),
       type, severity, status: "aberta",
       title: title.trim(), description: descParts.join("\n"),
-      responsible: me.user.fullName ?? me.user.email,
+      responsible: me?.user.fullName ?? me?.user.email,
     });
     setSaving(false);
     toast.success(res.queued ? "Ocorrência salva na fila (offline)" : "Ocorrência registrada");
