@@ -36,7 +36,21 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const hadHtml = html.classList.contains("dark");
+    const hadBody = body.classList.contains("dark");
+    html.classList.add("dark");
+    body.classList.add("dark");
+    return () => {
+      if (!hadHtml) html.classList.remove("dark");
+      if (!hadBody) body.classList.remove("dark");
+    };
+  }, []);
+
   useEffect(() => { if (hasAuthTokens()) void routeAfterLogin(navigate); }, [navigate]);
+
 
   async function handleSignIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
