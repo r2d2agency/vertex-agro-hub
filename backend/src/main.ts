@@ -12,7 +12,7 @@ import { UPLOADS_DIR } from './uploads/uploads.controller';
 
 
 
-const DEFAULT_ALLOWED_HEADERS = 'Content-Type, Authorization, Accept, Origin, X-Requested-With';
+const DEFAULT_ALLOWED_HEADERS = 'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-Idempotency-Key';
 
 function corsMiddleware(request: Request, response: Response, next: NextFunction) {
   const origin = request.headers.origin;
@@ -37,6 +37,34 @@ function corsMiddleware(request: Request, response: Response, next: NextFunction
   next();
 }
 
+// Cache simples em memória para deduplicar mutações reenviadas pela fila offline.
+type IdempotencyEntry = { status: number; body: any; ts: number };
+const idempotencyCache = new Map<string, IdempotencyEntry>();
+const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
+function idempotencyMiddleware(request: Request, response: Response, next: NextFunction) {
+  const key = (request.headers['x-idempotency-key'] as string) || '';
+  if (!key || !['POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method)) return next();
+  const now = Date.now();
+  // limpa entradas antigas oportunisticamente
+  if (idempotencyCache.size > 500) {
+    for (const [k, v] of idempotencyCache) if (now - v.ts > IDEMPOTENCY_TTL_MS) idempotencyCache.delete(k);
+  }
+  const hit = idempotencyCache.get(key);
+  if (hit && now - hit.ts < IDEMPOTENCY_TTL_MS) {
+    response.status(hit.status).json(hit.body);
+    return;
+  }
+  const originalJson = response.json.bind(response);
+  response.json = (body: any) => {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      idempotencyCache.set(key, { status: response.statusCode, body, ts: Date.now() });
+    }
+    return originalJson(body);
+  };
+  next();
+}
+
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -50,6 +78,7 @@ async function bootstrap() {
 
 
   app.use(corsMiddleware);
+  app.use(idempotencyMiddleware);
   app.enableCors({
     origin: true,
     credentials: false,

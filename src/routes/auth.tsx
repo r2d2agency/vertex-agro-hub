@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Leaf } from "lucide-react";
 import { hasAuthTokens, login } from "@/lib/api";
+import { getFieldMe } from "@/lib/field.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,12 +19,22 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+async function routeAfterLogin(navigate: ReturnType<typeof useNavigate>) {
+  try {
+    const me = await getFieldMe();
+    const fieldOnly = !me.isAdmin && (me.primaryRole === "monitor" || me.primaryRole === "consultor");
+    navigate({ to: fieldOnly ? "/campo" : "/dashboard", replace: true });
+  } catch {
+    navigate({ to: "/dashboard", replace: true });
+  }
+}
+
 function AuthPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (hasAuthTokens()) navigate({ to: "/dashboard", replace: true });
+    if (hasAuthTokens()) void routeAfterLogin(navigate);
   }, [navigate]);
 
   async function handleSignIn(e: React.FormEvent<HTMLFormElement>) {
@@ -33,7 +44,7 @@ function AuthPage() {
     try {
       await login(String(fd.get("email")), String(fd.get("password")));
       toast.success("Bem-vindo!");
-      navigate({ to: "/dashboard", replace: true });
+      await routeAfterLogin(navigate);
     } catch (error) {
       toast.error("Erro ao entrar", { description: error instanceof Error ? error.message : "Tente novamente." });
     } finally {

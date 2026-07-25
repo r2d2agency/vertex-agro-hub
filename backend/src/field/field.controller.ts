@@ -18,6 +18,18 @@ function need(v?: string) {
 export class FieldController {
   constructor(private readonly svc: FieldService) {}
 
+  // ---------- App de campo ----------
+  @Get('field/me')
+  fieldMe(@Req() req: any) { return this.svc.fieldMe(req.user.sub); }
+
+  @Post('field/checkin')
+  checkin(@Req() req: any, @Body() dto: {
+    companyId: string; farmId?: string; plotId?: string;
+    latitude?: number; longitude?: number; accuracyM?: number;
+    taskId?: string; notes?: string;
+  }) { return this.svc.checkin(req.user.sub, dto); }
+
+  // ---------- Estimulações ----------
   @Get('stimulations')
   listStim(@Req() req: any,
     @Query('companyId') companyId?: string,
