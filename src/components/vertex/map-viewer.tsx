@@ -112,7 +112,7 @@ export default function MapViewer({
         const center = boundaryCentroid(f.boundary ?? null) ??
           (f.latitude != null && f.longitude != null ? { lat: f.latitude, lng: f.longitude } : null);
         if (center) {
-          const m = L.marker([center.lat, center.lng]);
+          const m = L.marker([center.lat, center.lng], { icon: vertexDivIcon(f.color) });
           m.bindPopup(farmPopup(f));
           if (onSelectFarm) m.on("click", () => onSelectFarm(f.id));
           farmsLayerRef.current!.addLayer(m);
