@@ -23,19 +23,19 @@ function AppsPage() {
 
   const items = [
     {
+      title: "Vertex Monitor",
+      description: "App de campo para monitores: sangria, produção, ocorrências e chuva. Funciona offline.",
+      url: `${origin}/monitor`,
+    },
+    {
+      title: "Vertex Consultor",
+      description: "App para consultores: agenda de visitas, inspeções, ocorrências e planos de ação.",
+      url: `${origin}/consultor`,
+    },
+    {
       title: "Painel Administrativo",
-      description: "Acesso web para gestores, consultores e equipe interna.",
+      description: "Acesso web para gestores e equipe interna.",
       url: origin,
-    },
-    {
-      title: "Vertex Monitor (em breve)",
-      description: "App de campo para monitores registrarem sangrias, produção e ocorrências offline.",
-      url: `${origin}/apps/monitor`,
-    },
-    {
-      title: "Vertex Consultor (em breve)",
-      description: "App para consultores realizarem visitas, inspeções e planos de ação.",
-      url: `${origin}/apps/consultor`,
     },
   ];
 
@@ -47,11 +47,13 @@ function AppsPage() {
       />
       <Card className="mb-6">
         <CardContent className="p-4 text-sm text-muted-foreground">
-          Os apps móveis Vertex Monitor e Vertex Consultor estão em desenvolvimento.
-          Enquanto isso, o painel web está totalmente disponível para uso em desktop,
-          tablet e celular.
+          Os links <code className="rounded bg-muted px-1.5 py-0.5 text-xs">/monitor</code> e{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">/consultor</code> abrem direto
+          o app de campo (PWA instalável). Basta o colaborador entrar com o e-mail e senha
+          cadastrados em Usuários.
         </CardContent>
       </Card>
+
       <div className="grid gap-4 md:grid-cols-3">
         {items.map((i) => (
           <QrCard key={i.title} title={i.title} description={i.description} url={i.url} />
