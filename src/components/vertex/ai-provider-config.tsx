@@ -128,8 +128,22 @@ export function AiProviderConfigCard({ companyId }: { companyId: string }) {
           </div>
           <div className="grid gap-1">
             <Label>Modelo</Label>
-            <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder={hint.modelPlaceholder} />
-            <p className="text-xs text-muted-foreground">Deixe vazio para usar o padrão.</p>
+            <Select
+              value={hint.models.some((m) => m.value === model) || !model ? (model || "") : CUSTOM_MODEL}
+              onValueChange={(v) => setModel(v === CUSTOM_MODEL ? model || "" : v)}
+            >
+              <SelectTrigger><SelectValue placeholder={`Padrão: ${hint.modelPlaceholder}`} /></SelectTrigger>
+              <SelectContent>
+                {hint.models.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+                <SelectItem value={CUSTOM_MODEL}>Personalizado…</SelectItem>
+              </SelectContent>
+            </Select>
+            {(model && !hint.models.some((m) => m.value === model)) && (
+              <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder={hint.modelPlaceholder} />
+            )}
+            <p className="text-xs text-muted-foreground">Deixe vazio para usar o padrão ({hint.modelPlaceholder}).</p>
           </div>
         </div>
 
