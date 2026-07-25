@@ -102,7 +102,7 @@ export default function MapViewer({
         const polys = boundaryPolygons(f.boundary ?? null);
         polys.forEach((p) => {
           const latlngs = p.coordinates[0].map(([lng, lat]) => L.latLng(lat, lng));
-          const poly = L.polygon(latlngs, { color: f.color, weight: 2, fillOpacity: 0.2 });
+          const poly = L.polygon(latlngs, { color: f.color, weight: 2, fillColor: f.color, fillOpacity: 0.25 });
           poly.bindPopup(farmPopup(f));
           if (onSelectFarm) poly.on("click", () => onSelectFarm(f.id));
           farmsLayerRef.current!.addLayer(poly);
