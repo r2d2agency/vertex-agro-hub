@@ -160,8 +160,25 @@ export function AiProviderConfigCard({ companyId }: { companyId: string }) {
 
         {testResult && (
           <div className={`flex items-start gap-2 rounded-md border p-3 text-sm ${testResult.ok ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
-            {testResult.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-destructive" />}
+            {testResult.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5" /> : <XCircle className="h-4 w-4 text-destructive mt-0.5" />}
             <span>{testResult.message}</span>
+          </div>
+        )}
+
+        {data?.lastTest && (
+          <div className="rounded-md border bg-muted/30 p-3 text-xs">
+            <div className="flex items-center gap-2 mb-1">
+              {data.lastTest.ok
+                ? <Badge className="bg-emerald-600">Validado</Badge>
+                : <Badge variant="destructive">Falha</Badge>}
+              <span className="text-muted-foreground">
+                Última validação em {new Date(data.lastTest.testedAt).toLocaleString("pt-BR")} — {data.lastTest.latencyMs}ms
+              </span>
+            </div>
+            <div className="text-muted-foreground">
+              {data.lastTest.provider}/{data.lastTest.model}
+              {data.lastTest.error ? ` — ${data.lastTest.error}` : ""}
+            </div>
           </div>
         )}
 
