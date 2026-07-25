@@ -264,3 +264,69 @@ function InviteDialog({
     </Dialog>
   );
 }
+
+function CredentialsDialog({
+  creds, onClose,
+}: {
+  creds: { email: string; fullName: string | null; password: string } | null;
+  onClose: () => void;
+}) {
+  const loginUrl = typeof window !== "undefined" ? `${window.location.origin}/auth` : "/auth";
+  if (!creds) return null;
+
+  const whatsappText =
+    `Olá${creds.fullName ? " " + creds.fullName.split(" ")[0] : ""}! Seu acesso ao Vertex Agro:\n\n` +
+    `🔗 ${loginUrl}\n👤 ${creds.email}\n🔑 ${creds.password}\n\n` +
+    `Ao entrar pelo celular, use "Instalar app" para adicionar o ícone à tela inicial.`;
+
+  async function copy(text: string, label: string) {
+    try { await navigator.clipboard.writeText(text); toast.success(`${label} copiado`); }
+    catch { toast.error("Não foi possível copiar"); }
+  }
+
+  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(whatsappText)}`;
+
+  return (
+    <Dialog open={!!creds} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Credenciais de acesso</DialogTitle>
+          <DialogDescription>
+            Copie e envie ao usuário. Esta senha temporária não será exibida novamente.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <Field label="Link de acesso" value={loginUrl} onCopy={() => copy(loginUrl, "Link")} />
+          <Field label="Usuário (email)" value={creds.email} onCopy={() => copy(creds.email, "Email")} />
+          <Field label="Senha temporária" value={creds.password} mono onCopy={() => copy(creds.password, "Senha")} />
+        </div>
+        <DialogFooter className="gap-2 sm:justify-between">
+          <Button variant="outline" onClick={() => copy(whatsappText, "Mensagem")}>
+            <Copy className="mr-2 h-4 w-4" /> Copiar mensagem
+          </Button>
+          <div className="flex gap-2">
+            <a href={whatsappHref} target="_blank" rel="noreferrer">
+              <Button variant="outline">Abrir no WhatsApp</Button>
+            </a>
+            <Button onClick={onClose}>Concluir</Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({ label, value, mono, onCopy }: { label: string; value: string; mono?: boolean; onCopy: () => void }) {
+  return (
+    <div>
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <div className="mt-1 flex gap-2">
+        <Input readOnly value={value} className={mono ? "font-mono" : ""} />
+        <Button variant="outline" size="icon" onClick={onCopy} title="Copiar">
+          <Copy className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
