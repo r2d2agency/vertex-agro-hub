@@ -100,11 +100,19 @@ export function invitePerson(input: PersonalData & {
   password?: string;
   role: CompanyRole;
 }) {
-  return apiRequest<{ id: string; email: string }>(`/people/invite`, {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return apiRequest<{ id: string; email: string; fullName: string | null; generatedPassword?: string }>(
+    `/people/invite`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
 }
+
+export function resetPersonPassword(userId: string, companyId: string) {
+  return apiRequest<{ email: string; fullName: string | null; password: string }>(
+    `/people/${userId}/reset-password?companyId=${encodeURIComponent(companyId)}`,
+    { method: "POST" },
+  );
+}
+
 
 export function updatePersonPersonal(userId: string, companyId: string, data: PersonalData) {
   return apiRequest(`/people/${userId}/personal?companyId=${encodeURIComponent(companyId)}`, {

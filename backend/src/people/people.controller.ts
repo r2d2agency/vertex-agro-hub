@@ -42,6 +42,16 @@ export class PeopleController {
     return this.svc.invite(req.user.sub, dto);
   }
 
+  @Post(':userId/reset-password')
+  resetPassword(
+    @Req() req: any,
+    @Param('userId', ParseUUIDPipe) targetUserId: string,
+    @Query('companyId', ParseUUIDPipe) companyId: string,
+  ) {
+    return this.svc.resetPassword(req.user.sub, targetUserId, companyId);
+  }
+
+
   @Patch(':userId/personal')
   updatePersonal(
     @Req() req: any,

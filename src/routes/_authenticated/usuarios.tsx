@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PersonEditor } from "@/components/vertex/person-editor";
-import { Pencil } from "lucide-react";
-import { Plus, Trash2, UserRound } from "lucide-react";
+import { Copy, KeyRound, Pencil, Plus, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -23,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import {
-  COMPANY_ROLES, invitePerson, listPeople, removePerson, updatePersonRole,
+  COMPANY_ROLES, invitePerson, listPeople, removePerson, resetPersonPassword, updatePersonRole,
   type CompanyRole, type Person,
 } from "@/lib/people.functions";
 
@@ -48,6 +47,13 @@ function PeoplePage() {
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<Person | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [creds, setCreds] = useState<{ email: string; fullName: string | null; password: string } | null>(null);
+
+  const reset = useMutation({
+    mutationFn: (userId: string) => resetPersonPassword(userId, companyId!),
+    onSuccess: (r) => { setCreds(r); toast.success("Senha temporária gerada"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data = [], isLoading: loadingList } = useQuery({
     queryKey: ["people", companyId],
@@ -133,6 +139,13 @@ function PeoplePage() {
                       <Button variant="ghost" size="icon" onClick={() => setEditingId(p.id)} title="Editar ficha">
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      <Button
+                        variant="ghost" size="icon" title="Gerar senha temporária"
+                        disabled={reset.isPending}
+                        onClick={() => reset.mutate(p.id)}
+                      >
+                        <KeyRound className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setToDelete(p)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -150,7 +163,10 @@ function PeoplePage() {
         onOpenChange={setCreating}
         companyId={companyId}
         onSaved={() => qc.invalidateQueries({ queryKey: ["people", companyId] })}
+        onCredentials={setCreds}
       />
+
+      <CredentialsDialog creds={creds} onClose={() => setCreds(null)} />
 
       {companyId && (
         <PersonEditor
@@ -183,12 +199,13 @@ function PeoplePage() {
 }
 
 function InviteDialog({
-  open, onOpenChange, companyId, onSaved,
+  open, onOpenChange, companyId, onSaved, onCredentials,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   companyId: string | null;
   onSaved: () => void;
+  onCredentials: (c: { email: string; fullName: string | null; password: string }) => void;
 }) {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -197,10 +214,13 @@ function InviteDialog({
 
   const mut = useMutation({
     mutationFn: () => invitePerson({ companyId: companyId!, email, fullName, password: password || undefined, role }),
-    onSuccess: () => {
+    onSuccess: (r) => {
       toast.success("Pessoa cadastrada");
       onSaved();
       onOpenChange(false);
+      if (r.generatedPassword) {
+        onCredentials({ email: r.email, fullName: r.fullName, password: r.generatedPassword });
+      }
       setEmail(""); setFullName(""); setPassword(""); setRole("monitor");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -244,3 +264,69 @@ function InviteDialog({
     </Dialog>
   );
 }
+
+function CredentialsDialog({
+  creds, onClose,
+}: {
+  creds: { email: string; fullName: string | null; password: string } | null;
+  onClose: () => void;
+}) {
+  const loginUrl = typeof window !== "undefined" ? `${window.location.origin}/auth` : "/auth";
+  if (!creds) return null;
+
+  const whatsappText =
+    `Olá${creds.fullName ? " " + creds.fullName.split(" ")[0] : ""}! Seu acesso ao Vertex Agro:\n\n` +
+    `🔗 ${loginUrl}\n👤 ${creds.email}\n🔑 ${creds.password}\n\n` +
+    `Ao entrar pelo celular, use "Instalar app" para adicionar o ícone à tela inicial.`;
+
+  async function copy(text: string, label: string) {
+    try { await navigator.clipboard.writeText(text); toast.success(`${label} copiado`); }
+    catch { toast.error("Não foi possível copiar"); }
+  }
+
+  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(whatsappText)}`;
+
+  return (
+    <Dialog open={!!creds} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Credenciais de acesso</DialogTitle>
+          <DialogDescription>
+            Copie e envie ao usuário. Esta senha temporária não será exibida novamente.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <Field label="Link de acesso" value={loginUrl} onCopy={() => copy(loginUrl, "Link")} />
+          <Field label="Usuário (email)" value={creds.email} onCopy={() => copy(creds.email, "Email")} />
+          <Field label="Senha temporária" value={creds.password} mono onCopy={() => copy(creds.password, "Senha")} />
+        </div>
+        <DialogFooter className="gap-2 sm:justify-between">
+          <Button variant="outline" onClick={() => copy(whatsappText, "Mensagem")}>
+            <Copy className="mr-2 h-4 w-4" /> Copiar mensagem
+          </Button>
+          <div className="flex gap-2">
+            <a href={whatsappHref} target="_blank" rel="noreferrer">
+              <Button variant="outline">Abrir no WhatsApp</Button>
+            </a>
+            <Button onClick={onClose}>Concluir</Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({ label, value, mono, onCopy }: { label: string; value: string; mono?: boolean; onCopy: () => void }) {
+  return (
+    <div>
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <div className="mt-1 flex gap-2">
+        <Input readOnly value={value} className={mono ? "font-mono" : ""} />
+        <Button variant="outline" size="icon" onClick={onCopy} title="Copiar">
+          <Copy className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
