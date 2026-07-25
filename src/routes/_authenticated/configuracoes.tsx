@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
+import { AiProviderConfigCard } from "@/components/vertex/ai-provider-config";
 import { getSettings, updateSettings, type CompanySettings } from "@/lib/configuracoes.functions";
 import { toast } from "sonner";
 
@@ -90,6 +91,8 @@ function ConfigPage() {
           </CardContent>
         </Card>
       )}
+
+      {companyId && <AiProviderConfigCard companyId={companyId} />}
     </div>
   );
 }
