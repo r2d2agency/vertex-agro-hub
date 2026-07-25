@@ -970,11 +970,14 @@ model Implement {
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
   machine Machine? @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  maintenanceOrders MaintenanceOrder[]
+  operationLogs     OperationLog[]
 
   @@index([companyId, isDeleted])
   @@index([farmId])
   @@map("implements")
 }
+
 
 model Operator {
   id                     String   @id @default(uuid()) @db.Uuid
