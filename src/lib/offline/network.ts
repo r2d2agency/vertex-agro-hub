@@ -32,6 +32,6 @@ export function useOnlineStatus() {
 
 export function useOutboxState() {
   const [state, setState] = useState<{ pending: number; running: boolean }>({ pending: 0, running: false });
-  useEffect(() => subscribeOutbox(setState), []);
+  useEffect(() => { const un = subscribeOutbox(setState); return () => { un; }; }, []);
   return state;
 }
