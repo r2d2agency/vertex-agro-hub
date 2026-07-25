@@ -14,13 +14,16 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as AuthenticatedAbastecimentoRouteImport } from './routes/_authenticated/abastecimento'
 import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated/agenda'
 import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticated/alertas'
 import { Route as AuthenticatedAlertasIaRouteImport } from './routes/_authenticated/alertas-ia'
+import { Route as AuthenticatedApontamentosRouteImport } from './routes/_authenticated/apontamentos'
 import { Route as AuthenticatedAppsRouteImport } from './routes/_authenticated/apps'
 import { Route as AuthenticatedAssistenteRouteImport } from './routes/_authenticated/assistente'
 import { Route as AuthenticatedAtividadesRouteImport } from './routes/_authenticated/atividades'
 import { Route as AuthenticatedAuditoriaRouteImport } from './routes/_authenticated/auditoria'
+import { Route as AuthenticatedChecklistsRouteImport } from './routes/_authenticated/checklists'
 import { Route as AuthenticatedClonesRouteImport } from './routes/_authenticated/clones'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedConsultoresRouteImport } from './routes/_authenticated/consultores'
@@ -30,6 +33,7 @@ import { Route as AuthenticatedDocumentacaoRouteImport } from './routes/_authent
 import { Route as AuthenticatedEmpresasRouteImport } from './routes/_authenticated/empresas'
 import { Route as AuthenticatedEquipesRouteImport } from './routes/_authenticated/equipes'
 import { Route as AuthenticatedEstimulacoesRouteImport } from './routes/_authenticated/estimulacoes'
+import { Route as AuthenticatedEstoqueRouteImport } from './routes/_authenticated/estoque'
 import { Route as AuthenticatedFazendasRouteImport } from './routes/_authenticated/fazendas'
 import { Route as AuthenticatedFotografiasRouteImport } from './routes/_authenticated/fotografias'
 import { Route as AuthenticatedFrotaRouteImport } from './routes/_authenticated/frota'
@@ -41,6 +45,7 @@ import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenti
 import { Route as AuthenticatedInspecoesRouteImport } from './routes/_authenticated/inspecoes'
 import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
 import { Route as AuthenticatedLogsRouteImport } from './routes/_authenticated/logs'
+import { Route as AuthenticatedManutencaoRouteImport } from './routes/_authenticated/manutencao'
 import { Route as AuthenticatedMapasRouteImport } from './routes/_authenticated/mapas'
 import { Route as AuthenticatedMaquinasRouteImport } from './routes/_authenticated/maquinas'
 import { Route as AuthenticatedMonitoresRouteImport } from './routes/_authenticated/monitores'
@@ -91,6 +96,12 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAbastecimentoRoute =
+  AuthenticatedAbastecimentoRouteImport.update({
+    id: '/abastecimento',
+    path: '/abastecimento',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAgendaRoute = AuthenticatedAgendaRouteImport.update({
   id: '/agenda',
   path: '/agenda',
@@ -106,6 +117,12 @@ const AuthenticatedAlertasIaRoute = AuthenticatedAlertasIaRouteImport.update({
   path: '/alertas-ia',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedApontamentosRoute =
+  AuthenticatedApontamentosRouteImport.update({
+    id: '/apontamentos',
+    path: '/apontamentos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAppsRoute = AuthenticatedAppsRouteImport.update({
   id: '/apps',
   path: '/apps',
@@ -124,6 +141,11 @@ const AuthenticatedAtividadesRoute = AuthenticatedAtividadesRouteImport.update({
 const AuthenticatedAuditoriaRoute = AuthenticatedAuditoriaRouteImport.update({
   id: '/auditoria',
   path: '/auditoria',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedChecklistsRoute = AuthenticatedChecklistsRouteImport.update({
+  id: '/checklists',
+  path: '/checklists',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedClonesRoute = AuthenticatedClonesRouteImport.update({
@@ -176,6 +198,11 @@ const AuthenticatedEstimulacoesRoute =
     path: '/estimulacoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedEstoqueRoute = AuthenticatedEstoqueRouteImport.update({
+  id: '/estoque',
+  path: '/estoque',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedFazendasRoute = AuthenticatedFazendasRouteImport.update({
   id: '/fazendas',
   path: '/fazendas',
@@ -233,6 +260,11 @@ const AuthenticatedIntegracoesRoute =
 const AuthenticatedLogsRoute = AuthenticatedLogsRouteImport.update({
   id: '/logs',
   path: '/logs',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedManutencaoRoute = AuthenticatedManutencaoRouteImport.update({
+  id: '/manutencao',
+  path: '/manutencao',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMapasRoute = AuthenticatedMapasRouteImport.update({
@@ -372,13 +404,16 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/abastecimento': typeof AuthenticatedAbastecimentoRoute
   '/agenda': typeof AuthenticatedAgendaRoute
   '/alertas': typeof AuthenticatedAlertasRoute
   '/alertas-ia': typeof AuthenticatedAlertasIaRoute
+  '/apontamentos': typeof AuthenticatedApontamentosRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/assistente': typeof AuthenticatedAssistenteRoute
   '/atividades': typeof AuthenticatedAtividadesRoute
   '/auditoria': typeof AuthenticatedAuditoriaRoute
+  '/checklists': typeof AuthenticatedChecklistsRoute
   '/clones': typeof AuthenticatedClonesRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consultores': typeof AuthenticatedConsultoresRoute
@@ -388,6 +423,7 @@ export interface FileRoutesByFullPath {
   '/empresas': typeof AuthenticatedEmpresasRouteWithChildren
   '/equipes': typeof AuthenticatedEquipesRoute
   '/estimulacoes': typeof AuthenticatedEstimulacoesRoute
+  '/estoque': typeof AuthenticatedEstoqueRoute
   '/fazendas': typeof AuthenticatedFazendasRoute
   '/fotografias': typeof AuthenticatedFotografiasRoute
   '/frota': typeof AuthenticatedFrotaRoute
@@ -399,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/inspecoes': typeof AuthenticatedInspecoesRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/logs': typeof AuthenticatedLogsRoute
+  '/manutencao': typeof AuthenticatedManutencaoRoute
   '/mapas': typeof AuthenticatedMapasRoute
   '/maquinas': typeof AuthenticatedMaquinasRouteWithChildren
   '/monitores': typeof AuthenticatedMonitoresRoute
@@ -430,13 +467,16 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/abastecimento': typeof AuthenticatedAbastecimentoRoute
   '/agenda': typeof AuthenticatedAgendaRoute
   '/alertas': typeof AuthenticatedAlertasRoute
   '/alertas-ia': typeof AuthenticatedAlertasIaRoute
+  '/apontamentos': typeof AuthenticatedApontamentosRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/assistente': typeof AuthenticatedAssistenteRoute
   '/atividades': typeof AuthenticatedAtividadesRoute
   '/auditoria': typeof AuthenticatedAuditoriaRoute
+  '/checklists': typeof AuthenticatedChecklistsRoute
   '/clones': typeof AuthenticatedClonesRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consultores': typeof AuthenticatedConsultoresRoute
@@ -445,6 +485,7 @@ export interface FileRoutesByTo {
   '/documentacao': typeof AuthenticatedDocumentacaoRouteWithChildren
   '/equipes': typeof AuthenticatedEquipesRoute
   '/estimulacoes': typeof AuthenticatedEstimulacoesRoute
+  '/estoque': typeof AuthenticatedEstoqueRoute
   '/fazendas': typeof AuthenticatedFazendasRoute
   '/fotografias': typeof AuthenticatedFotografiasRoute
   '/frota': typeof AuthenticatedFrotaRoute
@@ -456,6 +497,7 @@ export interface FileRoutesByTo {
   '/inspecoes': typeof AuthenticatedInspecoesRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/logs': typeof AuthenticatedLogsRoute
+  '/manutencao': typeof AuthenticatedManutencaoRoute
   '/mapas': typeof AuthenticatedMapasRoute
   '/maquinas': typeof AuthenticatedMaquinasRouteWithChildren
   '/monitores': typeof AuthenticatedMonitoresRoute
@@ -489,13 +531,16 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/_authenticated/abastecimento': typeof AuthenticatedAbastecimentoRoute
   '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
   '/_authenticated/alertas': typeof AuthenticatedAlertasRoute
   '/_authenticated/alertas-ia': typeof AuthenticatedAlertasIaRoute
+  '/_authenticated/apontamentos': typeof AuthenticatedApontamentosRoute
   '/_authenticated/apps': typeof AuthenticatedAppsRoute
   '/_authenticated/assistente': typeof AuthenticatedAssistenteRoute
   '/_authenticated/atividades': typeof AuthenticatedAtividadesRoute
   '/_authenticated/auditoria': typeof AuthenticatedAuditoriaRoute
+  '/_authenticated/checklists': typeof AuthenticatedChecklistsRoute
   '/_authenticated/clones': typeof AuthenticatedClonesRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/consultores': typeof AuthenticatedConsultoresRoute
@@ -505,6 +550,7 @@ export interface FileRoutesById {
   '/_authenticated/empresas': typeof AuthenticatedEmpresasRouteWithChildren
   '/_authenticated/equipes': typeof AuthenticatedEquipesRoute
   '/_authenticated/estimulacoes': typeof AuthenticatedEstimulacoesRoute
+  '/_authenticated/estoque': typeof AuthenticatedEstoqueRoute
   '/_authenticated/fazendas': typeof AuthenticatedFazendasRoute
   '/_authenticated/fotografias': typeof AuthenticatedFotografiasRoute
   '/_authenticated/frota': typeof AuthenticatedFrotaRoute
@@ -516,6 +562,7 @@ export interface FileRoutesById {
   '/_authenticated/inspecoes': typeof AuthenticatedInspecoesRoute
   '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
   '/_authenticated/logs': typeof AuthenticatedLogsRoute
+  '/_authenticated/manutencao': typeof AuthenticatedManutencaoRoute
   '/_authenticated/mapas': typeof AuthenticatedMapasRoute
   '/_authenticated/maquinas': typeof AuthenticatedMaquinasRouteWithChildren
   '/_authenticated/monitores': typeof AuthenticatedMonitoresRoute
@@ -549,13 +596,16 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/abastecimento'
     | '/agenda'
     | '/alertas'
     | '/alertas-ia'
+    | '/apontamentos'
     | '/apps'
     | '/assistente'
     | '/atividades'
     | '/auditoria'
+    | '/checklists'
     | '/clones'
     | '/configuracoes'
     | '/consultores'
@@ -565,6 +615,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/equipes'
     | '/estimulacoes'
+    | '/estoque'
     | '/fazendas'
     | '/fotografias'
     | '/frota'
@@ -576,6 +627,7 @@ export interface FileRouteTypes {
     | '/inspecoes'
     | '/integracoes'
     | '/logs'
+    | '/manutencao'
     | '/mapas'
     | '/maquinas'
     | '/monitores'
@@ -607,13 +659,16 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/abastecimento'
     | '/agenda'
     | '/alertas'
     | '/alertas-ia'
+    | '/apontamentos'
     | '/apps'
     | '/assistente'
     | '/atividades'
     | '/auditoria'
+    | '/checklists'
     | '/clones'
     | '/configuracoes'
     | '/consultores'
@@ -622,6 +677,7 @@ export interface FileRouteTypes {
     | '/documentacao'
     | '/equipes'
     | '/estimulacoes'
+    | '/estoque'
     | '/fazendas'
     | '/fotografias'
     | '/frota'
@@ -633,6 +689,7 @@ export interface FileRouteTypes {
     | '/inspecoes'
     | '/integracoes'
     | '/logs'
+    | '/manutencao'
     | '/mapas'
     | '/maquinas'
     | '/monitores'
@@ -665,13 +722,16 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/_authenticated/abastecimento'
     | '/_authenticated/agenda'
     | '/_authenticated/alertas'
     | '/_authenticated/alertas-ia'
+    | '/_authenticated/apontamentos'
     | '/_authenticated/apps'
     | '/_authenticated/assistente'
     | '/_authenticated/atividades'
     | '/_authenticated/auditoria'
+    | '/_authenticated/checklists'
     | '/_authenticated/clones'
     | '/_authenticated/configuracoes'
     | '/_authenticated/consultores'
@@ -681,6 +741,7 @@ export interface FileRouteTypes {
     | '/_authenticated/empresas'
     | '/_authenticated/equipes'
     | '/_authenticated/estimulacoes'
+    | '/_authenticated/estoque'
     | '/_authenticated/fazendas'
     | '/_authenticated/fotografias'
     | '/_authenticated/frota'
@@ -692,6 +753,7 @@ export interface FileRouteTypes {
     | '/_authenticated/inspecoes'
     | '/_authenticated/integracoes'
     | '/_authenticated/logs'
+    | '/_authenticated/manutencao'
     | '/_authenticated/mapas'
     | '/_authenticated/maquinas'
     | '/_authenticated/monitores'
@@ -764,6 +826,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/abastecimento': {
+      id: '/_authenticated/abastecimento'
+      path: '/abastecimento'
+      fullPath: '/abastecimento'
+      preLoaderRoute: typeof AuthenticatedAbastecimentoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/agenda': {
       id: '/_authenticated/agenda'
       path: '/agenda'
@@ -783,6 +852,13 @@ declare module '@tanstack/react-router' {
       path: '/alertas-ia'
       fullPath: '/alertas-ia'
       preLoaderRoute: typeof AuthenticatedAlertasIaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/apontamentos': {
+      id: '/_authenticated/apontamentos'
+      path: '/apontamentos'
+      fullPath: '/apontamentos'
+      preLoaderRoute: typeof AuthenticatedApontamentosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/apps': {
@@ -811,6 +887,13 @@ declare module '@tanstack/react-router' {
       path: '/auditoria'
       fullPath: '/auditoria'
       preLoaderRoute: typeof AuthenticatedAuditoriaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/checklists': {
+      id: '/_authenticated/checklists'
+      path: '/checklists'
+      fullPath: '/checklists'
+      preLoaderRoute: typeof AuthenticatedChecklistsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/clones': {
@@ -874,6 +957,13 @@ declare module '@tanstack/react-router' {
       path: '/estimulacoes'
       fullPath: '/estimulacoes'
       preLoaderRoute: typeof AuthenticatedEstimulacoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/estoque': {
+      id: '/_authenticated/estoque'
+      path: '/estoque'
+      fullPath: '/estoque'
+      preLoaderRoute: typeof AuthenticatedEstoqueRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/fazendas': {
@@ -951,6 +1041,13 @@ declare module '@tanstack/react-router' {
       path: '/logs'
       fullPath: '/logs'
       preLoaderRoute: typeof AuthenticatedLogsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/manutencao': {
+      id: '/_authenticated/manutencao'
+      path: '/manutencao'
+      fullPath: '/manutencao'
+      preLoaderRoute: typeof AuthenticatedManutencaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/mapas': {
@@ -1176,13 +1273,16 @@ const AuthenticatedMaquinasRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAbastecimentoRoute: typeof AuthenticatedAbastecimentoRoute
   AuthenticatedAgendaRoute: typeof AuthenticatedAgendaRoute
   AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
   AuthenticatedAlertasIaRoute: typeof AuthenticatedAlertasIaRoute
+  AuthenticatedApontamentosRoute: typeof AuthenticatedApontamentosRoute
   AuthenticatedAppsRoute: typeof AuthenticatedAppsRoute
   AuthenticatedAssistenteRoute: typeof AuthenticatedAssistenteRoute
   AuthenticatedAtividadesRoute: typeof AuthenticatedAtividadesRoute
   AuthenticatedAuditoriaRoute: typeof AuthenticatedAuditoriaRoute
+  AuthenticatedChecklistsRoute: typeof AuthenticatedChecklistsRoute
   AuthenticatedClonesRoute: typeof AuthenticatedClonesRoute
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedConsultoresRoute: typeof AuthenticatedConsultoresRoute
@@ -1192,6 +1292,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEmpresasRoute: typeof AuthenticatedEmpresasRouteWithChildren
   AuthenticatedEquipesRoute: typeof AuthenticatedEquipesRoute
   AuthenticatedEstimulacoesRoute: typeof AuthenticatedEstimulacoesRoute
+  AuthenticatedEstoqueRoute: typeof AuthenticatedEstoqueRoute
   AuthenticatedFazendasRoute: typeof AuthenticatedFazendasRoute
   AuthenticatedFotografiasRoute: typeof AuthenticatedFotografiasRoute
   AuthenticatedFrotaRoute: typeof AuthenticatedFrotaRoute
@@ -1203,6 +1304,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInspecoesRoute: typeof AuthenticatedInspecoesRoute
   AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
   AuthenticatedLogsRoute: typeof AuthenticatedLogsRoute
+  AuthenticatedManutencaoRoute: typeof AuthenticatedManutencaoRoute
   AuthenticatedMapasRoute: typeof AuthenticatedMapasRoute
   AuthenticatedMaquinasRoute: typeof AuthenticatedMaquinasRouteWithChildren
   AuthenticatedMonitoresRoute: typeof AuthenticatedMonitoresRoute
@@ -1226,13 +1328,16 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAbastecimentoRoute: AuthenticatedAbastecimentoRoute,
   AuthenticatedAgendaRoute: AuthenticatedAgendaRoute,
   AuthenticatedAlertasRoute: AuthenticatedAlertasRoute,
   AuthenticatedAlertasIaRoute: AuthenticatedAlertasIaRoute,
+  AuthenticatedApontamentosRoute: AuthenticatedApontamentosRoute,
   AuthenticatedAppsRoute: AuthenticatedAppsRoute,
   AuthenticatedAssistenteRoute: AuthenticatedAssistenteRoute,
   AuthenticatedAtividadesRoute: AuthenticatedAtividadesRoute,
   AuthenticatedAuditoriaRoute: AuthenticatedAuditoriaRoute,
+  AuthenticatedChecklistsRoute: AuthenticatedChecklistsRoute,
   AuthenticatedClonesRoute: AuthenticatedClonesRoute,
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedConsultoresRoute: AuthenticatedConsultoresRoute,
@@ -1242,6 +1347,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEmpresasRoute: AuthenticatedEmpresasRouteWithChildren,
   AuthenticatedEquipesRoute: AuthenticatedEquipesRoute,
   AuthenticatedEstimulacoesRoute: AuthenticatedEstimulacoesRoute,
+  AuthenticatedEstoqueRoute: AuthenticatedEstoqueRoute,
   AuthenticatedFazendasRoute: AuthenticatedFazendasRoute,
   AuthenticatedFotografiasRoute: AuthenticatedFotografiasRoute,
   AuthenticatedFrotaRoute: AuthenticatedFrotaRoute,
@@ -1253,6 +1359,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInspecoesRoute: AuthenticatedInspecoesRoute,
   AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,
   AuthenticatedLogsRoute: AuthenticatedLogsRoute,
+  AuthenticatedManutencaoRoute: AuthenticatedManutencaoRoute,
   AuthenticatedMapasRoute: AuthenticatedMapasRoute,
   AuthenticatedMaquinasRoute: AuthenticatedMaquinasRouteWithChildren,
   AuthenticatedMonitoresRoute: AuthenticatedMonitoresRoute,
