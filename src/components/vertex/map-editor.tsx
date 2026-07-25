@@ -128,7 +128,16 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
     });
     map.addControl(ctrl);
     drawControlRef.current = ctrl;
-  }, [ready, mode, drawTarget]);
+  }, [ready, mode, drawTarget, color]);
+
+  // Reaplica cor nos polígonos principais existentes
+  useEffect(() => {
+    if (!ready || !mainLayerRef.current) return;
+    mainLayerRef.current.eachLayer((l) => {
+      const p = l as L.Polygon;
+      if (p.setStyle) p.setStyle(mainStyle(color));
+    });
+  }, [ready, color]);
 
   // Load initial value
   useEffect(() => {
