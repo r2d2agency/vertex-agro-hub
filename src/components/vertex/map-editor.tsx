@@ -84,7 +84,7 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
         layer.setStyle(EXCL_STYLE);
         exclLayerRef.current?.addLayer(layer);
       } else {
-        layer.setStyle(MAIN_STYLE);
+        layer.setStyle(mainStyle(colorRef.current));
         mainLayerRef.current?.addLayer(layer);
       }
       emit();
@@ -118,10 +118,10 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
           allowIntersection: true,
           showArea: true,
           metric: true,
-          shapeOptions: drawTarget === "exclusion" ? EXCL_STYLE : MAIN_STYLE,
+          shapeOptions: drawTarget === "exclusion" ? EXCL_STYLE : mainStyle(colorRef.current),
           drawError: { color: "#dc2626", message: "As linhas não podem se cruzar" },
         } as L.DrawOptions.PolygonOptions,
-        rectangle: { shapeOptions: drawTarget === "exclusion" ? EXCL_STYLE : MAIN_STYLE } as L.DrawOptions.RectangleOptions,
+        rectangle: { shapeOptions: drawTarget === "exclusion" ? EXCL_STYLE : mainStyle(colorRef.current) } as L.DrawOptions.RectangleOptions,
         polyline: false, circle: false, marker: false, circlemarker: false,
       },
       edit: { featureGroup, remove: true },
@@ -137,9 +137,9 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
     exclLayerRef.current.clearLayers();
     if (value) {
       if (value.mode === "multi") {
-        value.polygons.forEach((p) => addPolygon(p, mainLayerRef.current!, MAIN_STYLE));
+        value.polygons.forEach((p) => addPolygon(p, mainLayerRef.current!, mainStyle(colorRef.current)));
       } else {
-        addPolygon(value.main, mainLayerRef.current!, MAIN_STYLE);
+        addPolygon(value.main, mainLayerRef.current!, mainStyle(colorRef.current));
         value.exclusions.forEach((p) => addPolygon(p, exclLayerRef.current!, EXCL_STYLE));
       }
       try {
