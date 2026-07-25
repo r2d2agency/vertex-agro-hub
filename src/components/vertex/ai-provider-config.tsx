@@ -82,12 +82,13 @@ export function AiProviderConfigCard({ companyId }: { companyId: string }) {
     mutationFn: () => testAiConfig({ companyId, provider, model: model || undefined, apiKey: apiKey || undefined, useEnvKey: false }),
     onSuccess: (r) => {
       if (r.ok) {
-        setTestResult({ ok: true, message: `Conexão OK — ${r.provider}/${r.model}` });
+        setTestResult({ ok: true, message: `Conexão OK — ${r.provider}/${r.model} (${(r as any).latencyMs ?? "?"}ms)` });
         toast.success("Conexão validada");
       } else {
         setTestResult({ ok: false, message: r.error ?? "Falha desconhecida" });
         toast.error(r.error ?? "Falha no teste");
       }
+      qc.invalidateQueries({ queryKey: ["ai-config", companyId] });
     },
     onError: (e: any) => {
       setTestResult({ ok: false, message: e.message });
