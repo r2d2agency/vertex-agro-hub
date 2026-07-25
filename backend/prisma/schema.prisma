@@ -1006,10 +1006,16 @@ model Operator {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
+  fuelMovements FuelMovement[]
+  operationLogs OperationLog[]
+  checklists    MachineChecklist[]
+
   @@index([companyId, isDeleted])
   @@index([farmId])
   @@map("operators")
 }
+
+
 
 model OperationType {
   id                 String   @id @default(uuid()) @db.Uuid
