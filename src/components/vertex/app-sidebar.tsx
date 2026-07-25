@@ -117,6 +117,11 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Implementos", url: "/implementos", icon: Wrench },
       { title: "Operadores", url: "/operadores", icon: UserCog },
       { title: "Operações", url: "/operacoes", icon: ClipboardList },
+      { title: "Abastecimento", url: "/abastecimento", icon: Fuel },
+      { title: "Estoque", url: "/estoque", icon: Package },
+      { title: "Manutenção", url: "/manutencao", icon: Wrench },
+      { title: "Apontamentos", url: "/apontamentos", icon: ActivityIcon },
+      { title: "Checklists", url: "/checklists", icon: ClipboardCheck },
     ],
   },
 
