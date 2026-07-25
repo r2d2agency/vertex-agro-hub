@@ -1,21 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Sparkles, TrendingUp, ListChecks, AlertTriangle, KeyRound, CheckCircle2, XCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Bot, Sparkles, TrendingUp, ListChecks, AlertTriangle, Settings2 } from "lucide-react";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
-import {
-  listInsights, listActionPlans, listForecasts,
-  getAiConfig, updateAiConfig, testAiConfig, type AiProvider,
-} from "@/lib/ai.functions";
-import { toast } from "sonner";
+import { listInsights, listActionPlans, listForecasts } from "@/lib/ai.functions";
 
 export const Route = createFileRoute("/_authenticated/ia")({
   head: () => ({ meta: [
