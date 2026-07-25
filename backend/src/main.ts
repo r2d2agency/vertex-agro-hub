@@ -78,6 +78,7 @@ async function bootstrap() {
 
 
   app.use(corsMiddleware);
+  app.use(idempotencyMiddleware);
   app.enableCors({
     origin: true,
     credentials: false,
