@@ -928,6 +928,12 @@ model Machine {
   implements    Implement[]
   documents     MachineDocument[]
   statusLogs    MachineStatusLog[]
+  fuelMovements FuelMovement[]
+  inventoryMovements InventoryMovement[]
+  maintenanceOrders  MaintenanceOrder[]
+  operationLogs      OperationLog[]
+  checklists         MachineChecklist[]
+
 
   @@index([companyId, isDeleted])
   @@index([farmId])
