@@ -167,7 +167,7 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
     const polys = reference.mode === "multi" ? reference.polygons : [reference.main];
     const layer = L.geoJSON(
       { type: "FeatureCollection", features: polys.map((p) => ({ type: "Feature", geometry: p, properties: {} })) } as GeoJSON.FeatureCollection,
-      { style: { color: "#0f766e", weight: 2, dashArray: "4 4", fillOpacity: 0.05, interactive: false } }
+      { style: { color: "#ffffff", weight: 2, dashArray: "6 4", fillOpacity: 0.05, interactive: false } }
     );
     layer.addTo(map);
     try { map.fitBounds(layer.getBounds(), { padding: [20, 20], maxZoom: 16 }); } catch { /* empty */ }
