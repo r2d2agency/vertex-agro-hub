@@ -1,11 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { listSessions, syncHealth } from "@/lib/sync.functions";
-import { RefreshCw, Smartphone } from "lucide-react";
+import { RefreshCw, Smartphone, CloudOff, CloudUpload, Trash2 } from "lucide-react";
+import { flushOutbox, listOutbox, clearOutboxItem, type OutboxItem } from "@/lib/offline/queue";
+import { useOnlineStatus, useOutboxState } from "@/lib/offline/network";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/sincronizacao")({
   head: () => ({ meta: [
