@@ -30,6 +30,8 @@ import { CepInput } from "@/components/vertex/cep-input";
 import { UfSelect } from "@/components/vertex/uf-select";
 import { MapPin } from "lucide-react";
 import { geocodeAddress } from "@/lib/via-cep";
+import { FarmDetailDialog } from "@/components/vertex/farm-detail-dialog";
+import { listPlots } from "@/lib/talhoes.functions";
 
 export const Route = createFileRoute("/_authenticated/fazendas")({
   head: () => ({
