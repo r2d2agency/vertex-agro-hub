@@ -31,13 +31,14 @@ export class FieldService {
       include: { farm: { select: { id: true, name: true, companyId: true, city: true, state: true, latitude: true, longitude: true } } },
       orderBy: { startAt: 'desc' },
     });
-    const primaryRole = roleNames.includes('consultor')
+    const roleStrings = roleNames as string[];
+    const primaryRole = roleStrings.includes('consultor')
       ? 'consultor'
-      : roleNames.includes('monitor')
+      : roleStrings.includes('monitor')
       ? 'monitor'
-      : roleNames.includes('sangrador')
+      : roleStrings.includes('sangrador')
       ? 'sangrador'
-      : (roleNames[0] ?? 'user');
+      : (roleStrings[0] ?? 'user');
     return {
       user: { id: user.id, email: user.email, fullName: user.fullName },
       roles: roleNames,
