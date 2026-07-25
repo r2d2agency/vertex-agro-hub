@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CloudRain, Droplets, FileText, LogOut, RefreshCw, Settings, Tractor, Warehouse } from "lucide-react";
+import { CloudRain, Droplets, FileText, LogOut, RefreshCw, Settings } from "lucide-react";
 import { logout } from "@/lib/api";
 
 export const Route = createFileRoute("/campo/mais")({ component: MaisPage });
@@ -8,8 +8,6 @@ const ITEMS = [
   { to: "/campo/estimulacao", label: "Estimulação", icon: Droplets, desc: "Registrar aplicação de estimulantes" },
   { to: "/campo/chuva", label: "Informar chuva", icon: CloudRain, desc: "Reportar interrupção por chuva" },
   { to: "/campo/sincronizacao", label: "Sincronização", icon: RefreshCw, desc: "Ver e enviar registros pendentes" },
-  { to: "/campo/maquinas", label: "Máquinas", icon: Tractor, desc: "Frota e implementos disponíveis" },
-  { to: "/campo/abastecimento", label: "Abastecimento", icon: Warehouse, desc: "Registrar abastecimento de máquina" },
   { to: "/campo/historico", label: "Histórico completo", icon: FileText, desc: "Todos os registros do período" },
 ];
 
