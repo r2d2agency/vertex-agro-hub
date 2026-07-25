@@ -199,12 +199,13 @@ function PeoplePage() {
 }
 
 function InviteDialog({
-  open, onOpenChange, companyId, onSaved,
+  open, onOpenChange, companyId, onSaved, onCredentials,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   companyId: string | null;
   onSaved: () => void;
+  onCredentials: (c: { email: string; fullName: string | null; password: string }) => void;
 }) {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -213,10 +214,13 @@ function InviteDialog({
 
   const mut = useMutation({
     mutationFn: () => invitePerson({ companyId: companyId!, email, fullName, password: password || undefined, role }),
-    onSuccess: () => {
+    onSuccess: (r) => {
       toast.success("Pessoa cadastrada");
       onSaved();
       onOpenChange(false);
+      if (r.generatedPassword) {
+        onCredentials({ email: r.email, fullName: r.fullName, password: r.generatedPassword });
+      }
       setEmail(""); setFullName(""); setPassword(""); setRole("monitor");
     },
     onError: (e: Error) => toast.error(e.message),
