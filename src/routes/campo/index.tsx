@@ -5,7 +5,7 @@ import { getFieldMe, type FieldMe, captureLocation, submitCheckin } from "@/lib/
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_field/")({
+export const Route = createFileRoute("/campo/")({
   component: FieldHome,
 });
 

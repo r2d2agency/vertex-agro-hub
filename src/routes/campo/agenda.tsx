@@ -6,7 +6,7 @@ import { listTasks, type ScheduledTask } from "@/lib/agenda.functions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_field/agenda")({ component: AgendaPage });
+export const Route = createFileRoute("/campo/agenda")({ component: AgendaPage });
 
 function AgendaPage() {
   const [me, setMe] = useState<FieldMe | null>(null);

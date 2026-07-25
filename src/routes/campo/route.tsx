@@ -7,7 +7,7 @@ import { subscribeOutbox, flushOutbox } from "@/lib/offline/queue";
 import { FieldBottomNav } from "@/components/vertex/field/bottom-nav";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/_field")({
+export const Route = createFileRoute("/campo")({
   ssr: false,
   beforeLoad: () => {
     if (typeof window !== "undefined" && !hasAuthTokens()) {

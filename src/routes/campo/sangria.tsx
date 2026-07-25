@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_field/sangria")({ component: SangriaPage });
+export const Route = createFileRoute("/campo/sangria")({ component: SangriaPage });
 
 function SangriaPage() {
   const nav = useNavigate();

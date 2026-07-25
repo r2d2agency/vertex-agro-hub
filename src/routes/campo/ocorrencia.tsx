@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { OCC_SEVERITIES, OCC_TYPES } from "@/lib/ocorrencias.functions";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_field/ocorrencia")({ component: OcorrenciaPage });
+export const Route = createFileRoute("/campo/ocorrencia")({ component: OcorrenciaPage });
 
 function OcorrenciaPage() {
   const nav = useNavigate();
