@@ -20,7 +20,7 @@ import {
   type FuelTank,
 } from "@/lib/frota-ops.functions";
 import { listMachines, listOperators } from "@/lib/frota.functions";
-import { listFarms } from "@/lib/territorio.functions";
+import { listFarms } from "@/lib/fazendas.functions";
 
 export const Route = createFileRoute("/_authenticated/abastecimento")({
   head: () => ({ meta: [
@@ -194,7 +194,7 @@ function FuelPage() {
       {companyId && tankForm.open && (
         <TankDialog
           companyId={companyId}
-          farms={farms.map(f => ({ id: f.id, name: f.name }))}
+          farms={farms.map((f: { id: string; name: string }) => ({ id: f.id, name: f.name }))}
           editing={tankForm.editing}
           onClose={() => setTankForm({ open: false, editing: null })}
           onSaved={() => { qc.invalidateQueries({ queryKey: ["fuel-tanks"] }); setTankForm({ open: false, editing: null }); }}

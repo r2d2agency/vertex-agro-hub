@@ -17,7 +17,7 @@ import {
   listOperationLogs, createOperationLog, deleteOperationLog,
 } from "@/lib/frota-ops.functions";
 import { listMachines, listImplements, listOperators, listOperationTypes } from "@/lib/frota.functions";
-import { listFarms } from "@/lib/territorio.functions";
+import { listFarms } from "@/lib/fazendas.functions";
 
 export const Route = createFileRoute("/_authenticated/apontamentos")({
   head: () => ({ meta: [
