@@ -243,6 +243,29 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
           </div>
         </RadioGroup>
 
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Cor da área:</span>
+          <div className="flex items-center gap-1">
+            {PALETTE.map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-label={`Cor ${c}`}
+                onClick={() => { setColor(c); onColorChange?.(c); }}
+                className={`h-5 w-5 rounded-full border-2 transition ${color === c ? "border-foreground scale-110" : "border-white/70"}`}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => { setColor(e.target.value); onColorChange?.(e.target.value); }}
+              className="h-6 w-6 cursor-pointer rounded border border-border bg-transparent p-0"
+              title="Escolher cor personalizada"
+            />
+          </div>
+        </div>
+
         {mode === "with-exclusions" && (
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Desenhando:</span>
