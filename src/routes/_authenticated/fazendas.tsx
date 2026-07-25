@@ -165,6 +165,28 @@ function FazendasPage() {
   );
 }
 
+function FarmPlotsPreview({ companyId, farmId }: { companyId: string; farmId: string }) {
+  const { data } = useQuery({
+    queryKey: ["farm-plots-preview", farmId],
+    queryFn: () => listPlots(companyId, farmId),
+    enabled: !!companyId,
+  });
+  if (!data) return null;
+  if (data.length === 0) return <p className="mt-2 text-xs italic text-muted-foreground">Sem talhões cadastrados</p>;
+  const shown = data.slice(0, 3);
+  const rest = data.length - shown.length;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1">
+      {shown.map((p) => (
+        <span key={p.id} className="rounded-md bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+          {p.name}{p.areaHa != null ? ` · ${p.areaHa}ha` : ""}
+        </span>
+      ))}
+      {rest > 0 && <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">+{rest}</span>}
+    </div>
+  );
+}
+
 function FarmDialog({
   open, onOpenChange, initial, companyId, regionals, onSaved,
 }: {
