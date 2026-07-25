@@ -47,6 +47,13 @@ function PeoplePage() {
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<Person | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [creds, setCreds] = useState<{ email: string; fullName: string | null; password: string } | null>(null);
+
+  const reset = useMutation({
+    mutationFn: (userId: string) => resetPersonPassword(userId, companyId!),
+    onSuccess: (r) => { setCreds(r); toast.success("Senha temporária gerada"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data = [], isLoading: loadingList } = useQuery({
     queryKey: ["people", companyId],
