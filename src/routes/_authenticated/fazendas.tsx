@@ -56,6 +56,7 @@ function FazendasPage() {
   const [editing, setEditing] = useState<Farm | null>(null);
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<Farm | null>(null);
+  const [detail, setDetail] = useState<Farm | null>(null);
 
   const { data = [], isLoading: loadingList } = useQuery({
     queryKey: ["farms", companyId],
