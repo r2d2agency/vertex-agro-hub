@@ -9,6 +9,91 @@ import {
 export class FieldService {
   constructor(private readonly prisma: PrismaService, private readonly access: CompanyAccess) {}
 
+  // ---------- App de campo ----------
+  async fieldMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, fullName: true, roles: { select: { role: true, companyId: true } } },
+    });
+    if (!user) throw new NotFoundException();
+    const roleNames = user.roles.map((r) => r.role);
+    const isAdmin = roleNames.includes('admin_global');
+    const companyIds = isAdmin
+      ? (await this.prisma.company.findMany({ where: { isDeleted: false }, select: { id: true } })).map((c) => c.id)
+      : Array.from(new Set(user.roles.map((r) => r.companyId).filter(Boolean) as string[]));
+    const companies = await this.prisma.company.findMany({
+      where: { id: { in: companyIds }, isDeleted: false },
+      select: { id: true, name: true, legalName: true },
+      orderBy: { name: 'asc' },
+    });
+    const assignments = await this.prisma.farmAssignment.findMany({
+      where: { userId, OR: [{ endAt: null }, { endAt: { gte: new Date() } }] },
+      include: { farm: { select: { id: true, name: true, companyId: true, city: true, state: true, latitude: true, longitude: true } } },
+      orderBy: { startAt: 'desc' },
+    });
+    const primaryRole = roleNames.includes('consultor')
+      ? 'consultor'
+      : roleNames.includes('monitor')
+      ? 'monitor'
+      : roleNames.includes('sangrador')
+      ? 'sangrador'
+      : (roleNames[0] ?? 'user');
+    return {
+      user: { id: user.id, email: user.email, fullName: user.fullName },
+      roles: roleNames,
+      primaryRole,
+      isAdmin,
+      companies,
+      assignments: assignments.map((a) => ({
+        id: a.id, role: a.role, startAt: a.startAt, endAt: a.endAt,
+        farm: a.farm,
+      })),
+    };
+  }
+
+  async checkin(userId: string, dto: {
+    companyId: string; farmId?: string; plotId?: string;
+    latitude?: number; longitude?: number; accuracyM?: number;
+    taskId?: string; notes?: string;
+  }) {
+    if (!dto?.companyId) throw new NotFoundException('companyId obrigatório');
+    await this.access.ensureCompany(userId, dto.companyId);
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { fullName: true, email: true } });
+    const who = user?.fullName || user?.email || 'usuário';
+    const parts: string[] = [];
+    if (dto.latitude != null && dto.longitude != null) {
+      parts.push(`Lat ${Number(dto.latitude).toFixed(6)}, Lng ${Number(dto.longitude).toFixed(6)}`);
+    }
+    if (dto.accuracyM != null) parts.push(`±${Math.round(Number(dto.accuracyM))}m`);
+    if (dto.notes) parts.push(dto.notes);
+    const occ = await this.prisma.occurrence.create({
+      data: {
+        companyId: dto.companyId,
+        farmId: dto.farmId ?? null,
+        plotId: dto.plotId ?? null,
+        date: new Date(),
+        type: 'checkin',
+        severity: 'baixa',
+        status: 'resolvida',
+        title: `Check-in de ${who}`,
+        description: parts.join(' · ') || null,
+        responsible: who,
+        resolvedAt: new Date(),
+        createdById: userId,
+        updatedById: userId,
+      },
+    });
+    if (dto.taskId) {
+      await this.prisma.scheduledTask.updateMany({
+        where: { id: dto.taskId, companyId: dto.companyId },
+        data: { status: 'concluida', completedAt: new Date(), updatedById: userId, version: { increment: 1 } },
+      }).catch(() => undefined);
+    }
+    return occ;
+  }
+
+
+
   // ---------- Stimulations ----------
   async listStimulations(userId: string, companyId: string, opts: { farmId?: string; plotId?: string; from?: string; to?: string } = {}) {
     await this.access.ensureCompany(userId, companyId);
