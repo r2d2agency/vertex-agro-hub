@@ -45,9 +45,9 @@ import {
   AppWindow,
   Wrench,
   Truck,
-
-
-
+  Fuel,
+  Package,
+  Activity,
 } from "lucide-react";
 import {
   Sidebar,
