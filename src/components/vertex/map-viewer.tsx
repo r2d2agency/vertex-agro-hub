@@ -57,10 +57,26 @@ export default function MapViewer({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = L.map(containerRef.current, { center: [-10.5, -55.5], zoom: 4 });
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    const streets = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors",
       maxZoom: 19,
-    }).addTo(map);
+    });
+    const satellite = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      { attribution: "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics", maxZoom: 19 },
+    );
+    const labels = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      { attribution: "&copy; Esri", maxZoom: 19, opacity: 0.9 },
+    );
+    const hybrid = L.layerGroup([satellite, labels]);
+    satellite.addTo(map);
+    labels.addTo(map);
+    L.control.layers(
+      { "Satélite (híbrido)": hybrid, "Satélite": satellite, "Mapa": streets },
+      {},
+      { position: "topright", collapsed: true },
+    ).addTo(map);
     farmsLayerRef.current = L.layerGroup().addTo(map);
     plotsLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
