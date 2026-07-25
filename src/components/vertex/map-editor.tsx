@@ -49,8 +49,11 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
     if (!containerRef.current || mapRef.current) return;
     const map = L.map(containerRef.current, { center: [-10.5, -55.5], zoom: 4 });
     const streets = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors", maxZoom: 19,
+    });
+    const terrain = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+      attribution: "Map data: &copy; OpenStreetMap, SRTM | &copy; OpenTopoMap (CC-BY-SA)",
+      maxZoom: 17,
     });
     const satellite = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -64,7 +67,7 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
     satellite.addTo(map);
     labels.addTo(map);
     L.control.layers(
-      { "Satélite (híbrido)": hybrid, "Satélite": satellite, "Mapa": streets },
+      { "Satélite (híbrido)": hybrid, "Satélite": satellite, "Terreno": terrain, "Mapa": streets },
       {},
       { position: "topleft", collapsed: true },
     ).addTo(map);
