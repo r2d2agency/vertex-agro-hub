@@ -139,6 +139,13 @@ function PeoplePage() {
                       <Button variant="ghost" size="icon" onClick={() => setEditingId(p.id)} title="Editar ficha">
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      <Button
+                        variant="ghost" size="icon" title="Gerar senha temporária"
+                        disabled={reset.isPending}
+                        onClick={() => reset.mutate(p.id)}
+                      >
+                        <KeyRound className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setToDelete(p)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
