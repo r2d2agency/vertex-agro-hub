@@ -50,8 +50,7 @@ export class PeopleController {
   ) {
     return this.svc.resetPassword(req.user.sub, targetUserId, companyId);
   }
-    return this.svc.invite(req.user.sub, dto);
-  }
+
 
   @Patch(':userId/personal')
   updatePersonal(
