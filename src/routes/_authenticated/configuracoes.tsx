@@ -91,6 +91,8 @@ function ConfigPage() {
           </CardContent>
         </Card>
       )}
+
+      {companyId && <AiProviderConfigCard companyId={companyId} />}
     </div>
   );
 }
