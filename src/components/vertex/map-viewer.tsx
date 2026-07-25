@@ -126,7 +126,7 @@ export default function MapViewer({
         const polys = boundaryPolygons(p.boundary ?? null);
         polys.forEach((poly) => {
           const latlngs = poly.coordinates[0].map(([lng, lat]) => L.latLng(lat, lng));
-          const layer = L.polygon(latlngs, { color: p.color, weight: 1.5, fillOpacity: 0.35, dashArray: "3 3" });
+          const layer = L.polygon(latlngs, { color: "#ffffff", weight: 2, fillColor: p.color, fillOpacity: 0.4, dashArray: "6 4" });
           layer.bindPopup(plotPopup(p));
           plotsLayerRef.current!.addLayer(layer);
           latlngs.forEach((ll) => bounds.extend(ll));
