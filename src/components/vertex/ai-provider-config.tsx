@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getAiConfig, updateAiConfig, testAiConfig, type AiProvider } from "@/lib/ai.functions";
 import { toast } from "sonner";
 
-const PROVIDER_HINTS: Record<Exclude<AiProvider, "lovable">, { label: string; help: string; keyLabel: string; keyPlaceholder: string; modelPlaceholder: string; docsUrl: string }> = {
+const PROVIDER_HINTS: Record<Exclude<AiProvider, "lovable">, { label: string; help: string; keyLabel: string; keyPlaceholder: string; modelPlaceholder: string; docsUrl: string; models: { value: string; label: string }[] }> = {
   openai: {
     label: "OpenAI",
     help: "Consulte suas chaves em platform.openai.com/api-keys.",
@@ -18,6 +18,15 @@ const PROVIDER_HINTS: Record<Exclude<AiProvider, "lovable">, { label: string; he
     keyPlaceholder: "sk-...",
     modelPlaceholder: "gpt-4o-mini",
     docsUrl: "https://platform.openai.com/api-keys",
+    models: [
+      { value: "gpt-4o-mini", label: "GPT-4o mini — rápido e econômico (recomendado)" },
+      { value: "gpt-4o", label: "GPT-4o — multimodal completo" },
+      { value: "gpt-4.1", label: "GPT-4.1 — raciocínio avançado" },
+      { value: "gpt-4.1-mini", label: "GPT-4.1 mini — equilíbrio custo/qualidade" },
+      { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+      { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo — legado" },
+      { value: "o1-mini", label: "o1-mini — raciocínio (legado)" },
+    ],
   },
   gemini: {
     label: "Google Gemini",
@@ -26,8 +35,19 @@ const PROVIDER_HINTS: Record<Exclude<AiProvider, "lovable">, { label: string; he
     keyPlaceholder: "AIza...",
     modelPlaceholder: "gemini-2.5-flash",
     docsUrl: "https://aistudio.google.com/app/apikey",
+    models: [
+      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash — rápido (recomendado)" },
+      { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro — raciocínio complexo" },
+      { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite — alto volume" },
+      { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+      { value: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite" },
+      { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro — legado" },
+      { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash — legado" },
+    ],
   },
 };
+
+const CUSTOM_MODEL = "__custom__";
 
 export function AiProviderConfigCard({ companyId }: { companyId: string }) {
   const qc = useQueryClient();
@@ -108,8 +128,22 @@ export function AiProviderConfigCard({ companyId }: { companyId: string }) {
           </div>
           <div className="grid gap-1">
             <Label>Modelo</Label>
-            <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder={hint.modelPlaceholder} />
-            <p className="text-xs text-muted-foreground">Deixe vazio para usar o padrão.</p>
+            <Select
+              value={hint.models.some((m) => m.value === model) || !model ? (model || "") : CUSTOM_MODEL}
+              onValueChange={(v) => setModel(v === CUSTOM_MODEL ? model || "" : v)}
+            >
+              <SelectTrigger><SelectValue placeholder={`Padrão: ${hint.modelPlaceholder}`} /></SelectTrigger>
+              <SelectContent>
+                {hint.models.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+                <SelectItem value={CUSTOM_MODEL}>Personalizado…</SelectItem>
+              </SelectContent>
+            </Select>
+            {(model && !hint.models.some((m) => m.value === model)) && (
+              <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder={hint.modelPlaceholder} />
+            )}
+            <p className="text-xs text-muted-foreground">Deixe vazio para usar o padrão ({hint.modelPlaceholder}).</p>
           </div>
         </div>
 
