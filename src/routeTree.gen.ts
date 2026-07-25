@@ -69,9 +69,14 @@ import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedVisitasRouteImport } from './routes/_authenticated/visitas'
 import { Route as CampoIndexRouteImport } from './routes/campo/index'
 import { Route as CampoAgendaRouteImport } from './routes/campo/agenda'
+import { Route as CampoChuvaRouteImport } from './routes/campo/chuva'
+import { Route as CampoEstimulacaoRouteImport } from './routes/campo/estimulacao'
+import { Route as CampoHistoricoRouteImport } from './routes/campo/historico'
+import { Route as CampoMaisRouteImport } from './routes/campo/mais'
 import { Route as CampoOcorrenciaRouteImport } from './routes/campo/ocorrencia'
 import { Route as CampoProducaoRouteImport } from './routes/campo/producao'
 import { Route as CampoSangriaRouteImport } from './routes/campo/sangria'
+import { Route as CampoSincronizacaoRouteImport } from './routes/campo/sincronizacao'
 import { Route as AuthenticatedDocumentacaoSlugRouteImport } from './routes/_authenticated/documentacao.$slug'
 import { Route as AuthenticatedEmpresasIndexRouteImport } from './routes/_authenticated/empresas.index'
 import { Route as AuthenticatedEmpresasIdRouteImport } from './routes/_authenticated/empresas.$id'
@@ -391,6 +396,26 @@ const CampoAgendaRoute = CampoAgendaRouteImport.update({
   path: '/agenda',
   getParentRoute: () => CampoRouteRoute,
 } as any)
+const CampoChuvaRoute = CampoChuvaRouteImport.update({
+  id: '/chuva',
+  path: '/chuva',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
+const CampoEstimulacaoRoute = CampoEstimulacaoRouteImport.update({
+  id: '/estimulacao',
+  path: '/estimulacao',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
+const CampoHistoricoRoute = CampoHistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
+const CampoMaisRoute = CampoMaisRouteImport.update({
+  id: '/mais',
+  path: '/mais',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
 const CampoOcorrenciaRoute = CampoOcorrenciaRouteImport.update({
   id: '/ocorrencia',
   path: '/ocorrencia',
@@ -404,6 +429,11 @@ const CampoProducaoRoute = CampoProducaoRouteImport.update({
 const CampoSangriaRoute = CampoSangriaRouteImport.update({
   id: '/sangria',
   path: '/sangria',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
+const CampoSincronizacaoRoute = CampoSincronizacaoRouteImport.update({
+  id: '/sincronizacao',
+  path: '/sincronizacao',
   getParentRoute: () => CampoRouteRoute,
 } as any)
 const AuthenticatedDocumentacaoSlugRoute =
@@ -494,9 +524,14 @@ export interface FileRoutesByFullPath {
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visitas': typeof AuthenticatedVisitasRoute
   '/campo/agenda': typeof CampoAgendaRoute
+  '/campo/chuva': typeof CampoChuvaRoute
+  '/campo/estimulacao': typeof CampoEstimulacaoRoute
+  '/campo/historico': typeof CampoHistoricoRoute
+  '/campo/mais': typeof CampoMaisRoute
   '/campo/ocorrencia': typeof CampoOcorrenciaRoute
   '/campo/producao': typeof CampoProducaoRoute
   '/campo/sangria': typeof CampoSangriaRoute
+  '/campo/sincronizacao': typeof CampoSincronizacaoRoute
   '/campo/': typeof CampoIndexRoute
   '/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
@@ -561,9 +596,14 @@ export interface FileRoutesByTo {
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visitas': typeof AuthenticatedVisitasRoute
   '/campo/agenda': typeof CampoAgendaRoute
+  '/campo/chuva': typeof CampoChuvaRoute
+  '/campo/estimulacao': typeof CampoEstimulacaoRoute
+  '/campo/historico': typeof CampoHistoricoRoute
+  '/campo/mais': typeof CampoMaisRoute
   '/campo/ocorrencia': typeof CampoOcorrenciaRoute
   '/campo/producao': typeof CampoProducaoRoute
   '/campo/sangria': typeof CampoSangriaRoute
+  '/campo/sincronizacao': typeof CampoSincronizacaoRoute
   '/campo': typeof CampoIndexRoute
   '/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
@@ -632,9 +672,14 @@ export interface FileRoutesById {
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/visitas': typeof AuthenticatedVisitasRoute
   '/campo/agenda': typeof CampoAgendaRoute
+  '/campo/chuva': typeof CampoChuvaRoute
+  '/campo/estimulacao': typeof CampoEstimulacaoRoute
+  '/campo/historico': typeof CampoHistoricoRoute
+  '/campo/mais': typeof CampoMaisRoute
   '/campo/ocorrencia': typeof CampoOcorrenciaRoute
   '/campo/producao': typeof CampoProducaoRoute
   '/campo/sangria': typeof CampoSangriaRoute
+  '/campo/sincronizacao': typeof CampoSincronizacaoRoute
   '/campo/': typeof CampoIndexRoute
   '/_authenticated/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/_authenticated/empresas/$id': typeof AuthenticatedEmpresasIdRoute
@@ -703,9 +748,14 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/visitas'
     | '/campo/agenda'
+    | '/campo/chuva'
+    | '/campo/estimulacao'
+    | '/campo/historico'
+    | '/campo/mais'
     | '/campo/ocorrencia'
     | '/campo/producao'
     | '/campo/sangria'
+    | '/campo/sincronizacao'
     | '/campo/'
     | '/documentacao/$slug'
     | '/empresas/$id'
@@ -770,9 +820,14 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/visitas'
     | '/campo/agenda'
+    | '/campo/chuva'
+    | '/campo/estimulacao'
+    | '/campo/historico'
+    | '/campo/mais'
     | '/campo/ocorrencia'
     | '/campo/producao'
     | '/campo/sangria'
+    | '/campo/sincronizacao'
     | '/campo'
     | '/documentacao/$slug'
     | '/empresas/$id'
@@ -840,9 +895,14 @@ export interface FileRouteTypes {
     | '/_authenticated/usuarios'
     | '/_authenticated/visitas'
     | '/campo/agenda'
+    | '/campo/chuva'
+    | '/campo/estimulacao'
+    | '/campo/historico'
+    | '/campo/mais'
     | '/campo/ocorrencia'
     | '/campo/producao'
     | '/campo/sangria'
+    | '/campo/sincronizacao'
     | '/campo/'
     | '/_authenticated/documentacao/$slug'
     | '/_authenticated/empresas/$id'
@@ -1282,6 +1342,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampoAgendaRouteImport
       parentRoute: typeof CampoRouteRoute
     }
+    '/campo/chuva': {
+      id: '/campo/chuva'
+      path: '/chuva'
+      fullPath: '/campo/chuva'
+      preLoaderRoute: typeof CampoChuvaRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
+    '/campo/estimulacao': {
+      id: '/campo/estimulacao'
+      path: '/estimulacao'
+      fullPath: '/campo/estimulacao'
+      preLoaderRoute: typeof CampoEstimulacaoRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
+    '/campo/historico': {
+      id: '/campo/historico'
+      path: '/historico'
+      fullPath: '/campo/historico'
+      preLoaderRoute: typeof CampoHistoricoRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
+    '/campo/mais': {
+      id: '/campo/mais'
+      path: '/mais'
+      fullPath: '/campo/mais'
+      preLoaderRoute: typeof CampoMaisRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
     '/campo/ocorrencia': {
       id: '/campo/ocorrencia'
       path: '/ocorrencia'
@@ -1301,6 +1389,13 @@ declare module '@tanstack/react-router' {
       path: '/sangria'
       fullPath: '/campo/sangria'
       preLoaderRoute: typeof CampoSangriaRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
+    '/campo/sincronizacao': {
+      id: '/campo/sincronizacao'
+      path: '/sincronizacao'
+      fullPath: '/campo/sincronizacao'
+      preLoaderRoute: typeof CampoSincronizacaoRouteImport
       parentRoute: typeof CampoRouteRoute
     }
     '/_authenticated/documentacao/$slug': {
@@ -1500,17 +1595,27 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface CampoRouteRouteChildren {
   CampoAgendaRoute: typeof CampoAgendaRoute
+  CampoChuvaRoute: typeof CampoChuvaRoute
+  CampoEstimulacaoRoute: typeof CampoEstimulacaoRoute
+  CampoHistoricoRoute: typeof CampoHistoricoRoute
+  CampoMaisRoute: typeof CampoMaisRoute
   CampoOcorrenciaRoute: typeof CampoOcorrenciaRoute
   CampoProducaoRoute: typeof CampoProducaoRoute
   CampoSangriaRoute: typeof CampoSangriaRoute
+  CampoSincronizacaoRoute: typeof CampoSincronizacaoRoute
   CampoIndexRoute: typeof CampoIndexRoute
 }
 
 const CampoRouteRouteChildren: CampoRouteRouteChildren = {
   CampoAgendaRoute: CampoAgendaRoute,
+  CampoChuvaRoute: CampoChuvaRoute,
+  CampoEstimulacaoRoute: CampoEstimulacaoRoute,
+  CampoHistoricoRoute: CampoHistoricoRoute,
+  CampoMaisRoute: CampoMaisRoute,
   CampoOcorrenciaRoute: CampoOcorrenciaRoute,
   CampoProducaoRoute: CampoProducaoRoute,
   CampoSangriaRoute: CampoSangriaRoute,
+  CampoSincronizacaoRoute: CampoSincronizacaoRoute,
   CampoIndexRoute: CampoIndexRoute,
 }
 
