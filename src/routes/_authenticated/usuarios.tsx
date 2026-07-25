@@ -163,7 +163,10 @@ function PeoplePage() {
         onOpenChange={setCreating}
         companyId={companyId}
         onSaved={() => qc.invalidateQueries({ queryKey: ["people", companyId] })}
+        onCredentials={setCreds}
       />
+
+      <CredentialsDialog creds={creds} onClose={() => setCreds(null)} />
 
       {companyId && (
         <PersonEditor
