@@ -8,14 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import type { GeoBoundary, GeoPolygon } from "@/lib/geo";
+import { vertexDivIcon } from "@/lib/vertex-marker";
 
-// Fix default Leaflet marker icons
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
+// Use custom Vertex marker as default
+L.Marker.prototype.options.icon = vertexDivIcon();
 
 export type MapEditorProps = {
   value: GeoBoundary | null;
@@ -23,12 +19,16 @@ export type MapEditorProps = {
   reference?: GeoBoundary | null;
   height?: number;
   focus?: { lat: number; lng: number } | null;
+  color?: string;
+  onColorChange?: (color: string) => void;
 };
 
 type Mode = GeoBoundary["mode"];
 
-const MAIN_STYLE = { color: "#16a34a", weight: 3, fillOpacity: 0.2 };
-const EXCL_STYLE = { color: "#dc2626", weight: 2, fillOpacity: 0.25, dashArray: "4 4" };
+const DEFAULT_COLOR = "#16a34a";
+const PALETTE = ["#16a34a", "#2563eb", "#dc2626", "#f59e0b", "#7c3aed", "#0891b2", "#db2777", "#0f172a"];
+const mainStyle = (c: string) => ({ color: c, weight: 3, fillColor: c, fillOpacity: 0.2 });
+const EXCL_STYLE = { color: "#ffffff", weight: 2, fillColor: "#dc2626", fillOpacity: 0.25, dashArray: "6 4" };
 
 export default function MapEditor({ value, onChange, reference, height = 400, focus }: MapEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
