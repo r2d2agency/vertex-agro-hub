@@ -1080,3 +1080,289 @@ model MachineStatusLog {
   @@index([machineId, createdAt(sort: Desc)])
   @@map("machine_status_logs")
 }
+
+// ============================================================
+// Sprint 7.2 — Frota Operacional
+// ============================================================
+
+model FuelTank {
+  id           String   @id @default(uuid()) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  farmId       String?  @map("farm_id") @db.Uuid
+  name         String
+  fuelType     String   @default("Diesel S10") @map("fuel_type")
+  capacity     Float?
+  currentLevel Float    @default(0) @map("current_level")
+  minLevel     Float?   @map("min_level")
+  location     String?
+  active       Boolean  @default(true)
+  notes        String?
+
+  version      Int       @default(1)
+  syncStatus   String    @default("synced") @map("sync_status")
+  deviceId     String?   @map("device_id")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at")
+  createdById  String?   @map("created_by") @db.Uuid
+  updatedById  String?   @map("updated_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  movements FuelMovement[]
+
+  @@index([companyId, isDeleted])
+  @@index([farmId])
+  @@map("fuel_tanks")
+}
+
+model FuelMovement {
+  id             String    @id @default(uuid()) @db.Uuid
+  companyId      String    @map("company_id") @db.Uuid
+  tankId         String    @map("tank_id") @db.Uuid
+  kind           String
+  occurredAt     DateTime  @default(now()) @map("occurred_at")
+  liters         Float
+  unitCost       Float?    @map("unit_cost")
+  totalCost      Float?    @map("total_cost")
+  supplier       String?
+  invoiceNumber  String?   @map("invoice_number")
+  machineId      String?   @map("machine_id") @db.Uuid
+  operatorId     String?   @map("operator_id") @db.Uuid
+  operationLogId String?   @map("operation_log_id") @db.Uuid
+  hourmeter      Float?
+  notes          String?
+
+  version      Int       @default(1)
+  syncStatus   String    @default("synced") @map("sync_status")
+  deviceId     String?   @map("device_id")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at")
+  createdById  String?   @map("created_by") @db.Uuid
+  updatedById  String?   @map("updated_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  tank         FuelTank      @relation(fields: [tankId], references: [id], onDelete: Cascade)
+  machine      Machine?      @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  operator     Operator?     @relation(fields: [operatorId], references: [id], onDelete: SetNull)
+  operationLog OperationLog? @relation(fields: [operationLogId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, occurredAt(sort: Desc)])
+  @@index([tankId, occurredAt(sort: Desc)])
+  @@index([machineId, occurredAt(sort: Desc)])
+  @@map("fuel_movements")
+}
+
+model InventoryItem {
+  id           String   @id @default(uuid()) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  farmId       String?  @map("farm_id") @db.Uuid
+  sku          String?
+  name         String
+  category     String   @default("peca")
+  unit         String   @default("un")
+  currentStock Float    @default(0) @map("current_stock")
+  minStock     Float?   @map("min_stock")
+  unitCost     Float?   @map("unit_cost")
+  supplier     String?
+  location     String?
+  active       Boolean  @default(true)
+  notes        String?
+
+  version      Int       @default(1)
+  syncStatus   String    @default("synced") @map("sync_status")
+  deviceId     String?   @map("device_id")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at")
+  createdById  String?   @map("created_by") @db.Uuid
+  updatedById  String?   @map("updated_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  movements   InventoryMovement[]
+  orderItems  MaintenanceOrderItem[]
+
+  @@index([companyId, isDeleted])
+  @@index([companyId, category])
+  @@map("inventory_items")
+}
+
+model InventoryMovement {
+  id                   String    @id @default(uuid()) @db.Uuid
+  companyId            String    @map("company_id") @db.Uuid
+  itemId               String    @map("item_id") @db.Uuid
+  kind                 String
+  occurredAt           DateTime  @default(now()) @map("occurred_at")
+  quantity             Float
+  unitCost             Float?    @map("unit_cost")
+  totalCost            Float?    @map("total_cost")
+  reason               String?
+  machineId            String?   @map("machine_id") @db.Uuid
+  maintenanceOrderId   String?   @map("maintenance_order_id") @db.Uuid
+  supplier             String?
+  invoiceNumber        String?   @map("invoice_number")
+  notes                String?
+
+  version      Int       @default(1)
+  syncStatus   String    @default("synced") @map("sync_status")
+  deviceId     String?   @map("device_id")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at")
+  createdById  String?   @map("created_by") @db.Uuid
+  updatedById  String?   @map("updated_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  item             InventoryItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  machine          Machine?          @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  maintenanceOrder MaintenanceOrder? @relation(fields: [maintenanceOrderId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, occurredAt(sort: Desc)])
+  @@index([itemId, occurredAt(sort: Desc)])
+  @@map("inventory_movements")
+}
+
+model MaintenanceOrder {
+  id                 String    @id @default(uuid()) @db.Uuid
+  companyId          String    @map("company_id") @db.Uuid
+  machineId          String?   @map("machine_id") @db.Uuid
+  implementId        String?   @map("implement_id") @db.Uuid
+  code               String?
+  kind               String    @default("corretiva")
+  status             String    @default("aberta")
+  priority           String    @default("media")
+  openedAt           DateTime  @default(now()) @map("opened_at")
+  scheduledFor       DateTime? @map("scheduled_for")
+  startedAt          DateTime? @map("started_at")
+  finishedAt         DateTime? @map("finished_at")
+  hourmeterAtOpen    Float?    @map("hourmeter_at_open")
+  hourmeterAtClose   Float?    @map("hourmeter_at_close")
+  reportedBy         String?   @map("reported_by") @db.Uuid
+  assignedTo         String?   @map("assigned_to") @db.Uuid
+  supplier           String?
+  description        String
+  diagnosis          String?
+  solution           String?
+  laborCost          Float?    @map("labor_cost")
+  partsCost          Float?    @map("parts_cost")
+  totalCost          Float?    @map("total_cost")
+  photoUrl           String?   @map("photo_url")
+  notes              String?
+
+  version      Int       @default(1)
+  syncStatus   String    @default("synced") @map("sync_status")
+  deviceId     String?   @map("device_id")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at")
+  createdById  String?   @map("created_by") @db.Uuid
+  updatedById  String?   @map("updated_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  machine       Machine?               @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  implement     Implement?             @relation(fields: [implementId], references: [id], onDelete: SetNull)
+  items         MaintenanceOrderItem[]
+  invMovements  InventoryMovement[]
+
+  @@index([companyId, status, openedAt(sort: Desc)])
+  @@index([machineId, openedAt(sort: Desc)])
+  @@map("maintenance_orders")
+}
+
+model MaintenanceOrderItem {
+  id              String   @id @default(uuid()) @db.Uuid
+  orderId         String   @map("order_id") @db.Uuid
+  inventoryItemId String?  @map("inventory_item_id") @db.Uuid
+  kind            String   @default("peca")
+  description     String
+  quantity        Float    @default(1)
+  unitCost        Float?   @map("unit_cost")
+  totalCost       Float?   @map("total_cost")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  order         MaintenanceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem?   @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@map("maintenance_order_items")
+}
+
+model OperationLog {
+  id               String    @id @default(uuid()) @db.Uuid
+  companyId        String    @map("company_id") @db.Uuid
+  farmId           String?   @map("farm_id") @db.Uuid
+  plotId           String?   @map("plot_id") @db.Uuid
+  machineId        String    @map("machine_id") @db.Uuid
+  implementId      String?   @map("implement_id") @db.Uuid
+  operatorId       String?   @map("operator_id") @db.Uuid
+  operationTypeId  String?   @map("operation_type_id") @db.Uuid
+  startedAt        DateTime  @map("started_at")
+  finishedAt       DateTime? @map("finished_at")
+  hourmeterStart   Float?    @map("hourmeter_start")
+  hourmeterEnd     Float?    @map("hourmeter_end")
+  durationHours    Float?    @map("duration_hours")
+  fuelConsumed     Float?    @map("fuel_consumed")
+  areaWorked       Float?    @map("area_worked")
+  distanceKm       Float?    @map("distance_km")
+  notes            String?
+  latitude         Float?
+  longitude        Float?
+  photoUrl         String?   @map("photo_url")
+  status           String    @default("concluida")
+
+  version      Int       @default(1)
+  syncStatus   String    @default("synced") @map("sync_status")
+  deviceId     String?   @map("device_id")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at")
+  createdById  String?   @map("created_by") @db.Uuid
+  updatedById  String?   @map("updated_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  machine       Machine        @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  implement     Implement?     @relation(fields: [implementId], references: [id], onDelete: SetNull)
+  operator      Operator?      @relation(fields: [operatorId], references: [id], onDelete: SetNull)
+  operationType OperationType? @relation(fields: [operationTypeId], references: [id], onDelete: SetNull)
+  fuelMovements FuelMovement[]
+  checklists    MachineChecklist[]
+
+  @@index([companyId, startedAt(sort: Desc)])
+  @@index([machineId, startedAt(sort: Desc)])
+  @@index([farmId, startedAt(sort: Desc)])
+  @@map("operation_logs")
+}
+
+model MachineChecklist {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  machineId      String   @map("machine_id") @db.Uuid
+  operatorId     String?  @map("operator_id") @db.Uuid
+  operationLogId String?  @map("operation_log_id") @db.Uuid
+  kind           String   @default("pre_operacao")
+  performedAt    DateTime @default(now()) @map("performed_at")
+  hourmeter      Float?
+  overallStatus  String   @default("ok") @map("overall_status")
+  items          Json     @default("[]")
+  notes          String?
+  photoUrl       String?  @map("photo_url")
+
+  version      Int       @default(1)
+  syncStatus   String    @default("synced") @map("sync_status")
+  deviceId     String?   @map("device_id")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at")
+  createdById  String?   @map("created_by") @db.Uuid
+  updatedById  String?   @map("updated_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  machine      Machine       @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  operator     Operator?     @relation(fields: [operatorId], references: [id], onDelete: SetNull)
+  operationLog OperationLog? @relation(fields: [operationLogId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, performedAt(sort: Desc)])
+  @@index([machineId, performedAt(sort: Desc)])
+  @@map("machine_checklists")
+}
+
