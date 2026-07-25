@@ -1042,9 +1042,12 @@ model OperationType {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
+  operationLogs OperationLog[]
+
   @@index([companyId, isDeleted])
   @@map("operation_types")
 }
+
 
 model MachineDocument {
   id        String   @id @default(uuid()) @db.Uuid
