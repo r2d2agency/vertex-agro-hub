@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CampoRouteRouteImport } from './routes/campo/route'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedAbastecimentoRouteImport } from './routes/_authenticated/abastecimento'
@@ -66,6 +67,11 @@ import { Route as AuthenticatedTabelasRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedTalhoesRouteImport } from './routes/_authenticated/talhoes'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedVisitasRouteImport } from './routes/_authenticated/visitas'
+import { Route as CampoIndexRouteImport } from './routes/campo/index'
+import { Route as CampoAgendaRouteImport } from './routes/campo/agenda'
+import { Route as CampoOcorrenciaRouteImport } from './routes/campo/ocorrencia'
+import { Route as CampoProducaoRouteImport } from './routes/campo/producao'
+import { Route as CampoSangriaRouteImport } from './routes/campo/sangria'
 import { Route as AuthenticatedDocumentacaoSlugRouteImport } from './routes/_authenticated/documentacao.$slug'
 import { Route as AuthenticatedEmpresasIndexRouteImport } from './routes/_authenticated/empresas.index'
 import { Route as AuthenticatedEmpresasIdRouteImport } from './routes/_authenticated/empresas.$id'
@@ -84,6 +90,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CampoRouteRoute = CampoRouteRouteImport.update({
+  id: '/campo',
+  path: '/campo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -370,6 +381,31 @@ const AuthenticatedVisitasRoute = AuthenticatedVisitasRouteImport.update({
   path: '/visitas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const CampoIndexRoute = CampoIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
+const CampoAgendaRoute = CampoAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
+const CampoOcorrenciaRoute = CampoOcorrenciaRouteImport.update({
+  id: '/ocorrencia',
+  path: '/ocorrencia',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
+const CampoProducaoRoute = CampoProducaoRouteImport.update({
+  id: '/producao',
+  path: '/producao',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
+const CampoSangriaRoute = CampoSangriaRouteImport.update({
+  id: '/sangria',
+  path: '/sangria',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
 const AuthenticatedDocumentacaoSlugRoute =
   AuthenticatedDocumentacaoSlugRouteImport.update({
     id: '/$slug',
@@ -401,6 +437,7 @@ const AuthenticatedMaquinasIdRoute = AuthenticatedMaquinasIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/campo': typeof CampoRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -456,6 +493,11 @@ export interface FileRoutesByFullPath {
   '/talhoes': typeof AuthenticatedTalhoesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visitas': typeof AuthenticatedVisitasRoute
+  '/campo/agenda': typeof CampoAgendaRoute
+  '/campo/ocorrencia': typeof CampoOcorrenciaRoute
+  '/campo/producao': typeof CampoProducaoRoute
+  '/campo/sangria': typeof CampoSangriaRoute
+  '/campo/': typeof CampoIndexRoute
   '/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
@@ -518,6 +560,11 @@ export interface FileRoutesByTo {
   '/talhoes': typeof AuthenticatedTalhoesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visitas': typeof AuthenticatedVisitasRoute
+  '/campo/agenda': typeof CampoAgendaRoute
+  '/campo/ocorrencia': typeof CampoOcorrenciaRoute
+  '/campo/producao': typeof CampoProducaoRoute
+  '/campo/sangria': typeof CampoSangriaRoute
+  '/campo': typeof CampoIndexRoute
   '/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
@@ -528,6 +575,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/campo': typeof CampoRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -583,6 +631,11 @@ export interface FileRoutesById {
   '/_authenticated/talhoes': typeof AuthenticatedTalhoesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/visitas': typeof AuthenticatedVisitasRoute
+  '/campo/agenda': typeof CampoAgendaRoute
+  '/campo/ocorrencia': typeof CampoOcorrenciaRoute
+  '/campo/producao': typeof CampoProducaoRoute
+  '/campo/sangria': typeof CampoSangriaRoute
+  '/campo/': typeof CampoIndexRoute
   '/_authenticated/documentacao/$slug': typeof AuthenticatedDocumentacaoSlugRoute
   '/_authenticated/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/_authenticated/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
@@ -593,6 +646,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/campo'
     | '/auth'
     | '/reset-password'
     | '/sitemap.xml'
@@ -648,6 +702,11 @@ export interface FileRouteTypes {
     | '/talhoes'
     | '/usuarios'
     | '/visitas'
+    | '/campo/agenda'
+    | '/campo/ocorrencia'
+    | '/campo/producao'
+    | '/campo/sangria'
+    | '/campo/'
     | '/documentacao/$slug'
     | '/empresas/$id'
     | '/empresas/novo'
@@ -710,6 +769,11 @@ export interface FileRouteTypes {
     | '/talhoes'
     | '/usuarios'
     | '/visitas'
+    | '/campo/agenda'
+    | '/campo/ocorrencia'
+    | '/campo/producao'
+    | '/campo/sangria'
+    | '/campo'
     | '/documentacao/$slug'
     | '/empresas/$id'
     | '/empresas/novo'
@@ -719,6 +783,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/campo'
     | '/auth'
     | '/reset-password'
     | '/sitemap.xml'
@@ -774,6 +839,11 @@ export interface FileRouteTypes {
     | '/_authenticated/talhoes'
     | '/_authenticated/usuarios'
     | '/_authenticated/visitas'
+    | '/campo/agenda'
+    | '/campo/ocorrencia'
+    | '/campo/producao'
+    | '/campo/sangria'
+    | '/campo/'
     | '/_authenticated/documentacao/$slug'
     | '/_authenticated/empresas/$id'
     | '/_authenticated/empresas/novo'
@@ -784,6 +854,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  CampoRouteRoute: typeof CampoRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -810,6 +881,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/campo': {
+      id: '/campo'
+      path: '/campo'
+      fullPath: '/campo'
+      preLoaderRoute: typeof CampoRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1190,6 +1268,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVisitasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/campo/': {
+      id: '/campo/'
+      path: '/'
+      fullPath: '/campo/'
+      preLoaderRoute: typeof CampoIndexRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
+    '/campo/agenda': {
+      id: '/campo/agenda'
+      path: '/agenda'
+      fullPath: '/campo/agenda'
+      preLoaderRoute: typeof CampoAgendaRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
+    '/campo/ocorrencia': {
+      id: '/campo/ocorrencia'
+      path: '/ocorrencia'
+      fullPath: '/campo/ocorrencia'
+      preLoaderRoute: typeof CampoOcorrenciaRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
+    '/campo/producao': {
+      id: '/campo/producao'
+      path: '/producao'
+      fullPath: '/campo/producao'
+      preLoaderRoute: typeof CampoProducaoRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
+    '/campo/sangria': {
+      id: '/campo/sangria'
+      path: '/sangria'
+      fullPath: '/campo/sangria'
+      preLoaderRoute: typeof CampoSangriaRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
     '/_authenticated/documentacao/$slug': {
       id: '/_authenticated/documentacao/$slug'
       path: '/$slug'
@@ -1385,9 +1498,30 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface CampoRouteRouteChildren {
+  CampoAgendaRoute: typeof CampoAgendaRoute
+  CampoOcorrenciaRoute: typeof CampoOcorrenciaRoute
+  CampoProducaoRoute: typeof CampoProducaoRoute
+  CampoSangriaRoute: typeof CampoSangriaRoute
+  CampoIndexRoute: typeof CampoIndexRoute
+}
+
+const CampoRouteRouteChildren: CampoRouteRouteChildren = {
+  CampoAgendaRoute: CampoAgendaRoute,
+  CampoOcorrenciaRoute: CampoOcorrenciaRoute,
+  CampoProducaoRoute: CampoProducaoRoute,
+  CampoSangriaRoute: CampoSangriaRoute,
+  CampoIndexRoute: CampoIndexRoute,
+}
+
+const CampoRouteRouteWithChildren = CampoRouteRoute._addFileChildren(
+  CampoRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  CampoRouteRoute: CampoRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
