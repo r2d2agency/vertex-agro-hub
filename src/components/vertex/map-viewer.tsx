@@ -2,13 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import type { GeoBoundary } from "@/lib/geo";
 import { boundaryCentroid, boundaryPolygons } from "@/lib/geo";
+import { vertexDivIcon } from "@/lib/vertex-marker";
 
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
+L.Marker.prototype.options.icon = vertexDivIcon();
 
 export type FarmMarker = {
   id: string;
@@ -58,8 +54,11 @@ export default function MapViewer({
     if (!containerRef.current || mapRef.current) return;
     const map = L.map(containerRef.current, { center: [-10.5, -55.5], zoom: 4 });
     const streets = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors", maxZoom: 19,
+    });
+    const terrain = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+      attribution: "Map data: &copy; OpenStreetMap, SRTM | &copy; OpenTopoMap (CC-BY-SA)",
+      maxZoom: 17,
     });
     const satellite = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -73,7 +72,7 @@ export default function MapViewer({
     satellite.addTo(map);
     labels.addTo(map);
     L.control.layers(
-      { "Satélite (híbrido)": hybrid, "Satélite": satellite, "Mapa": streets },
+      { "Satélite (híbrido)": hybrid, "Satélite": satellite, "Terreno": terrain, "Mapa": streets },
       {},
       { position: "topright", collapsed: true },
     ).addTo(map);
@@ -103,7 +102,7 @@ export default function MapViewer({
         const polys = boundaryPolygons(f.boundary ?? null);
         polys.forEach((p) => {
           const latlngs = p.coordinates[0].map(([lng, lat]) => L.latLng(lat, lng));
-          const poly = L.polygon(latlngs, { color: f.color, weight: 2, fillOpacity: 0.2 });
+          const poly = L.polygon(latlngs, { color: f.color, weight: 2, fillColor: f.color, fillOpacity: 0.25 });
           poly.bindPopup(farmPopup(f));
           if (onSelectFarm) poly.on("click", () => onSelectFarm(f.id));
           farmsLayerRef.current!.addLayer(poly);
@@ -113,7 +112,7 @@ export default function MapViewer({
         const center = boundaryCentroid(f.boundary ?? null) ??
           (f.latitude != null && f.longitude != null ? { lat: f.latitude, lng: f.longitude } : null);
         if (center) {
-          const m = L.marker([center.lat, center.lng]);
+          const m = L.marker([center.lat, center.lng], { icon: vertexDivIcon(f.color) });
           m.bindPopup(farmPopup(f));
           if (onSelectFarm) m.on("click", () => onSelectFarm(f.id));
           farmsLayerRef.current!.addLayer(m);
@@ -127,7 +126,7 @@ export default function MapViewer({
         const polys = boundaryPolygons(p.boundary ?? null);
         polys.forEach((poly) => {
           const latlngs = poly.coordinates[0].map(([lng, lat]) => L.latLng(lat, lng));
-          const layer = L.polygon(latlngs, { color: p.color, weight: 1.5, fillOpacity: 0.35, dashArray: "3 3" });
+          const layer = L.polygon(latlngs, { color: "#ffffff", weight: 2, fillColor: p.color, fillOpacity: 0.4, dashArray: "6 4" });
           layer.bindPopup(plotPopup(p));
           plotsLayerRef.current!.addLayer(layer);
           latlngs.forEach((ll) => bounds.extend(ll));

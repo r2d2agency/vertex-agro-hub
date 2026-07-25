@@ -8,14 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import type { GeoBoundary, GeoPolygon } from "@/lib/geo";
+import { vertexDivIcon } from "@/lib/vertex-marker";
 
-// Fix default Leaflet marker icons
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
+// Use custom Vertex marker as default
+L.Marker.prototype.options.icon = vertexDivIcon();
 
 export type MapEditorProps = {
   value: GeoBoundary | null;
@@ -23,14 +19,18 @@ export type MapEditorProps = {
   reference?: GeoBoundary | null;
   height?: number;
   focus?: { lat: number; lng: number } | null;
+  color?: string;
+  onColorChange?: (color: string) => void;
 };
 
 type Mode = GeoBoundary["mode"];
 
-const MAIN_STYLE = { color: "#16a34a", weight: 3, fillOpacity: 0.2 };
-const EXCL_STYLE = { color: "#dc2626", weight: 2, fillOpacity: 0.25, dashArray: "4 4" };
+const DEFAULT_COLOR = "#16a34a";
+const PALETTE = ["#16a34a", "#2563eb", "#dc2626", "#f59e0b", "#7c3aed", "#0891b2", "#db2777", "#0f172a"];
+const mainStyle = (c: string) => ({ color: c, weight: 3, fillColor: c, fillOpacity: 0.2 });
+const EXCL_STYLE = { color: "#ffffff", weight: 2, fillColor: "#dc2626", fillOpacity: 0.25, dashArray: "6 4" };
 
-export default function MapEditor({ value, onChange, reference, height = 400, focus }: MapEditorProps) {
+export default function MapEditor({ value, onChange, reference, height = 400, focus, color: colorProp, onColorChange }: MapEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const mainLayerRef = useRef<L.FeatureGroup | null>(null);
@@ -39,14 +39,21 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
   const [mode, setMode] = useState<Mode>(value?.mode ?? "multi");
   const [ready, setReady] = useState(false);
   const [drawTarget, setDrawTarget] = useState<"main" | "exclusion">("main");
+  const [color, setColor] = useState<string>(colorProp || DEFAULT_COLOR);
+  const colorRef = useRef(color);
+  useEffect(() => { colorRef.current = color; }, [color]);
+  useEffect(() => { if (colorProp && colorProp !== color) setColor(colorProp); /* eslint-disable-next-line */ }, [colorProp]);
 
   // Init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = L.map(containerRef.current, { center: [-10.5, -55.5], zoom: 4 });
     const streets = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors", maxZoom: 19,
+    });
+    const terrain = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+      attribution: "Map data: &copy; OpenStreetMap, SRTM | &copy; OpenTopoMap (CC-BY-SA)",
+      maxZoom: 17,
     });
     const satellite = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -60,7 +67,7 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
     satellite.addTo(map);
     labels.addTo(map);
     L.control.layers(
-      { "Satélite (híbrido)": hybrid, "Satélite": satellite, "Mapa": streets },
+      { "Satélite (híbrido)": hybrid, "Satélite": satellite, "Terreno": terrain, "Mapa": streets },
       {},
       { position: "topleft", collapsed: true },
     ).addTo(map);
@@ -77,7 +84,7 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
         layer.setStyle(EXCL_STYLE);
         exclLayerRef.current?.addLayer(layer);
       } else {
-        layer.setStyle(MAIN_STYLE);
+        layer.setStyle(mainStyle(colorRef.current));
         mainLayerRef.current?.addLayer(layer);
       }
       emit();
@@ -111,17 +118,26 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
           allowIntersection: true,
           showArea: true,
           metric: true,
-          shapeOptions: drawTarget === "exclusion" ? EXCL_STYLE : MAIN_STYLE,
+          shapeOptions: drawTarget === "exclusion" ? EXCL_STYLE : mainStyle(colorRef.current),
           drawError: { color: "#dc2626", message: "As linhas não podem se cruzar" },
         } as L.DrawOptions.PolygonOptions,
-        rectangle: { shapeOptions: drawTarget === "exclusion" ? EXCL_STYLE : MAIN_STYLE } as L.DrawOptions.RectangleOptions,
+        rectangle: { shapeOptions: drawTarget === "exclusion" ? EXCL_STYLE : mainStyle(colorRef.current) } as L.DrawOptions.RectangleOptions,
         polyline: false, circle: false, marker: false, circlemarker: false,
       },
       edit: { featureGroup, remove: true },
     });
     map.addControl(ctrl);
     drawControlRef.current = ctrl;
-  }, [ready, mode, drawTarget]);
+  }, [ready, mode, drawTarget, color]);
+
+  // Reaplica cor nos polígonos principais existentes
+  useEffect(() => {
+    if (!ready || !mainLayerRef.current) return;
+    mainLayerRef.current.eachLayer((l) => {
+      const p = l as L.Polygon;
+      if (p.setStyle) p.setStyle(mainStyle(color));
+    });
+  }, [ready, color]);
 
   // Load initial value
   useEffect(() => {
@@ -130,9 +146,9 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
     exclLayerRef.current.clearLayers();
     if (value) {
       if (value.mode === "multi") {
-        value.polygons.forEach((p) => addPolygon(p, mainLayerRef.current!, MAIN_STYLE));
+        value.polygons.forEach((p) => addPolygon(p, mainLayerRef.current!, mainStyle(colorRef.current)));
       } else {
-        addPolygon(value.main, mainLayerRef.current!, MAIN_STYLE);
+        addPolygon(value.main, mainLayerRef.current!, mainStyle(colorRef.current));
         value.exclusions.forEach((p) => addPolygon(p, exclLayerRef.current!, EXCL_STYLE));
       }
       try {
@@ -151,7 +167,7 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
     const polys = reference.mode === "multi" ? reference.polygons : [reference.main];
     const layer = L.geoJSON(
       { type: "FeatureCollection", features: polys.map((p) => ({ type: "Feature", geometry: p, properties: {} })) } as GeoJSON.FeatureCollection,
-      { style: { color: "#0f766e", weight: 2, dashArray: "4 4", fillOpacity: 0.05, interactive: false } }
+      { style: { color: "#ffffff", weight: 2, dashArray: "6 4", fillOpacity: 0.05, interactive: false } }
     );
     layer.addTo(map);
     try { map.fitBounds(layer.getBounds(), { padding: [20, 20], maxZoom: 16 }); } catch { /* empty */ }
@@ -226,6 +242,29 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
             <Label htmlFor="mode-excl" className="cursor-pointer text-xs">1 principal + exclusões (reservas/estradas)</Label>
           </div>
         </RadioGroup>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Cor da área:</span>
+          <div className="flex items-center gap-1">
+            {PALETTE.map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-label={`Cor ${c}`}
+                onClick={() => { setColor(c); onColorChange?.(c); }}
+                className={`h-5 w-5 rounded-full border-2 transition ${color === c ? "border-foreground scale-110" : "border-white/70"}`}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => { setColor(e.target.value); onColorChange?.(e.target.value); }}
+              className="h-6 w-6 cursor-pointer rounded border border-border bg-transparent p-0"
+              title="Escolher cor personalizada"
+            />
+          </div>
+        </div>
 
         {mode === "with-exclusions" && (
           <div className="ml-auto flex items-center gap-2">
