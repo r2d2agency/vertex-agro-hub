@@ -50,7 +50,10 @@ function FieldShell() {
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
   }, []);
 
-  useEffect(() => subscribeOutbox((s) => { setPending(s.pending); setFlushing(s.running); }), []);
+  useEffect(() => {
+    const un = subscribeOutbox((s) => { setPending(s.pending); setFlushing(s.running); });
+    return () => { un(); };
+  }, []);
 
   async function signOut() { await logout(); navigate({ to: "/auth", replace: true }); }
 
