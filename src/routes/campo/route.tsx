@@ -1,11 +1,12 @@
 import { createFileRoute, Outlet, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Leaf, LogOut, LayoutDashboard, WifiOff, Wifi, Download, Loader2 } from "lucide-react";
+import { LogOut, LayoutDashboard, WifiOff, Wifi, Download, Loader2, Bell } from "lucide-react";
 import { hasAuthTokens, logout } from "@/lib/api";
 import { getFieldMe, type FieldMe } from "@/lib/field.functions";
 import { subscribeOutbox, flushOutbox } from "@/lib/offline/queue";
 import { FieldBottomNav } from "@/components/vertex/field/bottom-nav";
 import { Button } from "@/components/ui/button";
+import vertexLogo from "@/assets/vertex-logo.png";
 
 export const Route = createFileRoute("/campo")({
   ssr: false,
@@ -24,9 +25,7 @@ function useInstallPrompt() {
     window.addEventListener("beforeinstallprompt", h);
     return () => window.removeEventListener("beforeinstallprompt", h);
   }, []);
-  return prompt ? {
-    show: async () => { await prompt.prompt(); setPrompt(null); },
-  } : null;
+  return prompt ? { show: async () => { await prompt.prompt(); setPrompt(null); } } : null;
 }
 
 function FieldShell() {
@@ -38,9 +37,7 @@ function FieldShell() {
   const [flushing, setFlushing] = useState(false);
   const install = useInstallPrompt();
 
-  useEffect(() => {
-    getFieldMe().then(setMe).catch((e) => setError(e?.message ?? "Falha ao carregar"));
-  }, []);
+  useEffect(() => { getFieldMe().then(setMe).catch((e) => setError(e?.message ?? "Falha ao carregar")); }, []);
 
   useEffect(() => {
     const on = () => setOnline(true);
@@ -57,73 +54,76 @@ function FieldShell() {
 
   async function signOut() { await logout(); navigate({ to: "/auth", replace: true }); }
 
-  if (error) {
+  const content = (() => {
+    if (error) {
+      return (
+        <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-3 p-6 text-center">
+          <p className="text-sm text-destructive">{error}</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>Tentar novamente</Button>
+        </div>
+      );
+    }
+    if (!me) {
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      );
+    }
+    const role = me.primaryRole;
+    const firstName = me.user.fullName?.split(" ")[0] ?? "campo";
     return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-3 p-6 text-center">
-        <p className="text-sm text-destructive">{error}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>Tentar novamente</Button>
-      </div>
-    );
-  }
-  if (!me) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const role = me.primaryRole;
-
-  return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur">
-        <div className="mx-auto flex max-w-lg items-center justify-between gap-2 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Leaf className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold leading-tight">Vertex Campo</div>
-              <div className="text-[11px] capitalize text-muted-foreground">
-                {role === "consultor" ? "Consultor" : role === "monitor" ? "Monitor" : role}
-                {me.user.fullName ? ` · ${me.user.fullName.split(" ")[0]}` : ""}
+      <div className="min-h-screen bg-background pb-24">
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+          <div className="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <img src={vertexLogo} alt="Vertex" className="h-9 w-9 shrink-0" />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold">Olá, {firstName}</div>
+                <div className="text-[11px] capitalize text-muted-foreground">
+                  {role === "consultor" ? "Consultor" : role === "monitor" ? "Monitor" : role}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => { setFlushing(true); flushOutbox().finally(() => setFlushing(false)); }}
-              className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
-                online ? "border-emerald-500/40 text-emerald-600" : "border-amber-500/40 text-amber-600"
-              }`}
-              title={online ? "Online — clique para sincronizar" : "Offline — mudanças ficam na fila"}
-            >
-              {flushing ? <Loader2 className="h-3 w-3 animate-spin" /> : online ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              {pending > 0 ? `${pending} pendente${pending > 1 ? "s" : ""}` : online ? "Online" : "Offline"}
-            </button>
-            {install && (
-              <Button variant="ghost" size="icon" onClick={install.show} title="Instalar app">
-                <Download className="h-4 w-4" />
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => { setFlushing(true); flushOutbox().finally(() => setFlushing(false)); }}
+                className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                  online ? "border-primary/40 bg-primary/10 text-primary" : "border-warning/40 bg-warning/10 text-warning"
+                }`}
+                title={online ? "Online" : "Offline"}
+              >
+                {flushing ? <Loader2 className="h-3 w-3 animate-spin" /> : online ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                {pending > 0 ? pending : online ? "On" : "Off"}
+              </button>
+              <Button variant="ghost" size="icon" className="h-9 w-9" title="Notificações">
+                <Bell className="h-4 w-4" />
               </Button>
-            )}
-            {me.isAdmin && (
-              <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/dashboard" })} title="Painel admin">
-                <LayoutDashboard className="h-4 w-4" />
+              {install && (
+                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={install.show} title="Instalar">
+                  <Download className="h-4 w-4" />
+                </Button>
+              )}
+              {me.isAdmin && (
+                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigate({ to: "/dashboard" })} title="Admin">
+                  <LayoutDashboard className="h-4 w-4" />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={signOut} title="Sair">
+                <LogOut className="h-4 w-4" />
               </Button>
-            )}
-            <Button variant="ghost" size="icon" onClick={signOut} title="Sair">
-              <LogOut className="h-4 w-4" />
-            </Button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="mx-auto max-w-lg px-4 py-4">
-        <Outlet />
-      </main>
+        <main className="mx-auto max-w-lg px-4 py-4">
+          <Outlet />
+        </main>
 
-      <FieldBottomNav role={role} />
-    </div>
-  );
+        <FieldBottomNav role={role} />
+      </div>
+    );
+  })();
+
+  return <div className="dark">{content}</div>;
 }
