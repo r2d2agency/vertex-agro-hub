@@ -47,7 +47,7 @@ import {
   Truck,
   Fuel,
   Package,
-  Activity,
+  Activity as ActivityIcon,
 } from "lucide-react";
 import {
   Sidebar,
