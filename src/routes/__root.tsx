@@ -7,9 +7,11 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
 import appCss from "../styles.css?url";
+import { registerServiceWorker } from "@/lib/offline/register-sw";
+import { installOfflineAutoFlush } from "@/lib/offline/network";
 
 function NotFoundComponent() {
   return (
