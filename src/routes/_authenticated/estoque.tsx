@@ -247,8 +247,20 @@ function ItemDialog({ companyId, editing, farms, defaultFarmId, onClose, onSaved
             <div><Label>Estoque mínimo</Label><Input type="number" value={f.minStock ?? ""} onChange={e => setF({ ...f, minStock: e.target.value ? Number(e.target.value) : undefined })} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
+            <div><Label>Fazenda (opcional)</Label>
+              <Select value={f.farmId || "none"} onValueChange={v => setF({ ...f, farmId: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Todas / empresa" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Empresa (todas)</SelectItem>
+                  {farms.map(fm => <SelectItem key={fm.id} value={fm.id}>{fm.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Local (galpão/prateleira)</Label><Input value={f.location} onChange={e => setF({ ...f, location: e.target.value })} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div><Label>Fornecedor</Label><Input value={f.supplier} onChange={e => setF({ ...f, supplier: e.target.value })} /></div>
-            <div><Label>Local</Label><Input value={f.location} onChange={e => setF({ ...f, location: e.target.value })} /></div>
+            <div />
           </div>
           <div><Label>Observações</Label><Textarea rows={2} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} /></div>
           {editing && <p className="text-xs text-muted-foreground">Ajuste o estoque usando o botão "Movimentar" na lista.</p>}
