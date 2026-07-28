@@ -136,6 +136,7 @@ function StockPage() {
                     {items.map(i => (
                       <tr key={i.id} className="border-t">
                         <td className="p-3"><div className="font-medium">{i.name}</div><div className="text-xs text-muted-foreground">{i.sku ?? "—"}</div></td>
+                        <td className="p-3 text-xs">{farms.find(f => f.id === i.farmId)?.name ?? "—"}</td>
                         <td className="p-3"><Badge variant="secondary">{CATS.find(c => c.v === i.category)?.label ?? i.category}</Badge></td>
                         <td className="p-3">{i.currentStock} {i.unit}</td>
                         <td className="p-3">{i.minStock ?? "—"}</td>
@@ -149,7 +150,7 @@ function StockPage() {
                         </td>
                       </tr>
                     ))}
-                    {items.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground"><Package className="h-8 w-8 mx-auto mb-2 opacity-40" />Nenhum item cadastrado.</td></tr>}
+                    {items.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground"><Package className="h-8 w-8 mx-auto mb-2 opacity-40" />Nenhum item cadastrado.</td></tr>}
                   </tbody>
                 </table>
               </CardContent></Card>
