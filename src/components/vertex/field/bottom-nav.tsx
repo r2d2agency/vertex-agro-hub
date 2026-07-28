@@ -20,6 +20,7 @@ const OPERATIONS = [
   { to: "/campo/producao", label: "Registrar produção", emoji: "📦" },
   { to: "/campo/estimulacao", label: "Registrar estimulação", emoji: "🧪" },
   { to: "/campo/ocorrencia", label: "Registrar ocorrência", emoji: "⚠️" },
+  { to: "/campo/avaliacao", label: "Avaliar equipe", emoji: "⭐" },
   { to: "/campo/chuva", label: "Informar chuva", emoji: "🌧️" },
 ];
 

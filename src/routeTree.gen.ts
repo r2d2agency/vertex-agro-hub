@@ -71,6 +71,7 @@ import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedVisitasRouteImport } from './routes/_authenticated/visitas'
 import { Route as CampoIndexRouteImport } from './routes/campo/index'
 import { Route as CampoAgendaRouteImport } from './routes/campo/agenda'
+import { Route as CampoAvaliacaoRouteImport } from './routes/campo/avaliacao'
 import { Route as CampoChuvaRouteImport } from './routes/campo/chuva'
 import { Route as CampoEstimulacaoRouteImport } from './routes/campo/estimulacao'
 import { Route as CampoHistoricoRouteImport } from './routes/campo/historico'
@@ -408,6 +409,11 @@ const CampoAgendaRoute = CampoAgendaRouteImport.update({
   path: '/agenda',
   getParentRoute: () => CampoRouteRoute,
 } as any)
+const CampoAvaliacaoRoute = CampoAvaliacaoRouteImport.update({
+  id: '/avaliacao',
+  path: '/avaliacao',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
 const CampoChuvaRoute = CampoChuvaRouteImport.update({
   id: '/chuva',
   path: '/chuva',
@@ -538,6 +544,7 @@ export interface FileRoutesByFullPath {
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visitas': typeof AuthenticatedVisitasRoute
   '/campo/agenda': typeof CampoAgendaRoute
+  '/campo/avaliacao': typeof CampoAvaliacaoRoute
   '/campo/chuva': typeof CampoChuvaRoute
   '/campo/estimulacao': typeof CampoEstimulacaoRoute
   '/campo/historico': typeof CampoHistoricoRoute
@@ -612,6 +619,7 @@ export interface FileRoutesByTo {
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visitas': typeof AuthenticatedVisitasRoute
   '/campo/agenda': typeof CampoAgendaRoute
+  '/campo/avaliacao': typeof CampoAvaliacaoRoute
   '/campo/chuva': typeof CampoChuvaRoute
   '/campo/estimulacao': typeof CampoEstimulacaoRoute
   '/campo/historico': typeof CampoHistoricoRoute
@@ -690,6 +698,7 @@ export interface FileRoutesById {
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/visitas': typeof AuthenticatedVisitasRoute
   '/campo/agenda': typeof CampoAgendaRoute
+  '/campo/avaliacao': typeof CampoAvaliacaoRoute
   '/campo/chuva': typeof CampoChuvaRoute
   '/campo/estimulacao': typeof CampoEstimulacaoRoute
   '/campo/historico': typeof CampoHistoricoRoute
@@ -768,6 +777,7 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/visitas'
     | '/campo/agenda'
+    | '/campo/avaliacao'
     | '/campo/chuva'
     | '/campo/estimulacao'
     | '/campo/historico'
@@ -842,6 +852,7 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/visitas'
     | '/campo/agenda'
+    | '/campo/avaliacao'
     | '/campo/chuva'
     | '/campo/estimulacao'
     | '/campo/historico'
@@ -919,6 +930,7 @@ export interface FileRouteTypes {
     | '/_authenticated/usuarios'
     | '/_authenticated/visitas'
     | '/campo/agenda'
+    | '/campo/avaliacao'
     | '/campo/chuva'
     | '/campo/estimulacao'
     | '/campo/historico'
@@ -1382,6 +1394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampoAgendaRouteImport
       parentRoute: typeof CampoRouteRoute
     }
+    '/campo/avaliacao': {
+      id: '/campo/avaliacao'
+      path: '/avaliacao'
+      fullPath: '/campo/avaliacao'
+      preLoaderRoute: typeof CampoAvaliacaoRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
     '/campo/chuva': {
       id: '/campo/chuva'
       path: '/chuva'
@@ -1635,6 +1654,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface CampoRouteRouteChildren {
   CampoAgendaRoute: typeof CampoAgendaRoute
+  CampoAvaliacaoRoute: typeof CampoAvaliacaoRoute
   CampoChuvaRoute: typeof CampoChuvaRoute
   CampoEstimulacaoRoute: typeof CampoEstimulacaoRoute
   CampoHistoricoRoute: typeof CampoHistoricoRoute
@@ -1648,6 +1668,7 @@ interface CampoRouteRouteChildren {
 
 const CampoRouteRouteChildren: CampoRouteRouteChildren = {
   CampoAgendaRoute: CampoAgendaRoute,
+  CampoAvaliacaoRoute: CampoAvaliacaoRoute,
   CampoChuvaRoute: CampoChuvaRoute,
   CampoEstimulacaoRoute: CampoEstimulacaoRoute,
   CampoHistoricoRoute: CampoHistoricoRoute,
