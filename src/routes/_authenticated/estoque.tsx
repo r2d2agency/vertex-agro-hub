@@ -18,6 +18,7 @@ import {
   listInventoryItems, createInventoryItem, updateInventoryItem, deleteInventoryItem,
   listInventoryMovements, createInventoryMovement, type InventoryItem,
 } from "@/lib/frota-ops.functions";
+import { listFarms } from "@/lib/fazendas.functions";
 
 export const Route = createFileRoute("/_authenticated/estoque")({
   head: () => ({ meta: [
