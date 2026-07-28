@@ -108,16 +108,29 @@ function StockPage() {
           )}
 
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList>
-              <TabsTrigger value="items">Itens</TabsTrigger>
-              <TabsTrigger value="movements">Movimentações</TabsTrigger>
-            </TabsList>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <TabsList>
+                <TabsTrigger value="items">Itens</TabsTrigger>
+                <TabsTrigger value="movements">Movimentações</TabsTrigger>
+              </TabsList>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">Fazenda:</span>
+                <Select value={farmFilter} onValueChange={setFarmFilter}>
+                  <SelectTrigger className="h-8 w-[220px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="none">Sem vínculo (empresa)</SelectItem>
+                    {farms.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             <TabsContent value="items" className="mt-4">
               <Card><CardContent className="p-0">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-left">
-                    <tr><th className="p-3">Item</th><th className="p-3">Categoria</th><th className="p-3">Estoque</th><th className="p-3">Mín.</th><th className="p-3">Custo un.</th><th className="p-3"></th></tr>
+                    <tr><th className="p-3">Item</th><th className="p-3">Fazenda</th><th className="p-3">Categoria</th><th className="p-3">Estoque</th><th className="p-3">Mín.</th><th className="p-3">Custo un.</th><th className="p-3"></th></tr>
                   </thead>
                   <tbody>
                     {items.map(i => (
