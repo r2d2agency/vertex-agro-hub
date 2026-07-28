@@ -20,6 +20,10 @@ const OPERATIONS = [
   { to: "/campo/producao", label: "Registrar produção", emoji: "📦" },
   { to: "/campo/estimulacao", label: "Registrar estimulação", emoji: "🧪" },
   { to: "/campo/ocorrencia", label: "Registrar ocorrência", emoji: "⚠️" },
+  { to: "/campo/operacao-maquina", label: "Apontar operação de máquina", emoji: "🚜" },
+  { to: "/campo/abastecimento", label: "Abastecer máquina", emoji: "⛽" },
+  { to: "/campo/checklist", label: "Checklist de máquina", emoji: "🧾" },
+  { to: "/campo/insumo", label: "Consumo de insumo", emoji: "🧴" },
   { to: "/campo/avaliacao", label: "Avaliar equipe", emoji: "⭐" },
   { to: "/campo/chuva", label: "Informar chuva", emoji: "🌧️" },
 ];
