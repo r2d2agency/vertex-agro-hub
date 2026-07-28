@@ -27,8 +27,27 @@ export type FieldMe = {
   }>;
 };
 
-export function getFieldMe() {
-  return apiRequest<FieldMe>("/field/me");
+export async function getFieldMe(): Promise<FieldMe> {
+  try {
+    const data = await apiRequest<FieldMe>("/field/me");
+    try { await idbPut("cache", { key: FIELD_ME_CACHE_KEY, at: Date.now(), data }); } catch {}
+    return data;
+  } catch (e) {
+    try {
+      const cached = await idbGet<{ key: string; at: number; data: FieldMe }>("cache", FIELD_ME_CACHE_KEY);
+      if (cached?.data) return cached.data;
+    } catch {}
+    throw e;
+  }
+}
+
+export function submitEvaluation(input: {
+  targetUserId: string; companyId: string;
+  ratedAt: string; rating: number;
+  category?: string; title?: string; notes?: string;
+}) {
+  const { targetUserId, ...body } = input;
+  return submit(`/people/${targetUserId}/evaluations`, body, `Avaliação — nota ${input.rating}`);
 }
 
 export type Coords = { latitude: number; longitude: number; accuracyM?: number };
