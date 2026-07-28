@@ -118,3 +118,41 @@ export function submitOccurrence(input: {
 }) {
   return submit("/occurrences", input, `Ocorrência — ${input.title}`);
 }
+
+export function submitOperationLog(input: {
+  companyId: string; farmId?: string; plotId?: string;
+  machineId: string; implementId?: string; operatorId?: string; operationTypeId?: string;
+  startedAt: string; finishedAt?: string;
+  hourmeterStart?: number; hourmeterEnd?: number;
+  fuelConsumed?: number; areaWorked?: number; distanceKm?: number;
+  latitude?: number; longitude?: number; notes?: string; status?: string;
+}) {
+  return submit("/operation-logs", input, "Apontamento de máquina");
+}
+
+export function submitFuelMovement(input: {
+  companyId: string; tankId: string; kind: "entrada" | "saida" | "ajuste";
+  liters: number; occurredAt?: string;
+  machineId?: string; operatorId?: string; hourmeter?: number;
+  unitCost?: number; supplier?: string; invoiceNumber?: string; notes?: string;
+}) {
+  return submit("/fuel-movements", input, `Abastecimento — ${input.liters} L`);
+}
+
+export function submitChecklist(input: {
+  companyId: string; machineId: string; operatorId?: string;
+  kind?: string; performedAt?: string; hourmeter?: number;
+  overallStatus?: string; notes?: string;
+  items: Array<{ label: string; status: "ok" | "nok" | "na"; notes?: string }>;
+}) {
+  return submit("/machine-checklists", input, "Checklist de máquina");
+}
+
+export function submitInventoryMovement(input: {
+  companyId: string; itemId: string; kind: "entrada" | "saida" | "ajuste";
+  quantity: number; occurredAt?: string;
+  reason?: string; machineId?: string; supplier?: string;
+  invoiceNumber?: string; unitCost?: number; notes?: string;
+}) {
+  return submit("/inventory-movements", input, `Insumo — ${input.kind} ${input.quantity}`);
+}

@@ -18,6 +18,7 @@ import {
   listInventoryItems, createInventoryItem, updateInventoryItem, deleteInventoryItem,
   listInventoryMovements, createInventoryMovement, type InventoryItem,
 } from "@/lib/frota-ops.functions";
+import { listFarms } from "@/lib/fazendas.functions";
 
 export const Route = createFileRoute("/_authenticated/estoque")({
   head: () => ({ meta: [
@@ -41,10 +42,11 @@ function StockPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
   const qc = useQueryClient();
   const [tab, setTab] = useState("items");
+  const [farmFilter, setFarmFilter] = useState<string>("all");
   const [form, setForm] = useState<{ open: boolean; editing: InventoryItem | null }>({ open: false, editing: null });
   const [mv, setMv] = useState<{ open: boolean; itemId?: string } | null>(null);
 
-  const { data: items = [] } = useQuery({
+  const { data: itemsAll = [] } = useQuery({
     queryKey: ["inv-items", companyId], enabled: !!companyId,
     queryFn: () => listInventoryItems(companyId!),
   });
@@ -52,7 +54,15 @@ function StockPage() {
     queryKey: ["inv-movements", companyId], enabled: !!companyId,
     queryFn: () => listInventoryMovements(companyId!),
   });
+  const { data: farms = [] } = useQuery({
+    queryKey: ["farms", companyId], enabled: !!companyId,
+    queryFn: () => listFarms(companyId!),
+  });
 
+  const items = useMemo(
+    () => farmFilter === "all" ? itemsAll : itemsAll.filter(i => (i.farmId ?? "") === (farmFilter === "none" ? "" : farmFilter)),
+    [itemsAll, farmFilter],
+  );
   const low = useMemo(() => items.filter(i => i.minStock != null && i.currentStock <= i.minStock), [items]);
   const totalValue = items.reduce((s, i) => s + (i.unitCost ?? 0) * i.currentStock, 0);
 
@@ -98,21 +108,35 @@ function StockPage() {
           )}
 
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList>
-              <TabsTrigger value="items">Itens</TabsTrigger>
-              <TabsTrigger value="movements">Movimentações</TabsTrigger>
-            </TabsList>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <TabsList>
+                <TabsTrigger value="items">Itens</TabsTrigger>
+                <TabsTrigger value="movements">Movimentações</TabsTrigger>
+              </TabsList>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">Fazenda:</span>
+                <Select value={farmFilter} onValueChange={setFarmFilter}>
+                  <SelectTrigger className="h-8 w-[220px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="none">Sem vínculo (empresa)</SelectItem>
+                    {farms.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             <TabsContent value="items" className="mt-4">
               <Card><CardContent className="p-0">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-left">
-                    <tr><th className="p-3">Item</th><th className="p-3">Categoria</th><th className="p-3">Estoque</th><th className="p-3">Mín.</th><th className="p-3">Custo un.</th><th className="p-3"></th></tr>
+                    <tr><th className="p-3">Item</th><th className="p-3">Fazenda</th><th className="p-3">Categoria</th><th className="p-3">Estoque</th><th className="p-3">Mín.</th><th className="p-3">Custo un.</th><th className="p-3"></th></tr>
                   </thead>
                   <tbody>
                     {items.map(i => (
                       <tr key={i.id} className="border-t">
                         <td className="p-3"><div className="font-medium">{i.name}</div><div className="text-xs text-muted-foreground">{i.sku ?? "—"}</div></td>
+                        <td className="p-3 text-xs">{farms.find(f => f.id === i.farmId)?.name ?? "—"}</td>
                         <td className="p-3"><Badge variant="secondary">{CATS.find(c => c.v === i.category)?.label ?? i.category}</Badge></td>
                         <td className="p-3">{i.currentStock} {i.unit}</td>
                         <td className="p-3">{i.minStock ?? "—"}</td>
@@ -126,7 +150,7 @@ function StockPage() {
                         </td>
                       </tr>
                     ))}
-                    {items.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground"><Package className="h-8 w-8 mx-auto mb-2 opacity-40" />Nenhum item cadastrado.</td></tr>}
+                    {items.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground"><Package className="h-8 w-8 mx-auto mb-2 opacity-40" />Nenhum item cadastrado.</td></tr>}
                   </tbody>
                 </table>
               </CardContent></Card>
@@ -159,7 +183,8 @@ function StockPage() {
       )}
 
       {companyId && form.open && (
-        <ItemDialog companyId={companyId} editing={form.editing}
+        <ItemDialog companyId={companyId} editing={form.editing} farms={farms}
+          defaultFarmId={farmFilter !== "all" && farmFilter !== "none" ? farmFilter : undefined}
           onClose={() => setForm({ open: false, editing: null })}
           onSaved={() => { qc.invalidateQueries({ queryKey: ["inv-items"] }); setForm({ open: false, editing: null }); }} />
       )}
@@ -172,14 +197,16 @@ function StockPage() {
   );
 }
 
-function ItemDialog({ companyId, editing, onClose, onSaved }: {
-  companyId: string; editing: InventoryItem | null; onClose: () => void; onSaved: () => void;
+function ItemDialog({ companyId, editing, farms, defaultFarmId, onClose, onSaved }: {
+  companyId: string; editing: InventoryItem | null; farms: Array<{ id: string; name: string }>;
+  defaultFarmId?: string; onClose: () => void; onSaved: () => void;
 }) {
   const [f, setF] = useState({
     name: editing?.name ?? "",
     sku: editing?.sku ?? "",
-    category: editing?.category ?? "peca",
+    category: editing?.category ?? "insumo",
     unit: editing?.unit ?? "un",
+    farmId: (editing?.farmId ?? defaultFarmId ?? "") as string,
     currentStock: editing?.currentStock ?? 0,
     minStock: editing?.minStock ?? undefined as number | undefined,
     unitCost: editing?.unitCost ?? undefined as number | undefined,
@@ -189,7 +216,8 @@ function ItemDialog({ companyId, editing, onClose, onSaved }: {
   });
   const save = useMutation({
     mutationFn: async () => {
-      const dto = { companyId, ...f };
+      const { farmId, ...rest } = f;
+      const dto = { companyId, farmId: farmId || null, ...rest } as any;
       return editing ? updateInventoryItem(editing.id, dto) : createInventoryItem(dto);
     },
     onSuccess: () => { toast.success("Salvo"); onSaved(); },
@@ -219,8 +247,20 @@ function ItemDialog({ companyId, editing, onClose, onSaved }: {
             <div><Label>Estoque mínimo</Label><Input type="number" value={f.minStock ?? ""} onChange={e => setF({ ...f, minStock: e.target.value ? Number(e.target.value) : undefined })} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
+            <div><Label>Fazenda (opcional)</Label>
+              <Select value={f.farmId || "none"} onValueChange={v => setF({ ...f, farmId: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Todas / empresa" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Empresa (todas)</SelectItem>
+                  {farms.map(fm => <SelectItem key={fm.id} value={fm.id}>{fm.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Local (galpão/prateleira)</Label><Input value={f.location} onChange={e => setF({ ...f, location: e.target.value })} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div><Label>Fornecedor</Label><Input value={f.supplier} onChange={e => setF({ ...f, supplier: e.target.value })} /></div>
-            <div><Label>Local</Label><Input value={f.location} onChange={e => setF({ ...f, location: e.target.value })} /></div>
+            <div />
           </div>
           <div><Label>Observações</Label><Textarea rows={2} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} /></div>
           {editing && <p className="text-xs text-muted-foreground">Ajuste o estoque usando o botão "Movimentar" na lista.</p>}
