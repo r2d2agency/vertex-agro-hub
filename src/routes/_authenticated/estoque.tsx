@@ -42,10 +42,11 @@ function StockPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
   const qc = useQueryClient();
   const [tab, setTab] = useState("items");
+  const [farmFilter, setFarmFilter] = useState<string>("all");
   const [form, setForm] = useState<{ open: boolean; editing: InventoryItem | null }>({ open: false, editing: null });
   const [mv, setMv] = useState<{ open: boolean; itemId?: string } | null>(null);
 
-  const { data: items = [] } = useQuery({
+  const { data: itemsAll = [] } = useQuery({
     queryKey: ["inv-items", companyId], enabled: !!companyId,
     queryFn: () => listInventoryItems(companyId!),
   });
@@ -53,7 +54,15 @@ function StockPage() {
     queryKey: ["inv-movements", companyId], enabled: !!companyId,
     queryFn: () => listInventoryMovements(companyId!),
   });
+  const { data: farms = [] } = useQuery({
+    queryKey: ["farms", companyId], enabled: !!companyId,
+    queryFn: () => listFarms(companyId!),
+  });
 
+  const items = useMemo(
+    () => farmFilter === "all" ? itemsAll : itemsAll.filter(i => (i.farmId ?? "") === (farmFilter === "none" ? "" : farmFilter)),
+    [itemsAll, farmFilter],
+  );
   const low = useMemo(() => items.filter(i => i.minStock != null && i.currentStock <= i.minStock), [items]);
   const totalValue = items.reduce((s, i) => s + (i.unitCost ?? 0) * i.currentStock, 0);
 
