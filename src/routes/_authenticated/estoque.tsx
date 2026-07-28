@@ -183,7 +183,8 @@ function StockPage() {
       )}
 
       {companyId && form.open && (
-        <ItemDialog companyId={companyId} editing={form.editing}
+        <ItemDialog companyId={companyId} editing={form.editing} farms={farms}
+          defaultFarmId={farmFilter !== "all" && farmFilter !== "none" ? farmFilter : undefined}
           onClose={() => setForm({ open: false, editing: null })}
           onSaved={() => { qc.invalidateQueries({ queryKey: ["inv-items"] }); setForm({ open: false, editing: null }); }} />
       )}
@@ -196,14 +197,16 @@ function StockPage() {
   );
 }
 
-function ItemDialog({ companyId, editing, onClose, onSaved }: {
-  companyId: string; editing: InventoryItem | null; onClose: () => void; onSaved: () => void;
+function ItemDialog({ companyId, editing, farms, defaultFarmId, onClose, onSaved }: {
+  companyId: string; editing: InventoryItem | null; farms: Array<{ id: string; name: string }>;
+  defaultFarmId?: string; onClose: () => void; onSaved: () => void;
 }) {
   const [f, setF] = useState({
     name: editing?.name ?? "",
     sku: editing?.sku ?? "",
-    category: editing?.category ?? "peca",
+    category: editing?.category ?? "insumo",
     unit: editing?.unit ?? "un",
+    farmId: (editing?.farmId ?? defaultFarmId ?? "") as string,
     currentStock: editing?.currentStock ?? 0,
     minStock: editing?.minStock ?? undefined as number | undefined,
     unitCost: editing?.unitCost ?? undefined as number | undefined,
@@ -213,7 +216,8 @@ function ItemDialog({ companyId, editing, onClose, onSaved }: {
   });
   const save = useMutation({
     mutationFn: async () => {
-      const dto = { companyId, ...f };
+      const { farmId, ...rest } = f;
+      const dto = { companyId, farmId: farmId || null, ...rest } as any;
       return editing ? updateInventoryItem(editing.id, dto) : createInventoryItem(dto);
     },
     onSuccess: () => { toast.success("Salvo"); onSaved(); },
