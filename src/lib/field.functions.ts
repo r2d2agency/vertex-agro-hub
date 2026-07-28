@@ -1,5 +1,8 @@
 import { apiRequest } from "@/lib/api";
 import { enqueueMutation, flushOutbox } from "@/lib/offline/queue";
+import { idbGet, idbPut } from "@/lib/offline/idb";
+
+const FIELD_ME_CACHE_KEY = "field:me";
 
 export type FieldMe = {
   user: { id: string; email: string; fullName?: string | null };
