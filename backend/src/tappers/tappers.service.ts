@@ -285,7 +285,7 @@ export class TappersService {
           data: { ...data, fullName: data.fullName, companyId: dto.companyId, createdById: userId },
         });
 
-    let stint = null as Awaited<ReturnType<typeof this.addStint>> | null;
+    let stint: { id: string; farmId: string; startAt: Date } | null = null;
     if (dto.farmId) {
       const open = await this.prisma.tapperStint.findFirst({
         where: { tapperId: tapper.id, farmId: dto.farmId, endAt: null },
