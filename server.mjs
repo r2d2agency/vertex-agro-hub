@@ -227,4 +227,6 @@ createServer(async (request, response) => {
   }
 }).listen(port, host, () => {
   console.log(`Vertex Agro frontend running on http://${host}:${port}`);
+  console.log(`[proxy] alvos de API (em ordem): ${apiProxyTargets.join(", ") || "(nenhum)"}`);
+
 });
