@@ -15,6 +15,7 @@ import { UploadsModule } from './uploads/uploads.module';
 import { GovernanceModule } from './governance/governance.module';
 import { AiModule } from './ai/ai.module';
 import { FleetModule } from './fleet/fleet.module';
+import { TappersModule } from './tappers/tappers.module';
 
 import { HealthController } from './health.controller';
 
@@ -29,6 +30,7 @@ import { HealthController } from './health.controller';
     CatalogModule,
     OperationsModule,
     PeopleModule,
+    TappersModule,
     TeamsModule,
     ActivitiesModule,
     FieldModule,
