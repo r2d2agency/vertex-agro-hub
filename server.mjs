@@ -8,7 +8,13 @@ import serverEntry from "./dist/server/server.js";
 const clientDir = resolve(process.cwd(), "dist/client");
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || "0.0.0.0";
-const apiProxyTarget = (process.env.API_PROXY_TARGET || process.env.BACKEND_URL || "").replace(/\/$/, "");
+// Aceita uma lista separada por vírgula: tenta o primeiro alvo e cai para os demais
+// (ex.: host interno do EasyPanel primeiro, domínio público como fallback).
+const apiProxyTargets = (process.env.API_PROXY_TARGET || process.env.BACKEND_URL || "")
+  .split(",")
+  .map((t) => t.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+const apiProxyTarget = apiProxyTargets[0] || "";
 const fetchHandler = typeof serverEntry === "function" ? serverEntry : serverEntry.fetch.bind(serverEntry);
 
 const mimeTypes = {
@@ -106,21 +112,42 @@ async function proxyApiRequest(request, response, pathname) {
     return true;
   }
 
-  const targetUrl = new URL(`${pathname.replace(/^\/api/, "")}${request.url?.includes("?") ? `?${request.url.split("?")[1]}` : ""}`, apiProxyTarget);
+  const suffix = `${pathname.replace(/^\/api/, "")}${request.url?.includes("?") ? `?${request.url.split("?")[1]}` : ""}`;
   const headers = nodeHeadersToWebHeaders(request.headers);
   headers.delete("host");
   headers.delete("origin");
   headers.delete("referer");
+  const requestBody = await readRequestBody(request);
 
-  const proxyResponse = await fetch(targetUrl, {
-    method: request.method,
-    headers,
-    body: await readRequestBody(request),
-    duplex: "half",
-  });
+  let lastError = null;
+  for (const target of apiProxyTargets) {
+    try {
+      const proxyResponse = await fetch(new URL(suffix, target), {
+        method: request.method,
+        headers,
+        body: requestBody,
+        duplex: "half",
+      });
+      const body = request.method === "HEAD" ? undefined : Buffer.from(await proxyResponse.arrayBuffer());
+      writeWebResponse(response, proxyResponse, body);
+      return true;
+    } catch (error) {
+      lastError = error;
+      const cause = error?.cause?.code || error?.code || "";
+      console.error(`[proxy] falha ao chamar ${target}${suffix} (${cause || error?.message})`);
+    }
+  }
 
-  const body = request.method === "HEAD" ? undefined : Buffer.from(await proxyResponse.arrayBuffer());
-  writeWebResponse(response, proxyResponse, body);
+  const cause = lastError?.cause?.code || lastError?.code || "";
+  const dns = cause === "EAI_AGAIN" || cause === "ENOTFOUND";
+  response.writeHead(502, { "content-type": "application/json; charset=utf-8" });
+  response.end(JSON.stringify({
+    message: dns
+      ? "Backend inacessível: o nome configurado em API_PROXY_TARGET não resolve de dentro do container. Use o host interno do serviço (ex.: http://vertex-backend:3000)."
+      : "Backend inacessível. Verifique se o serviço está rodando e se API_PROXY_TARGET está correto.",
+    code: cause || "PROXY_ERROR",
+    target: apiProxyTargets.join(", "),
+  }));
   return true;
 }
 
