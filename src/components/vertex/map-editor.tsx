@@ -17,6 +17,7 @@ export type MapEditorProps = {
   value: GeoBoundary | null;
   onChange: (boundary: GeoBoundary | null, areaHa: number | null) => void;
   reference?: GeoBoundary | null;
+  overlays?: Array<{ boundary: GeoBoundary | null; color?: string; label?: string }>;
   height?: number;
   focus?: { lat: number; lng: number } | null;
   color?: string;
@@ -30,7 +31,7 @@ const PALETTE = ["#16a34a", "#2563eb", "#dc2626", "#f59e0b", "#7c3aed", "#0891b2
 const mainStyle = (c: string) => ({ color: c, weight: 3, fillColor: c, fillOpacity: 0.2 });
 const EXCL_STYLE = { color: "#ffffff", weight: 2, fillColor: "#dc2626", fillOpacity: 0.25, dashArray: "6 4" };
 
-export default function MapEditor({ value, onChange, reference, height = 400, focus, color: colorProp, onColorChange }: MapEditorProps) {
+export default function MapEditor({ value, onChange, reference, overlays, height = 400, focus, color: colorProp, onColorChange }: MapEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const mainLayerRef = useRef<L.FeatureGroup | null>(null);
@@ -39,7 +40,7 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
   const [mode, setMode] = useState<Mode>(value?.mode ?? "multi");
   const [ready, setReady] = useState(false);
   const [drawTarget, setDrawTarget] = useState<"main" | "exclusion">("main");
-  const [color, setColor] = useState<string>(colorProp || DEFAULT_COLOR);
+  const [color, setColor] = useState<string>(colorProp || value?.color || DEFAULT_COLOR);
   const colorRef = useRef(color);
   useEffect(() => { colorRef.current = color; }, [color]);
   useEffect(() => { if (colorProp && colorProp !== color) setColor(colorProp); /* eslint-disable-next-line */ }, [colorProp]);
@@ -137,6 +138,8 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
       const p = l as L.Polygon;
       if (p.setStyle) p.setStyle(mainStyle(color));
     });
+    if (mainLayerRef.current.getLayers().length > 0) emit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, color]);
 
   // Load initial value
@@ -174,6 +177,27 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
     return () => { layer.remove(); };
   }, [ready, reference]);
 
+  // Overlays (talhões já existentes na fazenda)
+  useEffect(() => {
+    if (!ready || !mapRef.current || !overlays || overlays.length === 0) return;
+    const map = mapRef.current;
+    const group = L.layerGroup().addTo(map);
+    overlays.forEach((o) => {
+      if (!o.boundary) return;
+      const c = o.color || "#94a3b8";
+      const polys = o.boundary.mode === "multi" ? o.boundary.polygons : [o.boundary.main];
+      polys.forEach((p) => {
+        const latlngs = p.coordinates[0].map(([lng, lat]) => L.latLng(lat, lng));
+        const poly = L.polygon(latlngs, { color: c, weight: 2, fillColor: c, fillOpacity: 0.18, interactive: true });
+        if (o.label) {
+          poly.bindTooltip(o.label, { permanent: true, direction: "center", className: "vertex-plot-label" });
+        }
+        group.addLayer(poly);
+      });
+    });
+    return () => { group.remove(); };
+  }, [ready, overlays]);
+
   // Focus (usar minha localização / geocode)
   const focusLat = focus?.lat ?? null;
   const focusLng = focus?.lng ?? null;
@@ -208,14 +232,14 @@ export default function MapEditor({ value, onChange, reference, height = 400, fo
       if (mainPolys.length === 0) return onChange(null, null);
       const totalM2 = mainPolys.reduce((sum, p) => sum + area(turfPolygon(p.coordinates)), 0);
       const ha = Math.round((totalM2 / 10000) * 100) / 100;
-      onChange({ mode: "multi", polygons: mainPolys }, ha);
+      onChange({ mode: "multi", polygons: mainPolys, color: colorRef.current }, ha);
     } else {
       if (mainPolys.length === 0) return onChange(null, null);
       const main = mainPolys[0];
       const mainM2 = area(turfPolygon(main.coordinates));
       const exclM2 = exclPolys.reduce((s, p) => s + area(turfPolygon(p.coordinates)), 0);
       const ha = Math.round((Math.max(0, mainM2 - exclM2) / 10000) * 100) / 100;
-      onChange({ mode: "with-exclusions", main, exclusions: exclPolys }, ha);
+      onChange({ mode: "with-exclusions", main, exclusions: exclPolys, color: colorRef.current }, ha);
     }
   }
 

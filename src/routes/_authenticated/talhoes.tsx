@@ -23,7 +23,7 @@ import {
 import { listClones } from "@/lib/clones.functions";
 import { listTappingTables } from "@/lib/tabelas.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
-import { toBoundary, type GeoBoundary } from "@/lib/geo";
+import { toBoundary, boundaryColor, type GeoBoundary } from "@/lib/geo";
 
 export const Route = createFileRoute("/_authenticated/talhoes")({
   head: () => ({
@@ -35,6 +35,8 @@ export const Route = createFileRoute("/_authenticated/talhoes")({
   }),
   component: TalhoesPage,
 });
+
+const PLOT_PALETTE = ["#16a34a", "#2563eb", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#65a30d"];
 
 const empty: PlotInput = {
   farmId: "", name: "", code: "", areaHa: null,
@@ -112,6 +114,11 @@ function TalhoesPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
+                              <span
+                                className="inline-block h-3 w-3 shrink-0 rounded-full border border-border"
+                                style={{ backgroundColor: boundaryColor(p.boundary) }}
+                                aria-hidden
+                              />
                               <MapIcon className="h-4 w-4 text-primary" />
                               <p className="truncate font-semibold">{p.name}</p>
                             </div>
@@ -146,6 +153,7 @@ function TalhoesPage() {
         initial={editing ?? undefined}
         companyId={companyId}
         farms={farms}
+        allPlots={data}
         defaultFarmId={farmFilter !== "__all" ? farmFilter : undefined}
         onSaved={() => qc.invalidateQueries({ queryKey: ["plots", companyId] })}
       />
@@ -167,13 +175,14 @@ function TalhoesPage() {
 }
 
 function PlotDialog({
-  open, onOpenChange, initial, companyId, farms, defaultFarmId, onSaved,
+  open, onOpenChange, initial, companyId, farms, allPlots, defaultFarmId, onSaved,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial?: Plot;
   companyId: string | null;
   farms: Farm[];
+  allPlots: Plot[];
   defaultFarmId?: string;
   onSaved: () => void;
 }) {
@@ -207,6 +216,20 @@ function PlotDialog({
   }, [open, initial, defaultFarmId, farms]);
 
   const selectedFarm = farms.find((f) => f.id === values.farmId);
+  const siblings = allPlots.filter(
+    (p) => p.farmId === values.farmId && p.id !== initial?.id && !!p.boundary,
+  );
+  const overlays = siblings.map((p) => ({
+    boundary: toBoundary(p.boundary),
+    color: boundaryColor(p.boundary),
+    label: p.name,
+  }));
+  const [color, setColor] = useState<string>("#16a34a");
+  useEffect(() => {
+    if (!open) return;
+    setColor(boundaryColor(initial?.boundary, PLOT_PALETTE[allPlots.length % PLOT_PALETTE.length]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial]);
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -290,9 +313,24 @@ function PlotDialog({
                     : "Desenhe o polígono do talhão no mapa."}
                 </p>
               </div>
+              {siblings.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-2">
+                  <span className="text-xs text-muted-foreground">Talhões existentes em {selectedFarm?.name}:</span>
+                  {siblings.map((p) => (
+                    <span key={p.id} className="inline-flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-xs">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: boundaryColor(p.boundary) }} />
+                      {p.name}{p.areaHa != null ? ` · ${p.areaHa} ha` : ""}
+                    </span>
+                  ))}
+                </div>
+              )}
               <MapEditorClient
+                key={values.farmId}
                 value={toBoundary(values.boundary)}
                 reference={toBoundary(selectedFarm?.boundary)}
+                overlays={overlays}
+                color={color}
+                onColorChange={setColor}
                 onChange={(b: GeoBoundary | null, ha: number | null) => {
                   setValues((v) => ({
                     ...v,
