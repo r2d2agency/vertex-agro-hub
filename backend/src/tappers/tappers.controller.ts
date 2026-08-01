@@ -3,7 +3,9 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TappersService } from './tappers.service';
-import { CreateStintDto, CreateTapperDto, EndStintDto, UpdateTapperDto } from './dto';
+import {
+  CreateStintDto, CreateTapperDto, EndStintDto, UpdateTapperDto, UpsertTapperDto,
+} from './dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('tappers')
@@ -13,6 +15,20 @@ export class TappersController {
   @Get()
   list(@Req() req: any, @Query('companyId', ParseUUIDPipe) companyId: string) {
     return this.svc.list(req.user.sub, companyId);
+  }
+
+  @Get('lookup')
+  lookup(
+    @Req() req: any,
+    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('cpf') cpf: string,
+  ) {
+    return this.svc.lookupByCpf(req.user.sub, companyId, cpf ?? '');
+  }
+
+  @Post('upsert')
+  upsert(@Req() req: any, @Body() dto: UpsertTapperDto) {
+    return this.svc.upsertByCpf(req.user.sub, dto);
   }
 
   @Get(':id')
