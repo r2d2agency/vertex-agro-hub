@@ -8,8 +8,8 @@ export type LatLng = { lat: number; lng: number };
 
 // Novo formato: suporta multi-polígono e polígono com exclusões (buracos / reservas).
 export type GeoBoundary =
-  | { mode: "multi"; polygons: GeoPolygon[] }
-  | { mode: "with-exclusions"; main: GeoPolygon; exclusions: GeoPolygon[] };
+  | { mode: "multi"; polygons: GeoPolygon[]; color?: string }
+  | { mode: "with-exclusions"; main: GeoPolygon; exclusions: GeoPolygon[]; color?: string };
 
 // Aceita formato novo, antigo (GeoPolygon) ou null. Normaliza para GeoBoundary.
 export function toBoundary(input: unknown): GeoBoundary | null {
@@ -17,13 +17,14 @@ export function toBoundary(input: unknown): GeoBoundary | null {
   const obj = input as Record<string, unknown>;
 
   if (obj.mode === "multi" && Array.isArray(obj.polygons)) {
-    return { mode: "multi", polygons: obj.polygons as GeoPolygon[] };
+    return { mode: "multi", polygons: obj.polygons as GeoPolygon[], color: typeof obj.color === "string" ? obj.color : undefined };
   }
   if (obj.mode === "with-exclusions" && obj.main) {
     return {
       mode: "with-exclusions",
       main: obj.main as GeoPolygon,
       exclusions: (obj.exclusions as GeoPolygon[]) ?? [],
+      color: typeof obj.color === "string" ? obj.color : undefined,
     };
   }
   // legacy: { type: "Polygon", coordinates: [...] }
@@ -70,4 +71,13 @@ export function boundaryBBox(b: GeoBoundary | null): { minLat: number; minLng: n
     }
   }
   return { minLat, minLng, maxLat, maxLng };
+}
+
+// Cor da área salva no boundary (fallback quando ausente).
+export function boundaryColor(b: unknown, fallback = "#16a34a"): string {
+  if (b && typeof b === "object") {
+    const c = (b as Record<string, unknown>).color;
+    if (typeof c === "string" && c) return c;
+  }
+  return fallback;
 }
