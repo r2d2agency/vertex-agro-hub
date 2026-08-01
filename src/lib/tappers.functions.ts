@@ -127,3 +127,40 @@ function clean(v: Record<string, unknown>) {
   }
   return out;
 }
+
+// ===== Fluxo do app de campo (monitor) =====
+export type TapperLookup = {
+  found: boolean;
+  sameCompany: boolean;
+  cpf: string;
+  tapper: (Omit<Tapper, "id"> & { id: string | null }) | null;
+  currentFarm: { id: string; name: string } | null;
+};
+
+export function lookupTapperByCpf(companyId: string, cpf: string) {
+  return apiRequest<TapperLookup>(
+    `/tappers/lookup?companyId=${encodeURIComponent(companyId)}&cpf=${encodeURIComponent(cpf)}`,
+  );
+}
+
+export function upsertTapperByCpf(input: TapperInput & {
+  companyId: string; cpf: string; farmId?: string; stintStartAt?: string;
+}) {
+  const { companyId, cpf, farmId, stintStartAt, ...rest } = input;
+  return apiRequest<{ tapper: Tapper; created: boolean }>(`/tappers/upsert`, {
+    method: "POST",
+    body: JSON.stringify({ companyId, cpf, farmId, stintStartAt, ...clean(rest) }),
+  });
+}
+
+export function onlyDigits(v: string) {
+  return (v ?? "").replace(/\D+/g, "");
+}
+
+export function maskCpf(v: string) {
+  const d = onlyDigits(v).slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+}
