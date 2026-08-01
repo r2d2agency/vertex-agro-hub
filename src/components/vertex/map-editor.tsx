@@ -138,7 +138,7 @@ export default function MapEditor({ value, onChange, reference, overlays, height
       const p = l as L.Polygon;
       if (p.setStyle) p.setStyle(mainStyle(color));
     });
-    emit();
+    if (mainLayerRef.current.getLayers().length > 0) emit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, color]);
 
