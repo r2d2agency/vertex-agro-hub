@@ -8,14 +8,44 @@ import serverEntry from "./dist/server/server.js";
 const clientDir = resolve(process.cwd(), "dist/client");
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || "0.0.0.0";
-// Aceita uma lista separada por vírgula: tenta o primeiro alvo e cai para os demais
+// Aceita uma lista separada por vírgula: tenta os alvos em ordem
 // (ex.: host interno do EasyPanel primeiro, domínio público como fallback).
-const apiProxyTargets = (process.env.API_PROXY_TARGET || process.env.BACKEND_URL || "")
+const configuredTargets = (process.env.API_PROXY_TARGET || process.env.BACKEND_URL || "")
   .split(",")
   .map((t) => t.trim().replace(/\/$/, ""))
   .filter(Boolean);
+
+// Deriva possíveis hosts internos do EasyPanel a partir de um domínio público:
+// https://projeto-servico.xxxx.easypanel.host -> http://projeto_servico:3000, http://servico:3000
+function deriveInternalTargets(targets) {
+  const derived = [];
+  for (const target of targets) {
+    let host;
+    try {
+      host = new URL(target).hostname;
+    } catch {
+      continue;
+    }
+    if (!host.endsWith(".easypanel.host")) continue;
+    const slug = host.split(".")[0];
+    const parts = slug.split("-");
+    for (let i = 1; i < parts.length; i += 1) {
+      const project = parts.slice(0, i).join("-");
+      const service = parts.slice(i).join("-");
+      derived.push(`http://${project}_${service}:3000`);
+      derived.push(`http://${service}:3000`);
+    }
+    derived.push(`http://${slug}:3000`);
+  }
+  return derived;
+}
+
+const apiProxyTargets = [...new Set([...configuredTargets, ...deriveInternalTargets(configuredTargets)])];
 const apiProxyTarget = apiProxyTargets[0] || "";
+const deadTargets = new Map();
+const DEAD_TTL_MS = 30_000;
 const fetchHandler = typeof serverEntry === "function" ? serverEntry : serverEntry.fetch.bind(serverEntry);
+
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -119,8 +149,14 @@ async function proxyApiRequest(request, response, pathname) {
   headers.delete("referer");
   const requestBody = await readRequestBody(request);
 
+  const now = Date.now();
+  const ordered = [
+    ...apiProxyTargets.filter((t) => !deadTargets.has(t) || now - deadTargets.get(t) > DEAD_TTL_MS),
+    ...apiProxyTargets.filter((t) => deadTargets.has(t) && now - deadTargets.get(t) <= DEAD_TTL_MS),
+  ];
+
   let lastError = null;
-  for (const target of apiProxyTargets) {
+  for (const target of ordered) {
     try {
       const proxyResponse = await fetch(new URL(suffix, target), {
         method: request.method,
@@ -128,15 +164,18 @@ async function proxyApiRequest(request, response, pathname) {
         body: requestBody,
         duplex: "half",
       });
+      deadTargets.delete(target);
       const body = request.method === "HEAD" ? undefined : Buffer.from(await proxyResponse.arrayBuffer());
       writeWebResponse(response, proxyResponse, body);
       return true;
     } catch (error) {
       lastError = error;
+      deadTargets.set(target, Date.now());
       const cause = error?.cause?.code || error?.code || "";
       console.error(`[proxy] falha ao chamar ${target}${suffix} (${cause || error?.message})`);
     }
   }
+
 
   const cause = lastError?.cause?.code || lastError?.code || "";
   const dns = cause === "EAI_AGAIN" || cause === "ENOTFOUND";
@@ -188,4 +227,6 @@ createServer(async (request, response) => {
   }
 }).listen(port, host, () => {
   console.log(`Vertex Agro frontend running on http://${host}:${port}`);
+  console.log(`[proxy] alvos de API (em ordem): ${apiProxyTargets.join(", ") || "(nenhum)"}`);
+
 });
