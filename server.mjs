@@ -149,8 +149,14 @@ async function proxyApiRequest(request, response, pathname) {
   headers.delete("referer");
   const requestBody = await readRequestBody(request);
 
+  const now = Date.now();
+  const ordered = [
+    ...apiProxyTargets.filter((t) => !deadTargets.has(t) || now - deadTargets.get(t) > DEAD_TTL_MS),
+    ...apiProxyTargets.filter((t) => deadTargets.has(t) && now - deadTargets.get(t) <= DEAD_TTL_MS),
+  ];
+
   let lastError = null;
-  for (const target of apiProxyTargets) {
+  for (const target of ordered) {
     try {
       const proxyResponse = await fetch(new URL(suffix, target), {
         method: request.method,
@@ -158,15 +164,18 @@ async function proxyApiRequest(request, response, pathname) {
         body: requestBody,
         duplex: "half",
       });
+      deadTargets.delete(target);
       const body = request.method === "HEAD" ? undefined : Buffer.from(await proxyResponse.arrayBuffer());
       writeWebResponse(response, proxyResponse, body);
       return true;
     } catch (error) {
       lastError = error;
+      deadTargets.set(target, Date.now());
       const cause = error?.cause?.code || error?.code || "";
       console.error(`[proxy] falha ao chamar ${target}${suffix} (${cause || error?.message})`);
     }
   }
+
 
   const cause = lastError?.cause?.code || lastError?.code || "";
   const dns = cause === "EAI_AGAIN" || cause === "ENOTFOUND";
