@@ -45,3 +45,16 @@ export class EndStintDto {
   @IsOptional() @IsDateString() endAt?: string;
   @IsOptional() @IsString() endReason?: string;
 }
+
+export class LookupTapperDto {
+  @IsUUID() companyId!: string;
+  @IsString() @MinLength(11) cpf!: string;
+}
+
+export class UpsertTapperDto extends CreateTapperDto {
+  @IsOptional() @IsString() @MinLength(2) declare fullName: string;
+  @IsString() @MinLength(11) declare cpf: string;
+  /** Vincula automaticamente o sangrador a esta fazenda ao confirmar a ficha. */
+  @IsOptional() @IsUUID() farmId?: string;
+  @IsOptional() @IsDateString() stintStartAt?: string;
+}

@@ -1,7 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
-import { CreateStintDto, CreateTapperDto, EndStintDto, UpdateTapperDto } from './dto';
+import {
+  CreateStintDto, CreateTapperDto, EndStintDto, UpdateTapperDto, UpsertTapperDto,
+} from './dto';
+
+const onlyDigits = (v: string) => (v ?? '').replace(/\D+/g, '');
 
 const d = (v?: string | null) => (v ? new Date(v) : null);
 
@@ -197,4 +201,110 @@ export class TappersService {
     await this.prisma.tapperStint.deleteMany({ where: { id: stintId, tapperId, companyId } });
     return { ok: true };
   }
+
+  // ===== Fluxo do app de campo: consulta por CPF e confirmação da ficha =====
+  async lookupByCpf(userId: string, companyId: string, rawCpf: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const cpf = onlyDigits(rawCpf);
+    if (cpf.length < 11) throw new BadRequestException('Informe um CPF válido');
+
+    const matches = await this.prisma.tapper.findMany({
+      where: { cpf: { in: [cpf, formatCpf(cpf)] }, isDeleted: false },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const inCompany = matches.find((m) => m.companyId === companyId) ?? null;
+    const elsewhere = matches.find((m) => m.companyId !== companyId) ?? null;
+    const source = inCompany ?? elsewhere;
+
+    if (!source) return { found: false as const, sameCompany: false, cpf, tapper: null, currentFarm: null };
+
+    let currentFarm: { id: string; name: string } | null = null;
+    if (inCompany) {
+      const stint = await this.prisma.tapperStint.findFirst({
+        where: { tapperId: inCompany.id, endAt: null },
+        orderBy: { startAt: 'desc' },
+      });
+      if (stint) {
+        const farm = await this.prisma.farm.findUnique({
+          where: { id: stint.farmId },
+          select: { id: true, name: true },
+        });
+        currentFarm = farm ?? null;
+      }
+    }
+
+    return {
+      found: true as const,
+      sameCompany: !!inCompany,
+      cpf,
+      tapper: { ...source, id: inCompany ? source.id : null },
+      currentFarm,
+    };
+  }
+
+  async upsertByCpf(userId: string, dto: UpsertTapperDto) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    const cpf = onlyDigits(dto.cpf);
+    if (cpf.length < 11) throw new BadRequestException('Informe um CPF válido');
+
+    const existing = await this.prisma.tapper.findFirst({
+      where: { companyId: dto.companyId, cpf: { in: [cpf, formatCpf(cpf)] }, isDeleted: false },
+    });
+
+    const data = {
+      fullName: dto.fullName ?? existing?.fullName,
+      nickname: dto.nickname ?? existing?.nickname ?? null,
+      code: dto.code ?? existing?.code ?? null,
+      cpf,
+      rg: dto.rg ?? existing?.rg ?? null,
+      birthDate: d(dto.birthDate) ?? existing?.birthDate ?? null,
+      phone: dto.phone ?? existing?.phone ?? null,
+      photoUrl: dto.photoUrl ?? existing?.photoUrl ?? null,
+      addressCity: dto.addressCity ?? existing?.addressCity ?? null,
+      addressState: dto.addressState ?? existing?.addressState ?? null,
+      contractType: dto.contractType ?? existing?.contractType ?? null,
+      admissionDate: d(dto.admissionDate) ?? existing?.admissionDate ?? null,
+      terminationDate: d(dto.terminationDate) ?? existing?.terminationDate ?? null,
+      dailyRate: dto.dailyRate ?? existing?.dailyRate ?? null,
+      pisNumber: dto.pisNumber ?? existing?.pisNumber ?? null,
+      bankPixKey: dto.bankPixKey ?? existing?.bankPixKey ?? null,
+      emergencyContactName: dto.emergencyContactName ?? existing?.emergencyContactName ?? null,
+      emergencyContactPhone: dto.emergencyContactPhone ?? existing?.emergencyContactPhone ?? null,
+      status: dto.status ?? existing?.status ?? 'ativo',
+      notes: dto.notes ?? existing?.notes ?? null,
+    };
+
+    if (!data.fullName || data.fullName.trim().length < 2) {
+      throw new BadRequestException('Informe o nome completo do sangrador');
+    }
+
+    const tapper = existing
+      ? await this.prisma.tapper.update({ where: { id: existing.id }, data })
+      : await this.prisma.tapper.create({
+          data: { ...data, fullName: data.fullName, companyId: dto.companyId, createdById: userId },
+        });
+
+    let stint: { id: string; farmId: string; startAt: Date } | null = null;
+    if (dto.farmId) {
+      const open = await this.prisma.tapperStint.findFirst({
+        where: { tapperId: tapper.id, farmId: dto.farmId, endAt: null },
+      });
+      stint = open
+        ? open
+        : await this.addStint(userId, tapper.id, {
+            companyId: dto.companyId,
+            farmId: dto.farmId,
+            startAt: dto.stintStartAt ?? new Date().toISOString().slice(0, 10),
+          });
+    }
+
+    return { tapper, stint, created: !existing };
+  }
+}
+
+function formatCpf(cpf: string) {
+  return cpf.length === 11
+    ? `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`
+    : cpf;
 }
