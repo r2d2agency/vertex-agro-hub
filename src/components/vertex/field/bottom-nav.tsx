@@ -16,6 +16,7 @@ const TABS: Item[] = [
 ];
 
 const OPERATIONS = [
+  { to: "/campo/sangrador", label: "Cadastrar/vincular sangrador", emoji: "🧑‍🌾" },
   { to: "/campo/sangria", label: "Registrar sangria", emoji: "💧" },
   { to: "/campo/producao", label: "Registrar produção", emoji: "📦" },
   { to: "/campo/estimulacao", label: "Registrar estimulação", emoji: "🧪" },
