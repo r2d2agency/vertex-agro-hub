@@ -334,17 +334,30 @@ function CheckinGate({
       </div>
 
       {me.assignments.length > 0 && (
-        <div className="w-full max-w-xs text-left">
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Fazenda</label>
-          <select
-            value={farmId}
-            onChange={(e) => setFarmId(e.target.value)}
-            className="w-full rounded-xl border border-border/60 bg-card px-3 py-2.5 text-sm text-foreground"
-          >
-            {me.assignments.map((a) => (
-              <option key={a.id} value={a.farm.id}>{a.farm.name}</option>
-            ))}
-          </select>
+        <div className="w-full max-w-xs space-y-3 text-left">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Fazenda</label>
+            <select
+              value={farmId}
+              onChange={(e) => setFarmId(e.target.value)}
+              className="w-full rounded-xl border border-border/60 bg-card px-3 py-2.5 text-sm text-foreground"
+            >
+              {me.assignments.map((a) => (
+                <option key={a.id} value={a.farm.id}>{a.farm.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Talhão (Opcional)</label>
+            <input
+              type="text"
+              value={plotId}
+              onChange={(e) => setPlotId(e.target.value)}
+              placeholder="Ex: Talhão A1"
+              className="w-full rounded-xl border border-border/60 bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50"
+            />
+          </div>
         </div>
       )}
 
