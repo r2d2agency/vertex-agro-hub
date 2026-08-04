@@ -142,7 +142,7 @@ async function proxyApiRequest(request, response, pathname) {
     response.end(JSON.stringify({ message: "Configure API_PROXY_TARGET no frontend apontando para o backend." }));
     return true;
   }
-
+  const suffix = `${pathname.replace(/^\/api/, "")}${request.url?.includes("?") ? `?${request.url.split("?")[1]}` : ""}`;
   const headers = nodeHeadersToWebHeaders(request.headers);
   const requestBody = await readRequestBody(request);
 
