@@ -324,5 +324,3 @@ function NavButton({ active, icon, label, onClick }: { active: boolean; icon: Re
     </button>
   );
 }
-  );
-}
