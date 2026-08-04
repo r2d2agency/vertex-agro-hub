@@ -116,6 +116,7 @@ async function serveStatic(request, response, pathname) {
 function nodeHeadersToWebHeaders(nodeHeaders) {
   const headers = new Headers();
   for (const [key, value] of Object.entries(nodeHeaders)) {
+    if (key.toLowerCase() === "host") continue; // Undici/fetch handles host
     if (Array.isArray(value)) {
       for (const item of value) headers.append(key, item);
     } else if (value != null) {
@@ -142,11 +143,7 @@ async function proxyApiRequest(request, response, pathname) {
     return true;
   }
 
-  const suffix = `${pathname.replace(/^\/api/, "")}${request.url?.includes("?") ? `?${request.url.split("?")[1]}` : ""}`;
   const headers = nodeHeadersToWebHeaders(request.headers);
-  headers.delete("host");
-  headers.delete("origin");
-  headers.delete("referer");
   const requestBody = await readRequestBody(request);
 
   const now = Date.now();
