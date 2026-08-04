@@ -28,7 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { getFieldMe, type FieldMe } from "@/lib/field.functions";
+import { getFieldMe, type FieldMe, captureLocation, submitCheckin } from "@/lib/field.functions";
 import { submitConsultation } from "@/lib/consultor.functions";
 
 export const Route = createFileRoute("/campo/consultor/")({
