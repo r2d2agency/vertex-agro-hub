@@ -52,6 +52,27 @@ export function FarmDetailDialog({
     queryFn: () => listImplements(companyId!, farm!.id),
     enabled: open,
   });
+  const photos = useQuery({
+    queryKey: ["farm-detail-photos", farm?.id],
+    queryFn: () => listPhotos(companyId!, { farmId: farm!.id }),
+    enabled: open,
+  });
+  const occurrences = useQuery({
+    queryKey: ["farm-detail-occurrences", farm?.id],
+    queryFn: () => listOccurrences(companyId!, { farmId: farm!.id }),
+    enabled: open,
+  });
+  const visits = useQuery({
+    queryKey: ["farm-detail-visits", farm?.id],
+    queryFn: () => listConsultations(companyId!, { farmId: farm!.id }),
+    enabled: open,
+  });
+  const tapping = useQuery({
+    queryKey: ["farm-detail-tapping", farm?.id],
+    queryFn: () => listTappingRecords(companyId!, { farmId: farm!.id }),
+    enabled: open,
+  });
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
