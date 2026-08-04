@@ -7,7 +7,8 @@ import {
   Camera, 
   Save,
   ChevronLeft,
-  Info
+  Info,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
