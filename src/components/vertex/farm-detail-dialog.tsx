@@ -1,10 +1,14 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { 
   TreeDeciduous, Users, Truck, Wrench, MapPin, 
-  History, Camera, ClipboardCheck, AlertTriangle, Droplets
+  History, Camera, ClipboardCheck, AlertTriangle, Droplets,
+  Search, MessageSquare, Image as ImageIcon, Video, Mic, Calendar,
+  MoreVertical, CheckCircle2, Map as MapIcon
 } from "lucide-react";
 import { listPlots } from "@/lib/talhoes.functions";
 import { listFarmTeam } from "@/lib/people.functions";
@@ -13,6 +17,7 @@ import { listPhotos } from "@/lib/fotografias.functions";
 import { listOccurrences } from "@/lib/ocorrencias.functions";
 import { listTappingRecords } from "@/lib/sangrias.functions";
 import { listConsultations } from "@/lib/consultor.functions";
+import { listDeliveries } from "@/lib/producao.functions";
 import type { Farm } from "@/lib/fazendas.functions";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -72,6 +77,83 @@ export function FarmDetailDialog({
     queryFn: () => listTappingRecords(companyId!, { farmId: farm!.id }),
     enabled: open,
   });
+  const deliveries = useQuery({
+    queryKey: ["farm-detail-deliveries", farm?.id],
+    queryFn: () => listDeliveries(companyId!, { farmId: farm!.id }),
+    enabled: open,
+  });
+
+  const [searchDate, setSearchDate] = useState("");
+
+  const timelineEvents = useMemo(() => {
+    if (!open) return [];
+    
+    const events: any[] = [];
+
+    // Photos
+    photos.data?.forEach(p => events.push({
+      id: p.id,
+      date: new Date(p.takenAt),
+      type: 'photo',
+      content: p,
+      category: p.category,
+      label: 'Fotografia'
+    }));
+
+    // Occurrences
+    occurrences.data?.forEach(o => events.push({
+      id: o.id,
+      date: new Date(o.date),
+      type: 'occurrence',
+      content: o,
+      label: 'Ocorrência'
+    }));
+
+    // Visits (Consultations)
+    visits.data?.forEach(v => events.push({
+      id: v.id,
+      date: new Date(v.conductedAt),
+      type: 'visit',
+      content: v,
+      label: 'Visita Técnica'
+    }));
+
+    // Production (Deliveries)
+    deliveries.data?.forEach(d => events.push({
+      id: d.id,
+      date: new Date(d.deliveryDate),
+      type: 'delivery',
+      content: d,
+      label: 'Entrega de Produção'
+    }));
+
+    // Tapping
+    tapping.data?.forEach(t => events.push({
+      id: t.id,
+      date: new Date(t.date),
+      type: 'tapping',
+      content: t,
+      label: 'Sangria'
+    }));
+
+    // Sort descending
+    events.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    // Filter by date if search exists
+    if (searchDate) {
+      return events.filter(e => e.date.toLocaleDateString('pt-BR').includes(searchDate));
+    }
+
+    // Group by date
+    const grouped: Record<string, any[]> = {};
+    events.forEach(e => {
+      const day = e.date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+      if (!grouped[day]) grouped[day] = [];
+      grouped[day].push(e);
+    });
+
+    return grouped;
+  }, [photos.data, occurrences.data, visits.data, deliveries.data, tapping.data, searchDate, open]);
 
 
   return (
@@ -122,66 +204,127 @@ export function FarmDetailDialog({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="prontuario" className="mt-4 space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border bg-card p-4">
-                <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                  <Droplets className="h-4 w-4 text-primary" /> Resumo de Operação
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Última Sangria:</span>
-                    <span className="font-medium">{tapping.data?.[0] ? new Date(tapping.data[0].date).toLocaleDateString("pt-BR") : "N/D"}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Monitor Responsável:</span>
-                    <span className="font-medium">{team.data?.find(m => m.role === 'monitor')?.user?.fullName || "Não alocado"}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Consultor Técnico:</span>
-                    <span className="font-medium">{team.data?.find(m => m.role === 'consultor')?.user?.fullName || "Não alocado"}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Total de Sangradores:</span>
-                    <span className="font-medium">{team.data?.filter(m => m.role === 'sangrador').length || 0} ativos</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border bg-card p-4">
-                <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                  <History className="h-4 w-4 text-primary" /> Histórico Recente
-                </h3>
-                <div className="space-y-3">
-                  {visits.data?.slice(0, 3).map(v => (
-                    <div key={v.id} className="text-xs flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
-                      <div>
-                        <p className="font-semibold text-primary">Visita Técnica</p>
-                        <p className="text-muted-foreground">{new Date(v.conductedAt).toLocaleDateString("pt-BR")}</p>
-                      </div>
-                      <Badge variant="outline" className="text-[9px]">Qualidade: {v.tappingQuality}/5</Badge>
-                    </div>
-                  ))}
-                  {!visits.data?.length && <p className="text-xs text-muted-foreground text-center py-2 italic">Sem histórico de visitas.</p>}
-                </div>
+          <TabsContent value="prontuario" className="mt-4 space-y-6">
+            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur py-2 border-b mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Pesquisar por data (ex: 04/08)..." 
+                  value={searchDate}
+                  onChange={e => setSearchDate(e.target.value)}
+                  className="pl-10 bg-muted/30 border-none rounded-full h-10"
+                />
               </div>
             </div>
 
-            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
-              <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-destructive mb-3">
-                <AlertTriangle className="h-4 w-4" /> Alertas Críticos
-              </h3>
-              {occurrences.data?.filter(o => o.severity === 'alta' || o.severity === 'critica').length ? (
-                <div className="space-y-2">
-                  {occurrences.data?.filter(o => o.severity === 'alta' || o.severity === 'critica').slice(0, 3).map(o => (
-                    <div key={o.id} className="text-xs flex items-center justify-between bg-background p-2 rounded border border-destructive/10">
-                      <span className="font-bold">{o.title}</span>
-                      <Badge variant="destructive" className="text-[9px]">{o.type}</Badge>
-                    </div>
-                  ))}
+            <div className="flex flex-col gap-8 max-w-2xl mx-auto pb-10">
+              {Object.entries(timelineEvents).map(([day, items]: [string, any]) => (
+                <div key={day} className="space-y-4">
+                  <div className="flex justify-center sticky top-14 z-10">
+                    <span className="bg-muted text-muted-foreground text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                      {day}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {items.map((event: any) => (
+                      <div key={event.id} className={`flex ${event.type === 'occurrence' ? 'justify-start' : 'justify-end'}`}>
+                        <div className={`max-w-[85%] rounded-2xl p-3 shadow-sm border ${
+                          event.type === 'occurrence' 
+                            ? 'bg-destructive/10 border-destructive/20 rounded-tl-none' 
+                            : event.type === 'visit'
+                            ? 'bg-primary/10 border-primary/20 rounded-tr-none'
+                            : 'bg-card border-border rounded-tr-none'
+                        }`}>
+                          <div className="flex items-center justify-between gap-4 mb-2">
+                            <span className="text-[10px] font-bold uppercase tracking-tighter opacity-70 flex items-center gap-1">
+                              {event.type === 'photo' && <ImageIcon className="h-3 w-3" />}
+                              {event.type === 'occurrence' && <AlertTriangle className="h-3 w-3" />}
+                              {event.type === 'visit' && <ClipboardCheck className="h-3 w-3" />}
+                              {event.type === 'delivery' && <Truck className="h-3 w-3" />}
+                              {event.type === 'tapping' && <Droplets className="h-3 w-3" />}
+                              {event.label}
+                            </span>
+                            <span className="text-[10px] opacity-50">
+                              {event.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+
+                          {event.type === 'photo' && (
+                            <div className="space-y-2">
+                              <div className="aspect-video rounded-lg overflow-hidden border bg-muted group relative">
+                                <img src={event.content.url} className="w-full h-full object-cover" />
+                                <div className="absolute top-2 right-2 flex gap-1">
+                                  <Badge className="text-[8px] bg-black/60 backdrop-blur border-none">{event.content.category}</Badge>
+                                </div>
+                              </div>
+                              {event.content.caption && <p className="text-sm">{event.content.caption}</p>}
+                              {(event.content.latitude || event.content.longitude) && (
+                                <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                                  <MapPin className="h-2.5 w-2.5" />
+                                  {event.content.latitude?.toFixed(4)}, {event.content.longitude?.toFixed(4)}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {event.type === 'occurrence' && (
+                            <div className="space-y-1">
+                              <p className="font-bold text-sm">{event.content.title}</p>
+                              <p className="text-xs opacity-80">{event.content.description}</p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge variant="destructive" className="text-[8px] uppercase">{event.content.severity}</Badge>
+                                <Badge variant="outline" className="text-[8px] uppercase bg-background/50">{event.content.type}</Badge>
+                              </div>
+                            </div>
+                          )}
+
+                          {event.type === 'visit' && (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold">Qualidade da Sangria</span>
+                                <div className="flex gap-0.5">
+                                  {[1,2,3,4,5].map(s => (
+                                    <div key={s} className={`h-1 w-3 rounded-full ${s <= event.content.tappingQuality ? 'bg-primary' : 'bg-muted'}`} />
+                                  ))}
+                                </div>
+                              </div>
+                              <p className="text-sm italic">"{event.content.recommendations}"</p>
+                              <div className="flex items-center gap-2 text-[10px] opacity-70">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Sanitário: {event.content.sanitaryState}
+                              </div>
+                            </div>
+                          )}
+
+                          {event.type === 'delivery' && (
+                            <div className="space-y-1">
+                              <p className="text-sm font-bold">{event.content.netWeightKg}kg de Borracha</p>
+                              <p className="text-xs opacity-70">Tipo: {event.content.latexType || 'N/D'}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-[8px]">{event.content.status}</Badge>
+                              </div>
+                            </div>
+                          )}
+
+                          {event.type === 'tapping' && (
+                            <div className="space-y-1">
+                              <p className="text-sm">Registro de Sangria no talhão</p>
+                              <p className="text-xs opacity-70">Executado conforme cronograma</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">Nenhum alerta crítico ativo.</p>
+              ))}
+              
+              {!Object.keys(timelineEvents).length && (
+                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                  <MessageSquare className="h-10 w-10 mb-3 opacity-20" />
+                  <p className="text-sm italic">Nenhuma atividade registrada.</p>
+                </div>
               )}
             </div>
           </TabsContent>
