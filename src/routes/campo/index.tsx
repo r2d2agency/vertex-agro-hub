@@ -117,24 +117,37 @@ function FieldHome() {
   return (
     <div className="space-y-5">
       <header className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col">
           <div className="text-xs capitalize text-muted-foreground">{today}</div>
-          {activeCheckin && (
+          {activeCheckin ? (
             <div className="flex items-center gap-1.5 text-xs font-medium text-primary mt-0.5">
               <ShieldCheck className="h-3 w-3" />
-              <span>Check-in: {me.assignments.find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}</span>
+              <div className="flex flex-col">
+                <span className="leading-tight">
+                  {me.assignments.find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}
+                </span>
+                {activeCheckin.plotId && (
+                  <span className="text-[10px] text-muted-foreground font-normal">
+                    Talhão: {activeCheckin.plotId}
+                  </span>
+                )}
+              </div>
             </div>
+          ) : (
+            <p className="text-[10px] text-warning mt-0.5">Aguardando Check-in</p>
           )}
         </div>
-        {activeCheckin && (
-          <button 
-            onClick={() => handleNewCheckin(activeCheckin.farmId)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 transition-transform"
-            title="Novo Check-in no Talhão"
-          >
-            <PlusCircle className="h-4 w-4" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {activeCheckin && (
+            <button 
+              onClick={() => handleNewCheckin(activeCheckin.farmId)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 transition-transform"
+              title="Trocar Talhão / Novo Check-in"
+            >
+              <PlusCircle className="h-5 w-5" />
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Status cards */}

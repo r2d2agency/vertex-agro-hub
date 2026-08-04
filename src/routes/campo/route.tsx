@@ -320,7 +320,7 @@ function CheckinGate({
             <h1 className="text-xl font-bold text-primary">Olá, {me.user.fullName?.split(" ")[0]}!</h1>
             <p className="max-w-xs text-sm font-medium text-foreground">
               Você está na fazenda <span className="text-primary">{locationName.farm}</span>
-              {locationName.plot && <span>, no talhão <span className="text-primary">{locationName.plot}</span></span>}.
+              {plotId && <span>, no talhão <span className="text-primary">{plotId}</span></span>}.
             </p>
           </div>
         ) : (
