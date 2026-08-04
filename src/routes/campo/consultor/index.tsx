@@ -17,7 +17,13 @@ import {
   Search,
   ChevronRight,
   TrendingUp,
-  BarChart3
+  BarChart3,
+  Mic,
+  Video,
+  PlusCircle,
+  ShieldCheck,
+  Crosshair,
+  MapPinOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
