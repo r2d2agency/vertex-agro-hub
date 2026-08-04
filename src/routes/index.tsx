@@ -65,7 +65,10 @@ function Landing() {
                 <Button size="lg">Entrar na plataforma</Button>
               </Link>
               <Link to="/campo">
-                <Button size="lg" variant="outline">Acessar App de Campo</Button>
+                <Button size="lg" variant="outline">App Monitor</Button>
+              </Link>
+              <Link to="/campo/consultor">
+                <Button size="lg" variant="outline">App Consultor</Button>
               </Link>
             </div>
           </div>

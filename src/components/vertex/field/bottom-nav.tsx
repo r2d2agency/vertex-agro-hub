@@ -30,7 +30,7 @@ const OPERATIONS = [
   { to: "/campo/chuva", label: "Informar chuva", emoji: "🌧️" },
 ];
 
-export function FieldBottomNav({ role: _role }: { role: string }) {
+export function FieldBottomNav({ role }: { role: string }) {
   const location = useLocation();
   const pathname = location.pathname;
   const navigate = useNavigate();
@@ -40,6 +40,9 @@ export function FieldBottomNav({ role: _role }: { role: string }) {
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
       <ul className="mx-auto grid max-w-lg grid-cols-5 items-end">
         {TABS.map((it) => {
+          if (it.to === "/campo" && role === "consultor") {
+            it = { ...it, to: "/campo/consultor" };
+          }
           if (it.to === "__fab__") {
             return (
               <li key="fab" className="flex justify-center">
