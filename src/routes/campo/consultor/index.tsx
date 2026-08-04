@@ -204,7 +204,7 @@ function ConsultorFormPage() {
         </Button>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats and Info Grid */}
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl border border-border/60 bg-card p-4">
           <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Fazendas sob gestão</div>
@@ -214,6 +214,34 @@ function ConsultorFormPage() {
           <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Qualidade Média</div>
           <div className="text-2xl font-bold text-primary">{stats?.avgQuality}</div>
         </div>
+
+        {activeCheckin && (
+          <div className="col-span-2 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[10px] uppercase font-bold text-primary tracking-widest">Status da Fazenda Atual</h3>
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <div className="text-[10px] text-muted-foreground uppercase">Última Visita</div>
+                <div className="text-sm font-bold text-foreground">há 4 dias</div>
+              </div>
+              <div className="space-y-1 text-right">
+                <div className="text-[10px] text-muted-foreground uppercase">Erros Reportados</div>
+                <div className="text-sm font-bold text-destructive">2 pendentes</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-[10px] text-muted-foreground uppercase">KPI Produção</div>
+                <div className="text-sm font-bold text-primary">92% da meta</div>
+              </div>
+              <div className="space-y-1 text-right">
+                <div className="text-[10px] text-muted-foreground uppercase">Clima Atual</div>
+                <div className="text-sm font-bold text-foreground">24°C · Ensolarado</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Farm List */}
@@ -224,10 +252,20 @@ function ConsultorFormPage() {
         </div>
         <div className="space-y-3">
           {me.assignments.map((a) => (
-            <div key={a.id} className="rounded-2xl border border-border/60 bg-card p-4 flex items-center justify-between group active:scale-[0.98] transition-transform">
+            <div 
+              key={a.id} 
+              onClick={() => {
+                setFarmId(a.farm.id);
+                // Se o check-in não for desta fazenda, abre o formulário para iniciar nova visita
+                if (activeCheckin?.farmId !== a.farm.id) {
+                  setView("visit");
+                }
+              }}
+              className={`rounded-2xl border border-border/60 bg-card p-4 flex items-center justify-between group active:scale-[0.98] transition-transform ${activeCheckin?.farmId === a.farm.id ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
+            >
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center">
-                  <MapPin className="h-5 w-5 text-muted-foreground" />
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${activeCheckin?.farmId === a.farm.id ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                  <MapPin className="h-5 w-5" />
                 </div>
                 <div>
                   <div className="font-bold text-sm">{a.farm.name}</div>
@@ -375,19 +413,51 @@ function ConsultorFormPage() {
             <h2>Fotos e Mídia</h2>
           </div>
           
-          <div className="grid grid-cols-3 gap-2">
-            <Button variant="outline" className="h-20 rounded-xl border-dashed border-2 flex flex-col gap-1">
-              <Camera className="h-5 w-5" />
-              <span className="text-[10px]">Foto</span>
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" className="h-28 rounded-2xl border-dashed border-2 flex flex-col items-center justify-center gap-2 group active:bg-secondary">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-active:scale-110 transition-transform">
+                <Camera className="h-5 w-5 text-primary" />
+              </div>
+              <div className="text-center">
+                <span className="block text-xs font-bold">Capturar Foto</span>
+                <span className="text-[10px] text-muted-foreground uppercase">Georeferenciada</span>
+              </div>
             </Button>
-            <Button variant="outline" className="h-20 rounded-xl border-dashed border-2 flex flex-col gap-1">
-              <Mic className="h-5 w-5" />
-              <span className="text-[10px]">Áudio</span>
+            
+            <Button variant="outline" className="h-28 rounded-2xl border-dashed border-2 flex flex-col items-center justify-center gap-2 group active:bg-secondary">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-active:scale-110 transition-transform">
+                <Mic className="h-5 w-5 text-primary" />
+              </div>
+              <div className="text-center">
+                <span className="block text-xs font-bold">Gravar Áudio</span>
+                <span className="text-[10px] text-muted-foreground uppercase">Relato Técnico</span>
+              </div>
             </Button>
-            <Button variant="outline" className="h-20 rounded-xl border-dashed border-2 flex flex-col gap-1">
-              <Video className="h-5 w-5" />
-              <span className="text-[10px]">Vídeo</span>
+
+            <Button variant="outline" className="h-28 rounded-2xl border-dashed border-2 flex flex-col items-center justify-center gap-2 group active:bg-secondary">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-active:scale-110 transition-transform">
+                <Video className="h-5 w-5 text-primary" />
+              </div>
+              <div className="text-center">
+                <span className="block text-xs font-bold">Gravar Vídeo</span>
+                <span className="text-[10px] text-muted-foreground uppercase">Inspeção Visual</span>
+              </div>
             </Button>
+
+            <div className="h-28 rounded-2xl bg-secondary/30 border border-border/40 p-3 flex flex-col justify-center gap-1">
+              <div className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                <ShieldCheck className="h-2.5 w-2.5" /> Marca d'água
+              </div>
+              <p className="text-[10px] leading-tight text-muted-foreground italic">
+                {activeCheckin ? (
+                  <>
+                    Registrando coords, timestamp e consultor no rodapé da mídia para rastreabilidade total.
+                  </>
+                ) : (
+                  <>Check-in necessário para carimbar dados de localização.</>
+                )}
+              </p>
+            </div>
           </div>
 
           <Textarea 
