@@ -230,20 +230,60 @@ export function FarmDetailDialog({
             )}
           </TabsContent>
 
-          <TabsContent value="maquinas" className="mt-4">
-            {machines.isLoading ? <Empty text="Carregando..." /> : !machines.data?.length ? <Empty text="Nenhuma máquina alocada a esta fazenda." /> : (
-              <div className="grid gap-2 md:grid-cols-2">
-                {machines.data.map((m) => (
-                  <div key={m.id} className="rounded-md border p-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold truncate">{m.name}</p>
-                      <Badge variant="outline">{m.status}</Badge>
+          <TabsContent value="frota" className="mt-4 space-y-4">
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Truck className="h-4 w-4" /> Máquinas alocadas
+              </h3>
+              {machines.isLoading ? <Empty text="Carregando..." /> : !machines.data?.length ? <Empty text="Nenhuma máquina alocada." /> : (
+                <div className="grid gap-2 md:grid-cols-2">
+                  {machines.data.map((m) => (
+                    <div key={m.id} className="rounded-md border p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold truncate">{m.name}</p>
+                        <Badge variant="outline">{m.status}</Badge>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                        <span>{m.category}</span>
+                        {m.brand && <span>{m.brand}{m.model ? ` ${m.model}` : ""}</span>}
+                        {m.plate && <span className="font-mono">{m.plate}</span>}
+                      </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-                      <span>{m.category}</span>
-                      {m.brand && <span>{m.brand}{m.model ? ` ${m.model}` : ""}</span>}
-                      {m.plate && <span className="font-mono">{m.plate}</span>}
-                      {m.year && <span>{m.year}</span>}
+                  ))}
+                </div>
+              )}
+
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pt-2">
+                <Wrench className="h-4 w-4" /> Implementos
+              </h3>
+              {implementsQ.isLoading ? <Empty text="Carregando..." /> : !implementsQ.data?.length ? <Empty text="Nenhum implemento vinculado." /> : (
+                <div className="grid gap-2 md:grid-cols-2">
+                  {implementsQ.data.map((i) => (
+                    <div key={i.id} className="rounded-md border p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold truncate">{i.name}</p>
+                        <Badge variant="outline">{i.status}</Badge>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                        <span>{i.category}</span>
+                        {i.patrimony && <span>Pat.: {i.patrimony}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="fotos" className="mt-4">
+            {photos.isLoading ? <Empty text="Carregando galeria..." /> : !photos.data?.length ? <Empty text="Nenhuma foto registrada nesta fazenda." /> : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {photos.data.map((p) => (
+                  <div key={p.id} className="group relative aspect-square rounded-lg border overflow-hidden bg-muted">
+                    <img src={p.url} alt={p.caption || 'Foto de campo'} className="h-full w-full object-cover transition-transform group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                      <p className="text-[9px] text-white font-medium truncate">{p.category}</p>
+                      <p className="text-[8px] text-white/80">{new Date(p.takenAt).toLocaleDateString("pt-BR")}</p>
                     </div>
                   </div>
                 ))}
@@ -251,20 +291,47 @@ export function FarmDetailDialog({
             )}
           </TabsContent>
 
-          <TabsContent value="implementos" className="mt-4">
-            {implementsQ.isLoading ? <Empty text="Carregando..." /> : !implementsQ.data?.length ? <Empty text="Nenhum implemento vinculado a esta fazenda." /> : (
-              <div className="grid gap-2 md:grid-cols-2">
-                {implementsQ.data.map((i) => (
-                  <div key={i.id} className="rounded-md border p-3 text-sm">
+          <TabsContent value="visitas" className="mt-4">
+            {visits.isLoading ? <Empty text="Carregando visitas..." /> : !visits.data?.length ? <Empty text="Nenhuma visita técnica registrada." /> : (
+              <div className="space-y-3">
+                {visits.data.map((v) => (
+                  <div key={v.id} className="rounded-xl border p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="font-semibold truncate">{i.name}</p>
-                      <Badge variant="outline">{i.status}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{new Date(v.conductedAt).toLocaleDateString("pt-BR")}</Badge>
+                        <span className="text-xs font-bold uppercase text-primary">Visita Técnica</span>
+                      </div>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <div key={s} className={`h-1.5 w-4 rounded-full ${s <= v.tappingQuality ? 'bg-primary' : 'bg-muted'}`} />
+                        ))}
+                      </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-                      <span>{i.category}</span>
-                      {i.brand && <span>{i.brand}{i.model ? ` ${i.model}` : ""}</span>}
-                      {i.patrimony && <span>Pat.: {i.patrimony}</span>}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Estado Fitossanitário: <span className="text-foreground">{v.sanitaryState}</span></p>
+                      <p className="text-sm italic text-foreground">"{v.recommendations}"</p>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="ocorrencias" className="mt-4">
+            {occurrences.isLoading ? <Empty text="Carregando ocorrências..." /> : !occurrences.data?.length ? <Empty text="Nenhuma ocorrência registrada." /> : (
+              <div className="space-y-2">
+                {occurrences.data.map((o) => (
+                  <div key={o.id} className={`rounded-xl border p-4 flex items-center justify-between ${o.status === 'resolvida' ? 'opacity-60 bg-muted/20' : ''}`}>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={o.severity === 'critica' || o.severity === 'alta' ? 'destructive' : 'secondary'} className="text-[10px] uppercase">
+                          {o.severity}
+                        </Badge>
+                        <p className="text-sm font-bold">{o.title}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{o.type} · Reportado em {new Date(o.date).toLocaleDateString("pt-BR")}</p>
+                    </div>
+                    <Badge variant="outline" className="capitalize">{o.status.replace('_', ' ')}</Badge>
                   </div>
                 ))}
               </div>
