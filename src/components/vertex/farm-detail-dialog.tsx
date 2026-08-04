@@ -121,7 +121,7 @@ export function FarmDetailDialog({
     // Production (Deliveries)
     deliveries.data?.forEach(d => events.push({
       id: d.id,
-      date: new Date(d.date),
+      date: new Date(d.deliveryDate),
       type: 'delivery',
       content: d,
       label: 'Entrega de Produção'
@@ -299,10 +299,10 @@ export function FarmDetailDialog({
 
                           {event.type === 'delivery' && (
                             <div className="space-y-1">
-                              <p className="text-sm font-bold">{event.content.netWeight}kg de Borracha</p>
-                              <p className="text-xs opacity-70">Lote: {event.content.lotNumber || 'N/D'}</p>
+                              <p className="text-sm font-bold">{event.content.netWeightKg}kg de Borracha</p>
+                              <p className="text-xs opacity-70">Tipo: {event.content.latexType || 'N/D'}</p>
                               <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="text-[8px]">{event.content.quality}</Badge>
+                                <Badge variant="outline" className="text-[8px]">{event.content.status}</Badge>
                               </div>
                             </div>
                           )}
