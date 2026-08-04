@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, redirect, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   LogOut, LayoutDashboard, WifiOff, Wifi, Download, Loader2, Bell,
@@ -95,6 +95,7 @@ function readCheckin(): { farmId?: string; at: number } | null {
 
 function FieldShell() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [me, setMe] = useState<FieldMe | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
@@ -180,6 +181,7 @@ function FieldShell() {
     const role = me.primaryRole;
     const firstName = me.user.fullName?.split(" ")[0] ?? "campo";
     const GpsIcon = gpsBadge.icon;
+    const isConsultantRoute = location.pathname.includes("/consultor");
     return (
       <div className="min-h-screen bg-background text-foreground pb-24">
         <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
@@ -232,7 +234,7 @@ function FieldShell() {
         </header>
 
         <main className="mx-auto max-w-lg px-4 py-4">
-          {checkin ? (
+          {checkin || isConsultantRoute ? (
             <Outlet />
           ) : (
             <CheckinGate
@@ -243,7 +245,7 @@ function FieldShell() {
           )}
         </main>
 
-        <FieldBottomNav role={role} />
+        {!isConsultantRoute && <FieldBottomNav role={role} />}
       </div>
     );
   })();
