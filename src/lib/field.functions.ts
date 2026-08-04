@@ -25,14 +25,6 @@ export type FieldMe = {
       longitude?: number | null;
       plots?: Array<{ id: string; name: string }>;
     };
-      id: string;
-      name: string;
-      companyId: string;
-      city?: string | null;
-      state?: string | null;
-      latitude?: number | null;
-      longitude?: number | null;
-    };
   }>;
 };
 
