@@ -116,6 +116,7 @@ async function serveStatic(request, response, pathname) {
 function nodeHeadersToWebHeaders(nodeHeaders) {
   const headers = new Headers();
   for (const [key, value] of Object.entries(nodeHeaders)) {
+    if (key.toLowerCase() === "host") continue; // Undici/fetch handles host
     if (Array.isArray(value)) {
       for (const item of value) headers.append(key, item);
     } else if (value != null) {
@@ -141,12 +142,8 @@ async function proxyApiRequest(request, response, pathname) {
     response.end(JSON.stringify({ message: "Configure API_PROXY_TARGET no frontend apontando para o backend." }));
     return true;
   }
-
   const suffix = `${pathname.replace(/^\/api/, "")}${request.url?.includes("?") ? `?${request.url.split("?")[1]}` : ""}`;
   const headers = nodeHeadersToWebHeaders(request.headers);
-  headers.delete("host");
-  headers.delete("origin");
-  headers.delete("referer");
   const requestBody = await readRequestBody(request);
 
   const now = Date.now();
@@ -158,12 +155,18 @@ async function proxyApiRequest(request, response, pathname) {
   let lastError = null;
   for (const target of ordered) {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
       const proxyResponse = await fetch(new URL(suffix, target), {
         method: request.method,
         headers,
         body: requestBody,
         duplex: "half",
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeout);
       deadTargets.delete(target);
       const body = request.method === "HEAD" ? undefined : Buffer.from(await proxyResponse.arrayBuffer());
       writeWebResponse(response, proxyResponse, body);
@@ -172,7 +175,11 @@ async function proxyApiRequest(request, response, pathname) {
       lastError = error;
       deadTargets.set(target, Date.now());
       const cause = error?.cause?.code || error?.code || "";
-      console.error(`[proxy] falha ao chamar ${target}${suffix} (${cause || error?.message})`);
+      const isAbort = error.name === "AbortError";
+      console.error(`[proxy] falha ao chamar ${target}${suffix} (${isAbort ? "TIMEOUT" : (cause || error?.message)})`);
+      
+      // Se for um erro de DNS ou conexão recusada, tenta o próximo imediatamente.
+      // Se for erro de aplicação (5xx), o fetch não lança erro, então o loop continua.
     }
   }
 
