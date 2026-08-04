@@ -41,8 +41,14 @@ function ConsultorFormPage() {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"dashboard" | "visit" | "team">("dashboard");
   
+  // Check-in state
+  const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<"idle" | "getting" | "active" | "error">("idle");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+
   // Visit Form state
   const [farmId, setFarmId] = useState("");
+  const [plotId, setPlotId] = useState("");
   const [tappingQuality, setTappingQuality] = useState(5);
   const [sanitaryState, setSanitaryState] = useState("Ótimo");
   const [recommendations, setRecommendations] = useState("");
@@ -50,7 +56,51 @@ function ConsultorFormPage() {
 
   useEffect(() => {
     getFieldMe().then(setMe).catch(console.error);
+    
+    // Check for existing session check-in
+    const CHECKIN_KEY = "vertex.field.checkin.v1";
+    const raw = sessionStorage.getItem(CHECKIN_KEY);
+    if (raw) {
+      const stamp = JSON.parse(raw);
+      if (Date.now() - stamp.at < 12 * 60 * 60 * 1000) {
+        setActiveCheckin(stamp);
+      }
+    }
   }, []);
+
+  const handleNewCheckin = async (fId?: string, pId?: string) => {
+    setGpsStatus("getting");
+    const loc = await captureLocation();
+    if (!loc) {
+      toast.error("GPS não detectado");
+      setGpsStatus("error");
+      return;
+    }
+    
+    setCoords({ lat: loc.latitude, lng: loc.longitude });
+    setGpsStatus("active");
+    
+    const companyId = me?.companies[0]?.id || "";
+    try {
+      await submitCheckin({
+        companyId,
+        farmId: fId || farmId || undefined,
+        plotId: pId || plotId || undefined,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        accuracyM: loc.accuracyM
+      });
+      
+      const stamp = { farmId: fId || farmId || undefined, plotId: pId || plotId || undefined, at: Date.now() };
+      sessionStorage.setItem("vertex.field.checkin.v1", JSON.stringify(stamp));
+      setActiveCheckin(stamp);
+      
+      const farmName = me?.assignments.find(a => a.farm.id === (fId || farmId))?.farm.name;
+      toast.success(`Check-in realizado em ${farmName || 'Fazenda'}`);
+    } catch (e) {
+      toast.error("Erro ao registrar check-in");
+    }
+  };
 
   const stats = useMemo(() => {
     if (!me) return null;
@@ -71,7 +121,7 @@ function ConsultorFormPage() {
     setLoading(true);
     try {
       const res = await submitConsultation({
-        farmId,
+        farmId: farmId || activeCheckin?.farmId || "",
         consultantId: me?.user.id || "",
         conductedAt: new Date().toISOString(),
         recommendations,
@@ -96,10 +146,28 @@ function ConsultorFormPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Olá, {me.user.fullName?.split(" ")[0]}</h1>
-          <p className="text-sm text-muted-foreground">Painel do Consultor</p>
+          {activeCheckin ? (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary mt-0.5">
+              <ShieldCheck className="h-3 w-3" />
+              <span>Check-in: {me.assignments.find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}</span>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Painel do Consultor</p>
+          )}
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Users className="h-5 w-5" />
+        <div className="flex items-center gap-2">
+          {activeCheckin && (
+            <button 
+              onClick={() => handleNewCheckin(activeCheckin.farmId)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 transition-transform"
+              title="Novo Check-in no Talhão"
+            >
+              <PlusCircle className="h-5 w-5" />
+            </button>
+          )}
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+            <Users className="h-5 w-5" />
+          </div>
         </div>
       </header>
 
@@ -207,6 +275,30 @@ function ConsultorFormPage() {
             <Stethoscope className="h-5 w-5" />
             <h2>Estado Fitossanitário</h2>
           </div>
+
+          {activeCheckin && (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-primary/10 border border-primary/20 animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                <div className="text-xs">
+                  <div className="font-bold text-primary">Localização confirmada</div>
+                  <div className="text-muted-foreground">
+                    {me.assignments.find(a => a.farm.id === activeCheckin.farmId)?.farm.name}
+                    {activeCheckin.plotId && ` · Talhão ${activeCheckin.plotId}`}
+                  </div>
+                </div>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 px-2 text-[10px] font-bold uppercase text-primary"
+                onClick={() => handleNewCheckin(activeCheckin.farmId)}
+              >
+                Trocar Talhão
+              </Button>
+            </div>
+          )}
+
           
           <div className="grid grid-cols-2 gap-2">
             {["Ótimo", "Bom", "Alerta", "Crítico"].map((status) => (
@@ -271,13 +363,21 @@ function ConsultorFormPage() {
         <section className="rounded-2xl border border-border/60 bg-card p-4 space-y-4">
           <div className="flex items-center gap-2 font-semibold text-primary">
             <Info className="h-5 w-5" />
-            <h2>Observações Adicionais</h2>
+            <h2>Fotos e Mídia</h2>
           </div>
           
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1 h-20 rounded-xl border-dashed border-2 flex flex-col gap-1">
-              <Camera className="h-6 w-6" />
-              <span className="text-xs">Anexar Fotos</span>
+          <div className="grid grid-cols-3 gap-2">
+            <Button variant="outline" className="h-20 rounded-xl border-dashed border-2 flex flex-col gap-1">
+              <Camera className="h-5 w-5" />
+              <span className="text-[10px]">Foto</span>
+            </Button>
+            <Button variant="outline" className="h-20 rounded-xl border-dashed border-2 flex flex-col gap-1">
+              <Mic className="h-5 w-5" />
+              <span className="text-[10px]">Áudio</span>
+            </Button>
+            <Button variant="outline" className="h-20 rounded-xl border-dashed border-2 flex flex-col gap-1">
+              <Video className="h-5 w-5" />
+              <span className="text-[10px]">Vídeo</span>
             </Button>
           </div>
 
