@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useState, useEffect, useMemo } from "react";
 import { 
   ClipboardCheck, 
   Stethoscope, 
@@ -8,7 +8,16 @@ import {
   Save,
   ChevronLeft,
   Info,
-  Loader2
+  Loader2,
+  Users,
+  LayoutDashboard,
+  MapPin,
+  Calendar,
+  Sparkles,
+  Search,
+  ChevronRight,
+  TrendingUp,
+  BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,8 +33,9 @@ function ConsultorFormPage() {
   const navigate = useNavigate();
   const [me, setMe] = useState<FieldMe | null>(null);
   const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<"dashboard" | "visit" | "team">("dashboard");
   
-  // Form state
+  // Visit Form state
   const [farmId, setFarmId] = useState("");
   const [tappingQuality, setTappingQuality] = useState(5);
   const [sanitaryState, setSanitaryState] = useState("Ótimo");
@@ -35,6 +45,16 @@ function ConsultorFormPage() {
   useEffect(() => {
     getFieldMe().then(setMe).catch(console.error);
   }, []);
+
+  const stats = useMemo(() => {
+    if (!me) return null;
+    return {
+      totalFarms: me.assignments.length,
+      monitors: 12, // Mock or derived
+      avgQuality: 4.2,
+      lastVisitDays: 5
+    };
+  }, [me]);
 
   const handleSubmit = async () => {
     if (!farmId) {
@@ -55,7 +75,7 @@ function ConsultorFormPage() {
       });
       
       toast.success(res.queued ? "Ficha salva offline!" : "Consultoria registrada com sucesso!");
-      navigate({ to: "/campo" });
+      setView("dashboard");
     } catch (error) {
       toast.error("Erro ao salvar ficha");
     } finally {
@@ -63,15 +83,100 @@ function ConsultorFormPage() {
     }
   };
 
-  if (!me) return <div className="p-8 text-center">Carregando...</div>;
+  if (!me) return <div className="p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>;
 
-  return (
-    <div className="space-y-6 pb-12">
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Olá, {me.user.fullName?.split(" ")[0]}</h1>
+          <p className="text-sm text-muted-foreground">Painel do Consultor</p>
+        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Users className="h-5 w-5" />
+        </div>
+      </header>
+
+      {/* AI Suggestion */}
+      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-2 opacity-10">
+          <Sparkles className="h-12 w-12 text-primary" />
+        </div>
+        <div className="flex items-center gap-2 text-primary font-bold text-sm mb-2">
+          <Sparkles className="h-4 w-4" />
+          Sugestão da IA
+        </div>
+        <p className="text-sm leading-relaxed">
+          O monitor <span className="font-semibold">Ricardo Lima</span> na fazenda <span className="font-semibold">Boa Vista</span> não recebe visita há 12 dias. A produtividade caiu 8% no último talhão.
+        </p>
+        <Button 
+          variant="link" 
+          className="p-0 h-auto mt-2 text-primary text-xs font-bold"
+          onClick={() => {
+            setFarmId(me.assignments[0]?.farm.id || "");
+            setView("visit");
+          }}
+        >
+          Agendar visita agora →
+        </Button>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-border/60 bg-card p-4">
+          <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Fazendas sob gestão</div>
+          <div className="text-2xl font-bold">{stats?.totalFarms}</div>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card p-4">
+          <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Qualidade Média</div>
+          <div className="text-2xl font-bold text-primary">{stats?.avgQuality}</div>
+        </div>
+      </div>
+
+      {/* Farm List */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Minhas Fazendas</h2>
+          <Button variant="ghost" size="sm" className="text-xs h-7">Ver todas</Button>
+        </div>
+        <div className="space-y-3">
+          {me.assignments.map((a) => (
+            <div key={a.id} className="rounded-2xl border border-border/60 bg-card p-4 flex items-center justify-between group active:scale-[0.98] transition-transform">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center">
+                  <MapPin className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <div className="font-bold text-sm">{a.farm.name}</div>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    Visitada há 3 dias
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground group-active:text-primary" />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Quick Action FAB */}
+      <button 
+        onClick={() => setView("visit")}
+        className="fixed bottom-24 right-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center animate-bounce-slow"
+      >
+        <ClipboardCheck className="h-6 w-6" />
+      </button>
+    </div>
+  );
+
+  const renderVisitForm = () => (
+    <div className="space-y-6 pb-20">
       <header className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/campo" })}>
+        <Button variant="ghost" size="icon" onClick={() => setView("dashboard")}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold">Visita Técnica</h1>
+        <h1 className="text-xl font-bold">Nova Visita Técnica</h1>
       </header>
 
       <div className="space-y-4">
@@ -188,5 +293,34 @@ function ConsultorFormPage() {
         </Button>
       </div>
     </div>
+  );
+
+  return (
+    <div className="relative min-h-screen">
+      <div className="p-6">
+        {view === "dashboard" && renderDashboard()}
+        {view === "visit" && renderVisitForm()}
+      </div>
+
+      {/* Mobile Nav */}
+      <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card/80 backdrop-blur-md px-6 py-3 flex justify-between items-center z-50">
+        <NavButton active={view === "dashboard"} onClick={() => setView("dashboard")} icon={<LayoutDashboard className="h-5 w-5" />} label="Painel" />
+        <NavButton active={view === "visit"} onClick={() => setView("visit")} icon={<ClipboardCheck className="h-5 w-5" />} label="Visitas" />
+        <NavButton active={false} onClick={() => {}} icon={<BarChart3 className="h-5 w-5" />} label="KPIs" />
+        <NavButton active={false} onClick={() => {}} icon={<Users className="h-5 w-5" />} label="Equipe" />
+      </nav>
+    </div>
+  );
+}
+
+function NavButton({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`flex flex-col items-center gap-1 transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
+    >
+      {icon}
+      <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+    </button>
   );
 }
