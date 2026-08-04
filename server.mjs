@@ -155,12 +155,18 @@ async function proxyApiRequest(request, response, pathname) {
   let lastError = null;
   for (const target of ordered) {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
       const proxyResponse = await fetch(new URL(suffix, target), {
         method: request.method,
         headers,
         body: requestBody,
         duplex: "half",
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeout);
       deadTargets.delete(target);
       const body = request.method === "HEAD" ? undefined : Buffer.from(await proxyResponse.arrayBuffer());
       writeWebResponse(response, proxyResponse, body);
@@ -169,7 +175,11 @@ async function proxyApiRequest(request, response, pathname) {
       lastError = error;
       deadTargets.set(target, Date.now());
       const cause = error?.cause?.code || error?.code || "";
-      console.error(`[proxy] falha ao chamar ${target}${suffix} (${cause || error?.message})`);
+      const isAbort = error.name === "AbortError";
+      console.error(`[proxy] falha ao chamar ${target}${suffix} (${isAbort ? "TIMEOUT" : (cause || error?.message)})`);
+      
+      // Se for um erro de DNS ou conexão recusada, tenta o próximo imediatamente.
+      // Se for erro de aplicação (5xx), o fetch não lança erro, então o loop continua.
     }
   }
 
