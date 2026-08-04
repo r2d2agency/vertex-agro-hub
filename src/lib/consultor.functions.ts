@@ -13,6 +13,12 @@ export type ConsultationForm = {
   photos?: string[];
 };
 
+export async function listConsultations(companyId: string, opts: { farmId?: string; consultantId?: string; from?: string; to?: string } = {}) {
+  const qs = new URLSearchParams({ companyId });
+  Object.entries(opts).forEach(([k, v]) => v && qs.set(k, v));
+  return apiRequest<ConsultationForm[]>(`/consultations?${qs.toString()}`);
+}
+
 export async function submitConsultation(input: Omit<ConsultationForm, "id">) {
   const online = typeof navigator === "undefined" || navigator.onLine;
   const path = "/consultations";

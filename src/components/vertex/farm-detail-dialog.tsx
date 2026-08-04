@@ -2,10 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { TreeDeciduous, Users, Truck, Wrench, MapPin } from "lucide-react";
+import { 
+  TreeDeciduous, Users, Truck, Wrench, MapPin, 
+  History, Camera, ClipboardCheck, AlertTriangle, Droplets
+} from "lucide-react";
 import { listPlots } from "@/lib/talhoes.functions";
 import { listFarmTeam } from "@/lib/people.functions";
 import { listMachines, listImplements } from "@/lib/frota.functions";
+import { listPhotos } from "@/lib/fotografias.functions";
+import { listOccurrences } from "@/lib/ocorrencias.functions";
+import { listTappingRecords } from "@/lib/sangrias.functions";
+import { listConsultations } from "@/lib/consultor.functions";
 import type { Farm } from "@/lib/fazendas.functions";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -45,6 +52,27 @@ export function FarmDetailDialog({
     queryFn: () => listImplements(companyId!, farm!.id),
     enabled: open,
   });
+  const photos = useQuery({
+    queryKey: ["farm-detail-photos", farm?.id],
+    queryFn: () => listPhotos(companyId!, { farmId: farm!.id }),
+    enabled: open,
+  });
+  const occurrences = useQuery({
+    queryKey: ["farm-detail-occurrences", farm?.id],
+    queryFn: () => listOccurrences(companyId!, { farmId: farm!.id }),
+    enabled: open,
+  });
+  const visits = useQuery({
+    queryKey: ["farm-detail-visits", farm?.id],
+    queryFn: () => listConsultations(companyId!, { farmId: farm!.id }),
+    enabled: open,
+  });
+  const tapping = useQuery({
+    queryKey: ["farm-detail-tapping", farm?.id],
+    queryFn: () => listTappingRecords(companyId!, { farmId: farm!.id }),
+    enabled: open,
+  });
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -63,25 +91,100 @@ export function FarmDetailDialog({
           </div>
         </DialogHeader>
 
-        <Tabs defaultValue="talhoes" className="mt-2">
-          <TabsList className="grid grid-cols-4">
-            <TabsTrigger value="talhoes">
-              <TreeDeciduous className="mr-1 h-4 w-4" /> Talhões
-              <Badge variant="secondary" className="ml-2">{plots.data?.length ?? 0}</Badge>
+        <Tabs defaultValue="prontuario" className="mt-2">
+          <TabsList className="grid grid-cols-7 w-full overflow-x-auto h-auto p-1 bg-muted/50">
+            <TabsTrigger value="prontuario" className="py-2">
+              <History className="mr-1.5 h-3.5 w-3.5" /> Prontuário
             </TabsTrigger>
-            <TabsTrigger value="equipe">
-              <Users className="mr-1 h-4 w-4" /> Equipe
-              <Badge variant="secondary" className="ml-2">{team.data?.length ?? 0}</Badge>
+            <TabsTrigger value="talhoes" className="py-2">
+              <TreeDeciduous className="mr-1.5 h-3.5 w-3.5" /> Talhões
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{plots.data?.length ?? 0}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="maquinas">
-              <Truck className="mr-1 h-4 w-4" /> Máquinas
-              <Badge variant="secondary" className="ml-2">{machines.data?.length ?? 0}</Badge>
+            <TabsTrigger value="equipe" className="py-2">
+              <Users className="mr-1.5 h-3.5 w-3.5" /> Equipe
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{team.data?.length ?? 0}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="implementos">
-              <Wrench className="mr-1 h-4 w-4" /> Implementos
-              <Badge variant="secondary" className="ml-2">{implementsQ.data?.length ?? 0}</Badge>
+            <TabsTrigger value="frota" className="py-2">
+              <Truck className="mr-1.5 h-3.5 w-3.5" /> Frota
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{(machines.data?.length ?? 0) + (implementsQ.data?.length ?? 0)}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="fotos" className="py-2">
+              <Camera className="mr-1.5 h-3.5 w-3.5" /> Fotos
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{photos.data?.length ?? 0}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="visitas" className="py-2">
+              <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" /> Visitas
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{visits.data?.length ?? 0}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="ocorrencias" className="py-2 text-destructive">
+              <AlertTriangle className="mr-1.5 h-3.5 w-3.5" /> Ocorrências
+              <Badge variant="destructive" className="ml-1 text-[10px] px-1.5">{occurrences.data?.length ?? 0}</Badge>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="prontuario" className="mt-4 space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl border bg-card p-4">
+                <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                  <Droplets className="h-4 w-4 text-primary" /> Resumo de Operação
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Última Sangria:</span>
+                    <span className="font-medium">{tapping.data?.[0] ? new Date(tapping.data[0].date).toLocaleDateString("pt-BR") : "N/D"}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Monitor Responsável:</span>
+                    <span className="font-medium">{team.data?.find(m => m.role === 'monitor')?.user?.fullName || "Não alocado"}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Consultor Técnico:</span>
+                    <span className="font-medium">{team.data?.find(m => m.role === 'consultor')?.user?.fullName || "Não alocado"}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total de Sangradores:</span>
+                    <span className="font-medium">{team.data?.filter(m => m.role === 'sangrador').length || 0} ativos</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border bg-card p-4">
+                <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                  <History className="h-4 w-4 text-primary" /> Histórico Recente
+                </h3>
+                <div className="space-y-3">
+                  {visits.data?.slice(0, 3).map(v => (
+                    <div key={v.id} className="text-xs flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
+                      <div>
+                        <p className="font-semibold text-primary">Visita Técnica</p>
+                        <p className="text-muted-foreground">{new Date(v.conductedAt).toLocaleDateString("pt-BR")}</p>
+                      </div>
+                      <Badge variant="outline" className="text-[9px]">Qualidade: {v.tappingQuality}/5</Badge>
+                    </div>
+                  ))}
+                  {!visits.data?.length && <p className="text-xs text-muted-foreground text-center py-2 italic">Sem histórico de visitas.</p>}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+              <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-destructive mb-3">
+                <AlertTriangle className="h-4 w-4" /> Alertas Críticos
+              </h3>
+              {occurrences.data?.filter(o => o.severity === 'alta' || o.severity === 'critica').length ? (
+                <div className="space-y-2">
+                  {occurrences.data?.filter(o => o.severity === 'alta' || o.severity === 'critica').slice(0, 3).map(o => (
+                    <div key={o.id} className="text-xs flex items-center justify-between bg-background p-2 rounded border border-destructive/10">
+                      <span className="font-bold">{o.title}</span>
+                      <Badge variant="destructive" className="text-[9px]">{o.type}</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Nenhum alerta crítico ativo.</p>
+              )}
+            </div>
+          </TabsContent>
 
           <TabsContent value="talhoes" className="mt-4">
             {plots.isLoading ? <Empty text="Carregando..." /> : !plots.data?.length ? <Empty text="Nenhum talhão cadastrado nesta fazenda." /> : (
@@ -127,20 +230,60 @@ export function FarmDetailDialog({
             )}
           </TabsContent>
 
-          <TabsContent value="maquinas" className="mt-4">
-            {machines.isLoading ? <Empty text="Carregando..." /> : !machines.data?.length ? <Empty text="Nenhuma máquina alocada a esta fazenda." /> : (
-              <div className="grid gap-2 md:grid-cols-2">
-                {machines.data.map((m) => (
-                  <div key={m.id} className="rounded-md border p-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold truncate">{m.name}</p>
-                      <Badge variant="outline">{m.status}</Badge>
+          <TabsContent value="frota" className="mt-4 space-y-4">
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Truck className="h-4 w-4" /> Máquinas alocadas
+              </h3>
+              {machines.isLoading ? <Empty text="Carregando..." /> : !machines.data?.length ? <Empty text="Nenhuma máquina alocada." /> : (
+                <div className="grid gap-2 md:grid-cols-2">
+                  {machines.data.map((m) => (
+                    <div key={m.id} className="rounded-md border p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold truncate">{m.name}</p>
+                        <Badge variant="outline">{m.status}</Badge>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                        <span>{m.category}</span>
+                        {m.brand && <span>{m.brand}{m.model ? ` ${m.model}` : ""}</span>}
+                        {m.plate && <span className="font-mono">{m.plate}</span>}
+                      </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-                      <span>{m.category}</span>
-                      {m.brand && <span>{m.brand}{m.model ? ` ${m.model}` : ""}</span>}
-                      {m.plate && <span className="font-mono">{m.plate}</span>}
-                      {m.year && <span>{m.year}</span>}
+                  ))}
+                </div>
+              )}
+
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pt-2">
+                <Wrench className="h-4 w-4" /> Implementos
+              </h3>
+              {implementsQ.isLoading ? <Empty text="Carregando..." /> : !implementsQ.data?.length ? <Empty text="Nenhum implemento vinculado." /> : (
+                <div className="grid gap-2 md:grid-cols-2">
+                  {implementsQ.data.map((i) => (
+                    <div key={i.id} className="rounded-md border p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold truncate">{i.name}</p>
+                        <Badge variant="outline">{i.status}</Badge>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                        <span>{i.category}</span>
+                        {i.patrimony && <span>Pat.: {i.patrimony}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="fotos" className="mt-4">
+            {photos.isLoading ? <Empty text="Carregando galeria..." /> : !photos.data?.length ? <Empty text="Nenhuma foto registrada nesta fazenda." /> : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {photos.data.map((p) => (
+                  <div key={p.id} className="group relative aspect-square rounded-lg border overflow-hidden bg-muted">
+                    <img src={p.url} alt={p.caption || 'Foto de campo'} className="h-full w-full object-cover transition-transform group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                      <p className="text-[9px] text-white font-medium truncate">{p.category}</p>
+                      <p className="text-[8px] text-white/80">{new Date(p.takenAt).toLocaleDateString("pt-BR")}</p>
                     </div>
                   </div>
                 ))}
@@ -148,20 +291,47 @@ export function FarmDetailDialog({
             )}
           </TabsContent>
 
-          <TabsContent value="implementos" className="mt-4">
-            {implementsQ.isLoading ? <Empty text="Carregando..." /> : !implementsQ.data?.length ? <Empty text="Nenhum implemento vinculado a esta fazenda." /> : (
-              <div className="grid gap-2 md:grid-cols-2">
-                {implementsQ.data.map((i) => (
-                  <div key={i.id} className="rounded-md border p-3 text-sm">
+          <TabsContent value="visitas" className="mt-4">
+            {visits.isLoading ? <Empty text="Carregando visitas..." /> : !visits.data?.length ? <Empty text="Nenhuma visita técnica registrada." /> : (
+              <div className="space-y-3">
+                {visits.data.map((v) => (
+                  <div key={v.id} className="rounded-xl border p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="font-semibold truncate">{i.name}</p>
-                      <Badge variant="outline">{i.status}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{new Date(v.conductedAt).toLocaleDateString("pt-BR")}</Badge>
+                        <span className="text-xs font-bold uppercase text-primary">Visita Técnica</span>
+                      </div>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <div key={s} className={`h-1.5 w-4 rounded-full ${s <= v.tappingQuality ? 'bg-primary' : 'bg-muted'}`} />
+                        ))}
+                      </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-                      <span>{i.category}</span>
-                      {i.brand && <span>{i.brand}{i.model ? ` ${i.model}` : ""}</span>}
-                      {i.patrimony && <span>Pat.: {i.patrimony}</span>}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Estado Fitossanitário: <span className="text-foreground">{v.sanitaryState}</span></p>
+                      <p className="text-sm italic text-foreground">"{v.recommendations}"</p>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="ocorrencias" className="mt-4">
+            {occurrences.isLoading ? <Empty text="Carregando ocorrências..." /> : !occurrences.data?.length ? <Empty text="Nenhuma ocorrência registrada." /> : (
+              <div className="space-y-2">
+                {occurrences.data.map((o) => (
+                  <div key={o.id} className={`rounded-xl border p-4 flex items-center justify-between ${o.status === 'resolvida' ? 'opacity-60 bg-muted/20' : ''}`}>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={o.severity === 'critica' || o.severity === 'alta' ? 'destructive' : 'secondary'} className="text-[10px] uppercase">
+                          {o.severity}
+                        </Badge>
+                        <p className="text-sm font-bold">{o.title}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{o.type} · Reportado em {new Date(o.date).toLocaleDateString("pt-BR")}</p>
+                    </div>
+                    <Badge variant="outline" className="capitalize">{o.status.replace('_', ' ')}</Badge>
                   </div>
                 ))}
               </div>
