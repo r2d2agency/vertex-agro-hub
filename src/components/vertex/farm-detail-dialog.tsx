@@ -91,25 +91,100 @@ export function FarmDetailDialog({
           </div>
         </DialogHeader>
 
-        <Tabs defaultValue="talhoes" className="mt-2">
-          <TabsList className="grid grid-cols-4">
-            <TabsTrigger value="talhoes">
-              <TreeDeciduous className="mr-1 h-4 w-4" /> Talhões
-              <Badge variant="secondary" className="ml-2">{plots.data?.length ?? 0}</Badge>
+        <Tabs defaultValue="prontuario" className="mt-2">
+          <TabsList className="grid grid-cols-7 w-full overflow-x-auto h-auto p-1 bg-muted/50">
+            <TabsTrigger value="prontuario" className="py-2">
+              <History className="mr-1.5 h-3.5 w-3.5" /> Prontuário
             </TabsTrigger>
-            <TabsTrigger value="equipe">
-              <Users className="mr-1 h-4 w-4" /> Equipe
-              <Badge variant="secondary" className="ml-2">{team.data?.length ?? 0}</Badge>
+            <TabsTrigger value="talhoes" className="py-2">
+              <TreeDeciduous className="mr-1.5 h-3.5 w-3.5" /> Talhões
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{plots.data?.length ?? 0}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="maquinas">
-              <Truck className="mr-1 h-4 w-4" /> Máquinas
-              <Badge variant="secondary" className="ml-2">{machines.data?.length ?? 0}</Badge>
+            <TabsTrigger value="equipe" className="py-2">
+              <Users className="mr-1.5 h-3.5 w-3.5" /> Equipe
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{team.data?.length ?? 0}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="implementos">
-              <Wrench className="mr-1 h-4 w-4" /> Implementos
-              <Badge variant="secondary" className="ml-2">{implementsQ.data?.length ?? 0}</Badge>
+            <TabsTrigger value="frota" className="py-2">
+              <Truck className="mr-1.5 h-3.5 w-3.5" /> Frota
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{(machines.data?.length ?? 0) + (implementsQ.data?.length ?? 0)}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="fotos" className="py-2">
+              <Camera className="mr-1.5 h-3.5 w-3.5" /> Fotos
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{photos.data?.length ?? 0}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="visitas" className="py-2">
+              <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" /> Visitas
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{visits.data?.length ?? 0}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="ocorrencias" className="py-2 text-destructive">
+              <AlertTriangle className="mr-1.5 h-3.5 w-3.5" /> Ocorrências
+              <Badge variant="destructive" className="ml-1 text-[10px] px-1.5">{occurrences.data?.length ?? 0}</Badge>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="prontuario" className="mt-4 space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl border bg-card p-4">
+                <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                  <Droplets className="h-4 w-4 text-primary" /> Resumo de Operação
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Última Sangria:</span>
+                    <span className="font-medium">{tapping.data?.[0] ? new Date(tapping.data[0].date).toLocaleDateString("pt-BR") : "N/D"}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Monitor Responsável:</span>
+                    <span className="font-medium">{team.data?.find(m => m.role === 'monitor')?.user?.fullName || "Não alocado"}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Consultor Técnico:</span>
+                    <span className="font-medium">{team.data?.find(m => m.role === 'consultor')?.user?.fullName || "Não alocado"}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total de Sangradores:</span>
+                    <span className="font-medium">{team.data?.filter(m => m.role === 'sangrador').length || 0} ativos</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border bg-card p-4">
+                <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                  <History className="h-4 w-4 text-primary" /> Histórico Recente
+                </h3>
+                <div className="space-y-3">
+                  {visits.data?.slice(0, 3).map(v => (
+                    <div key={v.id} className="text-xs flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
+                      <div>
+                        <p className="font-semibold text-primary">Visita Técnica</p>
+                        <p className="text-muted-foreground">{new Date(v.conductedAt).toLocaleDateString("pt-BR")}</p>
+                      </div>
+                      <Badge variant="outline" className="text-[9px]">Qualidade: {v.tappingQuality}/5</Badge>
+                    </div>
+                  ))}
+                  {!visits.data?.length && <p className="text-xs text-muted-foreground text-center py-2 italic">Sem histórico de visitas.</p>}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+              <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-destructive mb-3">
+                <AlertTriangle className="h-4 w-4" /> Alertas Críticos
+              </h3>
+              {occurrences.data?.filter(o => o.severity === 'alta' || o.severity === 'critica').length ? (
+                <div className="space-y-2">
+                  {occurrences.data?.filter(o => o.severity === 'alta' || o.severity === 'critica').slice(0, 3).map(o => (
+                    <div key={o.id} className="text-xs flex items-center justify-between bg-background p-2 rounded border border-destructive/10">
+                      <span className="font-bold">{o.title}</span>
+                      <Badge variant="destructive" className="text-[9px]">{o.type}</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Nenhum alerta crítico ativo.</p>
+              )}
+            </div>
+          </TabsContent>
 
           <TabsContent value="talhoes" className="mt-4">
             {plots.isLoading ? <Empty text="Carregando..." /> : !plots.data?.length ? <Empty text="Nenhum talhão cadastrado nesta fazenda." /> : (
