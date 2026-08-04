@@ -39,7 +39,7 @@ function ConsultorFormPage() {
   const navigate = useNavigate();
   const [me, setMe] = useState<FieldMe | null>(null);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<"dashboard" | "visit" | "team">("dashboard");
+  const [view, setView] = useState<"dashboard" | "visit" | "team" | "kpis">("dashboard");
   
   // Check-in state
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
@@ -149,7 +149,16 @@ function ConsultorFormPage() {
           {activeCheckin ? (
             <div className="flex items-center gap-1.5 text-xs font-medium text-primary mt-0.5">
               <ShieldCheck className="h-3 w-3" />
-              <span>Check-in: {me.assignments.find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}</span>
+              <div className="flex flex-col">
+                <span className="leading-tight">
+                  {me.assignments.find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}
+                </span>
+                {activeCheckin.plotId && (
+                  <span className="text-[10px] text-muted-foreground font-normal">
+                    Talhão: {activeCheckin.plotId}
+                  </span>
+                )}
+              </div>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">Painel do Consultor</p>
@@ -160,7 +169,7 @@ function ConsultorFormPage() {
             <button 
               onClick={() => handleNewCheckin(activeCheckin.farmId)}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 transition-transform"
-              title="Novo Check-in no Talhão"
+              title="Trocar Talhão / Novo Check-in"
             >
               <PlusCircle className="h-5 w-5" />
             </button>
@@ -400,20 +409,116 @@ function ConsultorFormPage() {
       </div>
     </div>
   );
+  
+  const renderKpiView = () => (
+    <div className="space-y-6">
+      <header className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" onClick={() => setView("dashboard")}>
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-xl font-bold">Indicadores (KPIs)</h1>
+      </header>
+      
+      <div className="grid grid-cols-1 gap-4">
+        <div className="rounded-2xl border border-border/60 bg-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Qualidade Global</h3>
+            <TrendingUp className="h-4 w-4 text-primary" />
+          </div>
+          <div className="text-4xl font-black text-primary mb-1">4.8</div>
+          <p className="text-xs text-muted-foreground">+0.3% em relação ao mês anterior</p>
+        </div>
+        
+        <div className="rounded-2xl border border-border/60 bg-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Produtividade Estimada</h3>
+            <Droplets className="h-4 w-4 text-primary" />
+          </div>
+          <div className="text-3xl font-bold mb-1">2.450 <span className="text-sm font-normal text-muted-foreground">kg/ha</span></div>
+          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden mt-2">
+            <div className="h-full bg-primary w-[75%]" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border/60 bg-card p-4">
+          <h3 className="font-bold text-xs uppercase text-muted-foreground mb-4">Top 5 Fazendas (Qualidade)</h3>
+          <div className="space-y-3">
+            {me.assignments.slice(0, 5).map((a, i) => (
+              <div key={a.id} className="flex items-center justify-between">
+                <div className="text-sm font-medium">{a.farm.name}</div>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-24 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-primary" style={{ width: `${95 - i * 5}%` }} />
+                  </div>
+                  <span className="text-xs font-bold">{(4.9 - i * 0.1).toFixed(1)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderTeamView = () => (
+    <div className="space-y-6">
+      <header className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" onClick={() => setView("dashboard")}>
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-xl font-bold">Minha Equipe</h1>
+      </header>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input 
+          type="text" 
+          placeholder="Buscar monitor ou sangrador..." 
+          className="w-full pl-10 pr-4 py-3 bg-card border border-border/60 rounded-xl text-sm"
+        />
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Monitores em Campo</h2>
+        {[
+          { name: "Ricardo Lima", farm: "Fazenda Boa Vista", status: "Em atividade", lastVisit: "Hoje" },
+          { name: "Ana Paula Silva", farm: "Seringal Ouro", status: "Pendente", lastVisit: "Ontem" },
+          { name: "Marcos Oliveira", farm: "Fazenda Progresso", status: "Em atividade", lastVisit: "Hoje" }
+        ].map((member, i) => (
+          <div key={i} className="rounded-2xl border border-border/60 bg-card p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                {member.name.charAt(0)}
+              </div>
+              <div>
+                <div className="font-bold text-sm">{member.name}</div>
+                <div className="text-[10px] text-muted-foreground">{member.farm} · {member.lastVisit}</div>
+              </div>
+            </div>
+            <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${member.status === 'Em atividade' ? 'bg-primary/20 text-primary' : 'bg-warning/20 text-warning'}`}>
+              {member.status}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="relative min-h-screen">
       <div className="p-6">
         {view === "dashboard" && renderDashboard()}
         {view === "visit" && renderVisitForm()}
+        {view === "kpis" && renderKpiView()}
+        {view === "team" && renderTeamView()}
       </div>
 
       {/* Mobile Nav */}
       <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card/80 backdrop-blur-md px-6 py-3 flex justify-between items-center z-50">
         <NavButton active={view === "dashboard"} onClick={() => setView("dashboard")} icon={<LayoutDashboard className="h-5 w-5" />} label="Painel" />
         <NavButton active={view === "visit"} onClick={() => setView("visit")} icon={<ClipboardCheck className="h-5 w-5" />} label="Visitas" />
-        <NavButton active={false} onClick={() => {}} icon={<BarChart3 className="h-5 w-5" />} label="KPIs" />
-        <NavButton active={false} onClick={() => {}} icon={<Users className="h-5 w-5" />} label="Equipe" />
+        <NavButton active={view === "kpis"} onClick={() => setView("kpis")} icon={<BarChart3 className="h-5 w-5" />} label="KPIs" />
+        <NavButton active={view === "team"} onClick={() => setView("team")} icon={<Users className="h-5 w-5" />} label="Equipe" />
       </nav>
     </div>
   );
