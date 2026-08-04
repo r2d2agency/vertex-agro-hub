@@ -23,6 +23,7 @@ export type FieldMe = {
       state?: string | null;
       latitude?: number | null;
       longitude?: number | null;
+      plots?: Array<{ id: string; name: string }>;
     };
   }>;
 };
