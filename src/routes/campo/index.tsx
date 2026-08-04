@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, ChevronRight, AlertTriangle, RefreshCw, Wifi, WifiOff } from "lucide-react";
-import { getFieldMe, type FieldMe } from "@/lib/field.functions";
+import { Loader2, ChevronRight, AlertTriangle, RefreshCw, Wifi, WifiOff, ShieldCheck, PlusCircle } from "lucide-react";
+import { getFieldMe, type FieldMe, captureLocation, submitCheckin } from "@/lib/field.functions";
+import { toast } from "sonner";
 import { listTasks, type ScheduledTask } from "@/lib/agenda.functions";
 import { flushOutbox, subscribeOutbox } from "@/lib/offline/queue";
 
@@ -23,6 +24,47 @@ function FieldHome() {
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
   const [pending, setPending] = useState(0);
   const [lastSync, setLastSync] = useState<string>("—");
+  const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
+
+  useEffect(() => {
+    const CHECKIN_KEY = "vertex.field.checkin.v1";
+    const raw = sessionStorage.getItem(CHECKIN_KEY);
+    if (raw) {
+      const stamp = JSON.parse(raw);
+      if (Date.now() - stamp.at < 12 * 60 * 60 * 1000) {
+        setActiveCheckin(stamp);
+      }
+    }
+  }, []);
+
+  const handleNewCheckin = async (fId?: string, pId?: string) => {
+    const loc = await captureLocation();
+    if (!loc) {
+      toast.error("GPS não detectado");
+      return;
+    }
+    
+    const companyId = me?.companies[0]?.id || "";
+    try {
+      await submitCheckin({
+        companyId,
+        farmId: fId || undefined,
+        plotId: pId || undefined,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        accuracyM: loc.accuracyM
+      });
+      
+      const stamp = { farmId: fId || undefined, plotId: pId || undefined, at: Date.now() };
+      sessionStorage.setItem("vertex.field.checkin.v1", JSON.stringify(stamp));
+      setActiveCheckin(stamp);
+      
+      const farmName = me?.assignments.find(a => a.farm.id === fId)?.farm.name;
+      toast.success(`Check-in realizado em ${farmName || 'Fazenda'}`);
+    } catch (e) {
+      toast.error("Erro ao registrar check-in");
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -74,9 +116,26 @@ function FieldHome() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <div className="text-xs capitalize text-muted-foreground">{today}</div>
-      </div>
+      <header className="flex items-center justify-between">
+        <div>
+          <div className="text-xs capitalize text-muted-foreground">{today}</div>
+          {activeCheckin && (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary mt-0.5">
+              <ShieldCheck className="h-3 w-3" />
+              <span>Check-in: {me.assignments.find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}</span>
+            </div>
+          )}
+        </div>
+        {activeCheckin && (
+          <button 
+            onClick={() => handleNewCheckin(activeCheckin.farmId)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 transition-transform"
+            title="Novo Check-in no Talhão"
+          >
+            <PlusCircle className="h-4 w-4" />
+          </button>
+        )}
+      </header>
 
       {/* Status cards */}
       <div className="grid grid-cols-2 gap-3">
