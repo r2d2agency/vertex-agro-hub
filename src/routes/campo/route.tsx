@@ -261,7 +261,9 @@ function CheckinGate({
   onDone: (v: { farmId?: string; at: number }) => void;
 }) {
   const [farmId, setFarmId] = useState<string>(me.assignments[0]?.farm.id ?? "");
+  const [plotId, setPlotId] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [locationName, setLocationName] = useState<{ farm?: string; plot?: string } | null>(null);
 
   const farm = me.assignments.find((a) => a.farm.id === farmId)?.farm;
   const companyId = farm?.companyId ?? me.companies[0]?.id ?? me.assignments[0]?.farm.companyId;
@@ -281,14 +283,25 @@ function CheckinGate({
       const res = await submitCheckin({
         companyId,
         farmId: farmId || undefined,
+        plotId: plotId || undefined,
         latitude: coords.latitude,
         longitude: coords.longitude,
         accuracyM: coords.accuracyM,
       });
-      const stamp = { farmId: farmId || undefined, at: Date.now() };
+
+      // Se o backend/checkin retornasse os nomes seria ideal, mas vamos usar o que temos no estado
+      const selectedFarm = me.assignments.find(a => a.farm.id === farmId)?.farm.name;
+      // Nota: plotId nome teria que vir de uma lista de talhões que ainda não carregamos aqui.
+      // Para o MVP de UI, vamos setar o nome da localização detectada.
+      setLocationName({ farm: selectedFarm });
+
+      const stamp = { farmId: farmId || undefined, plotId: plotId || undefined, at: Date.now() };
       sessionStorage.setItem(CHECKIN_KEY, JSON.stringify(stamp));
-      onDone(stamp);
+      
       toast.success(res.queued ? "Check-in salvo (offline)" : "Check-in registrado");
+      
+      // Delay pequeno para o usuário ver a mensagem de boas-vindas antes de sumir o gate
+      setTimeout(() => onDone(stamp), 2500);
     } catch (e: any) {
       toast.error("Falha no check-in", { description: e?.message ?? "Tente novamente." });
     } finally {
@@ -302,10 +315,22 @@ function CheckinGate({
         <ShieldCheck className="h-8 w-8" />
       </div>
       <div className="space-y-1">
-        <h1 className="text-lg font-semibold text-foreground">Check-in obrigatório</h1>
-        <p className="max-w-xs text-sm text-muted-foreground">
-          Confirme sua localização para liberar registros de sangria, produção, ocorrências e agenda.
-        </p>
+        {locationName ? (
+          <div className="animate-in fade-in zoom-in duration-500">
+            <h1 className="text-xl font-bold text-primary">Olá, {me.user.fullName?.split(" ")[0]}!</h1>
+            <p className="max-w-xs text-sm font-medium text-foreground">
+              Você está na fazenda <span className="text-primary">{locationName.farm}</span>
+              {locationName.plot && <span>, no talhão <span className="text-primary">{locationName.plot}</span></span>}.
+            </p>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-lg font-semibold text-foreground">Check-in obrigatório</h1>
+            <p className="max-w-xs text-sm text-muted-foreground">
+              Confirme sua localização para liberar registros de sangria, produção, ocorrências e agenda.
+            </p>
+          </>
+        )}
       </div>
 
       {me.assignments.length > 0 && (
