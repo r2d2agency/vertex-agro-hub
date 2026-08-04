@@ -2,10 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { TreeDeciduous, Users, Truck, Wrench, MapPin } from "lucide-react";
+import { 
+  TreeDeciduous, Users, Truck, Wrench, MapPin, 
+  History, Camera, ClipboardCheck, AlertTriangle, Droplets
+} from "lucide-react";
 import { listPlots } from "@/lib/talhoes.functions";
 import { listFarmTeam } from "@/lib/people.functions";
 import { listMachines, listImplements } from "@/lib/frota.functions";
+import { listPhotos } from "@/lib/fotografias.functions";
+import { listOccurrences } from "@/lib/ocorrencias.functions";
+import { listTappingRecords } from "@/lib/sangrias.functions";
+import { listConsultations } from "@/lib/consultor.functions";
 import type { Farm } from "@/lib/fazendas.functions";
 
 const ROLE_LABEL: Record<string, string> = {
