@@ -91,9 +91,9 @@ export class PeopleService {
   }
 
   private generateTempPassword() {
-    // Formato: vertex + 4 dígitos (ex: vertex7392)
+    // Formato: vtex + 4 dígitos (ex: vtex7392)
     const n = Math.floor(1000 + Math.random() * 9000);
-    return `vertex${n}`;
+    return `vtex${n}`;
   }
 
   async invite(userId: string, dto: InvitePersonDto) {
