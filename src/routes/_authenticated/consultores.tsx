@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PeopleByRolePage } from "@/components/vertex/people-by-role";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { PeopleByRolePage, InviteDialog } from "@/components/vertex/people-by-role";
+import { useSelectedCompany } from "@/components/vertex/company-picker";
 
 export const Route = createFileRoute("/_authenticated/consultores")({
   head: () => ({
@@ -9,12 +12,31 @@ export const Route = createFileRoute("/_authenticated/consultores")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: () => (
-    <PeopleByRolePage
-      role="consultor"
-      title="Consultores"
-      description="Consultores técnicos com acesso às fazendas e agendas da empresa."
-      emptyLabel="Nenhum consultor cadastrado nesta empresa."
-    />
-  ),
+  component: () => {
+    const [creating, setCreating] = useState(false);
+    const { companyId } = useSelectedCompany();
+    const qc = useQueryClient();
+
+    return (
+      <>
+        <PeopleByRolePage
+          role="consultor"
+          title="Consultores"
+          description="Consultores técnicos com acesso às fazendas e agendas da empresa."
+          emptyLabel="Nenhum consultor cadastrado nesta empresa."
+          onAddClick={() => setCreating(true)}
+        />
+        {companyId && (
+          <InviteDialog
+            open={creating}
+            role="consultor"
+            roleLabel="Consultor"
+            onOpenChange={setCreating}
+            companyId={companyId}
+            onSaved={() => qc.invalidateQueries({ queryKey: ["people", companyId] })}
+          />
+        )}
+      </>
+    );
+  },
 });
