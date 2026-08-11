@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { HardHat, Search, Plus, Pencil, Trash2, MapPin, Phone, Loader2 } from "lucide-react";
+import { HardHat, Search, Plus, Pencil, Trash2, MapPin, Phone, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { PersonEditor } from "@/components/vertex/person-editor";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
