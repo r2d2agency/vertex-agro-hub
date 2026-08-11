@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, ReactNode } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Truck } from "lucide-react";
+import { Plus, Pencil, Trash2, Truck, Camera } from "lucide-react";
+import { FileDropzone } from "@/components/vertex/file-dropzone";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/vertex/page-header";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +44,16 @@ const statusColor: Record<string, string> = {
 };
 const statusLabel = (s: string) => MACHINE_STATUSES.find((x) => x.value === s)?.label ?? s;
 const catLabel = (s: string) => MACHINE_CATEGORIES.find((x) => x.value === s)?.label ?? s;
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
 
 function MachinesPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
@@ -135,7 +147,7 @@ function MachinesPage() {
         onOpenChange={(o) => { if (!o) { setCreating(false); setEditing(null); } }}
         companyId={companyId}
         initial={editing ?? undefined}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["machines"] })}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["machines", companyId] })}
       />
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
@@ -155,7 +167,7 @@ function MachinesPage() {
 }
 
 type FormState = Partial<Machine>;
-const empty: FormState = { name: "", category: "trator", status: "disponivel", hourmeterUnit: "h", fuelType: "Diesel S10" };
+const empty: FormState = { name: "", category: "trator", status: "disponivel", hourmeterUnit: "h", fuelType: "Diesel S10", photoUrls: [] };
 
 function MachineDialog({
   open, onOpenChange, companyId, initial, onSaved,
@@ -169,90 +181,121 @@ function MachineDialog({
   }, [open, initial]);
 
   const mut = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (data: FormState) => {
       if (!companyId) throw new Error("Selecione uma empresa");
-      const dto = { ...v, companyId, name: (v.name || "").trim() };
+      const dto = { ...data, companyId, name: (data.name || "").trim() };
       if (initial) return updateMachine(initial.id, dto as any);
       return createMachine(dto as any);
     },
-    onSuccess: () => { toast.success(initial ? "Máquina atualizada" : "Máquina criada"); onSaved(); onOpenChange(false); },
+    onSuccess: () => { 
+      toast.success(initial ? "Máquina atualizada" : "Máquina criada"); 
+      onSaved(); 
+      onOpenChange(false); 
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader><DialogTitle>{initial ? "Editar máquina" : "Nova máquina"}</DialogTitle></DialogHeader>
-        <form onSubmit={(e) => { e.preventDefault(); if (!(v.name || "").trim()) return toast.error("Nome obrigatório"); mut.mutate(); }} className="grid gap-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Nome *</Label><Input value={v.name || ""} onChange={(e) => setV({ ...v, name: e.target.value })} required /></div>
-            <div><Label>Código interno</Label><Input value={v.code || ""} onChange={(e) => setV({ ...v, code: e.target.value })} /></div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><Label>Patrimônio</Label><Input value={v.patrimony || ""} onChange={(e) => setV({ ...v, patrimony: e.target.value })} /></div>
-            <div>
-              <Label>Categoria</Label>
-              <Select value={v.category || "trator"} onValueChange={(x) => setV({ ...v, category: x })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{MACHINE_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-              </Select>
+      <DialogContent className="max-h-[90vh] max-w-3xl p-0 overflow-hidden">
+        <div className="px-6 pt-6">
+          <DialogHeader><DialogTitle>{initial ? "Editar máquina" : "Nova máquina"}</DialogTitle></DialogHeader>
+        </div>
+        <div className="flex flex-col h-full max-h-[80vh]">
+          <Tabs defaultValue="dados" className="flex-1 overflow-auto">
+            <div className="px-6">
+              <TabsList className="mb-4">
+                <TabsTrigger value="dados">Dados Gerais</TabsTrigger>
+                <TabsTrigger value="fotos">Fotos</TabsTrigger>
+                <TabsTrigger value="checklist">Checklist</TabsTrigger>
+              </TabsList>
             </div>
-            <div>
-              <Label>Status</Label>
-              <Select value={v.status || "disponivel"} onValueChange={(x) => setV({ ...v, status: x })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{MACHINE_STATUSES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+
+            <TabsContent value="dados" className="px-6 pb-6 space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Field label="Nome da Máquina *"><Input value={v.name || ""} onChange={(e) => setV({ ...v, name: e.target.value })} placeholder="Ex: Trator 01" required /></Field>
+                <Field label="Código/Prefixo"><Input value={v.code || ""} onChange={(e) => setV({ ...v, code: e.target.value })} placeholder="Ex: T-01" /></Field>
+                <Field label="Patrimônio"><Input value={v.patrimony || ""} onChange={(e) => setV({ ...v, patrimony: e.target.value })} /></Field>
+                <Field label="Categoria">
+                  <Select value={v.category} onValueChange={(val) => setV({ ...v, category: val })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {MACHINE_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Marca"><Input value={v.brand || ""} onChange={(e) => setV({ ...v, brand: e.target.value })} /></Field>
+                <Field label="Modelo"><Input value={v.model || ""} onChange={(e) => setV({ ...v, model: e.target.value })} /></Field>
+                <Field label="Ano"><Input type="number" value={v.year || ""} onChange={(e) => setV({ ...v, year: e.target.value ? Number(e.target.value) : undefined })} /></Field>
+                <Field label="Chassi/Serial"><Input value={v.serial || ""} onChange={(e) => setV({ ...v, serial: e.target.value })} /></Field>
+                <Field label="Placa"><Input value={v.plate || ""} onChange={(e) => setV({ ...v, plate: e.target.value })} /></Field>
+                <Field label="Capacidade Tanque (L)"><Input type="number" step="0.01" value={v.tankCapacity ?? ""} onChange={(e) => setV({ ...v, tankCapacity: e.target.value ? Number(e.target.value) : null })} /></Field>
+                <Field label="Tipo Combustível">
+                  <Select value={v.fuelType || ""} onValueChange={(val) => setV({ ...v, fuelType: val })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      {FUEL_TYPES.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Fazenda Vinculada">
+                  <Select value={v.farmId || "none"} onValueChange={(x) => setV({ ...v, farmId: x === "none" ? null : x })}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— nenhuma —</SelectItem>
+                      {farms.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+              <div>
+                <Label>Notas/Observações</Label>
+                <Textarea rows={3} value={v.notes || ""} onChange={(e) => setV({ ...v, notes: e.target.value })} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="fotos" className="px-6 pb-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {(v.photoUrls || []).map((url, i) => (
+                  <div key={i} className="group relative aspect-square overflow-hidden rounded-md border bg-muted">
+                    <img src={url} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                      onClick={() => setV({ ...v, photoUrls: v.photoUrls?.filter((_, idx) => idx !== i) })}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+                <FileDropzone
+                  preview="image"
+                  accept="image/*"
+                  label="Adicionar foto"
+                  onUploaded={(url) => setV({ ...v, photoUrls: [...(v.photoUrls || []), url] })}
+                  className="aspect-square"
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="checklist" className="px-6 pb-6 space-y-4">
+              <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+                Funcionalidade de Checklist técnico será configurada no Módulo de Manutenção.
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <div className="px-6 pb-6 border-t pt-4">
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="button" onClick={() => mut.mutate(v)} disabled={mut.isPending}>
+              {mut.isPending ? "Salvando…" : "Salvar"}
+            </Button>
+            </DialogFooter>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><Label>Marca</Label><Input value={v.brand || ""} onChange={(e) => setV({ ...v, brand: e.target.value })} /></div>
-            <div><Label>Modelo</Label><Input value={v.model || ""} onChange={(e) => setV({ ...v, model: e.target.value })} /></div>
-            <div><Label>Ano</Label><Input type="number" value={v.year ?? ""} onChange={(e) => setV({ ...v, year: e.target.value ? Number(e.target.value) : null })} /></div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><Label>Nº de série</Label><Input value={v.serial || ""} onChange={(e) => setV({ ...v, serial: e.target.value })} /></div>
-            <div><Label>Placa</Label><Input value={v.plate || ""} onChange={(e) => setV({ ...v, plate: e.target.value })} /></div>
-            <div>
-              <Label>Fazenda</Label>
-              <Select value={v.farmId || "none"} onValueChange={(x) => setV({ ...v, farmId: x === "none" ? null : x })}>
-                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— nenhuma —</SelectItem>
-                  {farms.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-4 gap-3">
-            <div><Label>Capacidade tanque (L)</Label><Input type="number" step="0.01" value={v.tankCapacity ?? ""} onChange={(e) => setV({ ...v, tankCapacity: e.target.value ? Number(e.target.value) : null })} /></div>
-            <div>
-              <Label>Combustível</Label>
-              <Select value={v.fuelType || "Diesel S10"} onValueChange={(x) => setV({ ...v, fuelType: x })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{FUEL_TYPES.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div><Label>Horímetro</Label><Input type="number" step="0.01" value={v.hourmeter ?? ""} onChange={(e) => setV({ ...v, hourmeter: e.target.value ? Number(e.target.value) : null })} /></div>
-            <div>
-              <Label>Unidade</Label>
-              <Select value={v.hourmeterUnit || "h"} onValueChange={(x) => setV({ ...v, hourmeterUnit: x })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="h">horas</SelectItem><SelectItem value="km">km</SelectItem></SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Data de aquisição</Label><Input type="date" value={v.acquisitionDate?.slice(0, 10) || ""} onChange={(e) => setV({ ...v, acquisitionDate: e.target.value || null })} /></div>
-            <div><Label>Fornecedor</Label><Input value={v.supplier || ""} onChange={(e) => setV({ ...v, supplier: e.target.value })} /></div>
-          </div>
-          <div><Label>Foto (URL)</Label><Input value={v.photoUrl || ""} onChange={(e) => setV({ ...v, photoUrl: e.target.value })} placeholder="https://…" /></div>
-          <div><Label>Observações</Label><Textarea rows={3} value={v.notes || ""} onChange={(e) => setV({ ...v, notes: e.target.value })} /></div>
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={mut.isPending}>{mut.isPending ? "Salvando…" : "Salvar"}</Button>
-          </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { HardHat, Search, Plus, Pencil, Trash2, MapPin, Phone, Loader2 } from "lucide-react";
+import { HardHat, Search, Plus, Pencil, Trash2, MapPin, Phone, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { PersonEditor } from "@/components/vertex/person-editor";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -78,7 +79,11 @@ function SangradoresPage() {
         title="Sangradores"
         description="Ficha cadastral no estilo RH: dados básicos, contrato, histórico de fazendas e atividade registrada."
         actions={companyId ? (
-          <Button onClick={() => setEditing("new")}><Plus className="mr-2 h-4 w-4" /> Novo sangrador</Button>
+          <div className="flex gap-2">
+            <Link to="/usuarios" className="inline-flex">
+              <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Novo Sangrador (RH)</Button>
+            </Link>
+          </div>
         ) : null}
       />
 
@@ -153,11 +158,18 @@ function SangradoresPage() {
         </>
       )}
 
-      {editing && companyId && (
+      {editing === "new" ? (
         <TapperDialog
-          companyId={companyId}
-          tapper={editing === "new" ? null : editing}
+          companyId={companyId || ""}
+          tapper={null}
           onClose={() => setEditing(null)}
+        />
+      ) : editing && companyId && (
+        <PersonEditor
+          open={!!editing}
+          onOpenChange={(open) => !open && setEditing(null)}
+          userId={editing.id}
+          companyId={companyId}
         />
       )}
 

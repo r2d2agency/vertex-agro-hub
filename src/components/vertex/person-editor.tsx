@@ -30,6 +30,7 @@ import {
   updatePersonPersonal, upsertPersonEmployment,
   type AssignmentRole, type Employment, type PersonalData,
 } from "@/lib/people.functions";
+import { TAPPER_CONTRACT_TYPES } from "@/lib/tappers.functions";
 
 type Props = {
   open: boolean;
@@ -292,9 +293,19 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                   <Select value={employment.contractType ?? ""} onValueChange={(v) => setE({ contractType: v })}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
-                      {CONTRACT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                      {Array.from(new Set([...CONTRACT_TYPES, ...TAPPER_CONTRACT_TYPES])).map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                </Field>
+                <Field label="Valor da diária (R$) (para Diaristas)">
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    value={(employment as any).dailyRate ?? ""} 
+                    onChange={(e) => setE({ dailyRate: e.target.value ? Number(e.target.value) : null } as any)} 
+                  />
                 </Field>
                 <Field label="Salário (R$)">
                   <Input type="number" step="0.01" value={employment.salary ?? ""} onChange={(e) => setE({ salary: e.target.value })} />
@@ -363,6 +374,8 @@ function DocumentsTab({ userId, companyId }: { userId: string; companyId: string
   const [fileUrl, setFileUrl] = useState("");
   const [issuedAt, setIssuedAt] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [uploading, setUploading] = useState(false);
+
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["person-docs", userId, companyId],
@@ -421,20 +434,25 @@ function DocumentsTab({ userId, companyId }: { userId: string; companyId: string
           <div className="md:col-span-3">
             <Field label="Arquivo do documento">
               <FileDropzone
-                value={fileUrl}
-                preview="file"
-                label="Arraste o arquivo (PDF, imagem, DOC...) ou clique para carregar do PC"
                 onUploaded={(url, meta) => {
                   setFileUrl(url);
-                  if (!name) setName(meta.originalName);
+                  if (!name) setName(meta?.originalName || "Documento");
                 }}
-                onClear={() => setFileUrl("")}
+                label="Arraste o arquivo (PDF, imagem, DOC...) ou clique para carregar do PC"
               />
+              {fileUrl && (
+                <div className="mt-2 flex items-center gap-2 p-2 bg-primary/5 rounded border border-primary/20">
+                  <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-xs font-mono truncate flex-1">{fileUrl}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setFileUrl("")} className="h-6 text-destructive">Remover</Button>
+                </div>
+              )}
             </Field>
           </div>
           <div className="md:col-span-3 flex justify-end">
             <Button size="sm" onClick={() => create.mutate()} disabled={create.isPending}>
-              <Plus className="mr-2 h-4 w-4" /> Adicionar documento
+              {create.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+              Adicionar Documento
             </Button>
           </div>
         </CardContent>
