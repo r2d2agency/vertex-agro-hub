@@ -83,8 +83,8 @@ function PeoplePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Gestão de Pessoas e Equipe"
-        description="Controle centralizado de colaboradores (Monitores, Sangradores, Consultores) e acesso administrativo."
+        title="Equipe e Profissionais"
+        description="Gestão centralizada de RH: Colaboradores, Monitores, Sangradores, Consultores e Operadores."
         actions={
           companyId ? (
             <div className="flex gap-2">

@@ -80,8 +80,11 @@ function SangradoresPage() {
         description="Ficha cadastral no estilo RH: dados básicos, contrato, histórico de fazendas e atividade registrada."
         actions={companyId ? (
           <div className="flex gap-2">
+            <Button onClick={() => setEditing("new")}>
+              <Plus className="mr-2 h-4 w-4" /> Novo Sangrador
+            </Button>
             <Link to="/usuarios" className="inline-flex">
-              <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Novo Sangrador (RH)</Button>
+              <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Gestão RH</Button>
             </Link>
           </div>
         ) : null}
