@@ -6,7 +6,9 @@ export const COMPANY_ROLES = [
   { value: "supervisor_regional", label: "Supervisor Regional" },
   { value: "monitor", label: "Monitor" },
   { value: "consultor", label: "Consultor" },
+  { value: "sangrador", label: "Sangrador" },
   { value: "consulta", label: "Consulta (somente leitura)" },
+
 ] as const;
 
 export type CompanyRole = (typeof COMPANY_ROLES)[number]["value"];
