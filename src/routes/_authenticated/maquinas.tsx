@@ -45,6 +45,16 @@ const statusColor: Record<string, string> = {
 const statusLabel = (s: string) => MACHINE_STATUSES.find((x) => x.value === s)?.label ?? s;
 const catLabel = (s: string) => MACHINE_CATEGORIES.find((x) => x.value === s)?.label ?? s;
 
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+
 function MachinesPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
   const qc = useQueryClient();
