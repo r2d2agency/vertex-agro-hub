@@ -53,6 +53,16 @@ const empty: FarmInput = {
   boundary: null, photoUrls: [],
 };
 
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+
 
 function FazendasPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
