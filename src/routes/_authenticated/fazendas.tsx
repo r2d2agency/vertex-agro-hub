@@ -212,8 +212,11 @@ function FarmDialog({
       latitude: initial.latitude ?? null, longitude: initial.longitude ?? null,
       owner: initial.owner ?? "", notes: initial.notes ?? "",
       boundary: initial.boundary ?? null,
+      photoUrls: initial.photoUrls ?? [],
     });
     else setValues(empty);
+    setActiveTab("dados");
+
   }, [open, initial]);
 
   const mut = useMutation({
