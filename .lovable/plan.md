@@ -1,58 +1,30 @@
-# Sprint 8 — Apps de Campo (Monitor e Consultor)
+# Plano de Melhorias Visuais e Estruturais
 
-Como o stack é web (TanStack Start + Nest), os apps de campo serão entregues como **PWAs mobile-first instaláveis** no mesmo domínio, com layout dedicado, autenticação por papel e reaproveitando a fila offline (`src/lib/offline/*`) e o Service Worker já criados.
+O usuário solicitou uma série de ajustes na interface administrativa para melhorar a gestão de máquinas, fazendas e a integração da equipe (Monitores, Sangradores e Consultores).
 
-## Escopo
+## 1. Melhorias em Máquinas
+- **Múltiplas Fotos**: Substituir o campo único `photoUrl` por uma galeria que permita cadastrar várias fotos por máquina.
+- **Checklist do Trator**: Adicionar uma nova aba ou seção no cadastro de máquinas para gerenciar checklists técnicos.
 
-### 1. Shell mobile dedicado
-- Novo layout `src/routes/_field/route.tsx` (pathless, `ssr:false`, gate por papel `monitor` / `consultor`).
-- Bottom navigation, header compacto, tema verde Vertex, otimizado para 1 mão.
-- Indicador de status online/offline + fila pendente (badge no header).
-- Botão "Instalar app" via `beforeinstallprompt` (manifesto já existe).
+## 2. Melhorias em Fazendas
+- **Galeria de Fotos**: Adicionar aba de fotos no diálogo de detalhes da fazenda (já iniciado na timeline, mas expandir para visualização de galeria).
+- **Informações Detalhadas**: Expandir a aba de informações da fazenda com mais metadados e documentos.
 
-### 2. App Monitor (`/campo/monitor/*`)
-Foco em execução diária no seringal:
-- **Hoje**: fazendas/talhões atribuídos ao usuário logado (via `farm_assignments`), com check-in GPS.
-- **Sangria**: formulário rápido (litros, DRC, aderência, sangrador) com auto-save offline.
-- **Produção**: registrar entrega (peso bruto, tara, DRC) com cálculo automático de kg secos.
-- **Ocorrências**: registro com foto + GPS, categorias pré-definidas.
-- **Fotografias**: captura direta pela câmera, upload em fila.
+## 3. Unificação de Pessoas (Monitores, Sangradores, Consultores)
+- **Fluxo Único**: O cadastro deve começar em "Usuários/Pessoas".
+- **Vínculos**: Após cadastrar a pessoa, o administrador deve poder vinculá-la como Monitor, Sangrador ou Consultor em fazendas específicas.
+- **Ficha RH**: Expandir a ficha de pessoa (já existe o `PersonEditor`) para comportar os dados específicos que hoje estão separados em Sangradores (Pix, PIS, Admissão, etc.).
+- **Consultor**: Garantir que o consultor puxe da base de usuários e permita completar o cadastro técnico.
 
-### 3. App Consultor (`/campo/consultor/*`)
-Foco em supervisão e avaliação:
-- **Agenda**: visitas e inspeções do dia (reaproveita `ScheduledTask`).
-- **Avaliação**: formulário de avaliação por sangrador/monitor (nota + observações + fotos).
-- **Inspeção de talhão**: checklist rápido + fotos + parecer.
-- **Histórico**: últimas visitas com filtro por fazenda.
+## Detalhes Técnicos
 
-### 4. Integração offline real
-- Todos os POSTs do app de campo passam por `enqueueMutation()` (fila IndexedDB).
-- Cache-first para dados de referência (fazendas atribuídas, clones, tabelas) via IndexedDB `cache` store.
-- Auto-flush ao reconectar (já implementado).
-- Middleware backend de idempotência via `x-idempotency-key` (evita duplicação em reenvios).
+### Backend (Prisma/NestJS)
+- Alterar modelo `Machine` para suportar `photos` (array de strings ou tabela relacionada).
+- Criar modelo `MachineChecklist`.
+- Garantir que `Tapper` e `Person` (User) estejam integrados ou que a lógica de negócio permita migrar dados de um para o outro.
 
-### 5. Backend — ajustes mínimos
-- `POST /field/checkin` — endpoint dedicado que grava `Occurrence` de check-in.
-- Middleware de idempotência no `main.ts` (Map em memória + índice único opcional).
-- Endpoint `GET /field/me/assignments` — devolve fazendas/talhões do usuário para o "Hoje".
-
-### 6. Roteamento por papel após login
-- Ao logar, se o único papel do usuário é `monitor` ou `consultor` → redireciona para `/campo/...`.
-- Admins continuam no painel web; ganham link "Abrir app de campo" no topbar.
-
-## Fora de escopo (para depois)
-- App Capacitor/native (fica como fase futura se quiser publicar em stores).
-- Sincronização bidirecional de conflitos complexos (mantemos last-write-wins com `version`).
-- Notificações push (requer FCM/OneSignal — sprint separada).
-
-## Detalhes técnicos
-- Rotas: `src/routes/_field/route.tsx` + `_field/monitor.*.tsx` + `_field/consultor.*.tsx`.
-- Componentes: `src/components/vertex/field/` (bottom-nav, gps-checkin-button, camera-capture, offline-badge).
-- Câmera: `<input type="file" accept="image/*" capture="environment">` + upload via fila.
-- GPS: `navigator.geolocation.getCurrentPosition` com timeout + fallback manual.
-- Backend: novo `FieldModule` (Nest) reutilizando serviços existentes.
-
-## Entrega
-Ao final: um monitor ou consultor abre `vertex.seu-dominio.com` no celular, faz login, é levado direto ao app de campo, instala como PWA, e consegue trabalhar o dia inteiro sem rede — sincroniza quando voltar ao sinal.
-
-Confirmo e implemento?
+### Frontend (TanStack Start)
+- Refatorar `maquinas.tsx` para usar `FileDropzone` com suporte a múltiplos arquivos.
+- Refatorar `sangradores.tsx` para ser uma visão filtrada e especializada da lista de `usuarios.tsx`.
+- Ajustar `PersonEditor.tsx` para incluir os campos específicos de RH que eram exclusivos dos sangradores.
+- Atualizar `FarmDetailDialog.tsx` para melhorar a visualização de fotos e informações.
