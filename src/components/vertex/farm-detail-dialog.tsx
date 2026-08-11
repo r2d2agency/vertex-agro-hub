@@ -191,7 +191,7 @@ export function FarmDetailDialog({
               <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{(machines.data?.length ?? 0) + (implementsQ.data?.length ?? 0)}</Badge>
             </TabsTrigger>
             <TabsTrigger value="fotos" className="py-2">
-              <ImageIcon className="mr-1.5 h-3.5 w-3.5" /> Fotos
+              <Camera className="mr-1.5 h-3.5 w-3.5" /> Fotos
               <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{photos.data?.length ?? 0}</Badge>
             </TabsTrigger>
             <TabsTrigger value="visitas" className="py-2">
