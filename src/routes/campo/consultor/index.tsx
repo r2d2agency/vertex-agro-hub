@@ -334,9 +334,10 @@ function ConsultorFormPage() {
           <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
             <label className="text-sm font-medium">Consultor / Responsável</label>
             <Select 
-              value={me.user.id} // Default to self, but user wants to be able to pick or add
-              onValueChange={(v) => {/* In a real app, this would update consultantId */}}
+              value={me.user.id} 
+              onValueChange={(v: string) => {/* ... */}}
             >
+
               <SelectTrigger className="w-full rounded-xl h-12 bg-card border-border/60">
                 <SelectValue placeholder="Selecione o consultor..." />
               </SelectTrigger>
@@ -344,11 +345,12 @@ function ConsultorFormPage() {
                 <SelectItem value={me.user.id}>{me.user.fullName} (Você)</SelectItem>
                 {/* Find other consultants linked to this farm in assignments */}
                 {me.assignments
-                  .filter(a => a.farm.id === farmId && a.role === 'consultor' && a.userId !== me.user.id)
+                  .filter(a => a.farm.id === farmId && a.role === 'consultor')
                   .map(a => (
-                    <SelectItem key={a.id} value={a.userId}>Consultor Vinculado</SelectItem>
+                    <SelectItem key={a.id} value={a.id}>Consultor Vinculado</SelectItem>
                   ))
                 }
+
                 <SelectItem value="add_new">+ Adicionar novo consultor à fazenda</SelectItem>
               </SelectContent>
             </Select>
@@ -422,9 +424,10 @@ function ConsultorFormPage() {
             <Input
               placeholder="Nome do inspetor ou colaborador..."
               value={sanitaryInspector}
-              onChange={(e) => setSanitaryInspector(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSanitaryInspector(e.target.value)}
               className="bg-background border-border rounded-xl"
             />
+
           </div>
         </section>
 
