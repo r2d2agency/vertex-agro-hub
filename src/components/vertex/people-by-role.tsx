@@ -27,11 +27,13 @@ export function PeopleByRolePage({
   title,
   description,
   emptyLabel,
+  onAddClick,
 }: {
   role: CompanyRole;
   title: string;
   description: string;
   emptyLabel: string;
+  onAddClick?: () => void;
 }) {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
   const qc = useQueryClient();
@@ -70,7 +72,7 @@ export function PeopleByRolePage({
         title={title}
         description={description}
         actions={companyId ? (
-          <Button onClick={() => setCreating(true)}>
+          <Button onClick={onAddClick || (() => setCreating(true))}>
             <Plus className="mr-2 h-4 w-4" /> Novo {roleLabel.toLowerCase()}
           </Button>
         ) : null}
@@ -183,7 +185,7 @@ export function PeopleByRolePage({
   );
 }
 
-function InviteDialog({
+export function InviteDialog({
   open, onOpenChange, companyId, onSaved, role, roleLabel,
 }: {
   open: boolean;

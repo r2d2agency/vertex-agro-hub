@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PeopleByRolePage } from "@/components/vertex/people-by-role";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { PeopleByRolePage, InviteDialog } from "@/components/vertex/people-by-role";
+import { useSelectedCompany } from "@/components/vertex/company-picker";
 
 export const Route = createFileRoute("/_authenticated/monitores")({
   head: () => ({
@@ -21,6 +24,7 @@ export const Route = createFileRoute("/_authenticated/monitores")({
           title="Monitores"
           description="Monitores de campo responsáveis por acompanhar sangrias, produção e ocorrências."
           emptyLabel="Nenhum monitor cadastrado nesta empresa."
+          onAddClick={() => setCreating(true)}
         />
         {companyId && (
           <InviteDialog
@@ -36,8 +40,3 @@ export const Route = createFileRoute("/_authenticated/monitores")({
     );
   },
 });
-
-// Note: InviteDialog is imported from PeopleByRolePage in a real refactor, 
-// but here we adjust the component to be more direct.
-// Since PeopleByRolePage already handles the creation state internally, 
-// we just need to ensure the user doesn't feel forced to go to /usuarios.

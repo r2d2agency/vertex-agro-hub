@@ -57,7 +57,7 @@ function OperatorsPage() {
     <div className="grid gap-6">
       <PageHeader
         title="Operadores"
-        description="Cadastro de operadores. O acesso ao App do Monitor virá em sub-sprints futuras."
+        description="Cadastro e gestão de operadores de máquinas e implementos."
         actions={companyId && <Button onClick={() => setCreating(true)}><Plus className="mr-2 h-4 w-4" /> Novo operador</Button>}
       />
       <CompanyPicker companies={companies} companyId={companyId} onChange={setCompanyId} />
