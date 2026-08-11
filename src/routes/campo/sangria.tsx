@@ -50,7 +50,6 @@ function SangriaPage() {
   async function save() {
     if (!farm || !sangrador.trim()) { toast.error("Preencha fazenda e sangrador"); return; }
     setSaving(true);
-    const noteParts = [notes.trim(), `Situação: ${situacao}`, `Qualidade: ${qualidade}`, `Condição tabela: ${condicao}`, previstas && `Árvores previstas: ${previstas}`, realizadas && `Árvores realizadas: ${realizadas}`].filter(Boolean).join(" | ");
     const res = await submitTapping({
       companyId: farm.companyId, farmId: farm.id,
       date: new Date().toISOString().slice(0, 10),
@@ -59,7 +58,10 @@ function SangriaPage() {
       drcPercent: drc ? Number(drc) : null,
       adherencePct: ader ? Number(ader) : null,
       treesTapped: realizadas ? Number(realizadas) : null,
-      notes: noteParts || undefined,
+      notes: notes.trim() || undefined,
+      status: situacao,
+      quality: qualidade,
+      tableCondition: condicao,
     });
     setSaving(false);
     toast.success(res.queued ? "Sangria salva na fila (offline)" : "Sangria registrada");
