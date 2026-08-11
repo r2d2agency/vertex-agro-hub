@@ -167,7 +167,7 @@ function MachinesPage() {
 }
 
 type FormState = Partial<Machine>;
-const empty: FormState = { name: "", category: "trator", status: "disponivel", hourmeterUnit: "h", fuelType: "Diesel S10" };
+const empty: FormState = { name: "", category: "trator", status: "disponivel", hourmeterUnit: "h", fuelType: "Diesel S10", photoUrls: [] };
 
 function MachineDialog({
   open, onOpenChange, companyId, initial, onSaved,
