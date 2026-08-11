@@ -437,6 +437,9 @@ model TappingRecord {
   dryKg          Float?   @map("dry_kg")
   adherencePct   Float?   @map("adherence_pct")
   notes          String?
+  status         String?
+  quality        String?
+  tableCondition String? @map("table_condition")
 
   version      Int        @default(1)
   syncStatus   SyncStatus @default(synced) @map("sync_status")
@@ -1170,6 +1173,10 @@ model InventoryItem {
   location     String?
   active       Boolean  @default(true)
   notes        String?
+  supplierCnpj    String? @map("supplier_cnpj")
+  supplierPhone   String? @map("supplier_phone")
+  supplierContact String? @map("supplier_contact")
+  supplierAddress String? @map("supplier_address")
 
   version      Int       @default(1)
   syncStatus   String    @default("synced") @map("sync_status")
