@@ -912,7 +912,7 @@ model Machine {
   monitorUserId     String?  @map("monitor_user_id") @db.Uuid
   acquisitionDate   DateTime? @map("acquisition_date") @db.Date
   supplier          String?
-  photoUrls String[]  @map("photo_url")
+  photoUrls         String[] @default([]) @map("photo_urls")
   status            String   @default("disponivel")
   notes             String?
 
