@@ -224,62 +224,104 @@ function MachineDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="grid grid-cols-4 gap-3">
-            <div><Label>Capacidade tanque (L)</Label><Input type="number" step="0.01" value={v.tankCapacity ?? ""} onChange={(e) => setV({ ...v, tankCapacity: e.target.value ? Number(e.target.value) : null })} /></div>
-            <div>
-              <Label>Combustível</Label>
-              <Select value={v.fuelType || "Diesel S10"} onValueChange={(x) => setV({ ...v, fuelType: x })}>
+      <Tabs defaultValue="dados" className="flex-1 overflow-auto">
+        <div className="px-6 pt-6">
+          <TabsList className="mb-4">
+            <TabsTrigger value="dados">Dados Gerais</TabsTrigger>
+            <TabsTrigger value="fotos">Fotos</TabsTrigger>
+            <TabsTrigger value="checklist">Checklist</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="dados" className="p-6 pt-0 space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Field label="Nome da Máquina"><Input value={v.name || ""} onChange={(e) => setV({ ...v, name: e.target.value })} placeholder="Ex: Trator 01" /></Field>
+            <Field label="Código/Prefixo"><Input value={v.code || ""} onChange={(e) => setV({ ...v, code: e.target.value })} placeholder="Ex: T-01" /></Field>
+            <Field label="Patrimônio"><Input value={v.patrimony || ""} onChange={(e) => setV({ ...v, patrimony: e.target.value })} /></Field>
+            <Field label="Categoria">
+              <Select value={v.category} onValueChange={(val) => setV({ ...v, category: val })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{FUEL_TYPES.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  <SelectItem value="trator">Trator</SelectItem>
+                  <SelectItem value="caminhao">Caminhão</SelectItem>
+                  <SelectItem value="pulverizador">Pulverizador</SelectItem>
+                  <SelectItem value="outro">Outro</SelectItem>
+                </SelectContent>
               </Select>
-            </div>
-            <div><Label>Horímetro</Label><Input type="number" step="0.01" value={v.hourmeter ?? ""} onChange={(e) => setV({ ...v, hourmeter: e.target.value ? Number(e.target.value) : null })} /></div>
-            <div>
-              <Label>Unidade</Label>
-              <Select value={v.hourmeterUnit || "h"} onValueChange={(x) => setV({ ...v, hourmeterUnit: x })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="h">horas</SelectItem><SelectItem value="km">km</SelectItem></SelectContent>
+            </Field>
+            <Field label="Marca"><Input value={v.brand || ""} onChange={(e) => setV({ ...v, brand: e.target.value })} /></Field>
+            <Field label="Modelo"><Input value={v.model || ""} onChange={(e) => setV({ ...v, model: e.target.value })} /></Field>
+            <Field label="Ano"><Input type="number" value={v.year || ""} onChange={(e) => setV({ ...v, year: e.target.value ? Number(e.target.value) : undefined })} /></Field>
+            <Field label="Chassi/Serial"><Input value={v.serial || ""} onChange={(e) => setV({ ...v, serial: e.target.value })} /></Field>
+            <Field label="Placa"><Input value={v.plate || ""} onChange={(e) => setV({ ...v, plate: e.target.value })} /></Field>
+            <Field label="Capacidade Tanque (L)"><Input type="number" value={v.tankCapacity || ""} onChange={(e) => setV({ ...v, tankCapacity: e.target.value ? Number(e.target.value) : null })} /></Field>
+            <Field label="Tipo Combustível">
+              <Select value={v.fuelType || ""} onValueChange={(val) => setV({ ...v, fuelType: val })}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="diesel">Diesel</SelectItem>
+                  <SelectItem value="diesel_s10">Diesel S10</SelectItem>
+                  <SelectItem value="gasolina">Gasolina</SelectItem>
+                  <SelectItem value="etanol">Etanol</SelectItem>
+                </SelectContent>
               </Select>
-            </div>
+            </Field>
+            <Field label="Fazenda Vinculada">
+              <Select value={v.farmId || "none"} onValueChange={(x) => setV({ ...v, farmId: x === "none" ? null : x })}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— nenhuma —</SelectItem>
+                  {farms.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Data de aquisição</Label><Input type="date" value={v.acquisitionDate?.slice(0, 10) || ""} onChange={(e) => setV({ ...v, acquisitionDate: e.target.value || null })} /></div>
-            <div><Label>Fornecedor</Label><Input value={v.supplier || ""} onChange={(e) => setV({ ...v, supplier: e.target.value })} /></div>
+          <div>
+            <Label>Notas/Observações</Label>
+            <Textarea rows={3} value={v.notes || ""} onChange={(e) => setV({ ...v, notes: e.target.value })} />
           </div>
-          <div className="space-y-2">
-            <Label>Fotos da máquina</Label>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {(v.photoUrls || []).map((url, i) => (
-                <div key={i} className="group relative aspect-square overflow-hidden rounded-md border bg-muted">
-                  <img src={url} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-1 right-1 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={() => setV({ ...v, photoUrls: v.photoUrls?.filter((_, idx) => idx !== i) })}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-              <FileDropzone
-                preview="image"
-                accept="image/*"
-                label="Adicionar foto"
-                onUploaded={(url) => setV({ ...v, photoUrls: [...(v.photoUrls || []), url] })}
-                className="aspect-square"
-              />
-            </div>
+        </TabsContent>
+
+        <TabsContent value="fotos" className="p-6 pt-0 space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {(v.photoUrls || []).map((url, i) => (
+              <div key={i} className="group relative aspect-square overflow-hidden rounded-md border bg-muted">
+                <img src={url} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-1 right-1 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                  onClick={() => setV({ ...v, photoUrls: v.photoUrls?.filter((_, idx) => idx !== i) })}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+            <FileDropzone
+              preview="image"
+              accept="image/*"
+              label="Adicionar foto"
+              onUploaded={(url) => setV({ ...v, photoUrls: [...(v.photoUrls || []), url] })}
+              className="aspect-square"
+            />
           </div>
-          <div><Label>Observações</Label><Textarea rows={3} value={v.notes || ""} onChange={(e) => setV({ ...v, notes: e.target.value })} /></div>
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={mut.isPending}>{mut.isPending ? "Salvando…" : "Salvar"}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
+        </TabsContent>
+
+        <TabsContent value="checklist" className="p-6 pt-0 space-y-4">
+          <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+            Funcionalidade de Checklist técnico será configurada no Módulo de Manutenção.
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <div className="px-6 pb-6">
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button type="button" onClick={() => mut.mutate(v)} disabled={mut.isPending}>{mut.isPending ? "Salvando…" : "Salvar"}</Button>
+        </DialogFooter>
+      </div>
+
     </Dialog>
   );
 }
