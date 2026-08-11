@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Truck } from "lucide-react";
+import { Plus, Pencil, Trash2, Truck, Camera } from "lucide-react";
+import { FileDropzone } from "@/components/vertex/file-dropzone";
 import { PageHeader } from "@/components/vertex/page-header";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { Card, CardContent } from "@/components/ui/card";
@@ -246,7 +247,32 @@ function MachineDialog({
             <div><Label>Data de aquisição</Label><Input type="date" value={v.acquisitionDate?.slice(0, 10) || ""} onChange={(e) => setV({ ...v, acquisitionDate: e.target.value || null })} /></div>
             <div><Label>Fornecedor</Label><Input value={v.supplier || ""} onChange={(e) => setV({ ...v, supplier: e.target.value })} /></div>
           </div>
-          <div><Label>Foto (URL)</Label><Input value={v.photoUrl || ""} onChange={(e) => setV({ ...v, photoUrl: e.target.value })} placeholder="https://…" /></div>
+          <div className="space-y-2">
+            <Label>Fotos da máquina</Label>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {(v.photoUrls || []).map((url, i) => (
+                <div key={i} className="group relative aspect-square overflow-hidden rounded-md border bg-muted">
+                  <img src={url} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={() => setV({ ...v, photoUrls: v.photoUrls?.filter((_, idx) => idx !== i) })}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+              <FileDropzone
+                preview="image"
+                accept="image/*"
+                label="Adicionar foto"
+                onUploaded={(url) => setV({ ...v, photoUrls: [...(v.photoUrls || []), url] })}
+                className="aspect-square"
+              />
+            </div>
+          </div>
           <div><Label>Observações</Label><Textarea rows={3} value={v.notes || ""} onChange={(e) => setV({ ...v, notes: e.target.value })} /></div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>

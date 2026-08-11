@@ -30,6 +30,7 @@ import {
   updatePersonPersonal, upsertPersonEmployment,
   type AssignmentRole, type Employment, type PersonalData,
 } from "@/lib/people.functions";
+import { TAPPER_CONTRACT_TYPES } from "@/lib/tappers.functions";
 
 type Props = {
   open: boolean;
@@ -292,10 +293,19 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                   <Select value={employment.contractType ?? ""} onValueChange={(v) => setE({ contractType: v })}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
-                      {CONTRACT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                      {Array.from(new Set([...CONTRACT_TYPES, ...TAPPER_CONTRACT_TYPES])).map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Field>
+                <Field label="Valor da diária (R$) (para Diaristas)">
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    value={(employment as any).dailyRate ?? ""} 
+                    onChange={(e) => setE({ dailyRate: e.target.value ? Number(e.target.value) : null } as any)} 
+                  />
                 <Field label="Salário (R$)">
                   <Input type="number" step="0.01" value={employment.salary ?? ""} onChange={(e) => setE({ salary: e.target.value })} />
                 </Field>
