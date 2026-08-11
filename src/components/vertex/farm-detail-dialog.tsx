@@ -460,6 +460,33 @@ export function FarmDetailDialog({
             )}
           </TabsContent>
 
+          <TabsContent value="visitas" className="mt-4">
+            {visits.isLoading ? <Empty text="Carregando visitas..." /> : !visits.data?.length ? <Empty text="Nenhuma visita técnica registrada." /> : (
+              <div className="space-y-4">
+                {visits.data.map((v) => (
+                  <div key={v.id} className="rounded-xl border p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold">{v.consultor?.fullName || v.consultor?.email}</p>
+                      <span className="text-xs text-muted-foreground">{new Date(v.conductedAt).toLocaleDateString("pt-BR")}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold">Qualidade da Sangria</span>
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <div key={s} className={`h-1 w-3 rounded-full ${s <= v.tappingQuality ? 'bg-primary' : 'bg-muted'}`} />
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Estado Fitossanitário: <span className="text-foreground">{v.sanitaryState}</span></p>
+                      <p className="text-sm italic text-foreground">"{v.recommendations}"</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
           <TabsContent value="ocorrencias" className="mt-4">
             {occurrences.isLoading ? <Empty text="Carregando ocorrências..." /> : !occurrences.data?.length ? <Empty text="Nenhuma ocorrência registrada." /> : (
               <div className="space-y-2">
@@ -479,6 +506,8 @@ export function FarmDetailDialog({
                 ))}
               </div>
             )}
+          </TabsContent>
+
           <TabsContent value="fotos" className="mt-4">
             {photos.isLoading ? (
               <Empty text="Carregando galeria..." />
@@ -493,21 +522,6 @@ export function FarmDetailDialog({
                       <p className="text-[10px] font-bold text-white uppercase">{p.category}</p>
                       <p className="text-[9px] text-white/80">{new Date(p.takenAt).toLocaleDateString('pt-BR')}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-          <TabsContent value="ocorrencias" className="mt-4">
-            {occurrences.isLoading ? <Empty text="Carregando..." /> : !occurrences.data?.length ? <Empty text="Nenhuma ocorrência crítica." /> : (
-              <div className="grid gap-2">
-                {occurrences.data.map((o: any) => (
-                  <div key={o.id} className="rounded-md border p-3 text-sm bg-destructive/5 border-destructive/20">
-                    <div className="flex items-center justify-between">
-                      <p className="font-bold">{o.title}</p>
-                      <Badge variant="destructive" className="text-[10px]">{o.severity}</Badge>
-                    </div>
-                    <p className="mt-1 text-xs opacity-80">{o.description}</p>
                   </div>
                 ))}
               </div>
