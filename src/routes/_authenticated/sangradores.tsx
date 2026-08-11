@@ -160,24 +160,17 @@ function SangradoresPage() {
 
       {editing === "new" ? (
         <TapperDialog
-          companyId={companyId}
+          companyId={companyId || ""}
           tapper={null}
           onClose={() => setEditing(null)}
         />
       ) : editing && companyId && (
-        <Dialog open onOpenChange={() => setEditing(null)}>
-          <DialogContent className="max-w-4xl p-0 overflow-hidden max-h-[90vh]">
-            <PersonEditor
-              personId={editing.id}
-              companyId={companyId}
-              onSuccess={() => {
-                setEditing(null);
-                queryClient.invalidateQueries({ queryKey: ["tappers"] });
-              }}
-              onCancel={() => setEditing(null)}
-            />
-          </DialogContent>
-        </Dialog>
+        <PersonEditor
+          open={!!editing}
+          onOpenChange={(open) => !open && setEditing(null)}
+          userId={editing.id}
+          companyId={companyId}
+        />
       )}
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
