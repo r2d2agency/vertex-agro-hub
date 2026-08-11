@@ -10,6 +10,8 @@ export type ConsultationForm = {
   sanitaryState: string;
   tappingQuality: number; // 1-5
   notes?: string;
+  sanitaryInspector?: string; // NEW: Identification of the inspector (registered or 3rd party)
+  isThirdPartyInspector?: boolean; // NEW: To flag if the inspector is from a third party
   photos?: string[];
   consultor?: {
     fullName?: string;

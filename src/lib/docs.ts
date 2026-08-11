@@ -90,11 +90,47 @@ Todos os registros ficam vinculados à empresa selecionada e sincronizam com os 
 Vá em **Apps móveis** no menu para copiar links ou escanear QR Codes.
 
 - **Painel Administrativo**: web, funciona no navegador.
-- **Vertex Monitor** *(em breve)*: app do sangrador/monitor.
-- **Vertex Consultor** *(em breve)*: app do consultor técnico.
+- **Vertex Monitor**: app do sangrador/monitor para lançar sangrias, produção e ocorrências.
+- **Vertex Consultor**: app para o consultor técnico realizar visitas e inspeções sanitárias.
 
-## Sincronização
+## Sincronização e Offline
 
-Todos os registros têm **UUID**, **versão** e **status de sincronização**. Isso permite que os apps trabalhem offline no campo e sincronizem quando reconectarem, sem duplicar dados.`,
+Todos os registros têm **UUID**, **versão** e **status de sincronização**. 
+
+1. **Trabalhe Offline**: se o sinal cair no campo, continue lançando. O app guarda tudo localmente.
+2. **Sincronize**: ao retornar para o sinal (ou chegar na sede), o app detecta a internet e envia os dados pendentes automaticamente.
+3. **Segurança**: o sistema garante que nenhum dado seja duplicado ou perdido em caso de conflitos.`,
+  },
+  {
+    slug: "inspecoes-sanitarias",
+    title: "Inspeções Sanitárias",
+    summary: "Como realizar e acompanhar inspeções técnicas.",
+    body: `## Realizando uma Inspeção
+
+As inspeções são realizadas através do **App Consultor**:
+
+1. Faça **Check-in GPS** na fazenda ou talhão.
+2. No formulário de visita, preencha o **Estado Fitossanitário**.
+3. No campo **Inspecionado por**, identifique se o técnico é da empresa ou terceirizado.
+4. Registre **Recomendações** e anexe **Fotos georreferenciadas** de pragas ou doenças.
+
+## Acompanhamento
+
+Gestores podem acompanhar o histórico de inspeções no **Prontuário da Fazenda** ou na aba **Visitas**, visualizando quem realizou a inspeção e quais foram as recomendações técnicas.`,
+  },
+  },
+  {
+    slug: "frota-e-estoque",
+    title: "Frota, Implementos e Estoque",
+    summary: "Gestão de máquinas, combustíveis e insumos.",
+    body: `## Máquinas e Implementos
+1. Cadastre suas máquinas e implementos em **Frota**.
+2. Vincule **Operadores** a cada equipamento.
+3. Registre **Manutenções** preventivas e corretivas.
+
+## Estoque de Combustível e Insumos
+- Controle a entrada e saída de óleo diesel por tanque.
+- Gerencie o estoque de produtos químicos e peças.
+- Receba alertas de estoque baixo via IA.`,
   },
 ];

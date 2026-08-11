@@ -293,6 +293,12 @@ export function FarmDetailDialog({
                               <div className="flex items-center gap-2 text-[10px] opacity-70">
                                 <CheckCircle2 className="h-3 w-3" />
                                 Sanitário: {event.content.sanitaryState}
+                                {event.content.sanitaryInspector && (
+                                  <div className="flex items-center gap-2 text-[10px] opacity-70 mt-1">
+                                    <Users className="h-3 w-3" />
+                                    Inspetor: {event.content.sanitaryInspector} {event.content.isThirdPartyInspector && <span className="text-[8px] border rounded-full px-1">(Terceiro)</span>}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
@@ -479,6 +485,9 @@ export function FarmDetailDialog({
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Estado Fitossanitário: <span className="text-foreground">{v.sanitaryState}</span></p>
+                      {v.sanitaryInspector && (
+                        <p className="text-[11px] text-muted-foreground mb-1">Inspecionado por: <span className="text-foreground font-medium">{v.sanitaryInspector}</span> {v.isThirdPartyInspector && <Badge variant="outline" className="text-[8px] h-3 px-1 ml-1">Terceiro</Badge>}</p>
+                      )}
                       <p className="text-sm italic text-foreground">"{v.recommendations}"</p>
                     </div>
                   </div>

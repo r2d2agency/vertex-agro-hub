@@ -53,6 +53,8 @@ function ConsultorFormPage() {
   const [sanitaryState, setSanitaryState] = useState("Ótimo");
   const [recommendations, setRecommendations] = useState("");
   const [notes, setNotes] = useState("");
+  const [sanitaryInspector, setSanitaryInspector] = useState("");
+  const [isThirdPartyInspector, setIsThirdPartyInspector] = useState(false);
 
   useEffect(() => {
     getFieldMe().then(setMe).catch(console.error);
@@ -128,6 +130,8 @@ function ConsultorFormPage() {
         sanitaryState,
         tappingQuality,
         notes,
+        sanitaryInspector,
+        isThirdPartyInspector,
       });
       
       toast.success(res.queued ? "Ficha salva offline!" : "Consultoria registrada com sucesso!");
@@ -316,6 +320,35 @@ function ConsultorFormPage() {
           </select>
         </div>
 
+        {/* Seleção de Consultor (Vínculo ou Novo) */}
+        {farmId && (
+          <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+            <label className="text-sm font-medium">Consultor / Responsável</label>
+            <Select 
+              value={me.user.id} // Default to self, but user wants to be able to pick or add
+              onValueChange={(v) => {/* In a real app, this would update consultantId */}}
+            >
+              <SelectTrigger className="w-full rounded-xl h-12 bg-card border-border/60">
+                <SelectValue placeholder="Selecione o consultor..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={me.user.id}>{me.user.fullName} (Você)</SelectItem>
+                {/* Find other consultants linked to this farm in assignments */}
+                {me.assignments
+                  .filter(a => a.farm.id === farmId && a.role === 'consultor' && a.userId !== me.user.id)
+                  .map(a => (
+                    <SelectItem key={a.id} value={a.userId}>Consultor Vinculado</SelectItem>
+                  ))
+                }
+                <SelectItem value="add_new">+ Adicionar novo consultor à fazenda</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground px-1 italic">
+              Se o consultor atual não puder comparecer, você pode registrar a visita em nome de outro ou adicionar um substituto.
+            </p>
+          </div>
+        )}
+
         {/* Avaliação Fitossanitária */}
         <section className="rounded-2xl border border-border/60 bg-card p-4 space-y-4">
           <div className="flex items-center gap-2 font-semibold text-primary">
@@ -361,6 +394,28 @@ function ConsultorFormPage() {
                 {status}
               </button>
             ))}
+          </div>
+
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Inspecionado por</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isThirdParty"
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  checked={isThirdPartyInspector}
+                  onChange={(e) => setIsThirdPartyInspector(e.target.checked)}
+                />
+                <label htmlFor="isThirdParty" className="text-xs font-medium cursor-pointer">Terceirizado</label>
+              </div>
+            </div>
+            <Input
+              placeholder="Nome do inspetor ou colaborador..."
+              value={sanitaryInspector}
+              onChange={(e) => setSanitaryInspector(e.target.value)}
+              className="bg-background border-border rounded-xl"
+            />
           </div>
         </section>
 
