@@ -49,6 +49,10 @@ export class CreateInventoryItemDto {
   @IsOptional() @IsString() location?: string;
   @IsOptional() @IsBoolean() active?: boolean;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsString() supplierCnpj?: string;
+  @IsOptional() @IsString() supplierPhone?: string;
+  @IsOptional() @IsString() supplierContact?: string;
+  @IsOptional() @IsString() supplierAddress?: string;
 }
 
 export class CreateInventoryMovementDto {
