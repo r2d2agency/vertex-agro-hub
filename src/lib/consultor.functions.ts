@@ -11,6 +11,10 @@ export type ConsultationForm = {
   tappingQuality: number; // 1-5
   notes?: string;
   photos?: string[];
+  consultor?: {
+    fullName?: string;
+    email: string;
+  };
 };
 
 export async function listConsultations(companyId: string, opts: { farmId?: string; consultantId?: string; from?: string; to?: string } = {}) {
