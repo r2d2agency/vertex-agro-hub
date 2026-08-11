@@ -15,7 +15,7 @@ L.Marker.prototype.options.icon = vertexDivIcon();
 
 export type MapEditorProps = {
   value: GeoBoundary | null;
-  onChange: (boundary: GeoBoundary | null, areaHa: number | null) => void;
+  onChange: (boundary: GeoBoundary | null, areaHa: number | null, centroid: { lat: number, lng: number } | null) => void;
   reference?: GeoBoundary | null;
   overlays?: Array<{ boundary: GeoBoundary | null; color?: string; label?: string }>;
   height?: number;
@@ -222,31 +222,35 @@ export default function MapEditor({ value, onChange, reference, overlays, height
   }
 
   function emit() {
-    if (!mainLayerRef.current || !exclLayerRef.current) return onChange(null, null);
+    if (!mainLayerRef.current || !exclLayerRef.current) return onChange(null, null, null);
     const mainPolys: GeoPolygon[] = [];
     mainLayerRef.current.eachLayer((l) => { const p = layerToPolygon(l); if (p) mainPolys.push(p); });
     const exclPolys: GeoPolygon[] = [];
     exclLayerRef.current.eachLayer((l) => { const p = layerToPolygon(l); if (p) exclPolys.push(p); });
 
     if (mode === "multi") {
-      if (mainPolys.length === 0) return onChange(null, null);
+      if (mainPolys.length === 0) return onChange(null, null, null);
       const totalM2 = mainPolys.reduce((sum, p) => sum + area(turfPolygon(p.coordinates)), 0);
       const ha = Math.round((totalM2 / 10000) * 100) / 100;
-      onChange({ mode: "multi", polygons: mainPolys, color: colorRef.current }, ha);
+      const b: GeoBoundary = { mode: "multi", polygons: mainPolys, color: colorRef.current };
+      const { boundaryCentroid } = await import("@/lib/geo");
+      onChange(b, ha, boundaryCentroid(b));
     } else {
-      if (mainPolys.length === 0) return onChange(null, null);
+      if (mainPolys.length === 0) return onChange(null, null, null);
       const main = mainPolys[0];
       const mainM2 = area(turfPolygon(main.coordinates));
       const exclM2 = exclPolys.reduce((s, p) => s + area(turfPolygon(p.coordinates)), 0);
       const ha = Math.round((Math.max(0, mainM2 - exclM2) / 10000) * 100) / 100;
-      onChange({ mode: "with-exclusions", main, exclusions: exclPolys, color: colorRef.current }, ha);
+      const b: GeoBoundary = { mode: "with-exclusions", main, exclusions: exclPolys, color: colorRef.current };
+      const { boundaryCentroid } = await import("@/lib/geo");
+      onChange(b, ha, boundaryCentroid(b));
     }
   }
 
   function clearAll() {
     mainLayerRef.current?.clearLayers();
     exclLayerRef.current?.clearLayers();
-    onChange(null, null);
+    onChange(null, null, null);
   }
 
   return (
