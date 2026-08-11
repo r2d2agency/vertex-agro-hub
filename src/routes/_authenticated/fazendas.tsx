@@ -345,8 +345,8 @@ function FarmDialog({
                   <MapEditorClient
                     value={toBoundary(values.boundary)}
                     focus={values.latitude != null && values.longitude != null ? { lat: values.latitude, lng: values.longitude } : null}
-                    onChange={(b: GeoBoundary | null, ha: number | null) => {
-                      const c = boundaryCentroid(b);
+                    onChange={(b: GeoBoundary | null, ha: number | null, centroid: { lat: number, lng: number } | null) => {
+                      const c = centroid || boundaryCentroid(b);
                       setValues((v) => ({
                         ...v,
                         boundary: b,
