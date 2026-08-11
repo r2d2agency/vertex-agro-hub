@@ -109,46 +109,56 @@ function PeoplePage() {
               {data.map((p) => {
                 const currentRole = p.roles[0] ?? "consulta";
                 return (
-                  <Card key={p.id}>
+                  <Card key={p.id} className="overflow-hidden">
                     <CardContent className="flex flex-wrap items-center gap-4 p-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <UserRound className="h-5 w-5" />
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20">
+                        {p.avatarUrl ? (
+                          <img src={p.avatarUrl} alt={p.fullName || ""} className="h-full w-full rounded-full object-cover" />
+                        ) : (
+                          <UserRound className="h-6 w-6" />
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold">{p.fullName || p.email}</p>
-                        <p className="truncate text-xs text-muted-foreground">{p.email}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="truncate font-bold text-lg">{p.fullName || p.email}</p>
+                          {p.isActive === false && <Badge variant="destructive" className="text-[10px] h-4">INATIVO</Badge>}
+                        </div>
+                        <p className="truncate text-xs text-muted-foreground font-mono">{p.email}</p>
                       </div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1 max-w-[200px]">
                         {p.roles.map((r) => (
-                          <Badge key={r} variant="secondary">{roleLabel(r)}</Badge>
+                          <Badge key={r} variant="secondary" className="text-[10px] font-bold uppercase tracking-wider">{roleLabel(r)}</Badge>
                         ))}
                       </div>
-                      <div className="w-52">
+                      <div className="w-48">
                         <Select
                           value={currentRole}
                           onValueChange={(v) => changeRole.mutate({ userId: p.id, role: v as CompanyRole })}
                         >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {COMPANY_ROLES.map((r) => (
-                              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                              <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => setEditingId(p.id)} title="Editar ficha">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="icon" title="Gerar senha temporária"
-                        disabled={reset.isPending}
-                        onClick={() => reset.mutate(p.id)}
-                      >
-                        <KeyRound className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setToDelete(p)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => setEditingId(p.id)} title="Editar ficha completa (RH + Pessoal)" className="h-9 w-9">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost" size="icon" title="Gerar senha temporária vertexXXXX"
+                          disabled={reset.isPending}
+                          onClick={() => reset.mutate(p.id)}
+                          className="h-9 w-9"
+                        >
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive h-9 w-9" onClick={() => setToDelete(p)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 );
