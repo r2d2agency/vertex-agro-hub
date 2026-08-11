@@ -1387,7 +1387,7 @@ model Tapper {
   rg            String?
   birthDate     DateTime? @map("birth_date") @db.Date
   phone         String?
-  photoUrl   String?  @map("photo_url")
+  photoUrl      String?  @map("photo_url")
   addressCity   String?  @map("address_city")
   addressState  String?  @map("address_state")
   contractType  String?  @map("contract_type")
