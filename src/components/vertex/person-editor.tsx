@@ -310,6 +310,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                 <Field label="Salário (R$)">
                   <Input type="number" step="0.01" value={employment.salary ?? ""} onChange={(e) => setE({ salary: e.target.value })} />
                 </Field>
+                </Field>
                 <Field label="PIS / PASEP">
                   <Input value={employment.pisNumber ?? ""} onChange={(e) => setE({ pisNumber: e.target.value })} />
                 </Field>
