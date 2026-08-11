@@ -374,6 +374,8 @@ function DocumentsTab({ userId, companyId }: { userId: string; companyId: string
   const [fileUrl, setFileUrl] = useState("");
   const [issuedAt, setIssuedAt] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [uploading, setUploading] = useState(false);
+
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["person-docs", userId, companyId],
