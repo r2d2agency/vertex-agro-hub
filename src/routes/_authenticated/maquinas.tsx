@@ -170,13 +170,17 @@ function MachineDialog({
   }, [open, initial]);
 
   const mut = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (data: FormState) => {
       if (!companyId) throw new Error("Selecione uma empresa");
-      const dto = { ...v, companyId, name: (v.name || "").trim() };
+      const dto = { ...data, companyId, name: (data.name || "").trim() };
       if (initial) return updateMachine(initial.id, dto as any);
       return createMachine(dto as any);
     },
-    onSuccess: () => { toast.success(initial ? "Máquina atualizada" : "Máquina criada"); onSaved(); onOpenChange(false); },
+    onSuccess: () => { 
+      toast.success(initial ? "Máquina atualizada" : "Máquina criada"); 
+      onSaved(); 
+      onOpenChange(false); 
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -273,11 +277,10 @@ function MachineDialog({
           <div className="px-6 pb-6 border-t pt-4">
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button type="button" onClick={() => { if (!(v.name || "").trim()) return toast.error("Nome obrigatório"); mut.mutate(v); }} disabled={mut.isPending}>
-                {mut.isPending ? "Salvando…" : "Salvar"}
-              </Button>
-            </DialogFooter>
-          </div>
+            <Button type="button" onClick={() => mut.mutate(v)} disabled={mut.isPending}>
+              {mut.isPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>
