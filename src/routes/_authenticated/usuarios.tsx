@@ -222,7 +222,8 @@ function InviteDialog({
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<CompanyRole>("monitor");
+  const [role, setRole] = useState<CompanyRole>("sangrador");
+
 
   const mut = useMutation({
     mutationFn: () => invitePerson({ companyId: companyId!, email, fullName, password: password || undefined, role }),
