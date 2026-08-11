@@ -14,6 +14,9 @@ export type TappingRecord = {
   dryKg?: number | null;
   adherencePct?: number | null;
   notes?: string | null;
+  status?: string | null;
+  quality?: string | null;
+  tableCondition?: string | null;
 };
 
 export type TappingInput = {
@@ -28,6 +31,9 @@ export type TappingInput = {
   dryKg?: number | null;
   adherencePct?: number | null;
   notes?: string;
+  status?: string;
+  quality?: string;
+  tableCondition?: string;
 };
 
 export function listTappingRecords(
@@ -70,5 +76,8 @@ function clean(v: TappingInput) {
     dryKg: v.dryKg ?? undefined,
     adherencePct: v.adherencePct ?? undefined,
     notes: v.notes?.trim() || undefined,
+    status: v.status || undefined,
+    quality: v.quality || undefined,
+    tableCondition: v.tableCondition || undefined,
   };
 }

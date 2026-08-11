@@ -51,7 +51,7 @@ export class OperationsService {
         date: new Date(date),
         createdById: userId,
         updatedById: userId,
-      },
+      } as any,
     });
   }
 
@@ -67,7 +67,7 @@ export class OperationsService {
         ...(date ? { date: new Date(date) } : {}),
         updatedById: userId,
         version: { increment: 1 },
-      },
+      } as any,
     });
   }
 

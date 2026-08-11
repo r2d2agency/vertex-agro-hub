@@ -259,7 +259,7 @@ function OrderDetail({ companyId, id, onClose }: { companyId: string; id: string
   const { data: items = [] } = useQuery({
     queryKey: ["inv-items", companyId], queryFn: () => listInventoryItems(companyId),
   });
-  const [add, setAdd] = useState({ description: "", quantity: 1, unitCost: undefined as number | undefined, inventoryItemId: undefined as string | undefined, consumeStock: false });
+  const [add, setAdd] = useState({ description: "", quantity: 1, unitCost: undefined as number | undefined, inventoryItemId: undefined as string | undefined, consumeStock: false, supplier: "" });
 
   const addItem = useMutation({
     mutationFn: () => addMaintenanceItem(id, add),
@@ -267,7 +267,7 @@ function OrderDetail({ companyId, id, onClose }: { companyId: string; id: string
       toast.success("Item adicionado");
       qc.invalidateQueries({ queryKey: ["mo", id] });
       qc.invalidateQueries({ queryKey: ["mo"] });
-      setAdd({ description: "", quantity: 1, unitCost: undefined, inventoryItemId: undefined, consumeStock: false });
+      setAdd({ description: "", quantity: 1, unitCost: undefined, inventoryItemId: undefined, consumeStock: false, supplier: "" });
     },
     onError: (e: Error) => toast.error(e.message),
   });

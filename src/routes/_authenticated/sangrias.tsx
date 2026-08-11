@@ -182,7 +182,13 @@ function SangriasPage() {
                     {data.map((r) => (
                       <TableRow key={r.id}>
                         <TableCell>{r.date.slice(0, 10).split("-").reverse().join("/")}</TableCell>
-                        <TableCell className="font-medium">{r.sangradorName}</TableCell>
+                        <TableCell className="font-medium">
+                          <div>{r.sangradorName}</div>
+                          <div className="text-[10px] text-muted-foreground uppercase flex gap-1">
+                            {r.status && <span>{r.status}</span>}
+                            {r.quality && <span>• {r.quality}</span>}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-right">{r.treesTapped ?? "—"}</TableCell>
                         <TableCell className="text-right">{r.liters?.toLocaleString("pt-BR") ?? "—"}</TableCell>
                         <TableCell className="text-right">{r.drcPercent != null ? `${r.drcPercent}%` : "—"}</TableCell>
@@ -267,6 +273,9 @@ function SangriaDialog({
       dryKg: initial.dryKg ?? null,
       adherencePct: initial.adherencePct ?? null,
       notes: initial.notes ?? "",
+      status: initial.status ?? "",
+      quality: initial.quality ?? "",
+      tableCondition: initial.tableCondition ?? "",
     });
     else setValues({ ...empty });
   }, [open, initial]);
@@ -331,7 +340,44 @@ function SangriaDialog({
           <div><Label>Litros</Label><Input type="number" step="0.01" value={values.liters ?? ""} onChange={(e) => setValues((v) => ({ ...v, liters: e.target.value ? Number(e.target.value) : null }))} /></div>
           <div><Label>DRC (%)</Label><Input type="number" step="0.1" value={values.drcPercent ?? ""} onChange={(e) => setValues((v) => ({ ...v, drcPercent: e.target.value ? Number(e.target.value) : null }))} /></div>
           <div><Label>Aderência à tabela (%)</Label><Input type="number" step="0.1" value={values.adherencePct ?? ""} onChange={(e) => setValues((v) => ({ ...v, adherencePct: e.target.value ? Number(e.target.value) : null }))} /></div>
-          <div className="md:col-span-2"><Label>Observações</Label><Textarea rows={3} value={values.notes} onChange={(e) => setValues((v) => ({ ...v, notes: e.target.value }))} /></div>
+          <div>
+            <Label>Situação</Label>
+            <Select value={values.status || "__none"} onValueChange={(v) => setValues((s) => ({ ...s, status: v === "__none" ? "" : v }))}>
+              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">—</SelectItem>
+                <SelectItem value="concluida">Concluída</SelectItem>
+                <SelectItem value="parcial">Parcial</SelectItem>
+                <SelectItem value="interrompida">Interrompida</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Qualidade</Label>
+            <Select value={values.quality || "__none"} onValueChange={(v) => setValues((s) => ({ ...s, quality: v === "__none" ? "" : v }))}>
+              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">—</SelectItem>
+                <SelectItem value="excelente">Excelente</SelectItem>
+                <SelectItem value="boa">Boa</SelectItem>
+                <SelectItem value="regular">Regular</SelectItem>
+                <SelectItem value="ruim">Ruim</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Condição da Tabela</Label>
+            <Select value={values.tableCondition || "__none"} onValueChange={(v) => setValues((s) => ({ ...s, tableCondition: v === "__none" ? "" : v }))}>
+              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">—</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="atencao">Atenção</SelectItem>
+                <SelectItem value="critica">Crítica</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="md:col-span-2"><Label>Observações</Label><Textarea rows={2} value={values.notes} onChange={(e) => setValues((v) => ({ ...v, notes: e.target.value }))} /></div>
           <DialogFooter className="md:col-span-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={mut.isPending}>{mut.isPending ? "Salvando..." : "Salvar"}</Button>

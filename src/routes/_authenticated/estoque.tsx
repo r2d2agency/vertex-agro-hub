@@ -211,6 +211,10 @@ function ItemDialog({ companyId, editing, farms, defaultFarmId, onClose, onSaved
     minStock: editing?.minStock ?? undefined as number | undefined,
     unitCost: editing?.unitCost ?? undefined as number | undefined,
     supplier: editing?.supplier ?? "",
+    supplierCnpj: editing?.supplierCnpj ?? "",
+    supplierPhone: editing?.supplierPhone ?? "",
+    supplierContact: editing?.supplierContact ?? "",
+    supplierAddress: editing?.supplierAddress ?? "",
     location: editing?.location ?? "",
     notes: editing?.notes ?? "",
   });
@@ -259,9 +263,14 @@ function ItemDialog({ companyId, editing, farms, defaultFarmId, onClose, onSaved
             <div><Label>Local (galpão/prateleira)</Label><Input value={f.location} onChange={e => setF({ ...f, location: e.target.value })} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Fornecedor</Label><Input value={f.supplier} onChange={e => setF({ ...f, supplier: e.target.value })} /></div>
-            <div />
+            <div><Label>Fornecedor (Nome)</Label><Input value={f.supplier} onChange={e => setF({ ...f, supplier: e.target.value })} /></div>
+            <div><Label>Fornecedor (CNPJ)</Label><Input value={f.supplierCnpj} onChange={e => setF({ ...f, supplierCnpj: e.target.value })} /></div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Fornecedor (Telefone)</Label><Input value={f.supplierPhone} onChange={e => setF({ ...f, supplierPhone: e.target.value })} /></div>
+            <div><Label>Fornecedor (Contato)</Label><Input value={f.supplierContact} onChange={e => setF({ ...f, supplierContact: e.target.value })} /></div>
+          </div>
+          <div><Label>Fornecedor (Endereço)</Label><Input value={f.supplierAddress} onChange={e => setF({ ...f, supplierAddress: e.target.value })} /></div>
           <div><Label>Observações</Label><Textarea rows={2} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} /></div>
           {editing && <p className="text-xs text-muted-foreground">Ajuste o estoque usando o botão "Movimentar" na lista.</p>}
         </div>

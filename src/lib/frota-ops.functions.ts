@@ -32,7 +32,9 @@ export type InventoryItem = {
   id: string; companyId: string; farmId: string | null;
   sku: string | null; name: string; category: string; unit: string;
   currentStock: number; minStock: number | null; unitCost: number | null;
-  supplier: string | null; location: string | null; active: boolean; notes: string | null;
+  supplier: string | null; supplierCnpj: string | null; supplierPhone: string | null;
+  supplierContact: string | null; supplierAddress: string | null;
+  location: string | null; active: boolean; notes: string | null;
   createdAt: string; updatedAt: string;
 };
 

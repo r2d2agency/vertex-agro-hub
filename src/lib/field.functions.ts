@@ -100,6 +100,7 @@ export function submitTapping(input: {
   date: string; sangradorName: string;
   liters?: number | null; drcPercent?: number | null; adherencePct?: number | null;
   treesTapped?: number | null; notes?: string;
+  status?: string; quality?: string; tableCondition?: string;
 }) {
   return submit("/tapping-records", input, `Sangria — ${input.sangradorName}`);
 }
