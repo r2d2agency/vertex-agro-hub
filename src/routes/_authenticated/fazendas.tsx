@@ -199,6 +199,8 @@ function FarmDialog({
 }) {
   const [values, setValues] = useState<FarmInput>(empty);
   const [cep, setCep] = useState<string>("");
+  const [activeTab, setActiveTab] = useState("dados");
+
 
   useEffect(() => {
     if (!open) return;
