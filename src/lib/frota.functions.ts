@@ -22,7 +22,7 @@ export type Machine = {
   monitorUserId: string | null;
   acquisitionDate: string | null;
   supplier: string | null;
-  photoUrl: string | null;
+  photoUrls: string[];
   status: string;
   notes: string | null;
   createdAt: string;
