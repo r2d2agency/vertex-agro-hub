@@ -259,6 +259,7 @@ model Farm {
   centroidLat  Float?   @map("centroid_lat")
   centroidLng  Float?   @map("centroid_lng")
   bboxJson     Json?    @map("bbox")
+  photoUrls    String[]   @default([]) @map("photo_urls")
 
 
   version      Int        @default(1)
