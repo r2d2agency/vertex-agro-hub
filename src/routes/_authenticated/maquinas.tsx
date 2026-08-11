@@ -284,7 +284,6 @@ function MachineDialog({
           </div>
         </div>
       </DialogContent>
-      </DialogContent>
     </Dialog>
   );
 }
