@@ -197,8 +197,10 @@ function MachineDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader><DialogTitle>{initial ? "Editar máquina" : "Nova máquina"}</DialogTitle></DialogHeader>
+      <DialogContent className="max-h-[90vh] max-w-3xl p-0 overflow-hidden">
+        <div className="px-6 pt-6">
+          <DialogHeader><DialogTitle>{initial ? "Editar máquina" : "Nova máquina"}</DialogTitle></DialogHeader>
+        </div>
         <div className="flex flex-col h-full max-h-[80vh]">
           <Tabs defaultValue="dados" className="flex-1 overflow-auto">
             <div className="px-6">
