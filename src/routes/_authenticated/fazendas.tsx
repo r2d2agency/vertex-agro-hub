@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, TreeDeciduous } from "lucide-react";
+import { useEffect, useState, ReactNode } from "react";
+import { Plus, Pencil, Trash2, TreeDeciduous, Camera, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileDropzone } from "@/components/vertex/file-dropzone";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
