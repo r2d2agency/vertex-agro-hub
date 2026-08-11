@@ -121,7 +121,7 @@ function PeoplePage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className="truncate font-bold text-lg">{p.fullName || p.email}</p>
-                          {p.isActive === false && <Badge variant="destructive" className="text-[10px] h-4">INATIVO</Badge>}
+                          {p.active === false && <Badge variant="destructive" className="text-[10px] h-4">INATIVO</Badge>}
                         </div>
                         <p className="truncate text-xs text-muted-foreground font-mono">{p.email}</p>
                       </div>
