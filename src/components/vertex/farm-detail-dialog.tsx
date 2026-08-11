@@ -479,6 +479,39 @@ export function FarmDetailDialog({
                 ))}
               </div>
             )}
+          <TabsContent value="fotos" className="mt-4">
+            {photos.isLoading ? (
+              <Empty text="Carregando galeria..." />
+            ) : !photos.data?.length ? (
+              <Empty text="Nenhuma foto georreferenciada registrada nesta fazenda." />
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {photos.data.map((p: any) => (
+                  <div key={p.id} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted shadow-sm">
+                    <img src={p.url} alt={p.category} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                    <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                      <p className="text-[10px] font-bold text-white uppercase">{p.category}</p>
+                      <p className="text-[9px] text-white/80">{new Date(p.takenAt).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="ocorrencias" className="mt-4">
+            {occurrences.isLoading ? <Empty text="Carregando..." /> : !occurrences.data?.length ? <Empty text="Nenhuma ocorrência crítica." /> : (
+              <div className="grid gap-2">
+                {occurrences.data.map((o: any) => (
+                  <div key={o.id} className="rounded-md border p-3 text-sm bg-destructive/5 border-destructive/20">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold">{o.title}</p>
+                      <Badge variant="destructive" className="text-[10px]">{o.severity}</Badge>
+                    </div>
+                    <p className="mt-1 text-xs opacity-80">{o.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 
