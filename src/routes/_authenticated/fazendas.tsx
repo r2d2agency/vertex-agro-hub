@@ -47,8 +47,9 @@ export const Route = createFileRoute("/_authenticated/fazendas")({
 const empty: FarmInput = {
   regionalId: "", name: "", code: "", city: "", state: "",
   totalAreaHa: null, latitude: null, longitude: null, owner: "", notes: "",
-  boundary: null,
+  boundary: null, photoUrls: [],
 };
+
 
 function FazendasPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
