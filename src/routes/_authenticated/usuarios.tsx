@@ -234,7 +234,7 @@ function InviteDialog({
       if (r.generatedPassword) {
         onCredentials({ email: r.email, fullName: r.fullName, password: r.generatedPassword });
       }
-      setEmail(""); setFullName(""); setPassword(""); setRole("monitor");
+      setEmail(""); setFullName(""); setPassword(""); setRole("sangrador");
     },
     onError: (e: Error) => toast.error(e.message),
   });
