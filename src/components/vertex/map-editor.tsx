@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import type { GeoBoundary, GeoPolygon } from "@/lib/geo";
+import { boundaryCentroid } from "@/lib/geo";
 import { vertexDivIcon } from "@/lib/vertex-marker";
 
 // Use custom Vertex marker as default
@@ -233,7 +234,6 @@ export default function MapEditor({ value, onChange, reference, overlays, height
       const totalM2 = mainPolys.reduce((sum, p) => sum + area(turfPolygon(p.coordinates)), 0);
       const ha = Math.round((totalM2 / 10000) * 100) / 100;
       const b: GeoBoundary = { mode: "multi", polygons: mainPolys, color: colorRef.current };
-      const { boundaryCentroid } = await import("@/lib/geo");
       onChange(b, ha, boundaryCentroid(b));
     } else {
       if (mainPolys.length === 0) return onChange(null, null, null);
@@ -242,7 +242,6 @@ export default function MapEditor({ value, onChange, reference, overlays, height
       const exclM2 = exclPolys.reduce((s, p) => s + area(turfPolygon(p.coordinates)), 0);
       const ha = Math.round((Math.max(0, mainM2 - exclM2) / 10000) * 100) / 100;
       const b: GeoBoundary = { mode: "with-exclusions", main, exclusions: exclPolys, color: colorRef.current };
-      const { boundaryCentroid } = await import("@/lib/geo");
       onChange(b, ha, boundaryCentroid(b));
     }
   }
