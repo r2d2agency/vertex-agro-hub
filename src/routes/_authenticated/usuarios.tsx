@@ -91,6 +91,7 @@ function PeoplePage() {
               <Button onClick={() => setCreating(true)} className="bg-primary hover:bg-primary/90">
                 <Plus className="mr-2 h-4 w-4" /> Novo Cadastro (RH)
               </Button>
+
             </div>
           ) : null
         }

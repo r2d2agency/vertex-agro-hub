@@ -118,7 +118,6 @@ As inspeções são realizadas através do **App Consultor**:
 
 Gestores podem acompanhar o histórico de inspeções no **Prontuário da Fazenda** ou na aba **Visitas**, visualizando quem realizou a inspeção e quais foram as recomendações técnicas.`,
   },
-  },
   {
     slug: "frota-e-estoque",
     title: "Frota, Implementos e Estoque",
