@@ -280,8 +280,10 @@ function MachineDialog({
             <Button type="button" onClick={() => mut.mutate(v)} disabled={mut.isPending}>
               {mut.isPending ? "Salvando…" : "Salvar"}
             </Button>
-          </DialogFooter>
+            </DialogFooter>
+          </div>
         </div>
+      </DialogContent>
       </DialogContent>
     </Dialog>
   );
