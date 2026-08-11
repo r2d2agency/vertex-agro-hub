@@ -147,7 +147,7 @@ function MachinesPage() {
         onOpenChange={(o) => { if (!o) { setCreating(false); setEditing(null); } }}
         companyId={companyId}
         initial={editing ?? undefined}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["machines"] })}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["machines", companyId] })}
       />
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
