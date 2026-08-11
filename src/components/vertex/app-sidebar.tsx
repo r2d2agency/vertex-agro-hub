@@ -86,12 +86,13 @@ const groups: { label: string; items: Item[] }[] = [
     ],
   },
   {
-    label: "Pessoas e Equipes",
+    label: "RH e Equipes",
     items: [
-      { title: "Usuários", url: "/usuarios", icon: Users },
+      { title: "Portal de RH", url: "/usuarios", icon: Users },
       { title: "Monitores", url: "/monitores", icon: UserCog },
       { title: "Sangradores", url: "/sangradores", icon: UserCheck },
       { title: "Consultores", url: "/consultores", icon: Briefcase },
+      { title: "Operadores", url: "/operadores", icon: UserCog },
       { title: "Equipes", url: "/equipes", icon: UsersRound },
       { title: "Perfis e Permissões", url: "/permissoes", icon: ShieldCheck },
     ],
@@ -115,7 +116,6 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Frota (visão geral)", url: "/frota", icon: Gauge },
       { title: "Máquinas", url: "/maquinas", icon: Truck },
       { title: "Implementos", url: "/implementos", icon: Wrench },
-      { title: "Operadores", url: "/operadores", icon: UserCog },
       { title: "Operações", url: "/operacoes", icon: ClipboardList },
       { title: "Abastecimento", url: "/abastecimento", icon: Fuel },
       { title: "Estoque", url: "/estoque", icon: Package },
