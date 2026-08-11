@@ -364,7 +364,7 @@ function FarmDialog({
                 <Field label="Galeria de Fotos da Fazenda">
                   <div className="space-y-4">
                     <FileDropzone
-                      onUpload={(url) => setValues(prev => ({ ...prev, photoUrls: [...(prev.photoUrls || []), url] }))}
+                      onUploaded={(url: string) => setValues(prev => ({ ...prev, photoUrls: [...(prev.photoUrls || []), url] }))}
                       label="Arraste fotos da sede, entrada ou talhões estratégicos"
                     />
                     
