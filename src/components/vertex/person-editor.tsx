@@ -306,6 +306,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                     value={(employment as any).dailyRate ?? ""} 
                     onChange={(e) => setE({ dailyRate: e.target.value ? Number(e.target.value) : null } as any)} 
                   />
+                </Field>
                 <Field label="Salário (R$)">
                   <Input type="number" step="0.01" value={employment.salary ?? ""} onChange={(e) => setE({ salary: e.target.value })} />
                 </Field>
