@@ -81,15 +81,17 @@ function PeoplePage() {
   });
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
-        title="Pessoas"
-        description="Cadastre monitores, sangradores, consultores e defina seus papéis."
+        title="Gestão de Pessoas e Equipe"
+        description="Controle centralizado de colaboradores (Monitores, Sangradores, Consultores) e acesso administrativo."
         actions={
           companyId ? (
-            <Button onClick={() => setCreating(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Nova pessoa
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setCreating(true)} className="bg-primary hover:bg-primary/90">
+                <Plus className="mr-2 h-4 w-4" /> Novo Cadastro (RH)
+              </Button>
+            </div>
           ) : null
         }
       />
