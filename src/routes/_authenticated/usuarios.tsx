@@ -152,9 +152,13 @@ function PeoplePage() {
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="ghost" size="icon" title="Gerar senha temporária vertexXXXX"
+                          variant="ghost" size="icon" title="Resetar senha (Gera senha temporária vertexXXXX)"
                           disabled={reset.isPending}
-                          onClick={() => reset.mutate(p.id)}
+                          onClick={() => {
+                            if (window.confirm("Deseja resetar a senha deste colaborador? Uma nova senha temporária será gerada.")) {
+                              reset.mutate(p.id);
+                            }
+                          }}
                           className="h-9 w-9"
                         >
                           <KeyRound className="h-4 w-4" />
