@@ -29,8 +29,8 @@ function ensureApiUrl() {
       // Portanto, mesmo que o EasyPanel injete por engano a URL pública do backend no build,
       // o frontend usa o proxy same-origin /api e o server.mjs repassa para API_PROXY_TARGET.
       if (configuredUrl.origin !== window.location.origin) {
-        // Always use the configured base URL in development or if explicitly set
-        return CONFIGURED_API_BASE_URL;
+        // Enforce the same origin proxy for API calls in the browser
+        return "/api";
       }
     } catch {
       return "/api";
