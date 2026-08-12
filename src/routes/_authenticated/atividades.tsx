@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Activity, Droplets, PackageCheck, AlertTriangle, CalendarClock, FlaskConical, Camera, ArrowRight } from "lucide-react";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Card, CardContent } from "@/components/ui/card";
