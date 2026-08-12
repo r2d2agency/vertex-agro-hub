@@ -32,7 +32,7 @@ function ensureApiUrl() {
         return "/api";
       }
     } catch {
-      return "";
+      return "/api";
     }
   }
 
