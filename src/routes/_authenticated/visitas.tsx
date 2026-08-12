@@ -205,8 +205,8 @@ export function TaskCategoryPage({ category, title, description, emptyLabel }: {
 }
 
 function nowLocal() {
-    const d = new Date(); d.setSeconds(0, 0);
-    setValues(v => ({ ...v, date: d.toISOString().slice(0, 10) }));
+  if (typeof window === "undefined") return "2026-08-12T00:00";
+  const d = new Date(); d.setSeconds(0, 0);
   const off = d.getTimezoneOffset();
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
 }
