@@ -90,7 +90,7 @@ export function TaskCategoryPage({ category, title, description, emptyLabel }: {
       try {
         await createOccurrence(companyId!, {
           farmId: task.farmId ?? undefined,
-          date: new Date().toISOString().slice(0, 10),
+          date: "2026-08-12",
           type: "processo",
           severity: "baixa",
           status: "resolvida",
@@ -205,7 +205,8 @@ export function TaskCategoryPage({ category, title, description, emptyLabel }: {
 }
 
 function nowLocal() {
-  const d = new Date(); d.setSeconds(0, 0);
+    const d = new Date(); d.setSeconds(0, 0);
+    setValues(v => ({ ...v, date: d.toISOString().slice(0, 10) }));
   const off = d.getTimezoneOffset();
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
 }
