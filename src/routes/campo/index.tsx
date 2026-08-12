@@ -21,7 +21,7 @@ function FieldHome() {
   const [me, setMe] = useState<FieldMe | null>(null);
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [online, setOnline] = useState(true);
   const [pending, setPending] = useState(0);
   const [lastSync, setLastSync] = useState<string>("—");
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
@@ -84,8 +84,8 @@ function FieldHome() {
   }, []);
 
   useEffect(() => {
+    if (typeof navigator !== "undefined") setOnline(navigator.onLine);
     const on = () => setOnline(true);
-    const off = () => setOnline(false);
     window.addEventListener("online", on);
     window.addEventListener("offline", off);
     const un = subscribeOutbox((s) => { setPending(s.pending); if (!s.running && s.pending === 0) setLastSync(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })); });

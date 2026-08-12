@@ -27,7 +27,7 @@ export const Route = createFileRoute('/')({
         </a>
       </div>
       <footer className="mt-20 border-t border-slate-800 pt-8 text-sm text-slate-500">
-        © {new Date().getFullYear()} Vertex Agro. Design by TNS R2D2.
+        © 2026 Vertex Agro. Design by TNS R2D2.
       </footer>
     </div>
   ),
