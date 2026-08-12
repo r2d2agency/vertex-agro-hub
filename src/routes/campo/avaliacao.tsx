@@ -58,8 +58,12 @@ function AvaliacaoPage() {
     setTargetUserId("");
     apiRequest<TeamMember[]>(`/people/farm/${farm.id}/team?companyId=${farm.companyId}`)
       .then((data) => {
-        // Filtra o próprio consultor e usuários sem userId válido
-        const filtered = (data ?? []).filter((m) => m.userId && m.userId !== me?.user.id);
+        // Filtra o próprio consultor, usuários sem userId válido e também consultores da lista de avaliação
+        const filtered = (data ?? []).filter((m) => 
+          m.userId && 
+          m.userId !== me?.user.id &&
+          m.role !== "consultor"
+        );
         setTeam(filtered);
       })
       .catch(() => setTeam([]))
