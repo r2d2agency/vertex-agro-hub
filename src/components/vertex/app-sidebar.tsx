@@ -50,6 +50,10 @@ import {
   Activity as ActivityIcon,
 } from "lucide-react";
 import {
+  ChevronRight,
+  ChevronDown,
+} from "lucide-react";
+import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -59,8 +63,16 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type Item = { title: string; url: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -194,27 +206,43 @@ export function AppSidebar() {
 
       <SidebarContent>
         {groups.map((group) => (
-          <SidebarGroup key={group.label}>
-            {!collapsed && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => {
-                  const active =
-                    pathname === item.url || pathname.startsWith(item.url + "/");
-                  return (
-                    <SidebarMenuItem key={item.url}>
-                      <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
-                        <Link to={item.url}>
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          <Collapsible
+            key={group.label}
+            asChild
+            defaultOpen={group.label === "Visão Geral"}
+            className="group/collapsible"
+          >
+            <SidebarGroup>
+              {!collapsed && (
+                <CollapsibleTrigger asChild>
+                  <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                    {group.label}
+                    <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  </SidebarGroupLabel>
+                </CollapsibleTrigger>
+              )}
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.items.map((item) => {
+                      const active =
+                        pathname === item.url || pathname.startsWith(item.url + "/");
+                      return (
+                        <SidebarMenuItem key={item.url}>
+                          <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
+                            <Link to={item.url}>
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
         ))}
       </SidebarContent>
     </Sidebar>
