@@ -34,7 +34,7 @@ export const Route = createFileRoute("/_authenticated/estimulacoes")({
 });
 
 const EMPTY: StimulationInput = {
-  farmId: undefined, plotId: undefined, date: new Date().toISOString().slice(0, 10),
+  farmId: undefined, plotId: undefined, date: "2026-08-12",
   product: "", concentration: "", method: "pincel", applicator: "",
   treesStimulated: null, doseMlPerTree: null, areaHa: null, weather: "", notes: "",
 };

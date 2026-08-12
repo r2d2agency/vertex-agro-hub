@@ -98,7 +98,7 @@ function FieldShell() {
   const location = useLocation();
   const [me, setMe] = useState<FieldMe | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [online, setOnline] = useState(true);
   const [pending, setPending] = useState(0);
   const [flushing, setFlushing] = useState(false);
   const install = useInstallPrompt();
@@ -123,6 +123,7 @@ function FieldShell() {
   useEffect(() => { getFieldMe().then(setMe).catch((e) => setError(e?.message ?? "Falha ao carregar")); }, []);
 
   useEffect(() => {
+    if (typeof navigator !== "undefined") setOnline(navigator.onLine);
     const on = () => setOnline(true);
     const off = () => setOnline(false);
     window.addEventListener("online", on);

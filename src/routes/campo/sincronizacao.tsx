@@ -7,7 +7,7 @@ import { FieldCard } from "@/components/vertex/field/step-header";
 export const Route = createFileRoute("/campo/sincronizacao")({ component: SyncPage });
 
 function SyncPage() {
-  const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [online, setOnline] = useState(true);
   const [pending, setPending] = useState(0);
   const [running, setRunning] = useState(false);
   const [items, setItems] = useState<OutboxItem[]>([]);
@@ -16,6 +16,7 @@ function SyncPage() {
   const refresh = async () => setItems(await listOutbox());
 
   useEffect(() => {
+    if (typeof navigator !== "undefined") setOnline(navigator.onLine);
     const on = () => setOnline(true);
     const off = () => setOnline(false);
     window.addEventListener("online", on);

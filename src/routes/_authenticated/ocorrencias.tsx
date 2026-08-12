@@ -35,7 +35,7 @@ export const Route = createFileRoute("/_authenticated/ocorrencias")({
   component: OccurrencesPage,
 });
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => "2026-08-12";
 const empty: OccurrenceInput = {
   farmId: "", date: today(), type: "outro", severity: "media", status: "aberta",
   title: "", description: "", responsible: "",

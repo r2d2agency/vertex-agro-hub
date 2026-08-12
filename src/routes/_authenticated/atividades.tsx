@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Activity, Droplets, PackageCheck, AlertTriangle, CalendarClock, FlaskConical, Camera, ArrowRight } from "lucide-react";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,10 +43,11 @@ function relativeTime(iso: string) {
 function AtividadesPage() {
   const { companyId, companies, isLoading, setCompanyId } = useSelectedCompany();
 
-  const from = useMemo(() => {
+  const [from, setFrom] = useState("2026-08-05");
+  useEffect(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
-    return d.toISOString().slice(0, 10);
+    setFrom(d.toISOString().slice(0, 10));
   }, []);
 
   const { data: farms = [] } = useQuery({

@@ -386,7 +386,10 @@ function TapperDialog({
 function StintsTab({ tapperId, companyId }: { tapperId: string; companyId: string }) {
   const qc = useQueryClient();
   const [farmId, setFarmId] = useState("");
-  const [startAt, setStartAt] = useState(new Date().toISOString().slice(0, 10));
+  const [startAt, setStartAt] = useState("2026-08-12");
+  useEffect(() => {
+    setStartAt(new Date().toISOString().slice(0, 10));
+  }, []);
   const [notes, setNotes] = useState("");
 
   const { data: farms = [] } = useQuery({ queryKey: ["farms", companyId], queryFn: () => listFarms(companyId) });

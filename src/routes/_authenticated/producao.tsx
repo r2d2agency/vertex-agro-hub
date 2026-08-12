@@ -41,7 +41,7 @@ export const Route = createFileRoute("/_authenticated/producao")({
   component: ProducaoPage,
 });
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => "2026-08-12";
 const empty: DeliveryInput = {
   farmId: "", season: "", deliveryDate: today(), turnDay: null,
   propertyName: "", ownerName: "", status: "", consultantName: "", monitorName: "",

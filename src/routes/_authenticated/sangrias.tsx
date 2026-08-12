@@ -42,7 +42,7 @@ export const Route = createFileRoute("/_authenticated/sangrias")({
   component: SangriasPage,
 });
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => "2026-08-12";
 const empty: TappingInput = {
   farmId: "", plotId: "", date: today(), sangradorName: "",
   treesTapped: null, liters: null, drcPercent: null, dryKg: null, adherencePct: null, notes: "",

@@ -17,7 +17,10 @@ function ChuvaPage() {
   const nav = useNavigate();
   const [me, setMe] = useState<FieldMe | null>(null);
   const [farmId, setFarmId] = useState("");
-  const [ini, setIni] = useState<string>(new Date().toISOString().slice(0, 16));
+  const [ini, setIni] = useState<string>("2026-08-12T00:00");
+  useEffect(() => {
+    setIni(new Date().toISOString().slice(0, 16));
+  }, []);
   const [fim, setFim] = useState<string>("");
   const [intensidade, setIntensidade] = useState("forte");
   const [interrompeu, setInterrompeu] = useState("sim");
