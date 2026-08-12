@@ -134,7 +134,9 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    throw new Error(await readError(response));
+    const errorMsg = await readError(response);
+    console.error(`API Error [${path}]:`, errorMsg);
+    throw new Error(errorMsg);
   }
 
   if (response.status === 204) return undefined as T;
