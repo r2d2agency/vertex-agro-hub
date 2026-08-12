@@ -26,6 +26,11 @@ export const Route = createFileRoute("/_authenticated/consultores")({
           emptyLabel="Nenhum consultor cadastrado nesta empresa."
           onAddClick={() => setCreating(true)}
         />
+        <div className="mt-4 flex justify-center">
+          <Link to="/usuarios">
+            <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Ir para Portal de RH (Cadastro Completo)</Button>
+          </Link>
+        </div>
         {companyId && (
           <InviteDialog
             open={creating}

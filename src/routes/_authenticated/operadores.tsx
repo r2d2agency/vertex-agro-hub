@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, UserCog } from "lucide-react";
+import { Plus, Pencil, Trash2, UserCog, UserPlus } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/vertex/page-header";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { Card, CardContent } from "@/components/ui/card";
@@ -58,7 +59,14 @@ function OperatorsPage() {
       <PageHeader
         title="Operadores"
         description="Cadastro e gestão de operadores de máquinas e implementos."
-        actions={companyId && <Button onClick={() => setCreating(true)}><Plus className="mr-2 h-4 w-4" /> Novo operador</Button>}
+        actions={companyId && (
+          <div className="flex gap-2">
+            <Button onClick={() => setCreating(true)}><Plus className="mr-2 h-4 w-4" /> Novo operador</Button>
+            <Link to="/usuarios">
+              <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Portal de RH</Button>
+            </Link>
+          </div>
+        )}
       />
       <CompanyPicker companies={companies} companyId={companyId} onChange={setCompanyId} />
       {!isLoading && companies.length === 0 && <NoCompanyCard />}
