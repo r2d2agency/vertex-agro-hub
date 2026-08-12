@@ -1,6 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
+  head: () => ({
+    title: 'Vertex Agro - Gestão Inteligente para Seringais',
+    meta: [
+      { name: 'description', content: 'Plataforma líder em gestão de seringais, focada em produtividade e controle operacional.' },
+      { property: 'og:title', content: 'Vertex Agro' },
+      { property: 'og:description', content: 'Gestão Inteligente para Seringais' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+    ],
+  }),
   component: () => (
     <div className="flex min-h-screen flex-col items-center justify-center p-8 text-center bg-[#0F172A] text-white">
       <h1 className="text-4xl font-bold tracking-tight sm:text-6xl text-[#3B82F6]">
