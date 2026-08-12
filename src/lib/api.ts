@@ -117,7 +117,9 @@ export async function apiRequest<T>(
     if (token) requestHeaders.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${ensureApiUrl()}${path}`, {
+  const apiBase = ensureApiUrl();
+  const fullPath = path.startsWith('/api') ? path : `/api${path}`;
+  const response = await fetch(`${apiBase}${fullPath}`, {
     ...init,
     headers: requestHeaders,
     body,
