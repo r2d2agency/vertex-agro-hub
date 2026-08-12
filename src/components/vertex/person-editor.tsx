@@ -59,7 +59,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ["person", userId, companyId],
     queryFn: () => getPerson(userId!, companyId),
-    enabled: open && !!userId && !!companyId,
+    enabled: open && !!userId && !!companyId && companyId !== "null" && companyId !== "undefined",
   });
 
   useEffect(() => {

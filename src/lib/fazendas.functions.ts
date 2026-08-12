@@ -36,6 +36,7 @@ export type FarmInput = {
 };
 
 export function listFarms(companyId: string, regionalId?: string) {
+  if (!companyId || companyId === "null" || companyId === "undefined") return Promise.resolve([]);
   const qs = new URLSearchParams({ companyId });
   if (regionalId) qs.set("regionalId", regionalId);
   return apiRequest<Farm[]>(`/farms?${qs.toString()}`);

@@ -59,7 +59,7 @@ function PeoplePage() {
   const { data = [], isLoading: loadingList } = useQuery({
     queryKey: ["people", companyId],
     queryFn: () => listPeople(companyId!),
-    enabled: !!companyId,
+    enabled: !!companyId && companyId !== "null" && companyId !== "undefined",
   });
 
   const changeRole = useMutation({
