@@ -18,7 +18,7 @@ app.get('/api/plots', (req, res) => res.json([]));
 app.get('/api/field/me', (req, res) => res.json({ user: { id: '1', email: 'tnicodemos@gmail.com' }, roles: ['admin_global'], primaryRole: 'admin', isAdmin: true, companies: [], assignments: [] }));
 
 // Fallback for other API routes
-app.all('*', (req, res) => {
+app.use((req, res) => {
   console.warn(`Unhandled API route: ${req.method} ${req.url}`);
   res.status(404).json({ message: 'Route not implemented in mock', path: req.url });
 });
