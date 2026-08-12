@@ -86,6 +86,7 @@ function FieldHome() {
   useEffect(() => {
     if (typeof navigator !== "undefined") setOnline(navigator.onLine);
     const on = () => setOnline(true);
+    const off = () => setOnline(false);
     window.addEventListener("online", on);
     window.addEventListener("offline", off);
     const un = subscribeOutbox((s) => { setPending(s.pending); if (!s.running && s.pending === 0) setLastSync(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })); });
