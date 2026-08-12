@@ -49,6 +49,7 @@ export class PeopleService {
   }
 
   async list(userId: string, companyId: string) {
+    if (!companyId || companyId === 'undefined') throw new BadRequestException('companyId é obrigatório');
     await this.access.ensureCompany(userId, companyId);
     const roles = await this.prisma.userRole.findMany({
       where: { companyId },
@@ -72,6 +73,7 @@ export class PeopleService {
   }
 
   async get(userId: string, targetUserId: string, companyId: string) {
+    if (!companyId || companyId === 'undefined') throw new BadRequestException('companyId é obrigatório');
     await this.access.ensureCompany(userId, companyId);
     const user = await this.prisma.user.findUnique({
       where: { id: targetUserId },
@@ -148,6 +150,7 @@ export class PeopleService {
   }
 
   async updatePersonal(userId: string, targetUserId: string, companyId: string, dto: PersonalDataDto) {
+    if (!companyId || companyId === 'undefined') throw new BadRequestException('companyId é obrigatório');
     await this.ensureManager(userId, companyId);
     await this.ensureMember(targetUserId, companyId);
     const data = pickPersonal(dto);

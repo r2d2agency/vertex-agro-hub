@@ -14,7 +14,7 @@ export class PeopleController {
   constructor(private readonly svc: PeopleService) {}
 
   @Get()
-  list(@Req() req: any, @Query('companyId', ParseUUIDPipe) companyId: string) {
+  list(@Req() req: any, @Query('companyId') companyId: string) {
     return this.svc.list(req.user.sub, companyId);
   }
 
@@ -32,7 +32,7 @@ export class PeopleController {
   get(
     @Req() req: any,
     @Param('userId', ParseUUIDPipe) targetUserId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
   ) {
     return this.svc.get(req.user.sub, targetUserId, companyId);
   }
@@ -46,7 +46,7 @@ export class PeopleController {
   resetPassword(
     @Req() req: any,
     @Param('userId', ParseUUIDPipe) targetUserId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
   ) {
     return this.svc.resetPassword(req.user.sub, targetUserId, companyId);
   }
@@ -56,7 +56,7 @@ export class PeopleController {
   updatePersonal(
     @Req() req: any,
     @Param('userId', ParseUUIDPipe) targetUserId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
     @Body() dto: PersonalDataDto,
   ) {
     return this.svc.updatePersonal(req.user.sub, targetUserId, companyId, dto);
@@ -75,7 +75,7 @@ export class PeopleController {
   setActive(
     @Req() req: any,
     @Param('userId', ParseUUIDPipe) targetUserId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
     @Body() dto: ToggleActiveDto,
   ) {
     return this.svc.setActive(req.user.sub, targetUserId, companyId, dto);
@@ -85,7 +85,7 @@ export class PeopleController {
   listDocs(
     @Req() req: any,
     @Param('userId', ParseUUIDPipe) targetUserId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
   ) {
     return this.svc.listDocuments(req.user.sub, targetUserId, companyId);
   }
@@ -104,7 +104,7 @@ export class PeopleController {
     @Req() req: any,
     @Param('userId', ParseUUIDPipe) targetUserId: string,
     @Param('docId', ParseUUIDPipe) docId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
   ) {
     return this.svc.deleteDocument(req.user.sub, targetUserId, docId, companyId);
   }
@@ -114,7 +114,7 @@ export class PeopleController {
   listAssignments(
     @Req() req: any,
     @Param('userId', ParseUUIDPipe) targetUserId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
   ) {
     return this.svc.listAssignments(req.user.sub, targetUserId, companyId);
   }
@@ -143,7 +143,7 @@ export class PeopleController {
     @Req() req: any,
     @Param('userId', ParseUUIDPipe) targetUserId: string,
     @Param('assignmentId', ParseUUIDPipe) assignmentId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
   ) {
     return this.svc.deleteAssignment(req.user.sub, targetUserId, assignmentId, companyId);
   }
@@ -153,7 +153,7 @@ export class PeopleController {
   listEval(
     @Req() req: any,
     @Param('userId', ParseUUIDPipe) targetUserId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
   ) {
     return this.svc.listEvaluations(req.user.sub, targetUserId, companyId);
   }
@@ -172,7 +172,7 @@ export class PeopleController {
     @Req() req: any,
     @Param('userId', ParseUUIDPipe) targetUserId: string,
     @Param('evaluationId', ParseUUIDPipe) evaluationId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
   ) {
     return this.svc.deleteEvaluation(req.user.sub, targetUserId, evaluationId, companyId);
   }
@@ -190,7 +190,7 @@ export class PeopleController {
   remove(
     @Req() req: any,
     @Param('userId', ParseUUIDPipe) userId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
   ) {
     return this.svc.remove(req.user.sub, userId, companyId);
   }
