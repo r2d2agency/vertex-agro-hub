@@ -178,8 +178,9 @@ function PeoplePage() {
         companyId={companyId}
         onSaved={(userId) => {
           qc.invalidateQueries({ queryKey: ["people", companyId] });
-          // Manual flow preferred by user
+          if (userId) setEditingId(userId);
         }}
+
         onCredentials={setCreds}
       />
 

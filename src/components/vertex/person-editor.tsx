@@ -18,8 +18,10 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CepInput } from "@/components/vertex/cep-input";
+import { PhoneInput } from "@/components/vertex/phone-input";
 import { UfSelect } from "@/components/vertex/uf-select";
 import { FileDropzone } from "@/components/vertex/file-dropzone";
+
 import { listFarms } from "@/lib/fazendas.functions";
 import {
   ASSIGNMENT_ROLES, CONTRACT_TYPES, DOCUMENT_KINDS, GENDERS, MARITAL_STATUSES,
@@ -59,7 +61,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ["person", userId, companyId],
     queryFn: () => getPerson(userId!, companyId),
-    enabled: open && !!userId && !!companyId && companyId !== "null" && companyId !== "undefined",
+    enabled: open && !!userId && userId !== "new" && !!companyId && companyId !== "null" && companyId !== "undefined",
   });
 
   useEffect(() => {
@@ -173,7 +175,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
               <TabsTrigger value="personal">Pessoal</TabsTrigger>
               <TabsTrigger value="contact">Contato</TabsTrigger>
               <TabsTrigger value="employment">Profissional</TabsTrigger>
-              <TabsTrigger value="assignments">Fazendas</TabsTrigger>
+              <TabsTrigger value="assignments" disabled={!userId || userId === "new"}>Fazendas</TabsTrigger>
               <TabsTrigger value="evaluations">Avaliações</TabsTrigger>
               <TabsTrigger value="documents">Documentos</TabsTrigger>
             </TabsList>
@@ -233,11 +235,12 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
 
               <TabsContent value="contact" className="mt-4 grid gap-4 md:grid-cols-2">
                 <Field label="Telefone principal">
-                  <Input value={personal.phone ?? ""} onChange={(e) => set({ phone: e.target.value })} placeholder="(00) 00000-0000" />
+                  <PhoneInput value={personal.phone ?? ""} onChange={(v) => set({ phone: v })} />
                 </Field>
                 <Field label="Telefone alternativo">
-                  <Input value={personal.phoneAlt ?? ""} onChange={(e) => set({ phoneAlt: e.target.value })} />
+                  <PhoneInput value={personal.phoneAlt ?? ""} onChange={(v) => set({ phoneAlt: v })} />
                 </Field>
+
                 <Field label="CEP">
                   <CepInput
                     value={personal.addressCep ?? ""}
@@ -272,8 +275,9 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                   <Input value={personal.emergencyContactName ?? ""} onChange={(e) => set({ emergencyContactName: e.target.value })} />
                 </Field>
                 <Field label="Contato de emergência (telefone)">
-                  <Input value={personal.emergencyContactPhone ?? ""} onChange={(e) => set({ emergencyContactPhone: e.target.value })} />
+                  <PhoneInput value={personal.emergencyContactPhone ?? ""} onChange={(v) => set({ emergencyContactPhone: v })} />
                 </Field>
+
               </TabsContent>
 
               <TabsContent value="employment" className="mt-4 grid gap-4 md:grid-cols-2">

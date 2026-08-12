@@ -165,7 +165,9 @@ export function removePerson(userId: string, companyId: string) {
 
 export const CONTRACT_TYPES = [
   "CLT", "PJ", "Autônomo", "Estagiário", "Temporário", "Terceirizado", "Sócio",
+  "Diarista", "Mensalista", "Por Árvore", "Produção", "Meeiro", "Empreiteiro",
 ] as const;
+
 
 export const GENDERS = ["Masculino", "Feminino", "Outro", "Prefiro não informar"] as const;
 
