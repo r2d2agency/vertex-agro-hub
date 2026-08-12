@@ -24,7 +24,7 @@ import {
 } from './dto';
 
 function requireCompanyId(companyId?: string) {
-  if (!companyId || companyId === 'undefined') throw new BadRequestException('companyId é obrigatório');
+  if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
   return companyId;
 }
 

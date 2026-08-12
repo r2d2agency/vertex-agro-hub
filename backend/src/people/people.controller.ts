@@ -22,7 +22,7 @@ export class PeopleController {
   farmTeam(
     @Req() req: any,
     @Param('farmId', ParseUUIDPipe) farmId: string,
-    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('companyId') companyId: string,
     @Query('history') history?: string,
   ) {
     return this.svc.listFarmTeam(req.user.sub, farmId, companyId, history === 'true');

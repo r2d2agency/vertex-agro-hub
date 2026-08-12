@@ -88,6 +88,7 @@ export type PersonDetail = Person & PersonalData & {
 };
 
 export function listPeople(companyId: string) {
+  if (!companyId || companyId === "null" || companyId === "undefined") return Promise.resolve([]);
   return apiRequest<Person[]>(`/people?companyId=${encodeURIComponent(companyId)}`);
 }
 

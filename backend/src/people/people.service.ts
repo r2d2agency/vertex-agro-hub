@@ -49,7 +49,7 @@ export class PeopleService {
   }
 
   async list(userId: string, companyId: string) {
-    if (!companyId || companyId === 'undefined') throw new BadRequestException('companyId é obrigatório');
+    if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
     await this.access.ensureCompany(userId, companyId);
     const roles = await this.prisma.userRole.findMany({
       where: { companyId },
@@ -73,7 +73,7 @@ export class PeopleService {
   }
 
   async get(userId: string, targetUserId: string, companyId: string) {
-    if (!companyId || companyId === 'undefined') throw new BadRequestException('companyId é obrigatório');
+    if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
     await this.access.ensureCompany(userId, companyId);
     const user = await this.prisma.user.findUnique({
       where: { id: targetUserId },
@@ -150,7 +150,7 @@ export class PeopleService {
   }
 
   async updatePersonal(userId: string, targetUserId: string, companyId: string, dto: PersonalDataDto) {
-    if (!companyId || companyId === 'undefined') throw new BadRequestException('companyId é obrigatório');
+    if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
     await this.ensureManager(userId, companyId);
     await this.ensureMember(targetUserId, companyId);
     const data = pickPersonal(dto);
@@ -190,6 +190,7 @@ export class PeopleService {
   }
 
   async listDocuments(userId: string, targetUserId: string, companyId: string) {
+    if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
     await this.access.ensureCompany(userId, companyId);
     return this.prisma.personDocument.findMany({
       where: { userId: targetUserId, OR: [{ companyId }, { companyId: null }] },
@@ -276,6 +277,7 @@ export class PeopleService {
 
   // ===== Vínculos com fazendas (histórico) =====
   async listAssignments(userId: string, targetUserId: string, companyId: string) {
+    if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
     await this.access.ensureCompany(userId, companyId);
     const items = await this.prisma.farmAssignment.findMany({
       where: { userId: targetUserId, companyId },
@@ -289,6 +291,7 @@ export class PeopleService {
   }
 
   async listFarmTeam(userId: string, farmId: string, companyId: string, includeHistory = false) {
+    if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
     await this.access.ensureCompany(userId, companyId);
     const farm = await this.prisma.farm.findFirst({ where: { id: farmId, companyId } });
     if (!farm) throw new NotFoundException('Fazenda não encontrada');
@@ -359,6 +362,7 @@ export class PeopleService {
 
   // ===== Avaliações =====
   async listEvaluations(userId: string, targetUserId: string, companyId: string) {
+    if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
     await this.access.ensureCompany(userId, companyId);
     return this.prisma.personEvaluation.findMany({
       where: { userId: targetUserId, companyId },
