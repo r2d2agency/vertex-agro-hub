@@ -154,27 +154,49 @@ function FieldHome() {
         </div>
       </header>
 
-      {/* Status cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-border/60 bg-card p-4">
-          <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-            {online ? <Wifi className="h-3.5 w-3.5 text-primary" /> : <WifiOff className="h-3.5 w-3.5 text-warning" />}
-            Conexão
+      {/* Status cards & Offline Warning */}
+      <div className="space-y-3">
+        {pending > 0 && (
+          <div className="flex items-center gap-3 rounded-2xl border border-warning/30 bg-warning/10 p-4 text-warning animate-in slide-in-from-top-2 duration-300">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-warning/20">
+              <RefreshCw className="h-5 w-5 animate-pulse" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold">Sincronização pendente</div>
+              <div className="text-[11px] opacity-90 truncate">
+                {pending} registro(s) salvos no dispositivo aguardando internet.
+              </div>
+            </div>
+            <button
+              onClick={() => flushOutbox()}
+              className="rounded-lg bg-warning/20 px-3 py-1.5 text-xs font-bold active:scale-95 transition-transform"
+            >
+              Enviar
+            </button>
           </div>
-          <div className={`text-lg font-semibold ${online ? "text-primary" : "text-warning"}`}>{online ? "Online" : "Offline"}</div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-border/60 bg-card p-4">
+            <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+              {online ? <Wifi className="h-3.5 w-3.5 text-primary" /> : <WifiOff className="h-3.5 w-3.5 text-warning" />}
+              Conexão
+            </div>
+            <div className={`text-lg font-semibold ${online ? "text-primary" : "text-warning"}`}>{online ? "Online" : "Offline"}</div>
+          </div>
+          <Link
+            to="/campo/mais"
+            className="rounded-2xl border border-border/60 bg-card p-4 text-left transition hover:border-primary/50"
+          >
+            <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Sincronização
+            </div>
+            <div className="text-lg font-semibold text-foreground">
+              {pending > 0 ? `${pending} pend.` : `Hoje, ${lastSync}`}
+            </div>
+          </Link>
         </div>
-        <button
-          onClick={() => flushOutbox()}
-          className="rounded-2xl border border-border/60 bg-card p-4 text-left transition hover:border-primary/50"
-        >
-          <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-            <RefreshCw className="h-3.5 w-3.5" />
-            Sincronização
-          </div>
-          <div className="text-lg font-semibold text-foreground">
-            {pending > 0 ? `${pending} pend.` : `Hoje, ${lastSync}`}
-          </div>
-        </button>
       </div>
 
       {/* Resumo do dia */}
