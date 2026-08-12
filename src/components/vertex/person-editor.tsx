@@ -254,6 +254,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                 <Field label="UF">
                   <UfSelect value={personal.addressState ?? ""} onChange={(v) => set({ addressState: v })} />
                 </Field>
+
                 <div className="md:col-span-2">
                   <Field label="Logradouro">
                     <Input value={personal.addressStreet ?? ""} onChange={(e) => set({ addressStreet: e.target.value })} />

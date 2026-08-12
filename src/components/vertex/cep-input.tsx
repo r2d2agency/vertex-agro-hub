@@ -35,6 +35,9 @@ export function CepInput({
       return;
     }
     const enderecoParts = [result.logradouro, result.complemento].filter(Boolean).join(", ");
+    
+    console.log("ViaCep result:", result);
+
     onFilled({
       cep: formatCep(digits),
       endereco: enderecoParts,
