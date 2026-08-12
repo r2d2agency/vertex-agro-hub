@@ -341,7 +341,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
               </TabsContent>
 
               <TabsContent value="assignments" className="mt-4">
-                <AssignmentsTab userId={userId!} companyId={companyId} personRoles={data?.roles ?? []} />
+                <AssignmentsTab userId={userId!} companyId={companyId} personRoles={data?.roles || []} />
               </TabsContent>
 
               <TabsContent value="evaluations" className="mt-4">
