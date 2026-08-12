@@ -199,11 +199,19 @@ function FieldHome() {
             </div>
             <div className="mt-3 font-semibold">{farmName(nextTask.farmId) || nextTask.title}</div>
             <div className="text-xs text-muted-foreground">{nextTask.title}</div>
-            <Link to="/campo/agenda">
-              <button className="mt-4 w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground">
-                Iniciar atividade
-              </button>
-            </Link>
+            
+            {/* Monitor não pode abrir visita técnica do consultor */}
+            {!(me.primaryRole === "monitor" && nextTask.category === "visita") ? (
+              <Link to="/campo/agenda">
+                <button className="mt-4 w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground">
+                  Iniciar atividade
+                </button>
+              </Link>
+            ) : (
+              <div className="mt-4 rounded-xl bg-muted/50 p-3 text-center text-xs text-muted-foreground">
+                Agendado com consultor. Acompanhe a realização.
+              </div>
+            )}
           </div>
         </section>
       )}
