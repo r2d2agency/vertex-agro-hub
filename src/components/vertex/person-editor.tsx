@@ -587,15 +587,22 @@ function AssignmentsTab({ userId, companyId, personRoles }: { userId: string; co
           </Field>
           <Field label="Fazenda *">
             <Select value={farmId} onValueChange={setFarmId}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                {farms.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.name}{f.code ? ` (${f.code})` : ""}
-                  </SelectItem>
-                ))}
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione a fazenda" />
+              </SelectTrigger>
+              <SelectContent position="popper" sideOffset={5} className="z-[9999] max-h-72">
+                {farms.length === 0 ? (
+                  <div className="p-2 text-xs text-muted-foreground">Nenhuma fazenda encontrada</div>
+                ) : (
+                  farms.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.name}{f.code ? ` (${f.code})` : ""}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
+
           </Field>
           <Field label="Data de início *">
             <Input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
