@@ -25,12 +25,8 @@ function ensureApiUrl() {
     try {
       const configuredUrl = new URL(CONFIGURED_API_BASE_URL, window.location.origin);
 
-      // Em produção, chamadas diretas do browser para outro domínio voltam a depender de CORS.
-      // Portanto, mesmo que o EasyPanel injete por engano a URL pública do backend no build,
-      // o frontend usa o proxy same-origin /api e o server.mjs repassa para API_PROXY_TARGET.
       if (configuredUrl.origin !== window.location.origin) {
-        // Em desenvolvimento local, se não estiver usando /api, aponta para 3000
-        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+        if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
           return "http://localhost:3000/api";
         }
         return "/api";
