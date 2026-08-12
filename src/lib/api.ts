@@ -76,7 +76,7 @@ async function refreshAccessToken() {
   if (!refresh_token) return false;
 
   const apiBase = ensureApiUrl();
-  const response = await fetch(`${apiBase}/auth/refresh`, {
+  const response = await fetch(`${apiBase}/api/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token }),
