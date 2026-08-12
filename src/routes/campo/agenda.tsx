@@ -115,15 +115,23 @@ function AgendaPage() {
               <div className="mt-2 font-semibold">{farmName ?? t.title}</div>
               <div className="text-xs text-muted-foreground">{t.title}</div>
               {!done && (
-                <button
-                  onClick={() => conclude(t)}
-                  disabled={busy === t.id}
-                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary/10 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
-                >
-                  {busy === t.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                  Concluir
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
+                <>
+                  {!(me?.primaryRole === "monitor" && t.category === "visita") ? (
+                    <button
+                      onClick={() => conclude(t)}
+                      disabled={busy === t.id}
+                      className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary/10 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
+                    >
+                      {busy === t.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                      Concluir
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  ) : (
+                    <div className="mt-3 rounded-xl bg-muted/30 py-2 text-center text-[10px] text-muted-foreground">
+                      Visita técnica do consultor vinculada
+                    </div>
+                  )}
+                </>
               )}
             </li>
           );

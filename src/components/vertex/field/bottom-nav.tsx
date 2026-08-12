@@ -16,11 +16,11 @@ const TABS: Item[] = [
 ];
 
 const OPERATIONS = [
-  { to: "/campo/sangrador", label: "Cadastrar/vincular sangrador", emoji: "🧑‍🌾" },
-  { to: "/campo/consultor", label: "Visita técnica (Consultoria)", emoji: "📋" },
-  { to: "/campo/sangria", label: "Registrar sangria", emoji: "💧" },
-  { to: "/campo/producao", label: "Registrar produção", emoji: "📦" },
-  { to: "/campo/estimulacao", label: "Registrar estimulação", emoji: "🧪" },
+  { to: "/campo/sangrador", label: "Cadastrar/vincular sangrador", emoji: "🧑‍🌾", roles: ["monitor", "admin"] },
+  { to: "/campo/consultor", label: "Visita técnica (Consultoria)", emoji: "📋", roles: ["consultor", "admin"] },
+  { to: "/campo/sangria", label: "Registrar sangria", emoji: "💧", roles: ["monitor", "admin"] },
+  { to: "/campo/producao", label: "Registrar produção", emoji: "📦", roles: ["monitor", "admin"] },
+  { to: "/campo/estimulacao", label: "Registrar estimulação", emoji: "🧪", roles: ["monitor", "admin"] },
   { to: "/campo/ocorrencia", label: "Registrar ocorrência", emoji: "⚠️" },
   { to: "/campo/operacao-maquina", label: "Apontar operação de máquina", emoji: "🚜" },
   { to: "/campo/abastecimento", label: "Abastecer máquina", emoji: "⛽" },
@@ -60,7 +60,7 @@ export function FieldBottomNav({ role }: { role: string }) {
                       <SheetTitle className="text-left">Nova operação</SheetTitle>
                     </SheetHeader>
                     <div className="mt-4 grid gap-2 pb-6">
-                      {OPERATIONS.map((op) => (
+                      {OPERATIONS.filter(op => !op.roles || op.roles.includes(role)).map((op) => (
                         <button
                           key={op.to}
                           onClick={() => { setOpen(false); navigate({ to: op.to as any }); }}
