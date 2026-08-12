@@ -18,7 +18,10 @@ enum AppRole {
   supervisor_regional
   monitor
   consultor
+  sangrador
+  operador
   consulta
+
 }
 
 enum SyncStatus {
