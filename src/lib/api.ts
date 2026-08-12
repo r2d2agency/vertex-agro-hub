@@ -120,8 +120,7 @@ export async function apiRequest<T>(
 
   const apiBase = ensureApiUrl();
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const fullPath = (apiBase === "/api" && normalizedPath.startsWith("/api")) ? normalizedPath.replace("/api", "") : normalizedPath;
-  const response = await fetch(`${apiBase}${fullPath}`, {
+  const response = await fetch(`${apiBase}${normalizedPath}`, {
     ...init,
     headers: requestHeaders,
     body,
