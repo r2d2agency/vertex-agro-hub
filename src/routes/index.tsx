@@ -30,7 +30,5 @@ export const Route = createFileRoute('/')({
         © {new Date().getFullYear()} Vertex Agro. Design by TNS R2D2.
       </footer>
     </div>
-
-
   ),
 })

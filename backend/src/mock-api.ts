@@ -1,26 +1,61 @@
-import express from 'express';
-const app = express();
-app.use(express.json());
+import { createServer } from 'node:http';
 
-// Logger for debugging
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  next();
+const server = createServer((req, res) => {
+  const url = new URL(req.url || '', `http://${req.headers.host}`);
+  console.log(`[${new Date().toISOString()}] ${req.method} ${url.pathname}`);
+
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+  // Simple router
+  if (url.pathname === '/api/health') {
+    res.end(JSON.stringify({ status: 'ok' }));
+    return;
+  }
+
+  if (url.pathname === '/api/auth/me') {
+    res.end(JSON.stringify({ id: '1', email: 'tnicodemos@gmail.com', roles: [{ role: 'admin_global' }] }));
+    return;
+  }
+
+  if (url.pathname === '/api/companies') {
+    res.end(JSON.stringify([{ id: '7b7b26dd-7594-42d6-82f5-623629d9d3c9', name: 'Empresa Teste', legalName: 'Empresa Teste LTDA', active: true }]));
+    return;
+  }
+
+  if (url.pathname === '/api/farms') {
+    res.end(JSON.stringify([]));
+    return;
+  }
+
+  if (url.pathname === '/api/regionals') {
+    res.end(JSON.stringify([]));
+    return;
+  }
+
+  if (url.pathname === '/api/plots') {
+    res.end(JSON.stringify([]));
+    return;
+  }
+
+  if (url.pathname === '/api/field/me') {
+    res.end(JSON.stringify({ user: { id: '1', email: 'tnicodemos@gmail.com' }, roles: ['admin_global'], primaryRole: 'admin', isAdmin: true, companies: [], assignments: [] }));
+    return;
+  }
+
+  if (url.pathname === '/api/auth/login' && req.method === 'POST') {
+    // Basic mock login
+    res.end(JSON.stringify({
+      access_token: 'mock_access_token',
+      refresh_token: 'mock_refresh_token'
+    }));
+    return;
+  }
+
+  console.warn(`Unhandled API route: ${req.method} ${url.pathname}`);
+  res.statusCode = 404;
+  res.end(JSON.stringify({ message: 'Route not implemented in mock', path: url.pathname }));
 });
 
-// Mock endpoints
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
-app.get('/api/auth/me', (req, res) => res.json({ id: '1', email: 'tnicodemos@gmail.com', roles: [{ role: 'admin_global' }] }));
-app.get('/api/companies', (req, res) => res.json([{ id: '7b7b26dd-7594-42d6-82f5-623629d9d3c9', name: 'Empresa Teste', legalName: 'Empresa Teste LTDA', active: true }]));
-app.get('/api/farms', (req, res) => res.json([]));
-app.get('/api/regionals', (req, res) => res.json([]));
-app.get('/api/plots', (req, res) => res.json([]));
-app.get('/api/field/me', (req, res) => res.json({ user: { id: '1', email: 'tnicodemos@gmail.com' }, roles: ['admin_global'], primaryRole: 'admin', isAdmin: true, companies: [], assignments: [] }));
-
-// Fallback for other API routes
-app.all('/api/*', (req, res) => {
-  console.warn(`Unhandled API route: ${req.method} ${req.url}`);
-  res.status(404).json({ message: 'Route not implemented in mock', path: req.url });
+server.listen(4000, '0.0.0.0', () => {
+  console.log('Mock API running on 4000 (Pure Node)');
 });
-
-app.listen(4000, () => console.log('Mock API running on 4000'));
