@@ -1,4 +1,4 @@
-const CONFIGURED_API_BASE_URL = "http://localhost:4000/api";
+const CONFIGURED_API_BASE_URL = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
 
 const ACCESS_TOKEN_KEY = "vertex_access_token";
 const REFRESH_TOKEN_KEY = "vertex_refresh_token";
@@ -29,8 +29,11 @@ function ensureApiUrl() {
       // Portanto, mesmo que o EasyPanel injete por engano a URL pública do backend no build,
       // o frontend usa o proxy same-origin /api e o server.mjs repassa para API_PROXY_TARGET.
       if (configuredUrl.origin !== window.location.origin) {
-        // Always use the configured base URL in development or if explicitly set
-        return CONFIGURED_API_BASE_URL;
+        // Em desenvolvimento local, se não estiver usando /api, aponta para 3000
+        if (window.location.hostname === 'localhost') {
+          return "http://localhost:3000/api";
+        }
+        return "/api";
       }
     } catch {
       return "/api";
