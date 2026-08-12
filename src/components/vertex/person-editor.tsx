@@ -126,8 +126,9 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const set = (patch: PersonalData) => setPersonal((p) => ({ ...p, ...patch }));
+  const set = (patch: Partial<PersonalData>) => setPersonal((p) => ({ ...p, ...patch }));
   const setE = (patch: Partial<Employment>) => setEmployment((p) => ({ ...p, ...patch }));
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -251,6 +252,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                       addressCep: d.cep, addressStreet: d.endereco, addressDistrict: d.bairro,
                       addressCity: d.cidade, addressState: d.uf,
                     })}
+
 
                   />
                 </Field>
