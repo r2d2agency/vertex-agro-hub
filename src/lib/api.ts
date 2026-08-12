@@ -1,4 +1,4 @@
-const CONFIGURED_API_BASE_URL = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
+const CONFIGURED_API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 const ACCESS_TOKEN_KEY = "vertex_access_token";
 const REFRESH_TOKEN_KEY = "vertex_refresh_token";
@@ -29,10 +29,10 @@ function ensureApiUrl() {
         if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
           return "http://localhost:3000";
         }
-        return "/api";
+        return "";
       }
     } catch {
-      return "/api";
+      return "";
     }
   }
 
@@ -119,8 +119,8 @@ export async function apiRequest<T>(
   }
 
   const apiBase = ensureApiUrl();
-  const fullPath = path.startsWith('/api') ? path : `/api${path}`;
-  const response = await fetch(`${apiBase}${fullPath}`, {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const response = await fetch(`${apiBase}${normalizedPath}`, {
     ...init,
     headers: requestHeaders,
     body,
