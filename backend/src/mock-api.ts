@@ -95,6 +95,6 @@ const server = createServer((req, res) => {
   res.end(JSON.stringify({ message: 'Route not implemented in mock', path: url.pathname }));
 });
 
-server.listen(4000, '0.0.0.0', () => {
-  console.log('Mock API running on 4000 (Pure Node with CORS)');
+server.listen(3000, '0.0.0.0', () => {
+  console.log('Mock API running on 3000 (Pure Node with CORS)');
 });
