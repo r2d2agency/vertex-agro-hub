@@ -41,6 +41,7 @@ export function PeopleByRolePage({
   const [toDelete, setToDelete] = useState<Person | null>(null);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
   const roleLabel = COMPANY_ROLES.find((r) => r.value === role)?.label ?? role;
 
   const { data = [], isLoading: loadingList } = useQuery({
@@ -152,14 +153,22 @@ export function PeopleByRolePage({
         roleLabel={roleLabel}
         onOpenChange={setCreating}
         companyId={companyId}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["people", companyId] })}
+        onSaved={(userId) => {
+          qc.invalidateQueries({ queryKey: ["people", companyId] });
+          if (userId) setJustCreatedId(userId);
+        }}
       />
 
       {companyId && (
         <PersonEditor
-          open={!!editingId}
-          onOpenChange={(o) => !o && setEditingId(null)}
-          userId={editingId}
+          open={!!editingId || !!justCreatedId}
+          onOpenChange={(o) => {
+            if (!o) {
+              setEditingId(null);
+              setJustCreatedId(null);
+            }
+          }}
+          userId={editingId || justCreatedId}
           companyId={companyId}
         />
       )}
@@ -191,7 +200,7 @@ export function InviteDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   companyId: string | null;
-  onSaved: () => void;
+  onSaved: (userId?: string) => void;
   role: CompanyRole;
   roleLabel: string;
 }) {
@@ -204,9 +213,9 @@ export function InviteDialog({
       companyId: companyId!, email, fullName,
       password: password || undefined, role,
     }),
-    onSuccess: () => {
+    onSuccess: (r) => {
       toast.success(`${roleLabel} cadastrado`);
-      onSaved(); onOpenChange(false);
+      onSaved(r.id); onOpenChange(false);
       setEmail(""); setFullName(""); setPassword("");
     },
     onError: (e: Error) => toast.error(e.message),

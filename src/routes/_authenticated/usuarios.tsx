@@ -47,6 +47,7 @@ function PeoplePage() {
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<Person | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
   const [creds, setCreds] = useState<{ email: string; fullName: string | null; password: string } | null>(null);
 
   const reset = useMutation({
@@ -175,7 +176,10 @@ function PeoplePage() {
         open={creating}
         onOpenChange={setCreating}
         companyId={companyId}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["people", companyId] })}
+        onSaved={(userId) => {
+          qc.invalidateQueries({ queryKey: ["people", companyId] });
+          if (userId) setJustCreatedId(userId);
+        }}
         onCredentials={setCreds}
       />
 
@@ -183,9 +187,14 @@ function PeoplePage() {
 
       {companyId && (
         <PersonEditor
-          open={!!editingId}
-          onOpenChange={(o) => !o && setEditingId(null)}
-          userId={editingId}
+          open={!!editingId || !!justCreatedId}
+          onOpenChange={(o) => {
+            if (!o) {
+              setEditingId(null);
+              setJustCreatedId(null);
+            }
+          }}
+          userId={editingId || justCreatedId}
           companyId={companyId}
         />
       )}
@@ -217,7 +226,7 @@ function InviteDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   companyId: string | null;
-  onSaved: () => void;
+  onSaved: (userId?: string) => void;
   onCredentials: (c: { email: string; fullName: string | null; password: string }) => void;
 }) {
   const [email, setEmail] = useState("");
@@ -230,7 +239,7 @@ function InviteDialog({
     mutationFn: () => invitePerson({ companyId: companyId!, email, fullName, password: password || undefined, role }),
     onSuccess: (r) => {
       toast.success("Pessoa cadastrada");
-      onSaved();
+      onSaved(r.id);
       onOpenChange(false);
       if (r.generatedPassword) {
         onCredentials({ email: r.email, fullName: r.fullName, password: r.generatedPassword });
