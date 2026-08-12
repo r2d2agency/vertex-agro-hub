@@ -80,7 +80,7 @@ const server = createServer((req, res) => {
     return;
   }
 
-  if (url.pathname === '/api/field/me') {
+  if (url.pathname === '/api/field/me' || url.pathname === '/api/users/me') {
     res.end(JSON.stringify({ user: { id: '1', email: 'tnicodemos@gmail.com' }, roles: ['admin_global'], primaryRole: 'admin', isAdmin: true, companies: [], assignments: [] }));
     return;
   }
