@@ -43,10 +43,11 @@ function relativeTime(iso: string) {
 function AtividadesPage() {
   const { companyId, companies, isLoading, setCompanyId } = useSelectedCompany();
 
-  const from = useMemo(() => {
+  const [from, setFrom] = useState("2026-08-05");
+  useEffect(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
-    return d.toISOString().slice(0, 10);
+    setFrom(d.toISOString().slice(0, 10));
   }, []);
 
   const { data: farms = [] } = useQuery({

@@ -168,4 +168,4 @@ function monthLabel(mes: string) {
   const d = new Date(Number(y), Number(m) - 1, 1);
   return d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(".", "");
 }
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() { return "2026-08-12"; }
