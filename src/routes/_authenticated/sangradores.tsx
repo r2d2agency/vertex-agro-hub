@@ -81,10 +81,10 @@ function SangradoresPage() {
         actions={companyId ? (
           <div className="flex gap-2">
             <Button onClick={() => setEditing("new")}>
-              <Plus className="mr-2 h-4 w-4" /> Novo Sangrador
+              <Plus className="mr-2 h-4 w-4" /> Novo Sangrador (Rápido)
             </Button>
             <Link to="/usuarios" className="inline-flex">
-              <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Gestão RH</Button>
+              <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Portal de RH</Button>
             </Link>
           </div>
         ) : null}

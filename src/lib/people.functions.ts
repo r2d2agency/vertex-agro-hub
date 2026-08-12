@@ -7,8 +7,8 @@ export const COMPANY_ROLES = [
   { value: "monitor", label: "Monitor" },
   { value: "consultor", label: "Consultor" },
   { value: "sangrador", label: "Sangrador" },
+  { value: "operador", label: "Operador de Máquina" },
   { value: "consulta", label: "Consulta (somente leitura)" },
-
 ] as const;
 
 export type CompanyRole = (typeof COMPANY_ROLES)[number]["value"];
@@ -183,6 +183,7 @@ export const ASSIGNMENT_ROLES = [
   { value: "consultor", label: "Consultor" },
   { value: "monitor", label: "Monitor" },
   { value: "sangrador", label: "Sangrador" },
+  { value: "operador", label: "Operador" },
 ] as const;
 export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number]["value"];
 

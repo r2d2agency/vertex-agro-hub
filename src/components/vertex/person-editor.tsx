@@ -497,7 +497,8 @@ function AssignmentsTab({ userId, companyId, personRoles }: { userId: string; co
   const today = new Date().toISOString().slice(0, 10);
   const defaultRole: AssignmentRole =
     personRoles.includes("consultor") ? "consultor" :
-    personRoles.includes("monitor") ? "monitor" : "sangrador";
+    personRoles.includes("monitor") ? "monitor" :
+    personRoles.includes("operador") ? "operador" : "sangrador";
   const [role, setRole] = useState<AssignmentRole>(defaultRole);
   const [farmId, setFarmId] = useState<string>("");
   const [consultorUserId, setConsultorUserId] = useState<string>("");
