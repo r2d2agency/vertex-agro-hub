@@ -155,7 +155,7 @@ export function PeopleByRolePage({
         companyId={companyId}
         onSaved={(userId) => {
           qc.invalidateQueries({ queryKey: ["people", companyId] });
-          // No longer set justCreatedId here to avoid automatic modal opening
+          if (userId) setEditingId(userId);
         }}
       />
 

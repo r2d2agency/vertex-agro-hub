@@ -9,11 +9,13 @@ const ROLES = [
   'supervisor_regional',
   'monitor',
   'consultor',
+  'sangrador',
+  'operador',
   'consulta',
 ] as const;
 export type CompanyRole = (typeof ROLES)[number];
 
-const ASSIGNMENT_ROLES = ['consultor', 'monitor', 'sangrador'] as const;
+const ASSIGNMENT_ROLES = ['consultor', 'monitor', 'sangrador', 'operador'] as const;
 export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number];
 
 export class PersonalDataDto {
