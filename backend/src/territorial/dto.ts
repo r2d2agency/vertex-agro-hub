@@ -30,6 +30,7 @@ export class CreateFarmDto {
   @IsOptional() @IsString() @MaxLength(200) owner?: string;
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsObject() boundary?: Record<string, unknown>;
+  @IsOptional() @IsString({ each: true }) photoUrls?: string[];
 }
 
 export class UpdateFarmDto {
@@ -44,6 +45,7 @@ export class UpdateFarmDto {
   @IsOptional() @IsString() @MaxLength(200) owner?: string;
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsObject() boundary?: Record<string, unknown> | null;
+  @IsOptional() @IsString({ each: true }) photoUrls?: string[];
 }
 
 export class CreatePlotDto {
