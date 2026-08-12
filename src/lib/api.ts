@@ -187,7 +187,7 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const apiBase = ensureApiUrl();
-  const response = await fetch(`${apiBase}/api/uploads`, {
+  const response = await fetch(`${apiBase}/uploads`, {
     method: "POST",
     headers,
     body: form,
