@@ -30,7 +30,7 @@ function ensureApiUrl() {
       // o frontend usa o proxy same-origin /api e o server.mjs repassa para API_PROXY_TARGET.
       if (configuredUrl.origin !== window.location.origin) {
         // Em desenvolvimento local, se não estiver usando /api, aponta para 3000
-        if (window.location.hostname === 'localhost') {
+        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
           return "http://localhost:3000/api";
         }
         return "/api";
