@@ -43,7 +43,10 @@ const server = createServer((req, res) => {
         owner: 'João Silva',
         active: true,
         companyId: '7b7b26dd-7594-42d6-82f5-623629d9d3c9',
-        photoUrls: []
+        photoUrls: [], // Garantindo photoUrls
+        version: 1,
+        syncStatus: 'synced',
+        isDeleted: false
       },
       { 
         id: 'farm-2', 
@@ -55,7 +58,10 @@ const server = createServer((req, res) => {
         owner: 'Maria Oliveira',
         active: true,
         companyId: '7b7b26dd-7594-42d6-82f5-623629d9d3c9',
-        photoUrls: []
+        photoUrls: [], // Garantindo photoUrls
+        version: 1,
+        syncStatus: 'synced',
+        isDeleted: false
       }
     ]));
     return;
