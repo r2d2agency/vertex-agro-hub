@@ -89,14 +89,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
         : EMPTY_EMPLOYMENT(companyId),
     );
   }, [data, companyId]);
-  
-  const set = (update: Partial<PersonalData>) => {
-    setPersonal(prev => ({ ...prev, ...update }));
-  };
 
-  const setE = (update: Partial<Employment>) => {
-    setEmployment(prev => ({ ...prev, ...update }));
-  };
 
 
   const savePersonal = useMutation({
