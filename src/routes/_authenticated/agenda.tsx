@@ -36,6 +36,7 @@ export const Route = createFileRoute("/_authenticated/agenda")({
 });
 
 const nowIso = () => {
+  if (typeof window === "undefined") return "2026-08-12T00:00";
   const d = new Date();
   d.setSeconds(0, 0);
   return d.toISOString().slice(0, 16);
