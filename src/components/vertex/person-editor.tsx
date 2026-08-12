@@ -61,7 +61,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ["person", userId, companyId],
     queryFn: () => getPerson(userId!, companyId),
-    enabled: open && !!userId && userId !== "new" && !!companyId && companyId !== "null" && companyId !== "undefined",
+    enabled: open && !!userId && userId !== "new" && userId !== "null" && userId !== "undefined" && !!companyId && companyId !== "null" && companyId !== "undefined",
   });
 
   useEffect(() => {
@@ -93,7 +93,10 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
 
 
   const savePersonal = useMutation({
-    mutationFn: () => updatePersonPersonal(userId!, companyId, personal),
+    mutationFn: () => {
+      if (!userId || userId === "new" || userId === "null") throw new Error("ID de usuário inválido");
+      return updatePersonPersonal(userId, companyId, personal);
+    },
     onSuccess: () => {
       toast.success("Dados pessoais atualizados");
       qc.invalidateQueries({ queryKey: ["people", companyId] });
@@ -103,11 +106,14 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
   });
 
   const saveEmployment = useMutation({
-    mutationFn: () => upsertPersonEmployment(userId!, {
-      ...employment,
-      companyId,
-      salary: employment.salary === "" || employment.salary == null ? null : Number(employment.salary),
-    }),
+    mutationFn: () => {
+      if (!userId || userId === "new" || userId === "null") throw new Error("ID de usuário inválido");
+      return upsertPersonEmployment(userId, {
+        ...employment,
+        companyId,
+        salary: employment.salary === "" || employment.salary == null ? null : Number(employment.salary),
+      });
+    },
     onSuccess: () => {
       toast.success("Vínculo profissional salvo");
       qc.invalidateQueries({ queryKey: ["person", userId, companyId] });
