@@ -23,7 +23,28 @@ const server = createServer((req, res) => {
   }
 
   if (url.pathname === '/api/farms') {
-    res.end(JSON.stringify([]));
+    res.end(JSON.stringify([
+      { 
+        id: 'farm-1', 
+        name: 'Fazenda Santa Maria', 
+        code: 'FSM-01', 
+        city: 'São José do Rio Preto', 
+        state: 'SP', 
+        totalAreaHa: 150.5, 
+        owner: 'João Silva',
+        active: true
+      },
+      { 
+        id: 'farm-2', 
+        name: 'Seringal Boa Esperança', 
+        code: 'SBE-02', 
+        city: 'Mirassol', 
+        state: 'SP', 
+        totalAreaHa: 85.0, 
+        owner: 'Maria Oliveira',
+        active: true
+      }
+    ]));
     return;
   }
 
