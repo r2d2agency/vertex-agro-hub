@@ -27,7 +27,7 @@ function ensureApiUrl() {
 
       if (configuredUrl.origin !== window.location.origin) {
         if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-          return "http://localhost:3000/api";
+          return "http://localhost:3000";
         }
         return "/api";
       }
@@ -75,7 +75,8 @@ async function refreshAccessToken() {
   const refresh_token = getRefreshToken();
   if (!refresh_token) return false;
 
-  const response = await fetch(`${ensureApiUrl()}/auth/refresh`, {
+  const apiBase = ensureApiUrl();
+  const response = await fetch(`${apiBase}/api/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token }),
@@ -117,7 +118,9 @@ export async function apiRequest<T>(
     if (token) requestHeaders.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${ensureApiUrl()}${path}`, {
+  const apiBase = ensureApiUrl();
+  const fullPath = path.startsWith('/api') ? path : `/api${path}`;
+  const response = await fetch(`${apiBase}${fullPath}`, {
     ...init,
     headers: requestHeaders,
     body,
@@ -183,7 +186,8 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const response = await fetch(`${ensureApiUrl()}/uploads`, {
+  const apiBase = ensureApiUrl();
+  const response = await fetch(`${apiBase}/api/uploads`, {
     method: "POST",
     headers,
     body: form,
