@@ -78,7 +78,7 @@ function OperacaoMaquinaPage() {
     setSaving(true);
     const coords = await captureLocation(6000);
 
-    const payload = {
+    const payload: any = {
       companyId,
       farmId: farm.id,
       machineId,
@@ -99,12 +99,12 @@ function OperacaoMaquinaPage() {
 
     try {
       if (isFinishing && pendingLogId) {
-        // Se for finalização, chamamos PATCH no backend
-        // Como o field.functions.ts usa uma helper genérica `submit` que decide entre queue e online:
-        const res = await submitOperationLog({ ...payload, id: pendingLogId } as any);
+        payload.id = pendingLogId;
+        const res = await submitOperationLog(payload);
         localStorage.removeItem("vertex_pending_op_log");
         toast.success(res.queued ? "Finalização em fila" : "Operação concluída");
       } else {
+        if (!payload.startedAt) payload.startedAt = new Date().toISOString();
         const res = await submitOperationLog(payload);
         if (!isFinishing && !res.queued && res.data?.id) {
           localStorage.setItem(
