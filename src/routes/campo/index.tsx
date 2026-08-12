@@ -110,7 +110,10 @@ function FieldHome() {
     return tasks.find((t) => t.status !== "concluida" && new Date(t.scheduledAt).getTime() >= now - 60_000);
   }, [tasks]);
 
-  const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
+  const [todayLabel, setTodayLabel] = useState("");
+  useEffect(() => {
+    setTodayLabel(new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" }));
+  }, []);
   const farmName = (farmId?: string | null) => me?.assignments.find((a) => a.farm.id === farmId)?.farm.name ?? "";
 
   if (loading || !me) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -119,7 +122,7 @@ function FieldHome() {
     <div className="space-y-5">
       <header className="flex items-center justify-between">
         <div className="flex flex-col">
-          <div className="text-xs capitalize text-muted-foreground">{today}</div>
+          <div className="text-xs capitalize text-muted-foreground">{todayLabel}</div>
           {activeCheckin ? (
             <div className="flex items-center gap-1.5 text-xs font-medium text-primary mt-0.5">
               <ShieldCheck className="h-3 w-3" />
