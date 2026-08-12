@@ -1,4 +1,4 @@
-const CONFIGURED_API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+const CONFIGURED_API_BASE_URL = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
 
 const ACCESS_TOKEN_KEY = "vertex_access_token";
 const REFRESH_TOKEN_KEY = "vertex_refresh_token";
