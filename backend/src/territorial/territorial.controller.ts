@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TerritorialService } from './territorial.service';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import {
   CreateFarmDto,
   CreatePlotDto,
