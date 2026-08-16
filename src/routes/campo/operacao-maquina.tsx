@@ -105,7 +105,7 @@ function OperacaoMaquinaPage() {
         toast.success(res.queued ? "Finalização em fila" : "Operação concluída");
       } else {
         if (!payload.startedAt) payload.startedAt = new Date().toISOString();
-        const res = await submitOperationLog(payload);
+        const res = await (submitOperationLog(payload) as Promise<any>);
         if (!isFinishing && !res.queued && res.data?.id) {
           localStorage.setItem(
             "vertex_pending_op_log",
