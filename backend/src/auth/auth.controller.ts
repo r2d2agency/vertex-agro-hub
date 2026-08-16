@@ -31,6 +31,15 @@ export class AuthController {
     return this.auth.me(req.user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  changePassword(
+    @Req() req: Request & { user: { sub: string } },
+    @Body() dto: any,
+  ) {
+    return this.auth.changePassword(req.user.sub, dto.currentPassword, dto.newPassword);
+  }
+
   // Google OAuth desativado por enquanto.
 }
 

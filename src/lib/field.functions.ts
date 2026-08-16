@@ -115,7 +115,7 @@ export function submitDelivery(input: {
 
 export function submitOccurrence(input: {
   companyId: string; farmId?: string;
-  date: string; type: string; severity: string; status: string;
+  date: string; type: string; severity: string; status: 'aberta' | 'em_andamento' | 'resolvida' | 'cancelada';
   title: string; description?: string; responsible?: string;
 }) {
   return submit("/occurrences", input, `Ocorrência — ${input.title}`);
