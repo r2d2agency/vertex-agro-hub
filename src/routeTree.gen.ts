@@ -81,6 +81,7 @@ import { Route as CampoInsumoRouteImport } from './routes/campo/insumo'
 import { Route as CampoMaisRouteImport } from './routes/campo/mais'
 import { Route as CampoOcorrenciaRouteImport } from './routes/campo/ocorrencia'
 import { Route as CampoOperacaoMaquinaRouteImport } from './routes/campo/operacao-maquina'
+import { Route as CampoPerfilRouteImport } from './routes/campo/perfil'
 import { Route as CampoProducaoRouteImport } from './routes/campo/producao'
 import { Route as CampoSangradorRouteImport } from './routes/campo/sangrador'
 import { Route as CampoSangriaRouteImport } from './routes/campo/sangria'
@@ -465,6 +466,11 @@ const CampoOperacaoMaquinaRoute = CampoOperacaoMaquinaRouteImport.update({
   path: '/operacao-maquina',
   getParentRoute: () => CampoRouteRoute,
 } as any)
+const CampoPerfilRoute = CampoPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
 const CampoProducaoRoute = CampoProducaoRouteImport.update({
   id: '/producao',
   path: '/producao',
@@ -590,6 +596,7 @@ export interface FileRoutesByFullPath {
   '/campo/mais': typeof CampoMaisRoute
   '/campo/ocorrencia': typeof CampoOcorrenciaRoute
   '/campo/operacao-maquina': typeof CampoOperacaoMaquinaRoute
+  '/campo/perfil': typeof CampoPerfilRoute
   '/campo/producao': typeof CampoProducaoRoute
   '/campo/sangrador': typeof CampoSangradorRoute
   '/campo/sangria': typeof CampoSangriaRoute
@@ -671,6 +678,7 @@ export interface FileRoutesByTo {
   '/campo/mais': typeof CampoMaisRoute
   '/campo/ocorrencia': typeof CampoOcorrenciaRoute
   '/campo/operacao-maquina': typeof CampoOperacaoMaquinaRoute
+  '/campo/perfil': typeof CampoPerfilRoute
   '/campo/producao': typeof CampoProducaoRoute
   '/campo/sangrador': typeof CampoSangradorRoute
   '/campo/sangria': typeof CampoSangriaRoute
@@ -756,6 +764,7 @@ export interface FileRoutesById {
   '/campo/mais': typeof CampoMaisRoute
   '/campo/ocorrencia': typeof CampoOcorrenciaRoute
   '/campo/operacao-maquina': typeof CampoOperacaoMaquinaRoute
+  '/campo/perfil': typeof CampoPerfilRoute
   '/campo/producao': typeof CampoProducaoRoute
   '/campo/sangrador': typeof CampoSangradorRoute
   '/campo/sangria': typeof CampoSangriaRoute
@@ -841,6 +850,7 @@ export interface FileRouteTypes {
     | '/campo/mais'
     | '/campo/ocorrencia'
     | '/campo/operacao-maquina'
+    | '/campo/perfil'
     | '/campo/producao'
     | '/campo/sangrador'
     | '/campo/sangria'
@@ -922,6 +932,7 @@ export interface FileRouteTypes {
     | '/campo/mais'
     | '/campo/ocorrencia'
     | '/campo/operacao-maquina'
+    | '/campo/perfil'
     | '/campo/producao'
     | '/campo/sangrador'
     | '/campo/sangria'
@@ -1006,6 +1017,7 @@ export interface FileRouteTypes {
     | '/campo/mais'
     | '/campo/ocorrencia'
     | '/campo/operacao-maquina'
+    | '/campo/perfil'
     | '/campo/producao'
     | '/campo/sangrador'
     | '/campo/sangria'
@@ -1536,6 +1548,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampoOperacaoMaquinaRouteImport
       parentRoute: typeof CampoRouteRoute
     }
+    '/campo/perfil': {
+      id: '/campo/perfil'
+      path: '/perfil'
+      fullPath: '/campo/perfil'
+      preLoaderRoute: typeof CampoPerfilRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
     '/campo/producao': {
       id: '/campo/producao'
       path: '/producao'
@@ -1778,6 +1797,7 @@ interface CampoRouteRouteChildren {
   CampoMaisRoute: typeof CampoMaisRoute
   CampoOcorrenciaRoute: typeof CampoOcorrenciaRoute
   CampoOperacaoMaquinaRoute: typeof CampoOperacaoMaquinaRoute
+  CampoPerfilRoute: typeof CampoPerfilRoute
   CampoProducaoRoute: typeof CampoProducaoRoute
   CampoSangradorRoute: typeof CampoSangradorRoute
   CampoSangriaRoute: typeof CampoSangriaRoute
@@ -1798,6 +1818,7 @@ const CampoRouteRouteChildren: CampoRouteRouteChildren = {
   CampoMaisRoute: CampoMaisRoute,
   CampoOcorrenciaRoute: CampoOcorrenciaRoute,
   CampoOperacaoMaquinaRoute: CampoOperacaoMaquinaRoute,
+  CampoPerfilRoute: CampoPerfilRoute,
   CampoProducaoRoute: CampoProducaoRoute,
   CampoSangradorRoute: CampoSangradorRoute,
   CampoSangriaRoute: CampoSangriaRoute,
