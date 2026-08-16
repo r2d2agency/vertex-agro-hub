@@ -158,3 +158,10 @@ export function submitInventoryMovement(input: {
 }) {
   return submit("/inventory-movements", input, `Insumo — ${input.kind} ${input.quantity}`);
 }
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  return apiRequest('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
