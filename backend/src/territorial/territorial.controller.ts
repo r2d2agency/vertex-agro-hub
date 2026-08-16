@@ -28,7 +28,7 @@ function requireCompanyId(companyId?: string) {
   return companyId;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class TerritorialController {
   constructor(private readonly svc: TerritorialService) {}

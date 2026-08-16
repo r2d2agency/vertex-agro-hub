@@ -159,7 +159,7 @@ function PreferenciasPage() {
 
           {/* Trocar Senha */}
           <button
-            onClick={() => navigate({ to: "/configuracoes" })}
+            onClick={() => navigate({ to: "/campo/perfil" })}
             className="flex w-full items-center justify-between rounded-2xl border border-border/60 bg-card p-4 text-left transition active:scale-[0.98]"
           >
             <div className="flex items-center gap-3">

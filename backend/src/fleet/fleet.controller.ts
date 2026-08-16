@@ -14,7 +14,7 @@ function req(companyId?: string) {
   return companyId;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class FleetController {
   constructor(private readonly svc: FleetService) {}

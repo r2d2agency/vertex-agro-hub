@@ -262,14 +262,19 @@ function FieldHome() {
           <h2 className="mb-3 text-sm font-semibold text-foreground">Minhas fazendas</h2>
           <ul className="space-y-2">
             {me.assignments.map((a) => (
-              <li key={a.id} className="flex items-center justify-between rounded-2xl border border-border/60 bg-card p-3">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{a.farm.name}</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {[a.farm.city, a.farm.state].filter(Boolean).join(" / ") || "—"} · {a.role}
+              <li key={a.id}>
+                <Link
+                  to={`/campo/fazenda/${a.farm.id}`}
+                  className="flex items-center justify-between rounded-2xl border border-border/60 bg-card p-3 transition hover:bg-muted/50"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{a.farm.name}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {[a.farm.city, a.farm.state].filter(Boolean).join(" / ") || "—"} · {a.role}
+                    </div>
                   </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
               </li>
             ))}
           </ul>

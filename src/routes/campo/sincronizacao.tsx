@@ -36,7 +36,7 @@ function SyncPage() {
       <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card p-4">
         <div>
           <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Estado</div>
-          <div className={`text-2xl font-bold ${online ? "text-primary" : "text-warning"}`}>{online ? "atuado" : "Offline"}</div>
+          <div className={`text-2xl font-bold ${online ? "text-primary" : "text-warning"}`}>{online ? "Atualizado" : "Offline"}</div>
         </div>
         <div className={`grid h-12 w-12 place-items-center rounded-full ${online ? "bg-primary/15 text-primary" : "bg-warning/15 text-warning"}`}>
           {online ? <Wifi className="h-5 w-5" /> : <WifiOff className="h-5 w-5" />}

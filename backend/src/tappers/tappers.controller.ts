@@ -7,7 +7,7 @@ import {
   CreateStintDto, CreateTapperDto, EndStintDto, UpdateTapperDto, UpsertTapperDto,
 } from './dto';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('tappers')
 export class TappersController {
   constructor(private readonly svc: TappersService) {}

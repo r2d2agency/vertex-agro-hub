@@ -26,7 +26,7 @@ function requireCompanyId(companyId?: string) {
   return companyId;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class CatalogController {
   constructor(private readonly svc: CatalogService) {}

@@ -8,7 +8,7 @@ import {
   EndAssignmentDto, InvitePersonDto, PersonalDataDto, ToggleActiveDto, UpdatePersonRoleDto,
 } from './dto';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('people')
 export class PeopleController {
   constructor(private readonly svc: PeopleService) {}
