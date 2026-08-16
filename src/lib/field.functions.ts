@@ -1,7 +1,6 @@
 import { apiRequest } from "@/lib/api";
 import { enqueueMutation, flushOutbox } from "@/lib/offline/queue";
 import { idbGet, idbPut } from "@/lib/offline/idb";
-import { toast } from "sonner";
 
 const FIELD_ME_CACHE_KEY = "field:me";
 
@@ -35,17 +34,17 @@ export type Coords = { latitude: number; longitude: number; accuracyM?: number }
 export async function getFieldMe(): Promise<FieldMe> {
   try {
     const data = await apiRequest<FieldMe>("/auth/me");
-    await idbPut(FIELD_ME_CACHE_KEY, data);
+    await idbPut("cache", { key: FIELD_ME_CACHE_KEY, ...data });
     return data;
   } catch (e) {
-    const cached = await idbGet<FieldMe>(FIELD_ME_CACHE_KEY);
+    const cached = await idbGet<FieldMe & { key: string }>("cache", FIELD_ME_CACHE_KEY);
     if (cached) return cached;
     throw e;
   }
 }
 
-export async function captureLocation(): Promise<Coords | null> {
-  if (!navigator.geolocation) return null;
+export async function captureLocation(timeout = 10000): Promise<Coords | null> {
+  if (typeof navigator === "undefined" || !navigator.geolocation) return null;
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
       (p) => resolve({
@@ -54,37 +53,45 @@ export async function captureLocation(): Promise<Coords | null> {
         accuracyM: p.coords.accuracy,
       }),
       () => resolve(null),
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout }
     );
   });
 }
 
-function submit(path: string, input: any, description: string) {
+function submit(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body: any, label: string) {
   return enqueueMutation({
     path,
-    method: "POST",
-    body: input,
-    description,
-  });
+    method,
+    body,
+    label,
+  }).then(key => ({ queued: true, key }));
 }
 
 export function submitTapping(input: {
   companyId: string; farmId?: string; plotId?: string;
   tappingTableId?: string; date: string; sangradorName: string;
-  treesTapped?: number; liters?: number; drcPercent?: number;
-  dryKg?: number; adherencePct?: number; notes?: string;
+  treesTapped?: number | null; liters?: number | null; drcPercent?: number | null;
+  dryKg?: number | null; adherencePct?: number | null; notes?: string;
   status?: string; quality?: string; tableCondition?: string;
 }) {
-  return submit("/tapping-records", input, `Sangria — ${input.sangradorName}`);
+  const data = { ...input };
+  if (data.treesTapped === null) delete data.treesTapped;
+  if (data.liters === null) delete data.liters;
+  if (data.drcPercent === null) delete data.drcPercent;
+  if (data.dryKg === null) delete data.dryKg;
+  if (data.adherencePct === null) delete data.adherencePct;
+  return submit("/tapping-records", "POST", data, `Sangria — ${input.sangradorName}`);
 }
 
-export function submitProduction(input: {
+export function submitDelivery(input: {
   companyId: string; farmId?: string; plotId?: string;
-  date: string; vehiclePlate?: string; grossWeight?: number;
-  tareWeight?: number; netWeight?: number; drcPercent?: number;
-  dryKg?: number; bagCount?: number; notes?: string;
+  deliveryDate: string; vehiclePlate?: string; netWeightKg?: number | null;
+  drcAvgPercent?: number | null; latexType?: string; notes?: string;
 }) {
-  return submit("/production-deliveries", input, `Produção — ${input.netWeight} kg`);
+  const data = { ...input };
+  if (data.netWeightKg === null) delete data.netWeightKg;
+  if (data.drcAvgPercent === null) delete data.drcAvgPercent;
+  return submit("/production-deliveries", "POST", data, `Produção — ${input.netWeightKg} kg`);
 }
 
 export function submitOccurrence(input: {
@@ -92,15 +99,15 @@ export function submitOccurrence(input: {
   date: string; type: string; severity: string; status: 'aberta' | 'em_andamento' | 'resolvida' | 'cancelada';
   title: string; description?: string; responsible?: string;
 }) {
-  return submit("/occurrences", input, `Ocorrência — ${input.title}`);
+  return submit("/occurrences", "POST", input, `Ocorrência — ${input.title}`);
 }
 
 export function submitEvaluation(input: {
-  companyId: string; targetUserId: string; evaluatorId: string;
-  date: string; score: number; feedback?: string;
-  criteria: Record<string, number>;
+  companyId: string; targetUserId: string;
+  ratedAt: string; rating: number; category: string;
+  title?: string; notes?: string;
 }) {
-  return submit(`/people/${input.targetUserId}/evaluations`, input, "Avaliação de equipe");
+  return submit(`/people/${input.targetUserId}/evaluations`, "POST", input, "Avaliação de equipe");
 }
 
 export function submitCheckin(input: {
@@ -108,17 +115,14 @@ export function submitCheckin(input: {
   taskId?: string; latitude?: number; longitude?: number;
   accuracyM?: number; notes?: string;
 }) {
-  return submit("/activities/checkin", { ...input, type: 'checkin', status: 'concluida' }, "Check-in GPS");
+  return submit("/activities/checkin", "POST", { ...input, type: 'checkin', status: 'concluida' }, "Check-in GPS");
 }
 
-export function submitMachineOperation(input: {
-  companyId: string; machineId: string; operatorId: string;
-  farmId?: string; plotId?: string; operationTypeId: string;
-  startAt: string; endAt?: string; startHourmeter: number;
-  endHourmeter?: number; fuelConsumption?: number; notes?: string;
-}) {
-  const desc = input.endAt ? "Finalizar Operação" : "Iniciar Operação";
-  return submit("/machine-operations", input, desc);
+export function submitOperationLog(input: any) {
+  const desc = input.finishedAt ? "Finalizar Operação" : "Iniciar Operação";
+  const path = input.id ? `/machine-operations/${input.id}` : "/machine-operations";
+  const method = input.id ? "PATCH" : "POST";
+  return submit(path, method, input, desc);
 }
 
 export function submitFuelMovement(input: {
@@ -127,7 +131,7 @@ export function submitFuelMovement(input: {
   operatorId?: string; hourmeter?: number; unitCost?: number;
   supplier?: string; notes?: string;
 }) {
-  return submit("/fuel-movements", input, `Abastecimento — ${input.liters} L`);
+  return submit("/fuel-movements", "POST", input, `Abastecimento — ${input.liters} L`);
 }
 
 export function submitChecklist(input: {
@@ -136,7 +140,7 @@ export function submitChecklist(input: {
   overallStatus?: string; notes?: string;
   items: Array<{ label: string; status: "ok" | "nok" | "na"; notes?: string }>;
 }) {
-  return submit("/machine-checklists", input, "Checklist de máquina");
+  return submit("/machine-checklists", "POST", input, "Checklist de máquina");
 }
 
 export function submitInventoryMovement(input: {
@@ -145,7 +149,7 @@ export function submitInventoryMovement(input: {
   reason?: string; machineId?: string; supplier?: string;
   invoiceNumber?: string; unitCost?: number; notes?: string;
 }) {
-  return submit("/inventory-movements", input, `Insumo — ${input.kind} ${input.quantity}`);
+  return submit("/inventory-movements", "POST", input, `Insumo — ${input.kind} ${input.quantity}`);
 }
 
 export async function changePassword(currentPassword: string, newPassword: string) {
@@ -156,6 +160,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
 }
 
 export function isOffline() {
+  if (typeof localStorage === "undefined") return false;
   const raw = localStorage.getItem("vertex:offline");
   return !!raw;
 }
