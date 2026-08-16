@@ -2,6 +2,7 @@ import {
   Body, Controller, Delete, Get, Param, ParseBoolPipe, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { PeopleService } from './people.service';
 import {
   CreateAssignmentDto, CreateEvaluationDto, DocumentDto, EmploymentDto,

@@ -6,7 +6,9 @@ import {
   CreateTaskDto, UpdateTaskDto,
 } from './dto';
 
-@UseGuards(JwtAuthGuard)
+import { RolesGuard } from '../auth/guards/roles.guard';
+
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class ActivitiesController {
   constructor(private readonly svc: ActivitiesService) {}
