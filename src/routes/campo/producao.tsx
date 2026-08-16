@@ -28,8 +28,9 @@ function ProducaoPage() {
 
   useEffect(() => { getFieldMe().then((m) => { setMe(m); if (m.assignments[0]) setFarmId(m.assignments[0].farm.id); }); }, []);
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
+  
   if (!me) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
-  if (me.assignments.length === 0) return <p className="text-sm text-muted-foreground">Sem fazendas atribuídas.</p>;
+  if (me.assignments.length === 0) return <p className="text-sm text-muted-foreground p-8 text-center">Sem fazendas atribuídas.</p>;
 
   const meta = parseFloat(prevista.replace(",", ".")) || 0;
   const real = parseFloat(realizada.replace(",", ".")) || 0;
@@ -49,8 +50,8 @@ function ProducaoPage() {
     const res = await submitDelivery({
       companyId: farm.companyId, farmId: farm.id,
       deliveryDate: new Date().toISOString().slice(0, 10),
-      netWeightKg: real || null,
-      drcAvgPercent: drc ? Number(drc) : null,
+      netWeightKg: real || undefined,
+      drcAvgPercent: drc ? Number(drc) : undefined,
       latexType: latexType || undefined,
       notes: [notes, `Prevista: ${prevista} kg`, photoUrl && `Foto: ${photoUrl}`].filter(Boolean).join(" | "),
     });
