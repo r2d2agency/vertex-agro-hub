@@ -94,9 +94,15 @@ export async function flushOutbox(): Promise<{ sent: number; failed: number }> {
       } catch (e: any) {
         it.attempts = (it.attempts ?? 0) + 1;
         it.lastError = String(e?.message ?? e).slice(0, 300);
-        // Se erro for permanente (4xx ≠ 408/429), abandonar após 5 tentativas
-        if (it.attempts >= 5) {
-          await idbDelete("outbox", it.id!);
+        
+        // Se erro for de validação (400) ou permissão (403), ou se exceder tentativas,
+        // manter na fila mas marcar como falha para não descartar silenciosamente.
+        const isClientError = e?.message?.includes('400') || e?.message?.includes('403') || e?.message?.includes('401');
+        
+        if (it.attempts >= 5 || isClientError) {
+          // Mantém na fila mas não tenta mais automaticamente neste ciclo
+          it.lastError = `[FALHA] ${it.lastError}`;
+          await idbPut("outbox", it);
         } else {
           await idbPut("outbox", it);
         }

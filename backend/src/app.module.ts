@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
+import { RolesGuard } from './auth/guards/roles.guard';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { CommonModule } from './common/common.module';
@@ -41,5 +42,6 @@ import { HealthController } from './health.controller';
   ],
 
   controllers: [HealthController],
+  providers: [RolesGuard],
 })
 export class AppModule {}

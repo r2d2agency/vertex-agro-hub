@@ -6,8 +6,10 @@ import { SyncService } from './sync.service';
 import { AlertsService } from './alerts.service';
 import { IntegrationsService } from './integrations.service';
 import { SettingsService } from './settings.service';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
+  imports: [PrismaModule],
   controllers: [GovernanceController],
   providers: [AuditService, LogsService, SyncService, AlertsService, IntegrationsService, SettingsService],
   exports: [AuditService, LogsService],

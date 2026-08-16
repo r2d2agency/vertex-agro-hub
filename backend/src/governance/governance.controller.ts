@@ -12,7 +12,7 @@ function need(v?: string) {
   return v;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class GovernanceController {
   constructor(
