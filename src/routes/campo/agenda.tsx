@@ -58,6 +58,10 @@ function AgendaPage() {
   }, [tasks, tab]);
 
   async function conclude(t: ScheduledTask) {
+    if (me?.primaryRole === "monitor" && t.category === "visita") {
+      toast.info("Apenas o consultor pode concluir visitas técnicas.");
+      return;
+    }
     setBusy(t.id);
     const loc = await captureLocation();
     const res = await submitCheckin({

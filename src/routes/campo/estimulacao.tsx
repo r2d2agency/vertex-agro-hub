@@ -44,7 +44,7 @@ function EstimulacaoPage() {
     const res = await submitOccurrence({
       companyId: farm.companyId, farmId: farm.id,
       date: new Date().toISOString().slice(0, 10),
-      type: "processo", severity: "baixa", status: "concluida",
+      type: "processo", severity: "baixa", status: "resolvida",
       title: `Estimulação ${product} — ${dose} ml/árvore`,
       description: [
         `Árvores: ${realizadas || "—"} / ${previstas || "—"}`,

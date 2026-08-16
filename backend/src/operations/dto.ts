@@ -21,6 +21,9 @@ export class CreateTappingRecordDto {
   @IsOptional() @IsNumber() drcPercent?: number;
   @IsOptional() @IsNumber() dryKg?: number;
   @IsOptional() @IsNumber() adherencePct?: number;
+  @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsString() quality?: string;
+  @IsOptional() @IsString() tableCondition?: string;
   @IsOptional() @IsString() notes?: string;
 }
 
@@ -35,6 +38,9 @@ export class UpdateTappingRecordDto {
   @IsOptional() @IsNumber() drcPercent?: number;
   @IsOptional() @IsNumber() dryKg?: number;
   @IsOptional() @IsNumber() adherencePct?: number;
+  @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsString() quality?: string;
+  @IsOptional() @IsString() tableCondition?: string;
   @IsOptional() @IsString() notes?: string;
 }
 

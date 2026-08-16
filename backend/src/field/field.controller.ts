@@ -64,8 +64,21 @@ export class FieldController {
   @Delete('photos/:id')
   deletePhoto(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) { return this.svc.deletePhoto(req.user.sub, id); }
 
-  @Get('history')
+  @Get('field/history')
   history(@Req() req: any,
+    @Query('companyId') companyId?: string,
+    @Query('farmId') farmId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.svc.history(req.user.sub, need(companyId), {
+      farmId, from, to, limit: limit ? parseInt(limit, 10) : undefined,
+    });
+  }
+
+  @Get('historico')
+  fullHistory(@Req() req: any,
     @Query('companyId') companyId?: string,
     @Query('farmId') farmId?: string,
     @Query('from') from?: string,

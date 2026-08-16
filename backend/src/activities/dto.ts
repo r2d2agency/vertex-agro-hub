@@ -1,6 +1,6 @@
 import { IsDateString, IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
-const OCC_TYPES = ['praga', 'doenca', 'clima', 'equipamento', 'seguranca', 'processo', 'outro'] as const;
+const OCC_TYPES = ['praga', 'doenca', 'clima', 'equipamento', 'seguranca', 'processo', 'checkin', 'outro'] as const;
 const SEVERITIES = ['baixa', 'media', 'alta', 'critica'] as const;
 const OCC_STATUS = ['aberta', 'em_andamento', 'resolvida', 'cancelada'] as const;
 

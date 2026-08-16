@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CatalogService } from './catalog.service';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import {
   CreateCloneDto,
   CreateTappingTableDto,
@@ -26,7 +27,7 @@ function requireCompanyId(companyId?: string) {
   return companyId;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class CatalogController {
   constructor(private readonly svc: CatalogService) {}

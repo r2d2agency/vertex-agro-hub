@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -116,4 +116,23 @@ export class AuthService {
     const { passwordHash, ...safe } = user;
     return safe;
   }
-}
+  }
+
+  async changePassword(userId: string, currentPw: string, newPw: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.passwordHash) throw new UnauthorizedException();
+    
+    const ok = await bcrypt.compare(currentPw, user.passwordHash);
+    if (!ok) throw new BadRequestException('Senha atual incorreta');
+    
+    const passwordHash = await bcrypt.hash(newPw, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+    
+    // Invalida outros tokens
+    await this.prisma.refreshToken.deleteMany({ where: { userId, revokedAt: null } });
+    
+    return { ok: true };
+  }

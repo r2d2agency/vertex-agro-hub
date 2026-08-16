@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FleetService } from './fleet.service';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import {
   CreateImplementDto, CreateMachineDto, CreateOperatorDto,
   CreateOperationTypeDto, UpdateMachineDto,
@@ -14,7 +15,7 @@ function req(companyId?: string) {
   return companyId;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class FleetController {
   constructor(private readonly svc: FleetService) {}
