@@ -92,6 +92,7 @@ import { Route as AuthenticatedEmpresasIdRouteImport } from './routes/_authentic
 import { Route as AuthenticatedEmpresasNovoRouteImport } from './routes/_authenticated/empresas.novo'
 import { Route as AuthenticatedMaquinasIdRouteImport } from './routes/_authenticated/maquinas.$id'
 import { Route as CampoConsultorIndexRouteImport } from './routes/campo/consultor/index'
+import { Route as CampoFazendaIdRouteImport } from './routes/campo/fazenda.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -524,6 +525,11 @@ const CampoConsultorIndexRoute = CampoConsultorIndexRouteImport.update({
   path: '/consultor/',
   getParentRoute: () => CampoRouteRoute,
 } as any)
+const CampoFazendaIdRoute = CampoFazendaIdRouteImport.update({
+  id: '/fazenda/$id',
+  path: '/fazenda/$id',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -606,6 +612,7 @@ export interface FileRoutesByFullPath {
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
   '/maquinas/$id': typeof AuthenticatedMaquinasIdRoute
+  '/campo/fazenda/$id': typeof CampoFazendaIdRoute
   '/empresas/': typeof AuthenticatedEmpresasIndexRoute
   '/campo/consultor/': typeof CampoConsultorIndexRoute
 }
@@ -688,6 +695,7 @@ export interface FileRoutesByTo {
   '/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
   '/maquinas/$id': typeof AuthenticatedMaquinasIdRoute
+  '/campo/fazenda/$id': typeof CampoFazendaIdRoute
   '/empresas': typeof AuthenticatedEmpresasIndexRoute
   '/campo/consultor': typeof CampoConsultorIndexRoute
 }
@@ -774,6 +782,7 @@ export interface FileRoutesById {
   '/_authenticated/empresas/$id': typeof AuthenticatedEmpresasIdRoute
   '/_authenticated/empresas/novo': typeof AuthenticatedEmpresasNovoRoute
   '/_authenticated/maquinas/$id': typeof AuthenticatedMaquinasIdRoute
+  '/campo/fazenda/$id': typeof CampoFazendaIdRoute
   '/_authenticated/empresas/': typeof AuthenticatedEmpresasIndexRoute
   '/campo/consultor/': typeof CampoConsultorIndexRoute
 }
@@ -860,6 +869,7 @@ export interface FileRouteTypes {
     | '/empresas/$id'
     | '/empresas/novo'
     | '/maquinas/$id'
+    | '/campo/fazenda/$id'
     | '/empresas/'
     | '/campo/consultor/'
   fileRoutesByTo: FileRoutesByTo
@@ -942,6 +952,7 @@ export interface FileRouteTypes {
     | '/empresas/$id'
     | '/empresas/novo'
     | '/maquinas/$id'
+    | '/campo/fazenda/$id'
     | '/empresas'
     | '/campo/consultor'
   id:
@@ -1027,6 +1038,7 @@ export interface FileRouteTypes {
     | '/_authenticated/empresas/$id'
     | '/_authenticated/empresas/novo'
     | '/_authenticated/maquinas/$id'
+    | '/campo/fazenda/$id'
     | '/_authenticated/empresas/'
     | '/campo/consultor/'
   fileRoutesById: FileRoutesById
@@ -1625,6 +1637,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampoConsultorIndexRouteImport
       parentRoute: typeof CampoRouteRoute
     }
+    '/campo/fazenda/$id': {
+      id: '/campo/fazenda/$id'
+      path: '/fazenda/$id'
+      fullPath: '/campo/fazenda/$id'
+      preLoaderRoute: typeof CampoFazendaIdRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
   }
 }
 
@@ -1803,6 +1822,7 @@ interface CampoRouteRouteChildren {
   CampoSangriaRoute: typeof CampoSangriaRoute
   CampoSincronizacaoRoute: typeof CampoSincronizacaoRoute
   CampoIndexRoute: typeof CampoIndexRoute
+  CampoFazendaIdRoute: typeof CampoFazendaIdRoute
   CampoConsultorIndexRoute: typeof CampoConsultorIndexRoute
 }
 
@@ -1824,6 +1844,7 @@ const CampoRouteRouteChildren: CampoRouteRouteChildren = {
   CampoSangriaRoute: CampoSangriaRoute,
   CampoSincronizacaoRoute: CampoSincronizacaoRoute,
   CampoIndexRoute: CampoIndexRoute,
+  CampoFazendaIdRoute: CampoFazendaIdRoute,
   CampoConsultorIndexRoute: CampoConsultorIndexRoute,
 }
 
