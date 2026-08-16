@@ -24,120 +24,108 @@ export type FieldMe = {
       state?: string | null;
       latitude?: number | null;
       longitude?: number | null;
-      plots?: Array<{ id: string; name: string }>;
+      photoUrls: string[];
+      plots: Array<{ id: string; name: string }>;
     };
   }>;
 };
 
+export type Coords = { latitude: number; longitude: number; accuracyM?: number };
+
 export async function getFieldMe(): Promise<FieldMe> {
   try {
-    const data = await apiRequest<FieldMe>("/field/me");
-    try { await idbPut("cache", { key: FIELD_ME_CACHE_KEY, at: Date.now(), data }); } catch {}
+    const data = await apiRequest<FieldMe>("/auth/me");
+    await idbPut(FIELD_ME_CACHE_KEY, data);
     return data;
   } catch (e) {
-    try {
-      const cached = await idbGet<{ key: string; at: number; data: FieldMe }>("cache", FIELD_ME_CACHE_KEY);
-      if (cached?.data) return cached.data;
-    } catch {}
+    const cached = await idbGet<FieldMe>(FIELD_ME_CACHE_KEY);
+    if (cached) return cached;
     throw e;
   }
 }
 
-export function submitEvaluation(input: {
-  targetUserId: string; companyId: string;
-  ratedAt: string; rating: number;
-  category?: string; title?: string; notes?: string;
-}) {
-  const { targetUserId, ...body } = input;
-  return submit(`/people/${targetUserId}/evaluations`, body, `Avaliação — nota ${input.rating}`);
-}
-
-export type Coords = { latitude: number; longitude: number; accuracyM?: number };
-
-export function captureLocation(timeoutMs = 8000): Promise<Coords | null> {
+export async function captureLocation(): Promise<Coords | null> {
+  if (!navigator.geolocation) return null;
   return new Promise((resolve) => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return resolve(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        accuracyM: pos.coords.accuracy,
+      (p) => resolve({
+        latitude: p.coords.latitude,
+        longitude: p.coords.longitude,
+        accuracyM: p.coords.accuracy,
       }),
       () => resolve(null),
-      { enableHighAccuracy: true, maximumAge: 10_000, timeout: timeoutMs },
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   });
 }
 
-/** Enfileira ou envia direto se estiver online. */
-async function submit(path: string, body: any, label: string) {
-  const online = typeof navigator === "undefined" || navigator.onLine;
-  if (!online) {
-    await enqueueMutation({ path, method: "POST", body, label });
-    return { queued: true as const };
-  }
-  try {
-    const res = await apiRequest<any>(path, { method: "POST", body: JSON.stringify(body) });
-    return { queued: false as const, data: res };
-  } catch (e) {
-    // Falha de rede/servidor → cai pra fila
-    await enqueueMutation({ path, method: "POST", body, label });
-    return { queued: true as const };
-  } finally {
-    // Tenta drenar fila em background
-    void flushOutbox().catch(() => undefined);
-  }
-}
-
-export function submitCheckin(input: {
-  companyId: string; farmId?: string; plotId?: string; taskId?: string;
-  latitude?: number; longitude?: number; accuracyM?: number; notes?: string;
-}) {
-  return submit("/field/checkin", input, "Check-in de campo");
+function submit(path: string, input: any, description: string) {
+  return enqueueMutation({
+    path,
+    method: "POST",
+    body: input,
+    description,
+  });
 }
 
 export function submitTapping(input: {
   companyId: string; farmId?: string; plotId?: string;
-  date: string; sangradorName: string;
-  liters?: number | null; drcPercent?: number | null; adherencePct?: number | null;
-  treesTapped?: number | null; notes?: string;
+  tappingTableId?: string; date: string; sangradorName: string;
+  treesTapped?: number; liters?: number; drcPercent?: number;
+  dryKg?: number; adherencePct?: number; notes?: string;
   status?: string; quality?: string; tableCondition?: string;
 }) {
   return submit("/tapping-records", input, `Sangria — ${input.sangradorName}`);
 }
 
-export function submitDelivery(input: {
-  companyId: string; farmId?: string;
-  deliveryDate: string; grossWeightKg?: number | null; netWeightKg?: number | null;
-  drcAvgPercent?: number | null; latexType?: string; coagulant?: string; notes?: string;
+export function submitProduction(input: {
+  companyId: string; farmId?: string; plotId?: string;
+  date: string; vehiclePlate?: string; grossWeight?: number;
+  tareWeight?: number; netWeight?: number; drcPercent?: number;
+  dryKg?: number; bagCount?: number; notes?: string;
 }) {
-  return submit("/deliveries", input, "Entrega de produção");
+  return submit("/production-deliveries", input, `Produção — ${input.netWeight} kg`);
 }
 
 export function submitOccurrence(input: {
-  companyId: string; farmId?: string;
+  companyId: string; farmId?: string; plotId?: string;
   date: string; type: string; severity: string; status: 'aberta' | 'em_andamento' | 'resolvida' | 'cancelada';
   title: string; description?: string; responsible?: string;
 }) {
   return submit("/occurrences", input, `Ocorrência — ${input.title}`);
 }
 
-export function submitOperationLog(input: {
-  companyId: string; farmId?: string; plotId?: string;
-  machineId: string; implementId?: string; operatorId?: string; operationTypeId?: string;
-  startedAt: string; finishedAt?: string;
-  hourmeterStart?: number; hourmeterEnd?: number;
-  fuelConsumed?: number; areaWorked?: number; distanceKm?: number;
-  latitude?: number; longitude?: number; notes?: string; status?: string;
+export function submitEvaluation(input: {
+  companyId: string; targetUserId: string; evaluatorId: string;
+  date: string; score: number; feedback?: string;
+  criteria: Record<string, number>;
 }) {
-  return submit("/operation-logs", input, "Apontamento de máquina");
+  return submit(`/people/${input.targetUserId}/evaluations`, input, "Avaliação de equipe");
+}
+
+export function submitCheckin(input: {
+  companyId: string; farmId?: string; plotId?: string;
+  taskId?: string; latitude?: number; longitude?: number;
+  accuracyM?: number; notes?: string;
+}) {
+  return submit("/activities/checkin", { ...input, type: 'checkin', status: 'concluida' }, "Check-in GPS");
+}
+
+export function submitMachineOperation(input: {
+  companyId: string; machineId: string; operatorId: string;
+  farmId?: string; plotId?: string; operationTypeId: string;
+  startAt: string; endAt?: string; startHourmeter: number;
+  endHourmeter?: number; fuelConsumption?: number; notes?: string;
+}) {
+  const desc = input.endAt ? "Finalizar Operação" : "Iniciar Operação";
+  return submit("/machine-operations", input, desc);
 }
 
 export function submitFuelMovement(input: {
-  companyId: string; tankId: string; kind: "entrada" | "saida" | "ajuste";
-  liters: number; occurredAt?: string;
-  machineId?: string; operatorId?: string; hourmeter?: number;
-  unitCost?: number; supplier?: string; invoiceNumber?: string; notes?: string;
+  companyId: string; tankId: string; kind: "saida" | "entrada" | "ajuste";
+  liters: number; occurredAt?: string; machineId?: string;
+  operatorId?: string; hourmeter?: number; unitCost?: number;
+  supplier?: string; notes?: string;
 }) {
   return submit("/fuel-movements", input, `Abastecimento — ${input.liters} L`);
 }
@@ -167,9 +155,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
   });
 }
 
-export async function changePassword(currentPassword: string, newPassword: string) {
-  return apiRequest('/auth/change-password', {
-    method: 'POST',
-    body: JSON.stringify({ currentPassword, newPassword }),
-  });
+export function isOffline() {
+  const raw = localStorage.getItem("vertex:offline");
+  return !!raw;
 }
