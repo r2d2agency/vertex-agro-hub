@@ -264,7 +264,8 @@ function FieldHome() {
             {me.assignments.map((a) => (
               <li key={a.id}>
                 <Link
-                  to={`/campo/fazenda/${a.farm.id}`}
+                  to="/campo/fazenda/$id"
+                  params={{ id: a.farm.id }}
                   className="flex items-center justify-between rounded-2xl border border-border/60 bg-card p-3 transition hover:bg-muted/50"
                 >
                   <div className="min-w-0">
