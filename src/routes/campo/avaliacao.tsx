@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { getLocalIsoString } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/avaliacao")({ component: AvaliacaoPage });
 
@@ -82,7 +83,7 @@ function AvaliacaoPage() {
       const res = await submitEvaluation({
         targetUserId,
         companyId: farm.companyId,
-        ratedAt: new Date().toISOString(),
+        ratedAt: getLocalIsoString(),
         rating,
         category,
         title: title.trim() || undefined,
