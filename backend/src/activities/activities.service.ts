@@ -1,10 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { toZonedTime } from 'date-fns-tz';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
 import {
   CreateOccurrenceDto, UpdateOccurrenceDto,
   CreateTaskDto, UpdateTaskDto,
 } from './dto';
+
+const TIMEZONE = 'America/Sao_Paulo';
+const getNow = () => toZonedTime(new Date(), TIMEZONE);
+const parseDate = (d: string | Date) => toZonedTime(new Date(d), TIMEZONE);
 
 @Injectable()
 export class ActivitiesService {
@@ -20,8 +25,8 @@ export class ActivitiesService {
         ...(opts.status ? { status: opts.status } : {}),
         ...(opts.from || opts.to ? {
           date: {
-            ...(opts.from ? { gte: new Date(opts.from) } : {}),
-            ...(opts.to ? { lte: new Date(opts.to) } : {}),
+            ...(opts.from ? { gte: parseDate(opts.from) } : {}),
+            ...(opts.to ? { lte: parseDate(opts.to) } : {}),
           },
         } : {}),
       },
@@ -36,8 +41,8 @@ export class ActivitiesService {
     return this.prisma.occurrence.create({
       data: {
         ...rest,
-        date: new Date(date),
-        resolvedAt: dto.status === 'resolvida' ? new Date() : null,
+        date: parseDate(date),
+        resolvedAt: dto.status === 'resolvida' ? getNow() : null,
         createdById: userId, updatedById: userId,
       },
     });
@@ -53,8 +58,8 @@ export class ActivitiesService {
       data: {
         ...rest,
         ...(status ? { status } : {}),
-        ...(date ? { date: new Date(date) } : {}),
-        ...(status === 'resolvida' && !cur.resolvedAt ? { resolvedAt: new Date() } : {}),
+        ...(date ? { date: parseDate(date) } : {}),
+        ...(status === 'resolvida' && !cur.resolvedAt ? { resolvedAt: getNow() } : {}),
         ...(status && status !== 'resolvida' ? { resolvedAt: null } : {}),
         updatedById: userId, version: { increment: 1 },
       },
@@ -67,7 +72,7 @@ export class ActivitiesService {
     await this.access.ensureCompany(userId, cur.companyId);
     return this.prisma.occurrence.update({
       where: { id },
-      data: { isDeleted: true, deletedAt: new Date(), updatedById: userId, version: { increment: 1 } },
+      data: { isDeleted: true, deletedAt: getNow(), updatedById: userId, version: { increment: 1 } },
     });
   }
 
@@ -82,8 +87,8 @@ export class ActivitiesService {
         ...(opts.status ? { status: opts.status } : {}),
         ...(opts.from || opts.to ? {
           scheduledAt: {
-            ...(opts.from ? { gte: new Date(opts.from) } : {}),
-            ...(opts.to ? { lte: new Date(opts.to) } : {}),
+            ...(opts.from ? { gte: parseDate(opts.from) } : {}),
+            ...(opts.to ? { lte: parseDate(opts.to) } : {}),
           },
         } : {}),
       },
@@ -98,9 +103,9 @@ export class ActivitiesService {
     return this.prisma.scheduledTask.create({
       data: {
         ...rest,
-        scheduledAt: new Date(scheduledAt),
-        dueAt: dueAt ? new Date(dueAt) : null,
-        completedAt: dto.status === 'concluida' ? new Date() : null,
+        scheduledAt: parseDate(scheduledAt),
+        dueAt: dueAt ? parseDate(dueAt) : null,
+        completedAt: dto.status === 'concluida' ? getNow() : null,
         createdById: userId, updatedById: userId,
       },
     });
@@ -116,9 +121,9 @@ export class ActivitiesService {
       data: {
         ...rest,
         ...(status ? { status } : {}),
-        ...(scheduledAt ? { scheduledAt: new Date(scheduledAt) } : {}),
-        ...(dueAt !== undefined ? { dueAt: dueAt ? new Date(dueAt) : null } : {}),
-        ...(status === 'concluida' && !cur.completedAt ? { completedAt: new Date() } : {}),
+        ...(scheduledAt ? { scheduledAt: parseDate(scheduledAt) } : {}),
+        ...(dueAt !== undefined ? { dueAt: dueAt ? parseDate(dueAt) : null } : {}),
+        ...(status === 'concluida' && !cur.completedAt ? { completedAt: getNow() } : {}),
         ...(status && status !== 'concluida' ? { completedAt: null } : {}),
         updatedById: userId, version: { increment: 1 },
       },
@@ -131,7 +136,7 @@ export class ActivitiesService {
     await this.access.ensureCompany(userId, cur.companyId);
     return this.prisma.scheduledTask.update({
       where: { id },
-      data: { isDeleted: true, deletedAt: new Date(), updatedById: userId, version: { increment: 1 } },
+      data: { isDeleted: true, deletedAt: getNow(), updatedById: userId, version: { increment: 1 } },
     });
   }
 }
