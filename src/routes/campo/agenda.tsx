@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 import { getFieldMe, type FieldMe, captureLocation, submitCheckin } from "@/lib/field.functions";
 import { listTasks, type ScheduledTask } from "@/lib/agenda.functions";
+import { getLocalIsoDate } from "@/lib/date-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/campo/agenda")({ component: AgendaPage });
@@ -29,8 +30,8 @@ function AgendaPage() {
     (async () => {
       const m = await getFieldMe();
       setMe(m);
-      const today = new Date().toISOString().slice(0, 10);
-      const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      const today = getLocalIsoDate();
+      const in30 = getLocalIsoDate(new Date(Date.now() + 30 * 86400000));
       const companyIds = m.isAdmin
         ? m.companies.map((c) => c.id)
         : Array.from(new Set(m.assignments.map((a) => a.farm.companyId)));
@@ -50,8 +51,8 @@ function AgendaPage() {
   }, [me]);
 
   const filtered = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const in7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const today = getLocalIsoDate();
+    const in7 = getLocalIsoDate(new Date(Date.now() + 7 * 86400000));
     if (tab === "hoje") return tasks.filter((t) => t.scheduledAt.slice(0, 10) === today);
     if (tab === "semana") return tasks.filter((t) => t.scheduledAt.slice(0, 10) <= in7);
     return tasks.filter((t) => t.scheduledAt.slice(0, 10) > in7);
