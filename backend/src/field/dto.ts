@@ -58,3 +58,67 @@ export class UpdatePhotoDto {
   @IsOptional() @IsString() @MaxLength(500) caption?: string;
   @IsOptional() @IsString() @MaxLength(200) author?: string;
 }
+
+export class CreateTappingRecordDto {
+  @IsUUID() companyId!: string;
+  @IsOptional() @IsUUID() farmId?: string;
+  @IsOptional() @IsUUID() plotId?: string;
+  @IsOptional() @IsUUID() tappingTableId?: string;
+  @IsDateString() date!: string;
+  @IsString() @MinLength(1) sangradorName!: string;
+  @IsOptional() @IsInt() @Min(0) treesTapped?: number;
+  @IsOptional() @IsNumber() liters?: number;
+  @IsOptional() @IsNumber() drcPercent?: number;
+  @IsOptional() @IsNumber() dryKg?: number;
+  @IsOptional() @IsNumber() adherencePct?: number;
+  @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsString() quality?: string;
+  @IsOptional() @IsString() tableCondition?: string;
+}
+
+export class CreateProductionDeliveryDto {
+  @IsUUID() companyId!: string;
+  @IsOptional() @IsUUID() farmId?: string;
+  @IsOptional() @IsString() season?: string;
+  @IsDateString() deliveryDate!: string;
+  @IsOptional() @IsInt() turnDay?: number;
+  @IsOptional() @IsString() propertyName?: string;
+  @IsOptional() @IsString() ownerName?: string;
+  @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsString() consultantName?: string;
+  @IsOptional() @IsString() monitorName?: string;
+  @IsOptional() @IsString() coagulant?: string;
+  @IsOptional() @IsString() latexType?: string;
+  @IsOptional() @IsNumber() grossWeightKg?: number;
+  @IsOptional() @IsNumber() netWeightKg?: number;
+  @IsOptional() @IsNumber() drcAvgPercent?: number;
+  @IsOptional() @IsNumber() dryKg?: number;
+  @IsOptional() @IsString() notes?: string;
+}
+
+export class CreateOccurrenceDto {
+  @IsUUID() companyId!: string;
+  @IsOptional() @IsUUID() farmId?: string;
+  @IsOptional() @IsUUID() plotId?: string;
+  @IsDateString() date!: string;
+  @IsString() type!: string;
+  @IsString() severity!: string;
+  @IsString() status!: string;
+  @IsString() title!: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() responsible?: string;
+  @IsOptional() @IsDateString() resolvedAt?: string;
+}
+
+export class CreateScheduledTaskDto {
+  @IsUUID() companyId!: string;
+  @IsOptional() @IsUUID() farmId?: string;
+  @IsOptional() @IsUUID() plotId?: string;
+  @IsString() category!: string;
+  @IsString() title!: string;
+  @IsOptional() @IsString() description?: string;
+  @IsDateString() scheduledAt!: string;
+  @IsString() priority!: string;
+  @IsString() status!: string;
+}

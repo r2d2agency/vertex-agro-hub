@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
 import {
   CreatePhotoDto, CreateStimulationDto, UpdatePhotoDto, UpdateStimulationDto,
+  CreateTappingRecordDto, CreateProductionDeliveryDto, CreateOccurrenceDto, CreateScheduledTaskDto,
 } from './dto';
 
 const TIMEZONE = 'America/Sao_Paulo';
@@ -301,5 +302,44 @@ export class FieldService {
 
     events.sort((a, b) => (a.date < b.date ? 1 : -1));
     return events.slice(0, limit);
+  }
+
+  // ---------- Records Creation ----------
+  async createTapping(userId: string, dto: CreateTappingRecordDto) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    const { date, ...rest } = dto;
+    return this.prisma.tappingRecord.create({
+      data: { ...rest, date: parseInputDate(date), createdById: userId, updatedById: userId },
+    });
+  }
+
+  async createProduction(userId: string, dto: CreateProductionDeliveryDto) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    const { deliveryDate, ...rest } = dto;
+    return this.prisma.productionDelivery.create({
+      data: { ...rest, deliveryDate: parseInputDate(deliveryDate), createdById: userId, updatedById: userId },
+    });
+  }
+
+  async createOccurrence(userId: string, dto: CreateOccurrenceDto) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    const { date, resolvedAt, ...rest } = dto;
+    return this.prisma.occurrence.create({
+      data: {
+        ...rest,
+        date: parseInputDate(date),
+        resolvedAt: resolvedAt ? parseInputDate(resolvedAt) : null,
+        createdById: userId,
+        updatedById: userId,
+      },
+    });
+  }
+
+  async createTask(userId: string, dto: CreateScheduledTaskDto) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    const { scheduledAt, ...rest } = dto;
+    return this.prisma.scheduledTask.create({
+      data: { ...rest, scheduledAt: parseInputDate(scheduledAt), createdById: userId, updatedById: userId },
+    });
   }
 }
