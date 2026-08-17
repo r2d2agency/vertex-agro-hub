@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { getLocalIsoString } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/insumo")({ component: InsumoPage });
 
@@ -52,7 +53,7 @@ function InsumoPage() {
     const res = await submitInventoryMovement({
       companyId, itemId, kind,
       quantity: Number(quantity.replace(",", ".")),
-      occurredAt: new Date().toISOString(),
+      occurredAt: getLocalIsoString(),
       reason: kind !== "entrada" ? (reason || `Uso na fazenda ${farm?.name ?? ""}`).trim() : undefined,
       supplier: kind === "entrada" ? supplier || undefined : undefined,
       unitCost: kind === "entrada" && unitCost ? Number(unitCost.replace(",", ".")) : undefined,

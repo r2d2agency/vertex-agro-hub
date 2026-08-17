@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { OCC_SEVERITIES, OCC_TYPES } from "@/lib/ocorrencias.functions";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { getLocalIsoDate } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/ocorrencia")({ component: OcorrenciaPage });
 
@@ -53,7 +54,7 @@ function OcorrenciaPage() {
     if (photoUrls.length) descParts.push(`Fotos: ${photoUrls.join(", ")}`);
     const res = await submitOccurrence({
       companyId: farm.companyId, farmId: farm.id,
-      date: new Date().toISOString().slice(0, 10),
+      date: getLocalIsoDate(),
       type, severity, status: "aberta",
       title: title.trim(), description: descParts.join("\n"),
       responsible: me?.user.fullName ?? me?.user.email,

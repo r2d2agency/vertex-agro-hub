@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { getLocalIsoDate } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/estimulacao")({ component: EstimulacaoPage });
 
@@ -43,7 +44,7 @@ function EstimulacaoPage() {
     setSaving(true);
     const res = await submitOccurrence({
       companyId: farm.companyId, farmId: farm.id,
-      date: new Date().toISOString().slice(0, 10),
+      date: getLocalIsoDate(),
       type: "processo", severity: "baixa", status: "resolvida",
       title: `Estimulação ${product} — ${dose} ml/árvore`,
       description: [

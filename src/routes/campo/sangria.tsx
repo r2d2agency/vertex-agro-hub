@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { getLocalIsoDate } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/sangria")({ component: SangriaPage });
 
@@ -52,7 +53,7 @@ function SangriaPage() {
     setSaving(true);
     const res = await submitTapping({
       companyId: farm.companyId, farmId: farm.id,
-      date: new Date().toISOString().slice(0, 10),
+      date: getLocalIsoDate(),
       sangradorName: sangrador.trim(),
       liters: liters ? Number(liters) : undefined,
       drcPercent: drc ? Number(drc) : undefined,

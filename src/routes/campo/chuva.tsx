@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { getLocalDatetimeInputValue } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/chuva")({ component: ChuvaPage });
 
@@ -19,7 +20,7 @@ function ChuvaPage() {
   const [farmId, setFarmId] = useState("");
   const [ini, setIni] = useState<string>("2026-08-12T00:00");
   useEffect(() => {
-    setIni(new Date().toISOString().slice(0, 16));
+    setIni(getLocalDatetimeInputValue());
   }, []);
   const [fim, setFim] = useState<string>("");
   const [intensidade, setIntensidade] = useState("forte");

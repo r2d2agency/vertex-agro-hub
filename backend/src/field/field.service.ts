@@ -1,9 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { toZonedTime } from 'date-fns-tz';
+import { format } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
 import {
   CreatePhotoDto, CreateStimulationDto, UpdatePhotoDto, UpdateStimulationDto,
 } from './dto';
+
+const TIMEZONE = 'America/Sao_Paulo';
+
+function getNow() {
+  return toZonedTime(new Date(), TIMEZONE);
+}
+
+function parseInputDate(dateStr: string | Date) {
+  return toZonedTime(new Date(dateStr), TIMEZONE);
+}
 
 @Injectable()
 export class FieldService {
@@ -27,7 +39,7 @@ export class FieldService {
       orderBy: { name: 'asc' },
     });
     const assignments = await this.prisma.farmAssignment.findMany({
-      where: { userId, OR: [{ endAt: null }, { endAt: { gte: new Date() } }] },
+      where: { userId, OR: [{ endAt: null }, { endAt: { gte: getNow() } }] },
       include: { farm: { select: { id: true, name: true, companyId: true, city: true, state: true, latitude: true, longitude: true } } },
       orderBy: { startAt: 'desc' },
     });
@@ -72,14 +84,14 @@ export class FieldService {
         companyId: dto.companyId,
         farmId: dto.farmId ?? null,
         plotId: dto.plotId ?? null,
-        date: new Date(),
+        date: getNow(),
         type: 'checkin',
         severity: 'baixa',
         status: 'resolvida',
         title: `Check-in de ${who}`,
         description: parts.join(' · ') || null,
         responsible: who,
-        resolvedAt: new Date(),
+        resolvedAt: getNow(),
         createdById: userId,
         updatedById: userId,
       },
@@ -87,7 +99,7 @@ export class FieldService {
     if (dto.taskId) {
       await this.prisma.scheduledTask.updateMany({
         where: { id: dto.taskId, companyId: dto.companyId },
-        data: { status: 'concluida', completedAt: new Date(), updatedById: userId, version: { increment: 1 } },
+        data: { status: 'concluida', completedAt: getNow(), updatedById: userId, version: { increment: 1 } },
       }).catch(() => undefined);
     }
     return occ;
@@ -105,8 +117,8 @@ export class FieldService {
         ...(opts.plotId ? { plotId: opts.plotId } : {}),
         ...(opts.from || opts.to ? {
           date: {
-            ...(opts.from ? { gte: new Date(opts.from) } : {}),
-            ...(opts.to ? { lte: new Date(opts.to) } : {}),
+            ...(opts.from ? { gte: parseInputDate(opts.from) } : {}),
+            ...(opts.to ? { lte: parseInputDate(opts.to) } : {}),
           },
         } : {}),
       },
@@ -119,7 +131,7 @@ export class FieldService {
     await this.access.ensureCompany(userId, dto.companyId);
     const { date, ...rest } = dto;
     return this.prisma.stimulation.create({
-      data: { ...rest, date: new Date(date), createdById: userId, updatedById: userId },
+      data: { ...rest, date: parseInputDate(date), createdById: userId, updatedById: userId },
     });
   }
 
@@ -132,7 +144,7 @@ export class FieldService {
       where: { id },
       data: {
         ...rest,
-        ...(date ? { date: new Date(date) } : {}),
+        ...(date ? { date: parseInputDate(date) } : {}),
         updatedById: userId, version: { increment: 1 },
       },
     });
@@ -144,7 +156,7 @@ export class FieldService {
     await this.access.ensureCompany(userId, cur.companyId);
     return this.prisma.stimulation.update({
       where: { id },
-      data: { isDeleted: true, deletedAt: new Date(), updatedById: userId, version: { increment: 1 } },
+      data: { isDeleted: true, deletedAt: getNow(), updatedById: userId, version: { increment: 1 } },
     });
   }
 
@@ -158,8 +170,8 @@ export class FieldService {
         ...(opts.category ? { category: opts.category } : {}),
         ...(opts.from || opts.to ? {
           takenAt: {
-            ...(opts.from ? { gte: new Date(opts.from) } : {}),
-            ...(opts.to ? { lte: new Date(opts.to) } : {}),
+            ...(opts.from ? { gte: parseInputDate(opts.from) } : {}),
+            ...(opts.to ? { lte: parseInputDate(opts.to) } : {}),
           },
         } : {}),
       },
@@ -174,7 +186,7 @@ export class FieldService {
     return this.prisma.photo.create({
       data: {
         ...rest,
-        takenAt: takenAt ? new Date(takenAt) : new Date(),
+        takenAt: takenAt ? parseInputDate(takenAt) : getNow(),
         createdById: userId, updatedById: userId,
       },
     });
@@ -189,7 +201,7 @@ export class FieldService {
       where: { id },
       data: {
         ...rest,
-        ...(takenAt ? { takenAt: new Date(takenAt) } : {}),
+        ...(takenAt ? { takenAt: parseInputDate(takenAt) } : {}),
         updatedById: userId, version: { increment: 1 },
       },
     });
@@ -201,7 +213,7 @@ export class FieldService {
     await this.access.ensureCompany(userId, cur.companyId);
     return this.prisma.photo.update({
       where: { id },
-      data: { isDeleted: true, deletedAt: new Date(), updatedById: userId, version: { increment: 1 } },
+      data: { isDeleted: true, deletedAt: getNow(), updatedById: userId, version: { increment: 1 } },
     });
   }
 
@@ -210,8 +222,8 @@ export class FieldService {
     await this.access.ensureCompany(userId, companyId);
     const limit = Math.min(opts.limit ?? 200, 500);
     const dateFilter = opts.from || opts.to ? {
-      ...(opts.from ? { gte: new Date(opts.from) } : {}),
-      ...(opts.to ? { lte: new Date(opts.to) } : {}),
+      ...(opts.from ? { gte: parseInputDate(opts.from) } : {}),
+      ...(opts.to ? { lte: parseInputDate(opts.to) } : {}),
     } : undefined;
     const farm = opts.farmId ? { farmId: opts.farmId } : {};
     const base = { companyId, isDeleted: false, ...farm };

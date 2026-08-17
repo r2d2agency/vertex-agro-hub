@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { getLocalIsoString } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/checklist")({ component: ChecklistPage });
 
@@ -65,7 +66,7 @@ function ChecklistPage() {
     const res = await submitChecklist({
       companyId, machineId,
       operatorId: operatorId || undefined,
-      kind, performedAt: new Date().toISOString(),
+      kind, performedAt: getLocalIsoString(),
       hourmeter: hm ? Number(hm) : undefined,
       overallStatus: overall, notes: notes || undefined,
       items,

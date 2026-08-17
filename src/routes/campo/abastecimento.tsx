@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { getLocalIsoString } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/abastecimento")({ component: AbastecimentoPage });
 
@@ -58,7 +59,7 @@ function AbastecimentoPage() {
     const res = await submitFuelMovement({
       companyId, tankId, kind,
       liters: Number(liters.replace(",", ".")),
-      occurredAt: new Date().toISOString(),
+      occurredAt: getLocalIsoString(),
       machineId: machineId || undefined,
       operatorId: operatorId || undefined,
       hourmeter: hm ? Number(hm) : undefined,

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { getLocalIsoString } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/operacao-maquina")({ component: OperacaoMaquinaPage });
 
@@ -85,8 +86,8 @@ function OperacaoMaquinaPage() {
       implementId: implementId || undefined,
       operatorId: operatorId || undefined,
       operationTypeId: typeId || undefined,
-      startedAt: isFinishing ? undefined : new Date().toISOString(),
-      finishedAt: isFinishing ? new Date().toISOString() : undefined,
+      startedAt: isFinishing ? undefined : getLocalIsoString(),
+      finishedAt: isFinishing ? getLocalIsoString() : undefined,
       hourmeterStart: hmStart ? Number(hmStart) : undefined,
       hourmeterEnd: hmEnd ? Number(hmEnd) : undefined,
       areaWorked: area ? Number(area.replace(",", ".")) : undefined,
@@ -104,7 +105,7 @@ function OperacaoMaquinaPage() {
         localStorage.removeItem("vertex_pending_op_log");
         toast.success(res.queued ? "Finalização em fila" : "Operação concluída");
       } else {
-        if (!payload.startedAt) payload.startedAt = new Date().toISOString();
+        if (!payload.startedAt) payload.startedAt = getLocalIsoString();
         const res = await (submitOperationLog(payload) as Promise<any>);
         if (!isFinishing && !res.queued && res.data?.id) {
           localStorage.setItem(
