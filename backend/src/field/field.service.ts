@@ -258,6 +258,7 @@ export class FieldService {
     type Event = {
       id: string; kind: string; date: string; title: string; subtitle?: string;
       farmId?: string | null; meta?: Record<string, any>;
+      status?: string | null;
     };
     const events: Event[] = [];
 
@@ -266,20 +267,24 @@ export class FieldService {
       title: `Sangria — ${t.sangradorName}`,
       subtitle: [t.liters != null ? `${t.liters} L` : null, t.dryKg != null ? `${t.dryKg} kg secos` : null].filter(Boolean).join(' · '),
       farmId: t.farmId,
+      status: t.status,
     });
     for (const d of dels) events.push({
       id: `del-${d.id}`, kind: 'producao', date: d.deliveryDate.toISOString(),
       title: `Entrega ${d.latexType ?? ''}`.trim(),
       subtitle: [d.netWeightKg != null ? `${d.netWeightKg} kg líq.` : null, d.drcAvgPercent != null ? `DRC ${d.drcAvgPercent}%` : null].filter(Boolean).join(' · '),
       farmId: d.farmId,
+      status: d.status,
     });
     for (const o of occ) events.push({
       id: `occ-${o.id}`, kind: 'ocorrencia', date: o.date.toISOString(),
       title: o.title, subtitle: `${o.type} · ${o.severity} · ${o.status}`, farmId: o.farmId,
+      status: o.status,
     });
     for (const s of tasks) events.push({
       id: `task-${s.id}`, kind: 'agenda', date: s.scheduledAt.toISOString(),
       title: s.title, subtitle: `${s.category} · ${s.status}`, farmId: s.farmId,
+      status: s.status,
     });
     for (const s of stims) events.push({
       id: `stim-${s.id}`, kind: 'estimulacao', date: s.date.toISOString(),
