@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { getLocalIsoDate } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/producao")({ component: ProducaoPage });
 
@@ -49,7 +50,7 @@ function ProducaoPage() {
     setSaving(true);
     const res = await submitDelivery({
       companyId: farm.companyId, farmId: farm.id,
-      deliveryDate: new Date().toISOString().slice(0, 10),
+      deliveryDate: getLocalIsoDate(),
       netWeightKg: real || undefined,
       drcAvgPercent: drc ? Number(drc) : undefined,
       latexType: latexType || undefined,

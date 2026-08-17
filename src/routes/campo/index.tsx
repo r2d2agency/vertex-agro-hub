@@ -5,6 +5,7 @@ import { getFieldMe, type FieldMe, captureLocation, submitCheckin } from "@/lib/
 import { toast } from "sonner";
 import { listTasks, type ScheduledTask } from "@/lib/agenda.functions";
 import { flushOutbox, subscribeOutbox } from "@/lib/offline/queue";
+import { getLocalIsoDate } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/")({ component: FieldHome });
 
@@ -71,8 +72,8 @@ function FieldHome() {
       try {
         const m = await getFieldMe();
         setMe(m);
-        const today = new Date().toISOString().slice(0, 10);
-        const in7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+        const today = getLocalIsoDate();
+        const in7 = getLocalIsoDate(new Date(Date.now() + 7 * 86400000));
         const cids = m.isAdmin ? m.companies.map((c) => c.id) : Array.from(new Set(m.assignments.map((a) => a.farm.companyId)));
         const all: ScheduledTask[] = [];
         for (const cid of cids) {
@@ -94,7 +95,7 @@ function FieldHome() {
   }, []);
 
   const stats = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalIsoDate();
     const todays = tasks.filter((t) => t.scheduledAt.slice(0, 10) === today);
     const now = Date.now();
     return {
