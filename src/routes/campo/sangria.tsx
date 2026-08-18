@@ -82,7 +82,12 @@ function SangriaPage() {
             </Select>
           </Field>
           <Field label="Sangrador">
-            <Input className="h-11 rounded-xl" value={sangrador} onChange={(e) => setSangrador(e.target.value)} />
+            <Input 
+              className="h-11 rounded-xl" 
+              value={sangrador} 
+              onChange={(e) => setSangrador(e.target.value)} 
+              placeholder="Nome do sangrador"
+            />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Árvores previstas"><Input className="h-11 rounded-xl" inputMode="numeric" value={previstas} onChange={(e) => setPrevistas(e.target.value)} /></Field>

@@ -99,6 +99,23 @@ function ProducaoPage() {
         </div>
 
         <div className="space-y-1">
+          <Label className="text-xs font-medium text-muted-foreground">Sangrador (Opcional)</Label>
+          <Input 
+            className="h-11 rounded-xl" 
+            placeholder="Nome do sangrador responsável"
+            onChange={(e) => {
+              const val = e.target.value;
+              setNotes(prev => {
+                const parts = prev.split(" | ");
+                const filtered = parts.filter(p => !p.startsWith("Sangrador:"));
+                if (val) filtered.push(`Sangrador: ${val}`);
+                return filtered.join(" | ");
+              });
+            }}
+          />
+        </div>
+
+        <div className="space-y-1">
           <Label className="text-xs font-medium text-muted-foreground">Observações</Label>
           <Textarea rows={3} className="rounded-xl" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Látex coletado sem rejeição." />
         </div>
