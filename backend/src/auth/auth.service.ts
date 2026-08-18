@@ -116,7 +116,6 @@ export class AuthService {
     const { passwordHash, ...safe } = user;
     return safe;
   }
-  }
 
   async changePassword(userId: string, currentPw: string, newPw: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -136,3 +135,4 @@ export class AuthService {
     
     return { ok: true };
   }
+}

@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FieldService } from './field.service';
 import {
   CreatePhotoDto, CreateStimulationDto, UpdatePhotoDto, UpdateStimulationDto,
+  CreateTappingRecordDto, CreateProductionDeliveryDto, CreateOccurrenceDto, CreateScheduledTaskDto,
 } from './dto';
 
 function need(v?: string) {
@@ -88,5 +89,25 @@ export class FieldController {
     return this.svc.history(req.user.sub, need(companyId), {
       farmId, from, to, limit: limit ? parseInt(limit, 10) : undefined,
     });
+  }
+
+  @Post('tapping-records')
+  createTapping(@Req() req: any, @Body() dto: CreateTappingRecordDto) {
+    return this.svc.createTapping(req.user.sub, dto);
+  }
+
+  @Post('production-deliveries')
+  createProduction(@Req() req: any, @Body() dto: CreateProductionDeliveryDto) {
+    return this.svc.createProduction(req.user.sub, dto);
+  }
+
+  @Post('occurrences')
+  createOccurrence(@Req() req: any, @Body() dto: CreateOccurrenceDto) {
+    return this.svc.createOccurrence(req.user.sub, dto);
+  }
+
+  @Post('scheduled-tasks')
+  createTask(@Req() req: any, @Body() dto: CreateScheduledTaskDto) {
+    return this.svc.createTask(req.user.sub, dto);
   }
 }

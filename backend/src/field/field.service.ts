@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
 import {
   CreatePhotoDto, CreateStimulationDto, UpdatePhotoDto, UpdateStimulationDto,
+  CreateTappingRecordDto, CreateProductionDeliveryDto, CreateOccurrenceDto, CreateScheduledTaskDto,
 } from './dto';
 
 const TIMEZONE = 'America/Sao_Paulo';
@@ -258,6 +259,7 @@ export class FieldService {
     type Event = {
       id: string; kind: string; date: string; title: string; subtitle?: string;
       farmId?: string | null; meta?: Record<string, any>;
+      status?: string | null;
     };
     const events: Event[] = [];
 
@@ -266,20 +268,24 @@ export class FieldService {
       title: `Sangria — ${t.sangradorName}`,
       subtitle: [t.liters != null ? `${t.liters} L` : null, t.dryKg != null ? `${t.dryKg} kg secos` : null].filter(Boolean).join(' · '),
       farmId: t.farmId,
+      status: t.status,
     });
     for (const d of dels) events.push({
       id: `del-${d.id}`, kind: 'producao', date: d.deliveryDate.toISOString(),
       title: `Entrega ${d.latexType ?? ''}`.trim(),
       subtitle: [d.netWeightKg != null ? `${d.netWeightKg} kg líq.` : null, d.drcAvgPercent != null ? `DRC ${d.drcAvgPercent}%` : null].filter(Boolean).join(' · '),
       farmId: d.farmId,
+      status: d.status,
     });
     for (const o of occ) events.push({
       id: `occ-${o.id}`, kind: 'ocorrencia', date: o.date.toISOString(),
       title: o.title, subtitle: `${o.type} · ${o.severity} · ${o.status}`, farmId: o.farmId,
+      status: o.status,
     });
     for (const s of tasks) events.push({
       id: `task-${s.id}`, kind: 'agenda', date: s.scheduledAt.toISOString(),
       title: s.title, subtitle: `${s.category} · ${s.status}`, farmId: s.farmId,
+      status: s.status,
     });
     for (const s of stims) events.push({
       id: `stim-${s.id}`, kind: 'estimulacao', date: s.date.toISOString(),
@@ -296,5 +302,44 @@ export class FieldService {
 
     events.sort((a, b) => (a.date < b.date ? 1 : -1));
     return events.slice(0, limit);
+  }
+
+  // ---------- Records Creation ----------
+  async createTapping(userId: string, dto: CreateTappingRecordDto) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    const { date, ...rest } = dto;
+    return this.prisma.tappingRecord.create({
+      data: { ...rest, date: parseInputDate(date), createdById: userId, updatedById: userId },
+    });
+  }
+
+  async createProduction(userId: string, dto: CreateProductionDeliveryDto) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    const { deliveryDate, ...rest } = dto;
+    return this.prisma.productionDelivery.create({
+      data: { ...rest, deliveryDate: parseInputDate(deliveryDate), createdById: userId, updatedById: userId },
+    });
+  }
+
+  async createOccurrence(userId: string, dto: CreateOccurrenceDto) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    const { date, resolvedAt, ...rest } = dto;
+    return this.prisma.occurrence.create({
+      data: {
+        ...rest,
+        date: parseInputDate(date),
+        resolvedAt: resolvedAt ? parseInputDate(resolvedAt) : null,
+        createdById: userId,
+        updatedById: userId,
+      },
+    });
+  }
+
+  async createTask(userId: string, dto: CreateScheduledTaskDto) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    const { scheduledAt, ...rest } = dto;
+    return this.prisma.scheduledTask.create({
+      data: { ...rest, scheduledAt: parseInputDate(scheduledAt), createdById: userId, updatedById: userId },
+    });
   }
 }
