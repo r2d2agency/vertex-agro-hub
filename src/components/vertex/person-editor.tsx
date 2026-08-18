@@ -551,8 +551,14 @@ function AssignmentsTab({ userId, companyId, personRoles }: { userId: string; co
       toast.success("Vínculo cadastrado");
       setFarmId(""); setConsultorUserId(""); setNotes("");
       qc.invalidateQueries({ queryKey: ["person-assignments", userId, companyId] });
+      qc.invalidateQueries({ queryKey: ["people", companyId] });
+      qc.invalidateQueries({ queryKey: ["person", userId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: any) => {
+      console.error("Erro ao vincular:", e);
+      const msg = e.response?.data?.message || e.message || "Erro ao vincular";
+      toast.error(msg);
+    },
   });
 
   const end = useMutation({
