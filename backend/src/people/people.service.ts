@@ -153,7 +153,10 @@ export class PeopleService {
     if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
     await this.ensureManager(userId, companyId);
     await this.ensureMember(targetUserId, companyId);
+    
+    // Converte datas vazias ou nulas para null e limpa strings
     const data = pickPersonal(dto);
+    
     if (Object.keys(data).length === 0) return { ok: true };
     try {
       await this.prisma.user.update({ where: { id: targetUserId }, data });
