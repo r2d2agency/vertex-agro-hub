@@ -24,8 +24,18 @@ export const Route = createFileRoute("/auth")({
 async function routeAfterLogin(navigate: ReturnType<typeof useNavigate>) {
   try {
     const me = await getFieldMe();
-    const fieldOnly = !me.isAdmin && (me.primaryRole === "monitor" || me.primaryRole === "consultor" || me.primaryRole === "sangrador");
-    navigate({ to: fieldOnly ? "/campo" : "/dashboard", replace: true });
+    const isConsultant = me.primaryRole === "consultor";
+    const isMonitor = me.primaryRole === "monitor";
+    const isSangrador = me.primaryRole === "sangrador";
+    const fieldOnly = !me.isAdmin && (isMonitor || isConsultant || isSangrador);
+    
+    if (isConsultant) {
+      navigate({ to: "/campo/consultor", replace: true });
+    } else if (fieldOnly) {
+      navigate({ to: "/campo", replace: true });
+    } else {
+      navigate({ to: "/dashboard", replace: true });
+    }
   } catch {
     navigate({ to: "/campo", replace: true });
   }

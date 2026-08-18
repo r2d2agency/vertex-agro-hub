@@ -14,9 +14,25 @@ import vertexLogo from "@/assets/vertex-logo.png";
 
 export const Route = createFileRoute("/campo")({
   ssr: false,
-  beforeLoad: () => {
+  beforeLoad: async ({ location }) => {
     if (typeof window !== "undefined" && !hasAuthTokens()) {
       throw redirect({ to: "/auth" });
+    }
+    
+    // Server-side check or early check for roles
+    if (typeof window !== "undefined") {
+      try {
+        const me = await getFieldMe();
+        const isConsultant = me.primaryRole === "consultor";
+        const isConsultantPath = location.pathname.includes("/consultor");
+        
+        // Se for consultor e tentar acessar a raiz do campo, manda pro app dele
+        if (isConsultant && !isConsultantPath && location.pathname === "/campo") {
+          throw redirect({ to: "/campo/consultor" });
+        }
+      } catch {
+        // Ignora erro aqui, o FieldShell trata o loading/error
+      }
     }
   },
   component: FieldShell,
