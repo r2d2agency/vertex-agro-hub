@@ -158,8 +158,9 @@ export class PeopleService {
 
   async updatePersonal(userId: string, targetUserId: string, companyId: string, dto: PersonalDataDto) {
     if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
-    await this.ensureManager(userId, companyId);
-    await this.ensureMember(targetUserId, companyId);
+    const activeCompanyId = companyId;
+    await this.ensureManager(userId, activeCompanyId);
+    await this.ensureMember(targetUserId, activeCompanyId);
     
     // Converte datas vazias ou nulas para null e limpa strings
     const data = pickPersonal(dto);
@@ -251,10 +252,28 @@ export class PeopleService {
     await this.ensureManager(userId, companyId);
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!target) throw new NotFoundException();
-    if (target.email.toLowerCase() === SUPERADMIN_EMAIL) {
+    if (target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
       throw new ForbiddenException('Superadmin não pode ser removido');
     }
+
+    // Deleta os vínculos de fazenda nesta empresa
+    await this.prisma.farmAssignment.deleteMany({
+      where: { userId: targetUserId, companyId },
+    });
+
+    // Deleta os documentos vinculados a esta empresa
+    await this.prisma.personDocument.deleteMany({
+      where: { userId: targetUserId, companyId },
+    });
+
+    // Deleta o emprego nesta empresa
+    await this.prisma.personEmployment.deleteMany({
+      where: { userId: targetUserId, companyId },
+    });
+
+    // Remove a role da empresa
     await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId } });
+    
     return { ok: true };
   }
 
