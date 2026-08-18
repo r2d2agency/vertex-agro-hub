@@ -50,8 +50,21 @@ export class PeopleService {
     if (!targetUserId || targetUserId === 'null' || targetUserId === 'undefined') {
       throw new BadRequestException('ID de usuário inválido');
     }
-    const link = await this.prisma.userRole.findFirst({ where: { userId: targetUserId, companyId } });
-    if (!link) throw new ForbiddenException('Pessoa não pertence a esta empresa');
+    const link = await this.prisma.userRole.findFirst({ 
+      where: { 
+        userId: targetUserId, 
+        companyId: companyId 
+      } 
+    });
+    if (!link) {
+      // Se não encontrar o vínculo específico, verifica se é admin_global
+      const globalAdmin = await this.prisma.userRole.findFirst({
+        where: { userId: targetUserId, role: 'admin_global' }
+      });
+      if (!globalAdmin) {
+        throw new ForbiddenException('Pessoa não pertence a esta empresa');
+      }
+    }
   }
 
   async list(userId: string, companyId: string) {
@@ -422,7 +435,6 @@ export class PeopleService {
       data: {
         userId: targetUserId,
         companyId: activeCompanyId,
-        companyId: dto.companyId,
         evaluatorUserId: userId,
         ratedAt: new Date(dto.ratedAt),
         rating: dto.rating,

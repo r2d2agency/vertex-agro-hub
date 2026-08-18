@@ -137,7 +137,7 @@ export function listPersonDocuments(userId: string, companyId: string) {
   );
 }
 
-export function createPersonDocument(userId: string, data: Omit<PersonDocument, "id" | "userId" | "createdAt">) {
+export function createPersonDocument(userId: string, data: Omit<PersonDocument, "id" | "userId" | "createdAt"> & { companyId: string }) {
   return apiRequest<PersonDocument>(`/people/${userId}/documents`, {
     method: "POST",
     body: JSON.stringify(data),
@@ -237,9 +237,9 @@ export function createPersonAssignment(userId: string, input: {
   companyId: string;
   farmId: string;
   role: AssignmentRole;
-  consultorUserId?: string;
+  consultorUserId?: string | null;
   startAt: string;
-  notes?: string;
+  notes?: string | null;
 }) {
   return apiRequest<FarmAssignment>(`/people/${userId}/assignments`, {
     method: "POST",

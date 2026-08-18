@@ -400,7 +400,10 @@ function DocumentsTab({ userId, companyId }: { userId: string; companyId: string
 
   const create = useMutation({
     mutationFn: () => createPersonDocument(userId, {
-      companyId, kind, name: name || kind, number: number || null,
+      companyId, 
+      kind, 
+      name: name || kind, 
+      number: number || null,
       fileUrl: fileUrl || null,
       issuedAt: issuedAt || null,
       expiresAt: expiresAt || null,
