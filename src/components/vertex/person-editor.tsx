@@ -112,6 +112,8 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
         ...employment,
         companyId,
         salary: employment.salary === "" || employment.salary == null ? null : Number(employment.salary),
+        admissionDate: employment.admissionDate ? new Date(employment.admissionDate).toISOString() : null,
+        terminationDate: employment.terminationDate ? new Date(employment.terminationDate).toISOString() : null,
       });
     },
     onSuccess: () => {
@@ -405,8 +407,8 @@ function DocumentsTab({ userId, companyId }: { userId: string; companyId: string
       name: name || kind, 
       number: number || null,
       fileUrl: fileUrl || null,
-      issuedAt: issuedAt || null,
-      expiresAt: expiresAt || null,
+      issuedAt: issuedAt ? new Date(issuedAt).toISOString() : null,
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
       notes: null,
     }),
     onSuccess: () => {
