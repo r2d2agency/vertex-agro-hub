@@ -89,6 +89,144 @@ export type Database = {
         }
         Relationships: []
       }
+      person_documents: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          expires_at: string | null
+          file_url: string | null
+          id: string
+          issued_at: string | null
+          kind: string
+          name: string
+          notes: string | null
+          number: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          file_url?: string | null
+          id?: string
+          issued_at?: string | null
+          kind: string
+          name: string
+          notes?: string | null
+          number?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          file_url?: string | null
+          id?: string
+          issued_at?: string | null
+          kind?: string
+          name?: string
+          notes?: string | null
+          number?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_employments: {
+        Row: {
+          admission_date: string | null
+          bank_account: string | null
+          bank_agency: string | null
+          bank_name: string | null
+          bank_pix_key: string | null
+          company_id: string
+          contract_type: string | null
+          created_at: string | null
+          ctps_number: string | null
+          employee_code: string | null
+          id: string
+          notes: string | null
+          pis_number: string | null
+          position: string | null
+          salary: number | null
+          termination_date: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          admission_date?: string | null
+          bank_account?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          bank_pix_key?: string | null
+          company_id: string
+          contract_type?: string | null
+          created_at?: string | null
+          ctps_number?: string | null
+          employee_code?: string | null
+          id?: string
+          notes?: string | null
+          pis_number?: string | null
+          position?: string | null
+          salary?: number | null
+          termination_date?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          admission_date?: string | null
+          bank_account?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          bank_pix_key?: string | null
+          company_id?: string
+          contract_type?: string | null
+          created_at?: string | null
+          ctps_number?: string | null
+          employee_code?: string | null
+          id?: string
+          notes?: string | null
+          pis_number?: string | null
+          position?: string | null
+          salary?: number | null
+          termination_date?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_employments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -150,6 +288,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      users: {
+        Row: {
+          active: boolean | null
+          address_cep: string | null
+          address_city: string | null
+          address_complement: string | null
+          address_district: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
+          avatar_url: string | null
+          birth_date: string | null
+          cpf: string | null
+          created_at: string | null
+          deactivated_at: string | null
+          deactivation_reason: string | null
+          email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          full_name: string | null
+          gender: string | null
+          google_id: string | null
+          id: string
+          marital_status: string | null
+          nationality: string | null
+          notes: string | null
+          password_hash: string | null
+          phone: string | null
+          phone_alt: string | null
+          rg: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_district?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          avatar_url?: string | null
+          birth_date?: string | null
+          cpf?: string | null
+          created_at?: string | null
+          deactivated_at?: string | null
+          deactivation_reason?: string | null
+          email: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          full_name?: string | null
+          gender?: string | null
+          google_id?: string | null
+          id?: string
+          marital_status?: string | null
+          nationality?: string | null
+          notes?: string | null
+          password_hash?: string | null
+          phone?: string | null
+          phone_alt?: string | null
+          rg?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_district?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          avatar_url?: string | null
+          birth_date?: string | null
+          cpf?: string | null
+          created_at?: string | null
+          deactivated_at?: string | null
+          deactivation_reason?: string | null
+          email?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          full_name?: string | null
+          gender?: string | null
+          google_id?: string | null
+          id?: string
+          marital_status?: string | null
+          nationality?: string | null
+          notes?: string | null
+          password_hash?: string | null
+          phone?: string | null
+          phone_alt?: string | null
+          rg?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
