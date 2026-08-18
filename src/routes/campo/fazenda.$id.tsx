@@ -16,7 +16,7 @@ function FarmDetailPage() {
     getFieldMe().then(setMe).finally(() => setLoading(false));
   }, []);
 
-  const farm = me?.assignments.find((a) => a.farm.id === id)?.farm;
+  const farm = (me?.assignments || []).find((a) => a.farm.id === id)?.farm;
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   if (!farm) return <div className="p-8 text-center text-muted-foreground">Fazenda não encontrada ou sem acesso.</div>;
