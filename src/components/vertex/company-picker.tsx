@@ -15,10 +15,14 @@ export function useSelectedCompany() {
     queryFn: listCompanies,
   });
 
-  const [companyId, setCompanyIdState] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(STORAGE_KEY);
-  });
+  const [companyId, setCompanyIdState] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (stored) setCompanyIdState(stored);
+    }
+  }, []);
 
   useEffect(() => {
     if (isLoading || companies.length === 0) return;
