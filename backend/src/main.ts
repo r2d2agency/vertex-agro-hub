@@ -72,26 +72,26 @@ async function bootstrap() {
   const prisma = app.get(PrismaService);
   try {
     await ensureSuperadmin(prisma);
-  } catch (e) {
-    console.error('[superadmin] failed:', e.message);
+  } catch (e: any) {
+    console.error('[superadmin] failed:', e?.message || e);
   }
   
   try {
     await fixMissingColumns(prisma);
-  } catch (e) {
-    console.error('[fix-columns] failed:', e.message);
+  } catch (e: any) {
+    console.error('[fix-columns] failed:', e?.message || e);
   }
 
   try {
     await seedAllCompaniesCatalog(prisma);
-  } catch (e) {
-    console.error('[seed] failed:', e.message);
+  } catch (e: any) {
+    console.error('[seed] failed:', e?.message || e);
   }
 
   try {
     await backfillGeo(prisma);
-  } catch (e) {
-    console.error('[backfill] failed:', e.message);
+  } catch (e: any) {
+    console.error('[backfill] failed:', e?.message || e);
   }
 
 
