@@ -242,9 +242,9 @@ export class PeopleService {
     if (target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
       throw new ForbiddenException('Superadmin não pode ter papel alterado');
     }
-    await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId: dto.companyId } });
+    await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId: activeCompanyId } });
     await this.prisma.userRole.create({
-      data: { userId: targetUserId, companyId: dto.companyId, role: dto.role },
+      data: { userId: targetUserId, companyId: activeCompanyId, role: dto.role },
     });
     return { ok: true };
   }
