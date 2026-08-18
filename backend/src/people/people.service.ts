@@ -33,14 +33,17 @@ export class PeopleService {
   constructor(private readonly prisma: PrismaService, private readonly access: CompanyAccess) {}
 
   private async ensureManager(userId: string, companyId: string) {
+    if (!companyId) throw new BadRequestException('ID da empresa é obrigatório');
+    
     const isGlobal = await this.prisma.userRole.findFirst({
       where: { userId, role: 'admin_global' },
     });
     if (isGlobal) return;
+    
     const isCompanyAdmin = await this.prisma.userRole.findFirst({
       where: { userId, companyId, role: { in: ['admin_empresa', 'gestor'] } },
     });
-    if (!isCompanyAdmin) throw new ForbiddenException('Sem permissão para gerenciar pessoas');
+    if (!isCompanyAdmin) throw new ForbiddenException('Sem permissão para gerenciar recursos nesta empresa');
   }
 
   private async ensureMember(targetUserId: string, companyId: string) {
@@ -102,7 +105,8 @@ export class PeopleService {
   }
 
   async invite(userId: string, dto: InvitePersonDto) {
-    await this.ensureManager(userId, dto.companyId);
+    const activeCompanyId = dto.companyId;
+    await this.ensureManager(userId, activeCompanyId);
     const email = dto.email.toLowerCase().trim();
     const personal = pickPersonal(dto);
 
@@ -123,7 +127,7 @@ export class PeopleService {
 
     try {
       await this.prisma.userRole.create({
-        data: { userId: user.id, companyId: dto.companyId, role: dto.role },
+        data: { userId: user.id, companyId: activeCompanyId, role: dto.role },
       });
     } catch (e: any) {
       if (e.code !== 'P2002') throw e;
@@ -312,19 +316,26 @@ export class PeopleService {
   }
 
   async createAssignment(userId: string, targetUserId: string, dto: CreateAssignmentDto) {
-    await this.ensureManager(userId, dto.companyId);
-    await this.ensureMember(targetUserId, dto.companyId);
+    const activeCompanyId = dto.companyId;
+    await this.ensureManager(userId, activeCompanyId);
+    await this.ensureMember(targetUserId, activeCompanyId);
+    
     if (!dto.farmId || dto.farmId === 'null' || dto.farmId === 'undefined') {
       throw new BadRequestException('ID da fazenda é obrigatório');
     }
-    const farm = await this.prisma.farm.findFirst({ where: { id: dto.farmId, companyId: dto.companyId } });
-    if (!farm) throw new BadRequestException('Fazenda inválida');
+
+    const farm = await this.prisma.farm.findFirst({ 
+      where: { id: dto.farmId, companyId: activeCompanyId } 
+    });
+    if (!farm) throw new BadRequestException('Fazenda inválida ou pertence a outra empresa');
+
     if (dto.consultorUserId) {
       const ok = await this.prisma.userRole.findFirst({
-        where: { userId: dto.consultorUserId, companyId: dto.companyId },
+        where: { userId: dto.consultorUserId, companyId: activeCompanyId },
       });
-      if (!ok) throw new BadRequestException('Consultor não pertence à empresa');
+      if (!ok) throw new BadRequestException('Consultor não pertence à empresa ativa');
     }
+
     // Encerra vínculo aberto anterior da mesma pessoa/fazenda/role
     await this.prisma.farmAssignment.updateMany({
       where: {
@@ -332,11 +343,12 @@ export class PeopleService {
       },
       data: { endAt: new Date(dto.startAt), endReason: 'Substituído por novo vínculo' },
     });
+
     return this.prisma.farmAssignment.create({
       data: {
         userId: targetUserId,
         farmId: dto.farmId,
-        companyId: dto.companyId,
+        companyId: activeCompanyId,
         role: dto.role,
         consultorUserId: dto.consultorUserId ?? null,
         startAt: new Date(dto.startAt),
