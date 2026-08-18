@@ -110,11 +110,18 @@ export function submitEvaluation(input: {
   return submit(`/people/${input.targetUserId}/evaluations`, "POST", input, "Avaliação de equipe");
 }
 
-export function submitCheckin(input: {
+export async function submitCheckin(input: {
   companyId: string; farmId?: string; plotId?: string;
   taskId?: string; latitude?: number; longitude?: number;
   accuracyM?: number; notes?: string;
 }) {
+  if (typeof navigator !== "undefined" && navigator.onLine) {
+    await apiRequest("/field/checkin", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    return { queued: false };
+  }
   return submit("/field/checkin", "POST", input, "Check-in GPS");
 }
 
