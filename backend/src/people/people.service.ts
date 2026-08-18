@@ -33,14 +33,17 @@ export class PeopleService {
   constructor(private readonly prisma: PrismaService, private readonly access: CompanyAccess) {}
 
   private async ensureManager(userId: string, companyId: string) {
+    if (!companyId) throw new BadRequestException('ID da empresa é obrigatório');
+    
     const isGlobal = await this.prisma.userRole.findFirst({
       where: { userId, role: 'admin_global' },
     });
     if (isGlobal) return;
+    
     const isCompanyAdmin = await this.prisma.userRole.findFirst({
       where: { userId, companyId, role: { in: ['admin_empresa', 'gestor'] } },
     });
-    if (!isCompanyAdmin) throw new ForbiddenException('Sem permissão para gerenciar pessoas');
+    if (!isCompanyAdmin) throw new ForbiddenException('Sem permissão para gerenciar recursos nesta empresa');
   }
 
   private async ensureMember(targetUserId: string, companyId: string) {
@@ -102,7 +105,8 @@ export class PeopleService {
   }
 
   async invite(userId: string, dto: InvitePersonDto) {
-    await this.ensureManager(userId, dto.companyId);
+    const activeCompanyId = dto.companyId;
+    await this.ensureManager(userId, activeCompanyId);
     const email = dto.email.toLowerCase().trim();
     const personal = pickPersonal(dto);
 
@@ -123,7 +127,7 @@ export class PeopleService {
 
     try {
       await this.prisma.userRole.create({
-        data: { userId: user.id, companyId: dto.companyId, role: dto.role },
+        data: { userId: user.id, companyId: activeCompanyId, role: dto.role },
       });
     } catch (e: any) {
       if (e.code !== 'P2002') throw e;
@@ -154,8 +158,9 @@ export class PeopleService {
 
   async updatePersonal(userId: string, targetUserId: string, companyId: string, dto: PersonalDataDto) {
     if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
-    await this.ensureManager(userId, companyId);
-    await this.ensureMember(targetUserId, companyId);
+    const activeCompanyId = companyId;
+    await this.ensureManager(userId, activeCompanyId);
+    await this.ensureMember(targetUserId, activeCompanyId);
     
     // Converte datas vazias ou nulas para null e limpa strings
     const data = pickPersonal(dto);
@@ -230,15 +235,16 @@ export class PeopleService {
   }
 
   async updateRole(userId: string, targetUserId: string, dto: UpdatePersonRoleDto) {
-    await this.ensureManager(userId, dto.companyId);
+    const activeCompanyId = dto.companyId;
+    await this.ensureManager(userId, activeCompanyId);
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!target) throw new NotFoundException();
-    if (target.email.toLowerCase() === SUPERADMIN_EMAIL) {
+    if (target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
       throw new ForbiddenException('Superadmin não pode ter papel alterado');
     }
-    await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId: dto.companyId } });
+    await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId: activeCompanyId } });
     await this.prisma.userRole.create({
-      data: { userId: targetUserId, companyId: dto.companyId, role: dto.role },
+      data: { userId: targetUserId, companyId: activeCompanyId, role: dto.role },
     });
     return { ok: true };
   }
@@ -247,10 +253,28 @@ export class PeopleService {
     await this.ensureManager(userId, companyId);
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!target) throw new NotFoundException();
-    if (target.email.toLowerCase() === SUPERADMIN_EMAIL) {
+    if (target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
       throw new ForbiddenException('Superadmin não pode ser removido');
     }
+
+    // Deleta os vínculos de fazenda nesta empresa
+    await this.prisma.farmAssignment.deleteMany({
+      where: { userId: targetUserId, companyId },
+    });
+
+    // Deleta os documentos vinculados a esta empresa
+    await this.prisma.personDocument.deleteMany({
+      where: { userId: targetUserId, companyId },
+    });
+
+    // Deleta o emprego nesta empresa
+    await this.prisma.personEmployment.deleteMany({
+      where: { userId: targetUserId, companyId },
+    });
+
+    // Remove a role da empresa
     await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId } });
+    
     return { ok: true };
   }
 
@@ -312,19 +336,26 @@ export class PeopleService {
   }
 
   async createAssignment(userId: string, targetUserId: string, dto: CreateAssignmentDto) {
-    await this.ensureManager(userId, dto.companyId);
-    await this.ensureMember(targetUserId, dto.companyId);
+    const activeCompanyId = dto.companyId;
+    await this.ensureManager(userId, activeCompanyId);
+    await this.ensureMember(targetUserId, activeCompanyId);
+    
     if (!dto.farmId || dto.farmId === 'null' || dto.farmId === 'undefined') {
       throw new BadRequestException('ID da fazenda é obrigatório');
     }
-    const farm = await this.prisma.farm.findFirst({ where: { id: dto.farmId, companyId: dto.companyId } });
-    if (!farm) throw new BadRequestException('Fazenda inválida');
+
+    const farm = await this.prisma.farm.findFirst({ 
+      where: { id: dto.farmId, companyId: activeCompanyId } 
+    });
+    if (!farm) throw new BadRequestException('Fazenda inválida ou pertence a outra empresa');
+
     if (dto.consultorUserId) {
       const ok = await this.prisma.userRole.findFirst({
-        where: { userId: dto.consultorUserId, companyId: dto.companyId },
+        where: { userId: dto.consultorUserId, companyId: activeCompanyId },
       });
-      if (!ok) throw new BadRequestException('Consultor não pertence à empresa');
+      if (!ok) throw new BadRequestException('Consultor não pertence à empresa ativa');
     }
+
     // Encerra vínculo aberto anterior da mesma pessoa/fazenda/role
     await this.prisma.farmAssignment.updateMany({
       where: {
@@ -332,11 +363,12 @@ export class PeopleService {
       },
       data: { endAt: new Date(dto.startAt), endReason: 'Substituído por novo vínculo' },
     });
+
     return this.prisma.farmAssignment.create({
       data: {
         userId: targetUserId,
         farmId: dto.farmId,
-        companyId: dto.companyId,
+        companyId: activeCompanyId,
         role: dto.role,
         consultorUserId: dto.consultorUserId ?? null,
         startAt: new Date(dto.startAt),
@@ -347,10 +379,11 @@ export class PeopleService {
   }
 
   async endAssignment(userId: string, targetUserId: string, assignmentId: string, dto: EndAssignmentDto) {
-    await this.ensureManager(userId, dto.companyId);
+    const activeCompanyId = dto.companyId;
+    await this.ensureManager(userId, activeCompanyId);
     const a = await this.prisma.farmAssignment.findUnique({ where: { id: assignmentId } });
-    if (!a || a.userId !== targetUserId || a.companyId !== dto.companyId) {
-      throw new NotFoundException();
+    if (!a || a.userId !== targetUserId || a.companyId !== activeCompanyId) {
+      throw new NotFoundException('Vínculo não encontrado ou pertence a outra empresa');
     }
     return this.prisma.farmAssignment.update({
       where: { id: assignmentId },
@@ -362,9 +395,10 @@ export class PeopleService {
   }
 
   async deleteAssignment(userId: string, targetUserId: string, assignmentId: string, companyId: string) {
-    await this.ensureManager(userId, companyId);
+    const activeCompanyId = companyId;
+    await this.ensureManager(userId, activeCompanyId);
     await this.prisma.farmAssignment.deleteMany({
-      where: { id: assignmentId, userId: targetUserId, companyId },
+      where: { id: assignmentId, userId: targetUserId, companyId: activeCompanyId },
     });
     return { ok: true };
   }
@@ -381,11 +415,13 @@ export class PeopleService {
   }
 
   async createEvaluation(userId: string, targetUserId: string, dto: CreateEvaluationDto) {
-    await this.ensureManager(userId, dto.companyId);
-    await this.ensureMember(targetUserId, dto.companyId);
+    const activeCompanyId = dto.companyId;
+    await this.ensureManager(userId, activeCompanyId);
+    await this.ensureMember(targetUserId, activeCompanyId);
     return this.prisma.personEvaluation.create({
       data: {
         userId: targetUserId,
+        companyId: activeCompanyId,
         companyId: dto.companyId,
         evaluatorUserId: userId,
         ratedAt: new Date(dto.ratedAt),
