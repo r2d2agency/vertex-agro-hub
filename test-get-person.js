@@ -1,12 +1,9 @@
 import { PrismaClient } from './backend/node_modules/@prisma/client/index.js';
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: '',
-    },
-  },
-});
+// Forçar a variável de ambiente no processo para o Prisma ler
+process.env.DATABASE_URL = '';
+
+const prisma = new PrismaClient();
 
 async function main() {
   console.log('--- TEST START ---');
