@@ -81,13 +81,17 @@ function SangriaPage() {
               <SelectContent>{me.assignments.map((a) => <SelectItem key={a.farm.id} value={a.farm.id}>{a.farm.name}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
-          <Field label="Sangrador">
+          <Field label="Sangrador (Quem realizou a sangria)">
             <Input 
-              className="h-11 rounded-xl" 
+              className="h-11 rounded-xl border-primary/50 bg-primary/5" 
               value={sangrador} 
               onChange={(e) => setSangrador(e.target.value)} 
-              placeholder="Nome do sangrador"
+              placeholder="Digite o nome do sangrador..."
+              required
             />
+            <p className="text-[10px] text-muted-foreground italic px-1">
+              O monitor é responsável por registrar a atividade da sua equipe de sangradores.
+            </p>
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Árvores previstas"><Input className="h-11 rounded-xl" inputMode="numeric" value={previstas} onChange={(e) => setPrevistas(e.target.value)} /></Field>

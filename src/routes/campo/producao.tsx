@@ -99,10 +99,11 @@ function ProducaoPage() {
         </div>
 
         <div className="space-y-1">
-          <Label className="text-xs font-medium text-muted-foreground">Sangrador (Opcional)</Label>
+          <Label className="text-xs font-medium text-muted-foreground">Sangrador Responsável</Label>
           <Input 
             className="h-11 rounded-xl" 
-            placeholder="Nome do sangrador responsável"
+            placeholder="Nome do sangrador que realizou o trabalho"
+            required
             onChange={(e) => {
               const val = e.target.value;
               setNotes(prev => {
@@ -113,6 +114,9 @@ function ProducaoPage() {
               });
             }}
           />
+          <p className="text-[10px] text-muted-foreground italic px-1">
+            Como monitor, você deve identificar o sangrador responsável por esta coleta.
+          </p>
         </div>
 
         <div className="space-y-1">
