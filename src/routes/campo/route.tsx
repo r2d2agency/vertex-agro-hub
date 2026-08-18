@@ -208,7 +208,7 @@ function FieldShell() {
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold text-foreground">Olá, {firstName}</div>
                 <div className="text-[11px] capitalize text-muted-foreground">
-                  {role === "consultor" ? "Consultor" : role === "monitor" ? "Monitor" : role}
+                  {role === "consultor" ? "Consultor" : "Monitor"}
                 </div>
               </div>
             </div>
