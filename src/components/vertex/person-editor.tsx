@@ -552,7 +552,7 @@ function AssignmentsTab({ userId, companyId, personRoles }: { userId: string; co
       farmId, 
       role,
       consultorUserId: role === "consultor" ? null : (consultorUserId || null),
-      startAt, 
+      startAt: new Date(startAt).toISOString(), 
       notes: notes || null,
     }),
     onSuccess: () => {
