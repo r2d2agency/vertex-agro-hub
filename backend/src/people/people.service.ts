@@ -235,10 +235,11 @@ export class PeopleService {
   }
 
   async updateRole(userId: string, targetUserId: string, dto: UpdatePersonRoleDto) {
-    await this.ensureManager(userId, dto.companyId);
+    const activeCompanyId = dto.companyId;
+    await this.ensureManager(userId, activeCompanyId);
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!target) throw new NotFoundException();
-    if (target.email.toLowerCase() === SUPERADMIN_EMAIL) {
+    if (target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
       throw new ForbiddenException('Superadmin não pode ter papel alterado');
     }
     await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId: dto.companyId } });
@@ -378,10 +379,11 @@ export class PeopleService {
   }
 
   async endAssignment(userId: string, targetUserId: string, assignmentId: string, dto: EndAssignmentDto) {
-    await this.ensureManager(userId, dto.companyId);
+    const activeCompanyId = dto.companyId;
+    await this.ensureManager(userId, activeCompanyId);
     const a = await this.prisma.farmAssignment.findUnique({ where: { id: assignmentId } });
-    if (!a || a.userId !== targetUserId || a.companyId !== dto.companyId) {
-      throw new NotFoundException();
+    if (!a || a.userId !== targetUserId || a.companyId !== activeCompanyId) {
+      throw new NotFoundException('Vínculo não encontrado ou pertence a outra empresa');
     }
     return this.prisma.farmAssignment.update({
       where: { id: assignmentId },
@@ -393,9 +395,10 @@ export class PeopleService {
   }
 
   async deleteAssignment(userId: string, targetUserId: string, assignmentId: string, companyId: string) {
-    await this.ensureManager(userId, companyId);
+    const activeCompanyId = companyId;
+    await this.ensureManager(userId, activeCompanyId);
     await this.prisma.farmAssignment.deleteMany({
-      where: { id: assignmentId, userId: targetUserId, companyId },
+      where: { id: assignmentId, userId: targetUserId, companyId: activeCompanyId },
     });
     return { ok: true };
   }
@@ -412,11 +415,13 @@ export class PeopleService {
   }
 
   async createEvaluation(userId: string, targetUserId: string, dto: CreateEvaluationDto) {
-    await this.ensureManager(userId, dto.companyId);
-    await this.ensureMember(targetUserId, dto.companyId);
+    const activeCompanyId = dto.companyId;
+    await this.ensureManager(userId, activeCompanyId);
+    await this.ensureMember(targetUserId, activeCompanyId);
     return this.prisma.personEvaluation.create({
       data: {
         userId: targetUserId,
+        companyId: activeCompanyId,
         companyId: dto.companyId,
         evaluatorUserId: userId,
         ratedAt: new Date(dto.ratedAt),
