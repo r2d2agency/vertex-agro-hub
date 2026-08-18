@@ -73,7 +73,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
     } = data;
     setPersonal({
       fullName, cpf, rg,
-      birthDate: birthDate ? String(birthDate).slice(0, 10) : "",
+      birthDate: birthDate ? new Date(birthDate).toISOString().slice(0, 10) : "",
       gender, maritalStatus, nationality, avatarUrl, notes,
       phone, phoneAlt, addressCep, addressStreet, addressNumber, addressComplement,
       addressDistrict, addressCity, addressState, emergencyContactName, emergencyContactPhone,
@@ -598,10 +598,10 @@ function AssignmentsTab({ userId, companyId, personRoles }: { userId: string; co
               </SelectTrigger>
               <SelectContent position="popper" sideOffset={5} className="z-[9999] max-h-72">
                 {farms.length === 0 ? (
-                  <div className="p-2 text-xs text-muted-foreground">Nenhuma fazenda encontrada</div>
+                  <div className="p-2 text-xs text-muted-foreground text-center">Nenhuma fazenda encontrada</div>
                 ) : (
-                  farms.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
+                  farms.map((f: any) => (
+                    <SelectItem key={f.id} value={f.id} className="cursor-pointer">
                       {f.name}{f.code ? ` (${f.code})` : ""}
                     </SelectItem>
                   ))
