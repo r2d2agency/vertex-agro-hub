@@ -288,7 +288,10 @@ function CheckinGate({
   const canSubmit = !!companyId && gpsReady && !loading;
 
   async function handleCheckin() {
-    if (!companyId) return;
+    if (!companyId) {
+      toast.error("Fazenda sem empresa vinculada", { description: "Peça ao administrador para revisar seu vínculo com a fazenda." });
+      return;
+    }
     setLoading(true);
     try {
       let coords: Coords | null =
@@ -306,6 +309,13 @@ function CheckinGate({
         accuracyM: coords.accuracyM,
       });
 
+      if (typeof navigator !== "undefined" && navigator.onLine) {
+        const sync = await flushOutbox();
+        if (sync.failed > 0) {
+          throw new Error("O servidor recusou o registro. Verifique seu vínculo com a empresa e tente novamente.");
+        }
+      }
+
       // Se o backend/checkin retornasse os nomes seria ideal, mas vamos usar o que temos no estado
       const selectedFarm = (me.assignments || []).find(a => a.farm?.id === farmId)?.farm?.name;
       // Nota: plotId nome teria que vir de uma lista de talhões que ainda não carregamos aqui.
@@ -315,10 +325,10 @@ function CheckinGate({
       const stamp = { farmId: farmId || undefined, plotId: plotId || undefined, at: Date.now() };
       sessionStorage.setItem(CHECKIN_KEY, JSON.stringify(stamp));
       
-      toast.success(res.queued ? "Check-in salvo (offline)" : "Check-in registrado");
+      toast.success(navigator.onLine ? "Check-in registrado" : "Check-in salvo (offline)");
       
       // Delay pequeno para o usuário ver a mensagem de boas-vindas antes de sumir o gate
-      setTimeout(() => onDone(stamp), 2500);
+      setTimeout(() => onDone(stamp), 800);
     } catch (e: any) {
       toast.error("Falha no check-in", { description: e?.message ?? "Tente novamente." });
     } finally {

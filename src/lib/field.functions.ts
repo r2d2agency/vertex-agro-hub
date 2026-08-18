@@ -33,7 +33,7 @@ export type Coords = { latitude: number; longitude: number; accuracyM?: number }
 
 export async function getFieldMe(): Promise<FieldMe> {
   try {
-    const data = await apiRequest<FieldMe>("/auth/me");
+    const data = await apiRequest<FieldMe>("/field/me");
     await idbPut("cache", { key: FIELD_ME_CACHE_KEY, ...data });
     return data;
   } catch (e) {
@@ -115,7 +115,7 @@ export function submitCheckin(input: {
   taskId?: string; latitude?: number; longitude?: number;
   accuracyM?: number; notes?: string;
 }) {
-  return submit("/activities/checkin", "POST", { ...input, type: 'checkin', status: 'concluida' }, "Check-in GPS");
+  return submit("/field/checkin", "POST", input, "Check-in GPS");
 }
 
 export function submitOperationLog(input: any) {
