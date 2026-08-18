@@ -139,7 +139,7 @@ export function listPersonDocuments(userId: string, companyId: string) {
 }
 
 export function createPersonDocument(userId: string, data: Omit<PersonDocument, "id" | "userId" | "createdAt"> & { companyId: string }) {
-  return apiRequest<PersonDocument>(`/people/${userId}/documents`, {
+  return apiRequest<PersonDocument>(`/people/${userId}/documents?companyId=${encodeURIComponent(data.companyId)}`, {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -152,7 +152,7 @@ export function deletePersonDocument(userId: string, docId: string, companyId: s
 }
 
 export function updatePersonRole(userId: string, companyId: string, role: CompanyRole) {
-  return apiRequest(`/people/${userId}/role`, {
+  return apiRequest(`/people/${userId}/role?companyId=${encodeURIComponent(companyId)}`, {
     method: "PATCH",
     body: JSON.stringify({ companyId, role }),
   });
@@ -242,7 +242,7 @@ export function createPersonAssignment(userId: string, input: {
   startAt: string;
   notes?: string | null;
 }) {
-  return apiRequest<FarmAssignment>(`/people/${userId}/assignments`, {
+  return apiRequest<FarmAssignment>(`/people/${userId}/assignments?companyId=${encodeURIComponent(input.companyId)}`, {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -280,7 +280,7 @@ export function createPersonEvaluation(userId: string, input: {
   title?: string | null;
   notes?: string | null;
 }) {
-  return apiRequest<PersonEvaluation>(`/people/${userId}/evaluations`, {
+  return apiRequest<PersonEvaluation>(`/people/${userId}/evaluations?companyId=${encodeURIComponent(input.companyId)}`, {
     method: "POST",
     body: JSON.stringify(input),
   });
