@@ -598,7 +598,7 @@ function AssignmentsTab({ userId, companyId, personRoles }: { userId: string; co
               </SelectTrigger>
               <SelectContent position="popper" sideOffset={5} className="z-[9999] max-h-72">
                 {farms.length === 0 ? (
-                  <div className="p-2 text-xs text-muted-foreground text-center">Nenhuma fazenda encontrada</div>
+                  <div className="p-2 text-xs text-muted-foreground text-center">Nenhuma fazenda cadastrada</div>
                 ) : (
                   farms.map((f: any) => (
                     <SelectItem key={f.id} value={f.id} className="cursor-pointer">
@@ -631,7 +631,17 @@ function AssignmentsTab({ userId, companyId, personRoles }: { userId: string; co
             </Field>
           </div>
           <div className="md:col-span-3 flex justify-end">
-            <Button size="sm" onClick={() => farmId ? create.mutate() : toast.error("Selecione a fazenda")} disabled={create.isPending}>
+            <Button 
+              size="sm" 
+              onClick={() => {
+                if (!farmId || farmId === "null" || farmId === "undefined") {
+                  toast.error("Selecione a fazenda");
+                  return;
+                }
+                create.mutate();
+              }} 
+              disabled={create.isPending}
+            >
               <Plus className="mr-2 h-4 w-4" /> Vincular à fazenda
             </Button>
           </div>

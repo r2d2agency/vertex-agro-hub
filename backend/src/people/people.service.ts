@@ -311,6 +311,9 @@ export class PeopleService {
   async createAssignment(userId: string, targetUserId: string, dto: CreateAssignmentDto) {
     await this.ensureManager(userId, dto.companyId);
     await this.ensureMember(targetUserId, dto.companyId);
+    if (!dto.farmId || dto.farmId === 'null' || dto.farmId === 'undefined') {
+      throw new BadRequestException('ID da fazenda é obrigatório');
+    }
     const farm = await this.prisma.farm.findFirst({ where: { id: dto.farmId, companyId: dto.companyId } });
     if (!farm) throw new BadRequestException('Fazenda inválida');
     if (dto.consultorUserId) {
