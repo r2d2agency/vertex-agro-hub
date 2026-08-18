@@ -744,8 +744,8 @@ function EvaluationsTab({ userId, companyId }: { userId: string; companyId: stri
 
   const create = useMutation({
     mutationFn: () => createPersonEvaluation(userId, {
-      companyId, 
-      ratedAt, 
+      companyId,
+      ratedAt: ratedAt ? new Date(ratedAt).toISOString() : new Date().toISOString(),
       rating,
       category: category || null,
       title: title || null,
