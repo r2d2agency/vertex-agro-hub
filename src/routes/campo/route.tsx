@@ -288,7 +288,10 @@ function CheckinGate({
   const canSubmit = !!companyId && gpsReady && !loading;
 
   async function handleCheckin() {
-    if (!companyId) return;
+    if (!companyId) {
+      toast.error("Fazenda sem empresa vinculada", { description: "Peça ao administrador para revisar seu vínculo com a fazenda." });
+      return;
+    }
     setLoading(true);
     try {
       let coords: Coords | null =
@@ -318,7 +321,7 @@ function CheckinGate({
       toast.success(res.queued ? "Check-in salvo (offline)" : "Check-in registrado");
       
       // Delay pequeno para o usuário ver a mensagem de boas-vindas antes de sumir o gate
-      setTimeout(() => onDone(stamp), 2500);
+      setTimeout(() => onDone(stamp), 800);
     } catch (e: any) {
       toast.error("Falha no check-in", { description: e?.message ?? "Tente novamente." });
     } finally {

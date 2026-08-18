@@ -33,7 +33,7 @@ export type Coords = { latitude: number; longitude: number; accuracyM?: number }
 
 export async function getFieldMe(): Promise<FieldMe> {
   try {
-    const data = await apiRequest<FieldMe>("/auth/me");
+    const data = await apiRequest<FieldMe>("/field/me");
     await idbPut("cache", { key: FIELD_ME_CACHE_KEY, ...data });
     return data;
   } catch (e) {
@@ -110,12 +110,19 @@ export function submitEvaluation(input: {
   return submit(`/people/${input.targetUserId}/evaluations`, "POST", input, "Avaliação de equipe");
 }
 
-export function submitCheckin(input: {
+export async function submitCheckin(input: {
   companyId: string; farmId?: string; plotId?: string;
   taskId?: string; latitude?: number; longitude?: number;
   accuracyM?: number; notes?: string;
 }) {
-  return submit("/activities/checkin", "POST", { ...input, type: 'checkin', status: 'concluida' }, "Check-in GPS");
+  if (typeof navigator !== "undefined" && navigator.onLine) {
+    await apiRequest("/field/checkin", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    return { queued: false };
+  }
+  return submit("/field/checkin", "POST", input, "Check-in GPS");
 }
 
 export function submitOperationLog(input: any) {
