@@ -89,6 +89,72 @@ export type Database = {
         }
         Relationships: []
       }
+      farms: {
+        Row: {
+          boundary: Json | null
+          city: string | null
+          code: string | null
+          company_id: string
+          created_at: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          photo_urls: string[] | null
+          regional_id: string | null
+          state: string | null
+          total_area_ha: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          boundary?: Json | null
+          city?: string | null
+          code?: string | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          photo_urls?: string[] | null
+          regional_id?: string | null
+          state?: string | null
+          total_area_ha?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          boundary?: Json | null
+          city?: string | null
+          code?: string | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          photo_urls?: string[] | null
+          regional_id?: string | null
+          state?: string | null
+          total_area_ha?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farms_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farms_regional_id_fkey"
+            columns: ["regional_id"]
+            isOneToOne: false
+            referencedRelation: "regionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_documents: {
         Row: {
           company_id: string | null
@@ -227,6 +293,66 @@ export type Database = {
           },
         ]
       }
+      plots: {
+        Row: {
+          area_ha: number | null
+          boundary: Json | null
+          code: string | null
+          company_id: string
+          created_at: string | null
+          farm_id: string
+          id: string
+          name: string
+          planting_year: number | null
+          tapping_system: string | null
+          tree_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          area_ha?: number | null
+          boundary?: Json | null
+          code?: string | null
+          company_id: string
+          created_at?: string | null
+          farm_id: string
+          id?: string
+          name: string
+          planting_year?: number | null
+          tapping_system?: string | null
+          tree_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          area_ha?: number | null
+          boundary?: Json | null
+          code?: string | null
+          company_id?: string
+          created_at?: string | null
+          farm_id?: string
+          id?: string
+          name?: string
+          planting_year?: number | null
+          tapping_system?: string | null
+          tree_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plots_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plots_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -256,6 +382,54 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      regionals: {
+        Row: {
+          code: string | null
+          company_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          manager_user_id: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          code?: string | null
+          company_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          manager_user_id?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string | null
+          company_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          manager_user_id?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regionals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regionals_manager_user_id_fkey"
+            columns: ["manager_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
