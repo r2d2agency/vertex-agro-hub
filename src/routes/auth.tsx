@@ -26,12 +26,15 @@ async function routeAfterLogin(navigate: ReturnType<typeof useNavigate>) {
     const me = await getFieldMe();
     const isConsultant = me.primaryRole === "consultor";
     const isMonitor = me.primaryRole === "monitor";
-    const fieldOnly = !me.isAdmin && (me.primaryRole === "monitor" || me.primaryRole === "consultor");
+    const isAdmin = !!me.isAdmin;
     
-    if (isConsultant) {
-      navigate({ to: "/campo/consultor", replace: true });
-    } else if (fieldOnly) {
-      navigate({ to: "/campo", replace: true });
+    // Prioridade para o App do Campo se for monitor ou consultor e não for admin global
+    if ((isMonitor || isConsultant) && !isAdmin) {
+      if (isConsultant) {
+        navigate({ to: "/campo/consultor", replace: true });
+      } else {
+        navigate({ to: "/campo", replace: true });
+      }
     } else {
       navigate({ to: "/dashboard", replace: true });
     }
