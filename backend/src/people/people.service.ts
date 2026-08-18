@@ -194,8 +194,8 @@ export class PeopleService {
     const data: any = {
       position: dto.position ?? null,
       employeeCode: dto.employeeCode ?? null,
-      admissionDate: dto.admissionDate ? new Date(dto.admissionDate) : null,
-      terminationDate: dto.terminationDate ? new Date(dto.terminationDate) : null,
+      admissionDate: dto.admissionDate ? new Date(dto.admissionDate).toISOString() : null,
+      terminationDate: dto.terminationDate ? new Date(dto.terminationDate).toISOString() : null,
       contractType: dto.contractType ?? null,
       salary: dto.salary ?? null,
       pisNumber: dto.pisNumber ?? null,
@@ -238,8 +238,8 @@ export class PeopleService {
         name: dto.name,
         number: dto.number ?? null,
         fileUrl: dto.fileUrl ?? null,
-        issuedAt: dto.issuedAt ? new Date(dto.issuedAt) : null,
-        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+        issuedAt: dto.issuedAt ? new Date(dto.issuedAt).toISOString() : null,
+        expiresAt: dto.expiresAt ? new Date(dto.expiresAt).toISOString() : null,
         notes: dto.notes ?? null,
       },
     });
@@ -388,7 +388,7 @@ export class PeopleService {
         companyId: activeCompanyId,
         role: dto.role,
         consultorUserId: dto.consultorUserId ?? null,
-        startAt: new Date(dto.startAt),
+        startAt: new Date(dto.startAt).toISOString(),
         notes: dto.notes ?? null,
         createdById: userId,
       },
@@ -405,7 +405,7 @@ export class PeopleService {
     return this.prisma.farmAssignment.update({
       where: { id: assignmentId },
       data: {
-        endAt: dto.endAt ? new Date(dto.endAt) : new Date(),
+        endAt: dto.endAt ? new Date(dto.endAt).toISOString() : new Date().toISOString(),
         endReason: dto.endReason ?? null,
       },
     });
@@ -440,7 +440,7 @@ export class PeopleService {
         userId: targetUserId,
         companyId: activeCompanyId,
         evaluatorUserId: userId,
-        ratedAt: new Date(dto.ratedAt),
+        ratedAt: new Date(dto.ratedAt).toISOString(),
         rating: dto.rating,
         category: dto.category ?? null,
         title: dto.title ?? null,
