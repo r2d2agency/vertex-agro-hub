@@ -76,7 +76,7 @@ async function refreshAccessToken() {
   if (!refresh_token) return false;
 
   const apiBase = ensureApiUrl();
-  const response = await fetch(`${apiBase}/api/auth/refresh`, {
+  const response = await fetch(`${apiBase}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token }),
@@ -119,7 +119,7 @@ export async function apiRequest<T>(
   }
 
   const apiBase = ensureApiUrl();
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const normalizedPath = path.startsWith('/api/') ? path.replace('/api/', '/') : (path.startsWith('/') ? path : `/${path}`);
   const response = await fetch(`${apiBase}${normalizedPath}`, {
     ...init,
     headers: requestHeaders,
@@ -187,7 +187,7 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const apiBase = ensureApiUrl();
-  const response = await fetch(`${apiBase}/api/uploads`, {
+  const response = await fetch(`${apiBase}/uploads`, {
     method: "POST",
     headers,
     body: form,
