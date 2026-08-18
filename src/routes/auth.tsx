@@ -26,8 +26,7 @@ async function routeAfterLogin(navigate: ReturnType<typeof useNavigate>) {
     const me = await getFieldMe();
     const isConsultant = me.primaryRole === "consultor";
     const isMonitor = me.primaryRole === "monitor";
-    const isSangrador = me.primaryRole === "sangrador";
-    const fieldOnly = !me.isAdmin && (isMonitor || isConsultant || isSangrador);
+    const fieldOnly = !me.isAdmin && (me.primaryRole === "monitor" || me.primaryRole === "consultor");
     
     if (isConsultant) {
       navigate({ to: "/campo/consultor", replace: true });
