@@ -24,10 +24,10 @@ export const Route = createFileRoute("/auth")({
 async function routeAfterLogin(navigate: ReturnType<typeof useNavigate>) {
   try {
     const me = await getFieldMe();
-    const fieldOnly = !me.isAdmin && (me.primaryRole === "monitor" || me.primaryRole === "consultor");
+    const fieldOnly = !me.isAdmin && (me.primaryRole === "monitor" || me.primaryRole === "consultor" || me.primaryRole === "sangrador");
     navigate({ to: fieldOnly ? "/campo" : "/dashboard", replace: true });
   } catch {
-    navigate({ to: "/dashboard", replace: true });
+    navigate({ to: "/campo", replace: true });
   }
 }
 
