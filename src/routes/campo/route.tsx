@@ -180,7 +180,7 @@ function FieldShell() {
       );
     }
     const role = me.primaryRole;
-    const firstName = me.user.fullName?.split(" ")[0] ?? "campo";
+    const firstName = me.user?.fullName?.split(" ")[0] ?? "campo";
     const GpsIcon = gpsBadge.icon;
     const isConsultantRoute = location.pathname.includes("/consultor");
     return (
@@ -318,7 +318,7 @@ function CheckinGate({
       <div className="space-y-1">
         {locationName ? (
           <div className="animate-in fade-in zoom-in duration-500">
-            <h1 className="text-xl font-bold text-primary">Olá, {me.user.fullName?.split(" ")[0]}!</h1>
+            <h1 className="text-xl font-bold text-primary">Olá, {me.user?.fullName?.split(" ")[0]}!</h1>
             <p className="max-w-xs text-sm font-medium text-foreground">
               Você está na fazenda <span className="text-primary">{locationName.farm}</span>
               {plotId && <span>, no talhão <span className="text-primary">{plotId}</span></span>}.
