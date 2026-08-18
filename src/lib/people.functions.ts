@@ -125,7 +125,8 @@ export function updatePersonPersonal(userId: string, companyId: string, data: Pe
 }
 
 export function upsertPersonEmployment(userId: string, data: Employment) {
-  return apiRequest(`/people/${userId}/employment`, {
+  const companyId = data.companyId;
+  return apiRequest(`/people/${userId}/employment?companyId=${encodeURIComponent(companyId)}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
