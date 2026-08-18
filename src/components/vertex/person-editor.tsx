@@ -112,6 +112,8 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
         ...employment,
         companyId,
         salary: employment.salary === "" || employment.salary == null ? null : Number(employment.salary),
+        admissionDate: employment.admissionDate ? new Date(employment.admissionDate).toISOString() : null,
+        terminationDate: employment.terminationDate ? new Date(employment.terminationDate).toISOString() : null,
       });
     },
     onSuccess: () => {
@@ -400,10 +402,13 @@ function DocumentsTab({ userId, companyId }: { userId: string; companyId: string
 
   const create = useMutation({
     mutationFn: () => createPersonDocument(userId, {
-      companyId, kind, name: name || kind, number: number || null,
+      companyId, 
+      kind, 
+      name: name || kind, 
+      number: number || null,
       fileUrl: fileUrl || null,
-      issuedAt: issuedAt || null,
-      expiresAt: expiresAt || null,
+      issuedAt: issuedAt ? new Date(issuedAt).toISOString() : null,
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
       notes: null,
     }),
     onSuccess: () => {
@@ -543,16 +548,19 @@ function AssignmentsTab({ userId, companyId, personRoles }: { userId: string; co
 
   const create = useMutation({
     mutationFn: () => createPersonAssignment(userId, {
-      companyId, farmId, role,
-      consultorUserId: role === "consultor" ? undefined : (consultorUserId || undefined),
-      startAt, notes: notes || undefined,
+      companyId, 
+      farmId, 
+      role,
+      consultorUserId: role === "consultor" ? null : (consultorUserId || null),
+      startAt: new Date(startAt).toISOString(), 
+      notes: notes || null,
     }),
     onSuccess: () => {
       toast.success("Vínculo cadastrado");
       setFarmId(""); setConsultorUserId(""); setNotes("");
       qc.invalidateQueries({ queryKey: ["person-assignments", userId, companyId] });
       qc.invalidateQueries({ queryKey: ["people", companyId] });
-      qc.invalidateQueries({ queryKey: ["person", userId] });
+      qc.invalidateQueries({ queryKey: ["person", userId, companyId] });
     },
     onError: (e: any) => {
       console.error("Erro ao vincular:", e);
@@ -736,10 +744,12 @@ function EvaluationsTab({ userId, companyId }: { userId: string; companyId: stri
 
   const create = useMutation({
     mutationFn: () => createPersonEvaluation(userId, {
-      companyId, ratedAt, rating,
-      category: category || undefined,
-      title: title || undefined,
-      notes: notes || undefined,
+      companyId,
+      ratedAt: ratedAt ? new Date(ratedAt).toISOString() : new Date().toISOString(),
+      rating,
+      category: category || null,
+      title: title || null,
+      notes: notes || null,
     }),
     onSuccess: () => {
       toast.success("Avaliação registrada");
