@@ -425,7 +425,7 @@ export class PeopleService {
     if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
     await this.access.ensureCompany(userId, companyId);
     return this.prisma.personEvaluation.findMany({
-      where: { userId: targetUserId, companyId: companyId },
+      where: { userId: targetUserId, companyId },
       include: { evaluator: { select: { id: true, fullName: true, email: true } } },
       orderBy: { ratedAt: 'desc' },
     });

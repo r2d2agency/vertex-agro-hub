@@ -20,7 +20,7 @@ export function useSelectedCompany() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) setCompanyIdState(stored);
+      if (stored && stored !== "null" && stored !== "undefined") setCompanyIdState(stored);
     }
   }, []);
 
