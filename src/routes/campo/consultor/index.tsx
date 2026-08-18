@@ -200,10 +200,10 @@ function ConsultorFormPage() {
         </div>
         <div className="flex items-center gap-2 text-primary font-bold text-sm mb-2">
           <Sparkles className="h-4 w-4" />
-          Sugestão da IA
+          Sugestão da IA / Gestão Regional
         </div>
         <p className="text-sm leading-relaxed">
-          O monitor <span className="font-semibold">Ricardo Lima</span> na fazenda <span className="font-semibold">Boa Vista</span> não recebe visita há 12 dias. A produtividade caiu 8% no último talhão.
+          O monitor <span className="font-semibold">Ricardo Lima</span> na fazenda <span className="font-semibold">Boa Vista</span> registrou 4 sangrias hoje. A qualidade média reportada é 4.2. Recomendamos checagem técnica presencial.
         </p>
         <Button 
           variant="link" 
