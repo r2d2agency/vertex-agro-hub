@@ -283,7 +283,7 @@ function CheckinGate({
   const [locationName, setLocationName] = useState<{ farm?: string; plot?: string } | null>(null);
 
   const farm = (me.assignments || []).find((a) => a.farm?.id === farmId)?.farm;
-  const companyId = farm?.companyId ?? me.companies?.[0]?.id ?? me.assignments?.[0]?.farm?.companyId;
+  const companyId = farm?.companyId ?? (me.companies && me.companies.length > 0 ? me.companies[0].id : (me.assignments && me.assignments.length > 0 ? me.assignments[0].farm?.companyId : undefined));
   const gpsReady = gps.status === "active";
   const canSubmit = !!companyId && gpsReady && !loading;
 
