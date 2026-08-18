@@ -1,4 +1,4 @@
-const { PrismaClient } = require('./backend/node_modules/@prisma/client');
+import { PrismaClient } from './backend/node_modules/@prisma/client/index.js';
 
 const prisma = new PrismaClient({
   datasources: {
@@ -26,4 +26,4 @@ async function main() {
   }
 }
 
-main();
+main().catch(console.error);
