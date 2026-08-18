@@ -70,10 +70,29 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const prisma = app.get(PrismaService);
-  await ensureSuperadmin(prisma);
-  await fixMissingColumns(prisma);
-  await seedAllCompaniesCatalog(prisma);
-  await backfillGeo(prisma);
+  try {
+    await ensureSuperadmin(prisma);
+  } catch (e: any) {
+    console.error('[superadmin] failed:', e?.message || e);
+  }
+  
+  try {
+    await fixMissingColumns(prisma);
+  } catch (e: any) {
+    console.error('[fix-columns] failed:', e?.message || e);
+  }
+
+  try {
+    await seedAllCompaniesCatalog(prisma);
+  } catch (e: any) {
+    console.error('[seed] failed:', e?.message || e);
+  }
+
+  try {
+    await backfillGeo(prisma);
+  } catch (e: any) {
+    console.error('[backfill] failed:', e?.message || e);
+  }
 
 
 
