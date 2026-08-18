@@ -148,7 +148,19 @@ function PeoplePage() {
                         </Select>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => setEditingId(p.id)} title="Editar ficha completa (RH + Pessoal)" className="h-9 w-9">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => {
+                            if (p.id && p.id !== "null") {
+                              setEditingId(p.id);
+                            } else {
+                              toast.error("ID de usuário inválido");
+                            }
+                          }} 
+                          title="Editar ficha completa (RH + Pessoal)" 
+                          className="h-9 w-9"
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
