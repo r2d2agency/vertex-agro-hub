@@ -44,6 +44,9 @@ export class PeopleService {
   }
 
   private async ensureMember(targetUserId: string, companyId: string) {
+    if (!targetUserId || targetUserId === 'null' || targetUserId === 'undefined') {
+      throw new BadRequestException('ID de usuário inválido');
+    }
     const link = await this.prisma.userRole.findFirst({ where: { userId: targetUserId, companyId } });
     if (!link) throw new ForbiddenException('Pessoa não pertence a esta empresa');
   }

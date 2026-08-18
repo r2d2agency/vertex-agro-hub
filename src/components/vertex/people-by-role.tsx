@@ -125,7 +125,13 @@ export function PeopleByRolePage({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setEditingId(p.id)}
+                      onClick={() => {
+                        if (p.id && p.id !== "null") {
+                          setEditingId(p.id);
+                        } else {
+                          toast.error("ID de usuário inválido");
+                        }
+                      }}
                       title="Editar ficha"
                     >
                       <Pencil className="h-4 w-4" />
