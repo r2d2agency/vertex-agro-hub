@@ -93,7 +93,14 @@ export class PeopleService {
 
   async get(userId: string, targetUserId: string, companyId: string) {
     if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
-    await this.access.ensureCompany(userId, companyId);
+    
+    // Admin global pode ver qualquer pessoa
+    const isGlobal = await this.access.isAdminGlobal(userId);
+    if (!isGlobal) {
+      await this.access.ensureCompany(userId, companyId);
+      await this.ensureMember(targetUserId, companyId);
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: targetUserId },
       include: {
@@ -102,7 +109,8 @@ export class PeopleService {
         roles: { where: { companyId }, select: { role: true } },
       },
     });
-    if (!user) throw new NotFoundException();
+    
+    if (!user) throw new NotFoundException('Pessoa não encontrada');
     const { passwordHash: _pw, ...safe } = user as any;
     return {
       ...safe,
