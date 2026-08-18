@@ -208,7 +208,11 @@ export class PeopleService {
     };
     return this.prisma.personEmployment.upsert({
       where: { userId_companyId: { userId: targetUserId, companyId: dto.companyId } },
-      create: { userId: targetUserId, companyId: dto.companyId, ...data },
+      create: { 
+        userId: targetUserId, 
+        companyId: dto.companyId, 
+        ...data 
+      },
       update: data,
     });
   }

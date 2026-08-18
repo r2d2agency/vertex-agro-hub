@@ -275,9 +275,9 @@ export function createPersonEvaluation(userId: string, input: {
   companyId: string;
   ratedAt: string;
   rating: number;
-  category?: string;
-  title?: string;
-  notes?: string;
+  category?: string | null;
+  title?: string | null;
+  notes?: string | null;
 }) {
   return apiRequest<PersonEvaluation>(`/people/${userId}/evaluations`, {
     method: "POST",
