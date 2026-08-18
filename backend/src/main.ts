@@ -6,6 +6,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { ensureSuperadmin } from './bootstrap/ensure-superadmin';
+import { fixMissingColumns } from './bootstrap/fix-missing-columns';
 import { seedAllCompaniesCatalog } from './bootstrap/seed-catalog';
 import { backfillGeo } from './bootstrap/backfill-geo';
 import { UPLOADS_DIR } from './uploads/uploads.controller';
@@ -70,6 +71,7 @@ async function bootstrap() {
 
   const prisma = app.get(PrismaService);
   await ensureSuperadmin(prisma);
+  await fixMissingColumns(prisma);
   await seedAllCompaniesCatalog(prisma);
   await backfillGeo(prisma);
 
