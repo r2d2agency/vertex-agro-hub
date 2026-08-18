@@ -261,13 +261,13 @@ function CheckinGate({
   gps: GpsState;
   onDone: (v: { farmId?: string; at: number }) => void;
 }) {
-  const [farmId, setFarmId] = useState<string>(me.assignments[0]?.farm.id ?? "");
+  const [farmId, setFarmId] = useState<string>(me.assignments?.[0]?.farm.id ?? "");
   const [plotId, setPlotId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [locationName, setLocationName] = useState<{ farm?: string; plot?: string } | null>(null);
 
   const farm = me.assignments.find((a) => a.farm.id === farmId)?.farm;
-  const companyId = farm?.companyId ?? me.companies[0]?.id ?? me.assignments[0]?.farm.companyId;
+  const companyId = farm?.companyId ?? me.companies?.[0]?.id ?? me.assignments?.[0]?.farm.companyId;
   const gpsReady = gps.status === "active";
   const canSubmit = !!companyId && gpsReady && !loading;
 
@@ -334,7 +334,7 @@ function CheckinGate({
         )}
       </div>
 
-      {me.assignments.length > 0 && (
+      {(me.assignments || []).length > 0 && (
         <div className="w-full max-w-xs space-y-3 text-left">
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Fazenda</label>
@@ -343,7 +343,7 @@ function CheckinGate({
               onChange={(e) => setFarmId(e.target.value)}
               className="w-full rounded-xl border border-border/60 bg-card px-3 py-2.5 text-sm text-foreground"
             >
-              {me.assignments.map((a) => (
+              {(me.assignments || []).map((a) => (
                 <option key={a.id} value={a.farm.id}>{a.farm.name}</option>
               ))}
             </select>

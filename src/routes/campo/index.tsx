@@ -45,7 +45,7 @@ function FieldHome() {
       return;
     }
     
-    const companyId = me?.companies[0]?.id || "";
+    const companyId = me?.companies?.[0]?.id || "";
     try {
       await submitCheckin({
         companyId,
@@ -74,7 +74,7 @@ function FieldHome() {
         setMe(m);
         const today = getLocalIsoDate();
         const in7 = getLocalIsoDate(new Date(Date.now() + 7 * 86400000));
-        const cids = m.isAdmin ? m.companies.map((c) => c.id) : Array.from(new Set(m.assignments.map((a) => a.farm.companyId)));
+        const cids = m.isAdmin ? (m.companies || []).map((c) => c.id) : Array.from(new Set((m.assignments || []).map((a) => a.farm.companyId)));
         const all: ScheduledTask[] = [];
         for (const cid of cids) {
           try { all.push(...(await listTasks(cid, { from: today, to: in7 }))); } catch { /* ignore */ }
@@ -115,7 +115,7 @@ function FieldHome() {
   useEffect(() => {
     setTodayLabel(new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" }));
   }, []);
-  const farmName = (farmId?: string | null) => me?.assignments.find((a) => a.farm.id === farmId)?.farm.name ?? "";
+  const farmName = (farmId?: string | null) => (me?.assignments || []).find((a) => a.farm.id === farmId)?.farm.name ?? "";
 
   if (loading || !me) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
@@ -129,7 +129,7 @@ function FieldHome() {
               <ShieldCheck className="h-3 w-3" />
               <div className="flex flex-col">
                 <span className="leading-tight">
-                  {me.assignments.find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}
+                  {(me.assignments || []).find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}
                 </span>
                 {activeCheckin.plotId && (
                   <span className="text-[10px] text-muted-foreground font-normal">
@@ -258,7 +258,7 @@ function FieldHome() {
         </section>
       )}
 
-      {me.assignments.length > 0 && (
+      {(me.assignments || []).length > 0 && (
         <section>
           <h2 className="mb-3 text-sm font-semibold text-foreground">Minhas fazendas</h2>
           <ul className="space-y-2">

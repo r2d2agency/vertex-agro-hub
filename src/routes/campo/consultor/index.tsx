@@ -91,7 +91,7 @@ function ConsultorFormPage() {
     setCoords({ lat: loc.latitude, lng: loc.longitude });
     setGpsStatus("active");
     
-    const companyId = me?.companies[0]?.id || "";
+    const companyId = me?.companies?.[0]?.id || "";
     try {
       await submitCheckin({
         companyId,
@@ -116,7 +116,7 @@ function ConsultorFormPage() {
   const stats = useMemo(() => {
     if (!me) return null;
     return {
-      totalFarms: me.assignments.length,
+      totalFarms: me.assignments?.length || 0,
       monitors: 12, // Mock or derived
       avgQuality: 4.2,
       lastVisitDays: 5
@@ -164,7 +164,7 @@ function ConsultorFormPage() {
               <ShieldCheck className="h-3 w-3" />
               <div className="flex flex-col">
                 <span className="leading-tight">
-                  {me.assignments.find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}
+                  {(me.assignments || []).find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}
                 </span>
                 {activeCheckin.plotId && (
                   <span className="text-[10px] text-muted-foreground font-normal">
@@ -209,7 +209,7 @@ function ConsultorFormPage() {
           variant="link" 
           className="p-0 h-auto mt-2 text-primary text-xs font-bold"
           onClick={() => {
-            setFarmId(me.assignments[0]?.farm.id || "");
+            setFarmId(me.assignments?.[0]?.farm.id || "");
             setView("visit");
           }}
         >
@@ -264,7 +264,7 @@ function ConsultorFormPage() {
           <Button variant="ghost" size="sm" className="text-xs h-7">Ver todas</Button>
         </div>
         <div className="space-y-3">
-          {me.assignments.map((a) => (
+          {(me.assignments || []).map((a) => (
             <div 
               key={a.id} 
               onClick={() => {
@@ -323,7 +323,7 @@ function ConsultorFormPage() {
             className="w-full rounded-xl border border-border/60 bg-card px-3 py-3 text-foreground"
           >
             <option value="">Selecione a fazenda...</option>
-            {me.assignments.map((a) => (
+            {(me.assignments || []).map((a) => (
               <option key={a.farm.id} value={a.farm.id}>{a.farm.name}</option>
             ))}
           </select>
