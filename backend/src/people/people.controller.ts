@@ -19,6 +19,25 @@ export class PeopleController {
     return this.svc.list(req.user.sub, companyId);
   }
 
+  @Get('assignments')
+  listCompanyAssignments(
+    @Req() req: any,
+    @Query('companyId') companyId: string,
+    @Query('role') role?: string,
+    @Query('userId') targetUserId?: string,
+    @Query('farmId') farmId?: string,
+    @Query('consultorUserId') consultorUserId?: string,
+    @Query('history') history?: string,
+  ) {
+    return this.svc.listCompanyAssignments(req.user.sub, companyId, {
+      role: role as any,
+      userId: targetUserId,
+      farmId,
+      consultorUserId,
+      includeHistory: history === 'true',
+    });
+  }
+
   @Get('farm/:farmId/team')
   farmTeam(
     @Req() req: any,

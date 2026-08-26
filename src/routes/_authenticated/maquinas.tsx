@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, ReactNode } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Truck, Camera } from "lucide-react";
+import { Plus, Pencil, Trash2, Truck } from "lucide-react";
 import { FileDropzone } from "@/components/vertex/file-dropzone";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/vertex/page-header";
@@ -20,7 +20,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  createMachine, deleteMachine, listMachines, updateMachine,
+  createMachine, deleteMachine, listImplements, listMachines, listOperators, updateImplement, updateMachine,
   FUEL_TYPES, MACHINE_CATEGORIES, MACHINE_STATUSES, type Machine,
 } from "@/lib/frota.functions";
 import { listFarms } from "@/lib/fazendas.functions";
@@ -166,26 +166,54 @@ function MachinesPage() {
   );
 }
 
-type FormState = Partial<Machine>;
-const empty: FormState = { name: "", category: "trator", status: "disponivel", hourmeterUnit: "h", fuelType: "Diesel S10", photoUrls: [] };
+type FormState = Partial<Machine> & { linkedImplementId?: string | null };
+const empty: FormState = {
+  name: "",
+  category: "trator",
+  status: "disponivel",
+  hourmeterUnit: "h",
+  fuelType: "Diesel S10",
+  photoUrls: [],
+  linkedImplementId: null,
+};
 
 function MachineDialog({
   open, onOpenChange, companyId, initial, onSaved,
 }: { open: boolean; onOpenChange: (o: boolean) => void; companyId: string | null; initial?: Machine; onSaved: () => void }) {
   const [v, setV] = useState<FormState>(empty);
   const { data: farms = [] } = useQuery({ queryKey: ["farms", companyId], queryFn: () => listFarms(companyId!), enabled: !!companyId });
+  const { data: implementsData = [] } = useQuery({ queryKey: ["implements", companyId], queryFn: () => listImplements(companyId!), enabled: !!companyId });
+  const { data: operators = [] } = useQuery({ queryKey: ["operators", companyId], queryFn: () => listOperators(companyId!), enabled: !!companyId });
 
   useEffect(() => {
     if (!open) return;
-    setV(initial ? { ...initial } : { ...empty });
-  }, [open, initial]);
+    const linkedImplementId = initial ? (implementsData.find((item) => item.machineId === initial.id)?.id ?? null) : null;
+    setV(initial ? { ...initial, linkedImplementId } : { ...empty, linkedImplementId: null });
+  }, [open, initial, implementsData]);
 
   const mut = useMutation({
     mutationFn: async (data: FormState) => {
       if (!companyId) throw new Error("Selecione uma empresa");
-      const dto = { ...data, companyId, name: (data.name || "").trim() };
-      if (initial) return updateMachine(initial.id, dto as any);
-      return createMachine(dto as any);
+      const { linkedImplementId, ...payload } = data;
+      const dto = { ...payload, companyId, name: (data.name || "").trim() };
+      const machine = initial ? await updateMachine(initial.id, dto as any) : await createMachine(dto as any);
+      const currentMachineId = initial?.id ?? machine.id;
+      const currentlyLinked = implementsData.filter((item) => item.machineId === currentMachineId);
+
+      for (const item of currentlyLinked) {
+        if (item.id !== linkedImplementId) {
+          await updateImplement(item.id, { machineId: null });
+        }
+      }
+
+      if (linkedImplementId) {
+        await updateImplement(linkedImplementId, {
+          machineId: machine.id,
+          farmId: dto.farmId ?? null,
+        });
+      }
+
+      return machine;
     },
     onSuccess: () => { 
       toast.success(initial ? "Máquina atualizada" : "Máquina criada"); 
@@ -244,6 +272,26 @@ function MachineDialog({
                     <SelectContent>
                       <SelectItem value="none">— nenhuma —</SelectItem>
                       {farms.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Operador padrão">
+                  <Select value={v.defaultOperatorId || "none"} onValueChange={(x) => setV({ ...v, defaultOperatorId: x === "none" ? null : x })}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— nenhum —</SelectItem>
+                      {operators.map((operator) => <SelectItem key={operator.id} value={operator.id}>{operator.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Implemento vinculado">
+                  <Select value={v.linkedImplementId || "none"} onValueChange={(x) => setV({ ...v, linkedImplementId: x === "none" ? null : x })}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— nenhum —</SelectItem>
+                      {implementsData.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Field>

@@ -250,6 +250,25 @@ export function listPersonAssignments(userId: string, companyId: string) {
   );
 }
 
+export function listCompanyAssignments(
+  companyId: string,
+  opts: {
+    role?: AssignmentRole;
+    userId?: string;
+    farmId?: string;
+    consultorUserId?: string;
+    history?: boolean;
+  } = {},
+) {
+  const q = new URLSearchParams({ companyId });
+  if (opts.role) q.set("role", opts.role);
+  if (opts.userId) q.set("userId", opts.userId);
+  if (opts.farmId) q.set("farmId", opts.farmId);
+  if (opts.consultorUserId) q.set("consultorUserId", opts.consultorUserId);
+  if (opts.history) q.set("history", "true");
+  return apiRequest<FarmAssignment[]>(`/people/assignments?${q.toString()}`);
+}
+
 export function createPersonAssignment(userId: string, input: {
   companyId: string;
   farmId: string;

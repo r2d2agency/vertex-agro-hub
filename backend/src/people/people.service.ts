@@ -5,7 +5,7 @@ import { CompanyAccess } from '../common/company-access';
 import {
   CreateAssignmentDto, CreateEvaluationDto, DocumentDto, EmploymentDto,
   EndAssignmentDto, InvitePersonDto, PersonalDataDto, ToggleActiveDto,
-  UpdatePersonRoleDto, CompanyRole, UpsertPersonAccessDto,
+  UpdatePersonRoleDto, CompanyRole, AssignmentRole, UpsertPersonAccessDto,
 } from './dto';
 
 const SUPERADMIN_EMAIL = 'tnicodemos@gmail.com';
@@ -482,6 +482,39 @@ export class PeopleService {
       orderBy: [{ endAt: 'asc' }, { startAt: 'desc' }],
     });
     return items;
+  }
+
+  async listCompanyAssignments(
+    userId: string,
+    companyId: string,
+    filters: {
+      role?: CompanyRole | AssignmentRole;
+      userId?: string;
+      farmId?: string;
+      consultorUserId?: string;
+      includeHistory?: boolean;
+    } = {},
+  ) {
+    if (!companyId || companyId === 'undefined' || companyId === 'null') {
+      throw new BadRequestException('companyId é obrigatório');
+    }
+    await this.access.ensureCompany(userId, companyId);
+    return this.prisma.farmAssignment.findMany({
+      where: {
+        companyId,
+        ...(filters.includeHistory ? {} : { endAt: null }),
+        ...(filters.role ? { role: filters.role as AssignmentRole } : {}),
+        ...(filters.userId ? { userId: filters.userId } : {}),
+        ...(filters.farmId ? { farmId: filters.farmId } : {}),
+        ...(filters.consultorUserId ? { consultorUserId: filters.consultorUserId } : {}),
+      },
+      include: {
+        user: { select: { id: true, fullName: true, email: true, avatarUrl: true, active: true } },
+        farm: { select: { id: true, name: true, code: true } },
+        consultor: { select: { id: true, fullName: true, email: true } },
+      },
+      orderBy: [{ role: 'asc' }, { startAt: 'desc' }],
+    });
   }
 
   async listFarmTeam(userId: string, farmId: string, companyId: string, includeHistory = false) {

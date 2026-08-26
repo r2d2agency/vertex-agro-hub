@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { HardHat, Search, Plus, Pencil, Trash2, MapPin, Phone, Loader2, UserPlus } from "lucide-react";
+import { HardHat, Search, Pencil, Trash2, MapPin, Phone, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { PersonEditor } from "@/components/vertex/person-editor";
 import { PageHeader } from "@/components/vertex/page-header";
@@ -77,12 +77,9 @@ function SangradoresPage() {
     <div>
       <PageHeader
         title="Sangradores"
-        description="Ficha cadastral no estilo RH: dados básicos, contrato, histórico de fazendas e atividade registrada."
+        description="Gestão operacional dos sangradores. O cadastro-base deve ser feito no RH."
         actions={companyId ? (
           <div className="flex gap-2">
-            <Button onClick={() => setEditing("new")}>
-              <Plus className="mr-2 h-4 w-4" /> Novo Sangrador (Rápido)
-            </Button>
             <Link to="/usuarios" className="inline-flex">
               <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Portal de RH</Button>
             </Link>
