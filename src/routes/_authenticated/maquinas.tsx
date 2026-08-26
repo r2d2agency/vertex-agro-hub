@@ -20,10 +20,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  createMachine, deleteMachine, listImplements, listMachines, listOperators, updateImplement, updateMachine,
+  createMachine, deleteMachine, listImplements, listMachines, updateImplement, updateMachine,
   FUEL_TYPES, MACHINE_CATEGORIES, MACHINE_STATUSES, type Machine,
 } from "@/lib/frota.functions";
 import { listFarms } from "@/lib/fazendas.functions";
+import { listPeople } from "@/lib/people.functions";
 
 export const Route = createFileRoute("/_authenticated/maquinas")({
   head: () => ({ meta: [
@@ -183,7 +184,8 @@ function MachineDialog({
   const [v, setV] = useState<FormState>(empty);
   const { data: farms = [] } = useQuery({ queryKey: ["farms", companyId], queryFn: () => listFarms(companyId!), enabled: !!companyId });
   const { data: implementsData = [] } = useQuery({ queryKey: ["implements", companyId], queryFn: () => listImplements(companyId!), enabled: !!companyId });
-  const { data: operators = [] } = useQuery({ queryKey: ["operators", companyId], queryFn: () => listOperators(companyId!), enabled: !!companyId });
+  const { data: operatorPeople = [] } = useQuery({ queryKey: ["people", companyId], queryFn: () => listPeople(companyId!), enabled: !!companyId });
+  const operators = operatorPeople.filter((person) => person.roles.includes("operador"));
 
   useEffect(() => {
     if (!open) return;
@@ -280,7 +282,7 @@ function MachineDialog({
                     <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">— nenhum —</SelectItem>
-                      {operators.map((operator) => <SelectItem key={operator.id} value={operator.id}>{operator.name}</SelectItem>)}
+                      {operators.map((operator) => <SelectItem key={operator.id} value={operator.id}>{operator.fullName || "Sem nome"}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
