@@ -45,13 +45,17 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: { email: normalizedEmail },
+    });
     if (!user?.passwordHash)
       throw new UnauthorizedException('Credenciais inválidas');
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Credenciais inválidas');
     if (user.active === false)
       throw new UnauthorizedException('Usuário inativo. Contate o administrador.');
+    if (!user.email) throw new UnauthorizedException('Usuário sem acesso configurado.');
     await ensureSuperadminForUser(this.prisma, user.id, user.email);
     return this.signTokens(user.id, user.email);
   }
@@ -77,6 +81,9 @@ export class AuthService {
         data: { googleId: profile.googleId, avatarUrl: profile.avatarUrl },
       });
     }
+    if (!user.email) {
+      throw new UnauthorizedException('Usuário sem e-mail válido para acesso.');
+    }
     return this.signTokens(user.id, user.email);
   }
 
@@ -91,6 +98,9 @@ export class AuthService {
     });
     if (!record || record.revokedAt || record.expiresAt < new Date())
       throw new UnauthorizedException('Refresh token inválido');
+    if (record.user.active === false || !record.user.email) {
+      throw new UnauthorizedException('Usuário sem acesso ativo.');
+    }
     await this.prisma.refreshToken.update({
       where: { id: record.id },
       data: { revokedAt: new Date() },
@@ -112,7 +122,9 @@ export class AuthService {
       include: { roles: true },
     });
     if (!user) throw new UnauthorizedException();
-    await ensureSuperadminForUser(this.prisma, user.id, user.email);
+    if (user.email) {
+      await ensureSuperadminForUser(this.prisma, user.id, user.email);
+    }
     const { passwordHash, ...safe } = user;
     return safe;
   }

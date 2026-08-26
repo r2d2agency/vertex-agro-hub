@@ -6,7 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { PeopleService } from './people.service';
 import {
   CreateAssignmentDto, CreateEvaluationDto, DocumentDto, EmploymentDto,
-  EndAssignmentDto, InvitePersonDto, PersonalDataDto, ToggleActiveDto, UpdatePersonRoleDto,
+  EndAssignmentDto, InvitePersonDto, PersonalDataDto, ToggleActiveDto, UpdatePersonRoleDto, UpsertPersonAccessDto,
 } from './dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -41,6 +41,15 @@ export class PeopleController {
   @Post('invite')
   invite(@Req() req: any, @Body() dto: InvitePersonDto) {
     return this.svc.invite(req.user.sub, dto);
+  }
+
+  @Patch(':userId/access')
+  upsertAccess(
+    @Req() req: any,
+    @Param('userId', ParseUUIDPipe) targetUserId: string,
+    @Body() dto: UpsertPersonAccessDto,
+  ) {
+    return this.svc.upsertAccess(req.user.sub, targetUserId, dto);
   }
 
   @Post(':userId/reset-password')

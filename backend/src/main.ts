@@ -14,6 +14,7 @@ import { UPLOADS_DIR } from './uploads/uploads.controller';
 
 
 const DEFAULT_ALLOWED_HEADERS = 'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-Idempotency-Key';
+const RUN_STARTUP_TASKS = (process.env.RUN_STARTUP_TASKS ?? 'true').toLowerCase() !== 'false';
 
 function corsMiddleware(request: Request, response: Response, next: NextFunction) {
   const origin = request.headers.origin;
@@ -70,28 +71,32 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const prisma = app.get(PrismaService);
-  try {
-    await ensureSuperadmin(prisma);
-  } catch (e: any) {
-    console.error('[superadmin] failed:', e?.message || e);
-  }
-  
-  try {
-    await fixMissingColumns(prisma);
-  } catch (e: any) {
-    console.error('[fix-columns] failed:', e?.message || e);
-  }
+  if (RUN_STARTUP_TASKS) {
+    try {
+      await ensureSuperadmin(prisma);
+    } catch (e: any) {
+      console.error('[superadmin] failed:', e?.message || e);
+    }
 
-  try {
-    await seedAllCompaniesCatalog(prisma);
-  } catch (e: any) {
-    console.error('[seed] failed:', e?.message || e);
-  }
+    try {
+      await fixMissingColumns(prisma);
+    } catch (e: any) {
+      console.error('[fix-columns] failed:', e?.message || e);
+    }
 
-  try {
-    await backfillGeo(prisma);
-  } catch (e: any) {
-    console.error('[backfill] failed:', e?.message || e);
+    try {
+      await seedAllCompaniesCatalog(prisma);
+    } catch (e: any) {
+      console.error('[seed] failed:', e?.message || e);
+    }
+
+    try {
+      await backfillGeo(prisma);
+    } catch (e: any) {
+      console.error('[backfill] failed:', e?.message || e);
+    }
+  } else {
+    console.log('[startup] tarefas automáticas desativadas por RUN_STARTUP_TASKS=false');
   }
 
 

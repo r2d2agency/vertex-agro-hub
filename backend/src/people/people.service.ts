@@ -5,7 +5,7 @@ import { CompanyAccess } from '../common/company-access';
 import {
   CreateAssignmentDto, CreateEvaluationDto, DocumentDto, EmploymentDto,
   EndAssignmentDto, InvitePersonDto, PersonalDataDto, ToggleActiveDto,
-  UpdatePersonRoleDto, CompanyRole,
+  UpdatePersonRoleDto, CompanyRole, UpsertPersonAccessDto,
 } from './dto';
 
 const SUPERADMIN_EMAIL = 'tnicodemos@gmail.com';
@@ -26,6 +26,16 @@ function pickPersonal(dto: PersonalDataDto): Record<string, any> {
     else out[k] = v === '' ? null : v;
   }
   return out;
+}
+
+function normalizeEmail(email?: string | null) {
+  const value = email?.trim().toLowerCase();
+  return value ? value : null;
+}
+
+function normalizeCpf(cpf?: string | null) {
+  const value = cpf?.replace(/\D/g, '') ?? '';
+  return value || null;
 }
 
 @Injectable()
@@ -50,10 +60,11 @@ export class PeopleService {
     if (!targetUserId || targetUserId === 'null' || targetUserId === 'undefined') {
       throw new BadRequestException('ID de usuário inválido');
     }
-    const link = await this.prisma.userRole.findFirst({ 
+    const link = await this.prisma.userCompany.findFirst({
       where: { 
-        userId: targetUserId, 
-        companyId: companyId 
+        userId: targetUserId,
+        companyId: companyId,
+        active: true,
       } 
     });
     if (!link) {
@@ -70,25 +81,42 @@ export class PeopleService {
   async list(userId: string, companyId: string) {
     if (!companyId || companyId === 'undefined' || companyId === 'null') throw new BadRequestException('companyId é obrigatório');
     await this.access.ensureCompany(userId, companyId);
-    const roles = await this.prisma.userRole.findMany({
-      where: { companyId },
+    const links = await this.prisma.userCompany.findMany({
+      where: { companyId, active: true },
       include: {
         user: {
           select: {
-            id: true, email: true, fullName: true, avatarUrl: true, createdAt: true,
-            cpf: true, phone: true, active: true,
+            id: true,
+            email: true,
+            fullName: true,
+            avatarUrl: true,
+            createdAt: true,
+            cpf: true,
+            phone: true,
+            active: true,
+            passwordHash: true,
+            googleId: true,
+            roles: {
+              where: { companyId },
+              select: { role: true },
+            },
           },
         },
       },
       orderBy: { createdAt: 'asc' },
     });
-    const map = new Map<string, any>();
-    for (const r of roles) {
-      const u = r.user;
-      if (!map.has(u.id)) map.set(u.id, { ...u, roles: [] as CompanyRole[] });
-      map.get(u.id).roles.push(r.role as CompanyRole);
-    }
-    return Array.from(map.values());
+    return links.map(({ user }) => ({
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt,
+      cpf: user.cpf,
+      phone: user.phone,
+      active: user.active,
+      hasAccess: Boolean((user.email && user.passwordHash) || user.googleId),
+      roles: user.roles.map((r) => r.role as CompanyRole),
+    }));
   }
 
   async get(userId: string, targetUserId: string, companyId: string) {
@@ -104,6 +132,7 @@ export class PeopleService {
     const user = await this.prisma.user.findUnique({
       where: { id: targetUserId },
       include: {
+        companyLinks: { where: { companyId, active: true } },
         employments: { where: { companyId } },
         documents: { where: { OR: [{ companyId }, { companyId: null }] }, orderBy: { createdAt: 'desc' } },
         roles: { where: { companyId }, select: { role: true } },
@@ -116,6 +145,8 @@ export class PeopleService {
       ...safe,
       employment: user.employments[0] ?? null,
       roles: user.roles.map((r) => r.role),
+      hasAccess: Boolean((user.email && user.passwordHash) || user.googleId),
+      companyLinked: user.companyLinks.length > 0,
     };
   }
 
@@ -125,39 +156,143 @@ export class PeopleService {
     return `vtex${n}`;
   }
 
+  private async ensureCompanyLink(targetUserId: string, companyId: string, createdById: string) {
+    await this.prisma.userCompany.upsert({
+      where: { userId_companyId: { userId: targetUserId, companyId } },
+      create: {
+        userId: targetUserId,
+        companyId,
+        createdById,
+        active: true,
+      },
+      update: {
+        active: true,
+      },
+    });
+  }
+
+  private async resolveExistingPerson(input: { email?: string | null; cpf?: string | null }) {
+    const byCpf = input.cpf
+      ? await this.prisma.user.findFirst({ where: { cpf: input.cpf } })
+      : null;
+    const byEmail = input.email
+      ? await this.prisma.user.findFirst({ where: { email: input.email } })
+      : null;
+
+    if (byCpf && byEmail && byCpf.id !== byEmail.id) {
+      throw new BadRequestException('CPF e e-mail já estão vinculados a cadastros diferentes.');
+    }
+    return byCpf ?? byEmail;
+  }
+
   async invite(userId: string, dto: InvitePersonDto) {
     const activeCompanyId = dto.companyId;
     await this.ensureManager(userId, activeCompanyId);
-    const email = dto.email.toLowerCase().trim();
-    const personal = pickPersonal(dto);
+    const email = normalizeEmail(dto.email);
+    const cpf = normalizeCpf(dto.cpf);
+    const personal = pickPersonal({ ...dto, cpf: cpf ?? undefined });
 
-    const generatedPassword = dto.password ? null : this.generateTempPassword();
-    const effectivePassword = dto.password ?? generatedPassword!;
+    if (!cpf && !email) {
+      throw new BadRequestException('Informe ao menos CPF ou e-mail para garantir cadastro único.');
+    }
 
-    let user = await this.prisma.user.findUnique({ where: { email } });
+    let user = await this.resolveExistingPerson({ email, cpf });
     if (!user) {
-      const passwordHash = await bcrypt.hash(effectivePassword, 10);
       user = await this.prisma.user.create({
-        data: { email, fullName: dto.fullName, passwordHash, ...personal },
+        data: {
+          fullName: dto.fullName,
+          email,
+          ...personal,
+        },
       });
     } else {
-      const data: any = { ...personal, fullName: personal.fullName ?? dto.fullName ?? user.fullName };
-      if (dto.password) data.passwordHash = await bcrypt.hash(dto.password, 10);
-      user = await this.prisma.user.update({ where: { id: user.id }, data });
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          ...personal,
+          fullName: personal.fullName ?? dto.fullName ?? user.fullName,
+          ...(email ? { email } : {}),
+        },
+      });
     }
 
-    try {
-      await this.prisma.userRole.create({
-        data: { userId: user.id, companyId: activeCompanyId, role: dto.role },
+    await this.ensureCompanyLink(user.id, activeCompanyId, userId);
+
+    let generatedPassword: string | undefined;
+    const shouldGrantAccess = Boolean(dto.grantAccess || dto.role || dto.password);
+    if (shouldGrantAccess && email) {
+      const result = await this.upsertAccess(userId, user.id, {
+        companyId: activeCompanyId,
+        email,
+        password: dto.password,
+        role: dto.role ?? 'consulta',
+        active: true,
       });
-    } catch (e: any) {
-      if (e.code !== 'P2002') throw e;
+      generatedPassword = result.generatedPassword;
     }
+
     return {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
-      generatedPassword: generatedPassword ?? undefined,
+      generatedPassword,
+      hasAccess: Boolean((shouldGrantAccess && email) || (user.email && user.passwordHash) || user.googleId || generatedPassword),
+    };
+  }
+
+  async upsertAccess(userId: string, targetUserId: string, dto: UpsertPersonAccessDto) {
+    await this.ensureManager(userId, dto.companyId);
+    await this.ensureMember(targetUserId, dto.companyId);
+
+    const email = normalizeEmail(dto.email);
+    if (!email) throw new BadRequestException('E-mail é obrigatório para conceder acesso.');
+
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException('Pessoa não encontrada');
+
+    const existingEmailOwner = await this.prisma.user.findFirst({
+      where: { email },
+      select: { id: true },
+    });
+    if (existingEmailOwner && existingEmailOwner.id !== targetUserId) {
+      throw new BadRequestException('Este e-mail já está em uso por outro cadastro.');
+    }
+
+    const generatedPassword = dto.password
+      ? undefined
+      : !target.passwordHash && !target.googleId
+      ? this.generateTempPassword()
+      : undefined;
+    const effectivePassword = dto.password ?? generatedPassword;
+
+    await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: {
+        email,
+        ...(effectivePassword ? { passwordHash: await bcrypt.hash(effectivePassword, 10) } : {}),
+        active: dto.active ?? true,
+        deactivatedAt: dto.active === false ? new Date() : null,
+        deactivationReason: dto.active === false ? 'Acesso desativado manualmente' : null,
+      },
+    });
+
+    await this.ensureCompanyLink(targetUserId, dto.companyId, userId);
+
+    const roleToAssign = dto.role ?? 'consulta';
+    if (roleToAssign) {
+      await this.prisma.userRole.deleteMany({
+        where: { userId: targetUserId, companyId: dto.companyId },
+      });
+      await this.prisma.userRole.create({
+        data: { userId: targetUserId, companyId: dto.companyId, role: roleToAssign },
+      });
+    }
+
+    return {
+      id: targetUserId,
+      email,
+      fullName: target.fullName,
+      generatedPassword,
     };
   }
 
@@ -166,7 +301,10 @@ export class PeopleService {
     await this.ensureMember(targetUserId, companyId);
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!target) throw new NotFoundException();
-    if (target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
+    if (!target.email || !target.passwordHash) {
+      throw new BadRequestException('Esta pessoa ainda não possui acesso configurado.');
+    }
+    if (target.email && target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
       throw new ForbiddenException('Não é possível redefinir a senha do superadmin');
     }
     const password = this.generateTempPassword();
@@ -184,7 +322,7 @@ export class PeopleService {
     await this.ensureMember(targetUserId, activeCompanyId);
     
     // Converte datas vazias ou nulas para null e limpa strings
-    const data = pickPersonal(dto);
+    const data = pickPersonal({ ...dto, cpf: normalizeCpf(dto.cpf) ?? undefined });
     
     if (Object.keys(data).length === 0) return { ok: true };
     try {
@@ -264,7 +402,7 @@ export class PeopleService {
     await this.ensureManager(userId, activeCompanyId);
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!target) throw new NotFoundException();
-    if (target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
+    if (target.email && target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
       throw new ForbiddenException('Superadmin não pode ter papel alterado');
     }
     await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId: activeCompanyId } });
@@ -278,7 +416,7 @@ export class PeopleService {
     await this.ensureManager(userId, companyId);
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!target) throw new NotFoundException();
-    if (target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
+    if (target.email && target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
       throw new ForbiddenException('Superadmin não pode ser removido');
     }
 
@@ -299,6 +437,7 @@ export class PeopleService {
 
     // Remove a role da empresa
     await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId } });
+    await this.prisma.userCompany.deleteMany({ where: { userId: targetUserId, companyId } });
     
     return { ok: true };
   }
@@ -309,7 +448,7 @@ export class PeopleService {
     await this.ensureMember(targetUserId, companyId);
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!target) throw new NotFoundException();
-    if (target.email.toLowerCase() === SUPERADMIN_EMAIL && !dto.active) {
+    if (target.email && target.email.toLowerCase() === SUPERADMIN_EMAIL && !dto.active) {
       throw new ForbiddenException('Superadmin não pode ser desativado');
     }
     await this.prisma.user.update({

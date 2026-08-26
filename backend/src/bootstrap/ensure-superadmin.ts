@@ -27,6 +27,7 @@ export async function ensureSuperadmin(prisma: PrismaClient) {
       return;
     }
 
+    if (!user.email) return;
     const promoted = await ensureSuperadminForUser(prisma, user.id, user.email);
     console.log(
       promoted

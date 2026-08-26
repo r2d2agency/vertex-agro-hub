@@ -71,15 +71,24 @@ export class DocumentDto {
 
 export class InvitePersonDto extends PersonalDataDto {
   @IsUUID() companyId!: string;
-  @IsEmail() email!: string;
   @IsString() @MinLength(2) declare fullName: string;
+  @IsOptional() @IsEmail() email?: string;
   @IsOptional() @IsString() @MinLength(6) password?: string;
-  @IsEnum(ROLES) role!: CompanyRole;
+  @IsOptional() @IsEnum(ROLES) role?: CompanyRole;
+  @IsOptional() @IsBoolean() grantAccess?: boolean;
 }
 
 export class UpdatePersonRoleDto {
   @IsUUID() companyId!: string;
   @IsEnum(ROLES) role!: CompanyRole;
+}
+
+export class UpsertPersonAccessDto {
+  @IsUUID() companyId!: string;
+  @IsEmail() email!: string;
+  @IsOptional() @IsString() @MinLength(6) password?: string;
+  @IsOptional() @IsEnum(ROLES) role?: CompanyRole;
+  @IsOptional() @IsBoolean() active?: boolean;
 }
 
 export class ToggleActiveDto {

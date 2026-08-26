@@ -26,14 +26,23 @@ export class FieldService {
   async fieldMe(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, fullName: true, roles: { select: { role: true, companyId: true } } },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        roles: { select: { role: true, companyId: true } },
+        companyLinks: { where: { active: true }, select: { companyId: true } },
+      },
     });
     if (!user) throw new NotFoundException();
     const roleNames = user.roles.map((r) => r.role);
     const isAdmin = roleNames.includes('admin_global');
     const companyIds = isAdmin
       ? (await this.prisma.company.findMany({ where: { isDeleted: false }, select: { id: true } })).map((c) => c.id)
-      : Array.from(new Set(user.roles.map((r) => r.companyId).filter(Boolean) as string[]));
+      : Array.from(new Set([
+          ...user.roles.map((r) => r.companyId).filter(Boolean) as string[],
+          ...user.companyLinks.map((r) => r.companyId).filter(Boolean),
+        ]));
     const companies = await this.prisma.company.findMany({
       where: { id: { in: companyIds }, isDeleted: false },
       select: { id: true, name: true, legalName: true },

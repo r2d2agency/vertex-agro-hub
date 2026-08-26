@@ -32,7 +32,7 @@ enum SyncStatus {
 
 model User {
   id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique
+  email        String?  @unique
   passwordHash String?  @map("password_hash")
   fullName     String?  @map("full_name")
   avatarUrl    String?  @map("avatar_url")
@@ -67,6 +67,7 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   roles         UserRole[]
+  companyLinks  UserCompany[]
   refreshTokens RefreshToken[]
   companies     Company[]  @relation("CompanyCreatedBy")
   teamMemberships TeamMember[]
@@ -161,6 +162,25 @@ model UserRole {
   @@map("user_roles")
 }
 
+model UserCompany {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  createdById String?  @map("created_by") @db.Uuid
+  active      Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@index([userId])
+  @@map("user_companies")
+}
+
 model Company {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
@@ -183,6 +203,7 @@ model Company {
 
   createdBy User?      @relation("CompanyCreatedBy", fields: [createdById], references: [id])
   members   UserRole[]
+  people    UserCompany[]
   regionals Regional[]
   farms     Farm[]
   plots     Plot[]

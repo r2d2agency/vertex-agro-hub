@@ -70,13 +70,14 @@ export type PersonDocument = {
 
 export type Person = {
   id: string;
-  email: string;
+  email: string | null;
   fullName: string | null;
   avatarUrl: string | null;
   createdAt: string;
   cpf?: string | null;
   phone?: string | null;
   active?: boolean;
+  hasAccess?: boolean;
   roles: CompanyRole[];
 };
 
@@ -85,6 +86,7 @@ export type PersonDetail = Person & PersonalData & {
   active: boolean;
   deactivatedAt: string | null;
   deactivationReason: string | null;
+  companyLinked?: boolean;
 };
 
 export function listPeople(companyId: string) {
@@ -98,14 +100,28 @@ export function getPerson(userId: string, companyId: string) {
 
 export function invitePerson(input: PersonalData & {
   companyId: string;
-  email: string;
   fullName: string;
+  email?: string;
+  grantAccess?: boolean;
   password?: string;
-  role: CompanyRole;
+  role?: CompanyRole;
 }) {
-  return apiRequest<{ id: string; email: string; fullName: string | null; generatedPassword?: string }>(
+  return apiRequest<{ id: string; email: string | null; fullName: string | null; generatedPassword?: string; hasAccess?: boolean }>(
     `/people/invite`,
     { method: "POST", body: JSON.stringify(input) },
+  );
+}
+
+export function upsertPersonAccess(userId: string, input: {
+  companyId: string;
+  email: string;
+  password?: string;
+  role?: CompanyRole;
+  active?: boolean;
+}) {
+  return apiRequest<{ id: string; email: string; fullName: string | null; generatedPassword?: string }>(
+    `/people/${userId}/access`,
+    { method: "PATCH", body: JSON.stringify(input) },
   );
 }
 

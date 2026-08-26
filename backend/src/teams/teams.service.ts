@@ -60,9 +60,9 @@ export class TeamsService {
 
   async addMember(userId: string, teamId: string, dto: AddMemberDto) {
     const t = await this.loadOwned(userId, teamId);
-    // Garante que o usuário faz parte da empresa (tem algum papel)
-    const belongs = await this.prisma.userRole.findFirst({
-      where: { userId: dto.userId, companyId: t.companyId },
+    // Garante que a pessoa está vinculada à empresa, mesmo sem acesso liberado.
+    const belongs = await this.prisma.userCompany.findFirst({
+      where: { userId: dto.userId, companyId: t.companyId, active: true },
     });
     if (!belongs) throw new ForbiddenException('Usuário não pertence à empresa');
     return this.prisma.teamMember.upsert({

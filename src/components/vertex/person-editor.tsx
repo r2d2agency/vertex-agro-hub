@@ -146,8 +146,10 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
             <DialogTitle>Ficha cadastral{data?.fullName ? ` — ${data.fullName}` : ""}</DialogTitle>
             {data && (
               <div className="flex items-center gap-3">
-                <Badge variant={data.active ? "default" : "destructive"}>
-                  {data.active ? (
+                <Badge variant={!data.hasAccess ? "secondary" : data.active ? "default" : "destructive"}>
+                  {!data.hasAccess ? (
+                    <>Base RH</>
+                  ) : data.active ? (
                     <><ShieldCheck className="mr-1 h-3 w-3" /> Ativo</>
                   ) : (
                     <><ShieldOff className="mr-1 h-3 w-3" /> Inativo</>
@@ -155,8 +157,8 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                 </Badge>
                 <div className="flex items-center gap-2">
                   <Switch
-                    checked={data.active}
-                    disabled={toggleActive.isPending}
+                    checked={!!data.hasAccess && data.active}
+                    disabled={toggleActive.isPending || !data.hasAccess}
                     onCheckedChange={(v) => {
                       if (!v) {
                         const reason = window.prompt("Motivo do desligamento (opcional):") ?? undefined;
@@ -166,7 +168,9 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                       }
                     }}
                   />
-                  <span className="text-xs text-muted-foreground">Acesso ao sistema</span>
+                  <span className="text-xs text-muted-foreground">
+                    {data.hasAccess ? "Acesso ao sistema" : "Sem acesso configurado"}
+                  </span>
                 </div>
               </div>
             )}

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PersonEditor } from "@/components/vertex/person-editor";
-import { Copy, KeyRound, Pencil, Plus, Trash2, UserRound } from "lucide-react";
+import { Copy, KeyRound, Pencil, Plus, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import {
-  COMPANY_ROLES, invitePerson, listPeople, removePerson, resetPersonPassword, updatePersonRole,
+  COMPANY_ROLES, invitePerson, listPeople, removePerson, resetPersonPassword, updatePersonRole, upsertPersonAccess,
   type CompanyRole, type Person,
 } from "@/lib/people.functions";
 
@@ -49,6 +50,7 @@ function PeoplePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
   const [creds, setCreds] = useState<{ email: string; fullName: string | null; password: string } | null>(null);
+  const [grantingAccessTo, setGrantingAccessTo] = useState<Person | null>(null);
 
   const reset = useMutation({
     mutationFn: (userId: string) => resetPersonPassword(userId, companyId!),
@@ -68,6 +70,27 @@ function PeoplePage() {
     onSuccess: () => {
       toast.success("Papel atualizado");
       qc.invalidateQueries({ queryKey: ["people", companyId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const grantAccess = useMutation({
+    mutationFn: (input: { userId: string; email: string; password?: string; role: CompanyRole }) =>
+      upsertPersonAccess(input.userId, {
+        companyId: companyId!,
+        email: input.email,
+        password: input.password,
+        role: input.role,
+        active: true,
+      }),
+    onSuccess: (r) => {
+      toast.success("Acesso configurado");
+      qc.invalidateQueries({ queryKey: ["people", companyId] });
+      qc.invalidateQueries({ queryKey: ["person", r.id, companyId] });
+      setGrantingAccessTo(null);
+      if (r.generatedPassword) {
+        setCreds({ email: r.email, fullName: r.fullName, password: r.generatedPassword });
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -124,10 +147,11 @@ function PeoplePage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="truncate font-bold text-lg">{p.fullName || p.email}</p>
+                          <p className="truncate font-bold text-lg">{p.fullName || p.email || "Pessoa sem acesso"}</p>
                           {p.active === false && <Badge variant="destructive" className="text-[10px] h-4">INATIVO</Badge>}
+                          {!p.hasAccess && <Badge variant="secondary" className="text-[10px] h-4">BASE RH</Badge>}
                         </div>
-                        <p className="truncate text-xs text-muted-foreground font-mono">{p.email}</p>
+                        <p className="truncate text-xs text-muted-foreground font-mono">{p.email || "Sem e-mail de acesso"}</p>
                       </div>
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
                         {p.roles.map((r) => (
@@ -135,17 +159,23 @@ function PeoplePage() {
                         ))}
                       </div>
                       <div className="w-48">
-                        <Select
-                          value={currentRole}
-                          onValueChange={(v) => changeRole.mutate({ userId: p.id, role: v as CompanyRole })}
-                        >
-                          <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {COMPANY_ROLES.map((r) => (
-                              <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {p.hasAccess ? (
+                          <Select
+                            value={currentRole}
+                            onValueChange={(v) => changeRole.mutate({ userId: p.id, role: v as CompanyRole })}
+                          >
+                            <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {COMPANY_ROLES.map((r) => (
+                                <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Button variant="outline" className="h-9 w-full text-xs" onClick={() => setGrantingAccessTo(p)}>
+                            <ShieldCheck className="mr-2 h-4 w-4" /> Conceder acesso
+                          </Button>
+                        )}
                       </div>
                       <div className="flex items-center gap-1">
                         <Button 
@@ -165,7 +195,7 @@ function PeoplePage() {
                         </Button>
                         <Button
                           variant="ghost" size="icon" title="Resetar senha (Gera senha temporária vertexXXXX)"
-                          disabled={reset.isPending}
+                          disabled={reset.isPending || !p.hasAccess}
                           onClick={() => {
                             if (window.confirm("Deseja resetar a senha deste colaborador? Uma nova senha temporária será gerada.")) {
                               reset.mutate(p.id);
@@ -198,6 +228,15 @@ function PeoplePage() {
         }}
 
         onCredentials={setCreds}
+      />
+
+      <AccessDialog
+        key={grantingAccessTo?.id ?? "none"}
+        person={grantingAccessTo}
+        open={!!grantingAccessTo}
+        onOpenChange={(o) => !o && setGrantingAccessTo(null)}
+        onSubmit={(input) => grantAccess.mutate(input)}
+        isPending={grantAccess.isPending}
       />
 
       <CredentialsDialog creds={creds} onClose={() => setCreds(null)} />
@@ -247,21 +286,31 @@ function InviteDialog({
   onCredentials: (c: { email: string; fullName: string | null; password: string }) => void;
 }) {
   const [email, setEmail] = useState("");
+  const [cpf, setCpf] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<CompanyRole>("sangrador");
+  const [grantAccess, setGrantAccess] = useState(false);
 
 
   const mut = useMutation({
-    mutationFn: () => invitePerson({ companyId: companyId!, email, fullName, password: password || undefined, role }),
+    mutationFn: () => invitePerson({
+      companyId: companyId!,
+      fullName,
+      cpf: cpf || undefined,
+      email: grantAccess ? email : undefined,
+      password: grantAccess ? (password || undefined) : undefined,
+      role: grantAccess ? role : undefined,
+      grantAccess,
+    }),
     onSuccess: (r) => {
       toast.success("Pessoa cadastrada");
       onSaved(r.id);
       onOpenChange(false);
-      if (r.generatedPassword) {
+      if (r.generatedPassword && r.email) {
         onCredentials({ email: r.email, fullName: r.fullName, password: r.generatedPassword });
       }
-      setEmail(""); setFullName(""); setPassword(""); setRole("sangrador");
+      setEmail(""); setCpf(""); setFullName(""); setPassword(""); setRole("sangrador"); setGrantAccess(false);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -273,12 +322,101 @@ function InviteDialog({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!email.trim() || !fullName.trim()) { toast.error("Preencha nome e email"); return; }
+            if (!fullName.trim()) { toast.error("Preencha o nome"); return; }
+            if (!grantAccess && !cpf.trim()) { toast.error("Para cadastro-base sem acesso, informe o CPF"); return; }
+            if (grantAccess && !email.trim()) { toast.error("Informe o e-mail para liberar acesso"); return; }
             mut.mutate();
           }}
           className="grid gap-4"
         >
           <div><Label>Nome completo *</Label><Input value={fullName} onChange={(e) => setFullName(e.target.value)} required /></div>
+          <div><Label>CPF</Label><Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="Base RH única" /></div>
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div>
+              <p className="text-sm font-medium">Liberar acesso ao sistema agora</p>
+              <p className="text-xs text-muted-foreground">Se desligado, cria só o cadastro-base de RH.</p>
+            </div>
+            <Switch checked={grantAccess} onCheckedChange={setGrantAccess} />
+          </div>
+          {grantAccess && (
+            <>
+              <div><Label>Email *</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+              <div>
+                <Label>Senha inicial</Label>
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Opcional — gerada se vazia" />
+              </div>
+              <div>
+                <Label>Papel</Label>
+                <Select value={role} onValueChange={(v) => setRole(v as CompanyRole)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {COMPANY_ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit" disabled={mut.isPending}>{mut.isPending ? "Salvando..." : "Cadastrar"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AccessDialog({
+  person,
+  open,
+  onOpenChange,
+  onSubmit,
+  isPending,
+}: {
+  person: Person | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (input: { userId: string; email: string; password?: string; role: CompanyRole }) => void;
+  isPending: boolean;
+}) {
+  const [email, setEmail] = useState(person?.email ?? "");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<CompanyRole>(person?.roles[0] ?? "consulta");
+
+  if (!person) return null;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          setEmail(person.email ?? "");
+          setPassword("");
+          setRole(person.roles[0] ?? "consulta");
+        }
+        onOpenChange(next);
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Conceder acesso</DialogTitle>
+          <DialogDescription>
+            Libera login para {person.fullName || "esta pessoa"} a partir do cadastro-base de RH.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          className="grid gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!email.trim()) {
+              toast.error("Informe o e-mail de acesso");
+              return;
+            }
+            onSubmit({ userId: person.id, email, password: password || undefined, role });
+          }}
+        >
           <div><Label>Email *</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
           <div>
             <Label>Senha inicial</Label>
@@ -297,7 +435,7 @@ function InviteDialog({
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={mut.isPending}>{mut.isPending ? "Salvando..." : "Cadastrar"}</Button>
+            <Button type="submit" disabled={isPending}>{isPending ? "Salvando..." : "Liberar acesso"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -14,18 +14,29 @@ export class CompanyAccess {
 
   async ensureCompany(userId: string, companyId: string) {
     if (await this.isAdminGlobal(userId)) return;
-    const member = await this.prisma.userRole.findFirst({
-      where: { userId, companyId },
+    const member = await this.prisma.userCompany.findFirst({
+      where: { userId, companyId, active: true },
     });
     if (!member) throw new ForbiddenException('Sem acesso à empresa');
   }
 
   async accessibleCompanyIds(userId: string): Promise<string[] | 'all'> {
     if (await this.isAdminGlobal(userId)) return 'all';
-    const roles = await this.prisma.userRole.findMany({
-      where: { userId, companyId: { not: null } },
-      select: { companyId: true },
-    });
-    return roles.map((r) => r.companyId!).filter(Boolean);
+    const [roles, links] = await Promise.all([
+      this.prisma.userRole.findMany({
+        where: { userId, companyId: { not: null } },
+        select: { companyId: true },
+      }),
+      this.prisma.userCompany.findMany({
+        where: { userId, active: true },
+        select: { companyId: true },
+      }),
+    ]);
+    return Array.from(
+      new Set([
+        ...roles.map((r) => r.companyId!).filter(Boolean),
+        ...links.map((r) => r.companyId).filter(Boolean),
+      ]),
+    );
   }
 }

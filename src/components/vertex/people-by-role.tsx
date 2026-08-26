@@ -55,7 +55,7 @@ export function PeopleByRolePage({
     .filter((p) => {
       const q = search.trim().toLowerCase();
       if (!q) return true;
-      return (p.fullName ?? "").toLowerCase().includes(q) || p.email.toLowerCase().includes(q);
+      return (p.fullName ?? "").toLowerCase().includes(q) || (p.email ?? "").toLowerCase().includes(q);
     });
 
   const del = useMutation({
@@ -110,9 +110,9 @@ export function PeopleByRolePage({
                       <UserRound className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{p.fullName || p.email}</p>
+                      <p className="truncate font-semibold">{p.fullName || p.email || "Pessoa sem acesso"}</p>
                       <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-                        <Mail className="h-3 w-3" /> {p.email}
+                        <Mail className="h-3 w-3" /> {p.email || "Sem e-mail de acesso"}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-1">
@@ -217,7 +217,7 @@ export function InviteDialog({
   const mut = useMutation({
     mutationFn: () => invitePerson({
       companyId: companyId!, email, fullName,
-      password: password || undefined, role,
+      password: password || undefined, role, grantAccess: true,
     }),
     onSuccess: (r) => {
       toast.success(`${roleLabel} cadastrado`);

@@ -29,7 +29,10 @@ export class CompaniesService {
     return this.prisma.company.findMany({
       where: {
         isDeleted: false,
-        members: { some: { userId } },
+        OR: [
+          { members: { some: { userId } } },
+          { people: { some: { userId, active: true } } },
+        ],
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -42,8 +45,8 @@ export class CompaniesService {
     if (!company) throw new NotFoundException();
     const admin = await this.isAdminGlobal(userId);
     if (!admin) {
-      const member = await this.prisma.userRole.findFirst({
-        where: { userId, companyId: id },
+      const member = await this.prisma.userCompany.findFirst({
+        where: { userId, companyId: id, active: true },
       });
       if (!member) throw new ForbiddenException();
     }
