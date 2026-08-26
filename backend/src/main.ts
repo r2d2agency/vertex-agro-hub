@@ -6,6 +6,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { ensureSuperadmin } from './bootstrap/ensure-superadmin';
+import { ensureAppRoles } from './bootstrap/ensure-app-roles';
 import { fixMissingColumns } from './bootstrap/fix-missing-columns';
 import { seedAllCompaniesCatalog } from './bootstrap/seed-catalog';
 import { backfillGeo } from './bootstrap/backfill-geo';
@@ -71,6 +72,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const prisma = app.get(PrismaService);
+  try {
+    await ensureAppRoles(prisma);
+  } catch (e: any) {
+    console.error('[app-roles] failed:', e?.message || e);
+  }
+
   if (RUN_STARTUP_TASKS) {
     try {
       await ensureSuperadmin(prisma);
