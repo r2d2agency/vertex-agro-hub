@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
 import {
@@ -15,6 +15,45 @@ export class TappersService {
     private readonly prisma: PrismaService,
     private readonly access: CompanyAccess,
   ) {}
+
+  private async ensureManager(userId: string, companyId: string) {
+    const isGlobal = await this.prisma.userRole.findFirst({
+      where: { userId, role: 'admin_global' },
+    });
+    if (isGlobal) return;
+
+    const isCompanyAdmin = await this.prisma.userRole.findFirst({
+      where: { userId, companyId, role: { in: ['admin_empresa', 'gestor'] } },
+    });
+    if (!isCompanyAdmin) {
+      throw new ForbiddenException('Sem permissão para validar pré-cadastros nesta empresa');
+    }
+  }
+
+  private async ensureConsultorSubmission(userId: string, companyId: string, farmId: string) {
+    const isGlobal = await this.prisma.userRole.findFirst({
+      where: { userId, role: 'admin_global' },
+    });
+    if (isGlobal) return;
+
+    const isCompanyAdmin = await this.prisma.userRole.findFirst({
+      where: { userId, companyId, role: { in: ['admin_empresa', 'gestor'] } },
+    });
+    if (isCompanyAdmin) return;
+
+    const assignment = await this.prisma.farmAssignment.findFirst({
+      where: {
+        userId,
+        companyId,
+        farmId,
+        role: 'consultor',
+        OR: [{ endAt: null }, { endAt: { gte: new Date() } }],
+      },
+    });
+    if (!assignment) {
+      throw new ForbiddenException('Somente consultores da fazenda podem enviar este pré-cadastro');
+    }
+  }
 
   async list(userId: string, companyId: string) {
     await this.access.ensureCompany(userId, companyId);
@@ -300,6 +339,161 @@ export class TappersService {
     }
 
     return { tapper, stint, created: !existing };
+  }
+
+  async listPreRegistrations(
+    userId: string,
+    companyId: string,
+    opts: { status?: string } = {},
+  ) {
+    await this.access.ensureCompany(userId, companyId);
+    return this.prisma.tapperPreRegistration.findMany({
+      where: {
+        companyId,
+        ...(opts.status ? { status: opts.status } : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }],
+    });
+  }
+
+  async createPreRegistration(
+    userId: string,
+    dto: {
+      companyId: string;
+      farmId: string;
+      fullName: string;
+      cpf: string;
+      rg?: string;
+      birthDate?: string;
+      phone?: string;
+      addressCity?: string;
+      addressState?: string;
+      contractType?: string;
+      dailyRate?: number;
+      notes?: string;
+    },
+  ) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    await this.ensureConsultorSubmission(userId, dto.companyId, dto.farmId);
+
+    const cpf = onlyDigits(dto.cpf);
+    if (cpf.length !== 11) {
+      throw new BadRequestException('Informe um CPF válido com 11 dígitos');
+    }
+
+    const farm = await this.prisma.farm.findFirst({
+      where: { id: dto.farmId, companyId: dto.companyId, isDeleted: false },
+      select: { id: true, name: true },
+    });
+    if (!farm) throw new BadRequestException('Fazenda inválida');
+
+    const existingPending = await this.prisma.tapperPreRegistration.findFirst({
+      where: { companyId: dto.companyId, cpf, status: 'pending' },
+      select: { id: true },
+    });
+    if (existingPending) {
+      throw new BadRequestException('Já existe um pré-cadastro pendente para este CPF');
+    }
+
+    const requester = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true, email: true },
+    });
+    const requestedByName = requester?.fullName?.trim() || requester?.email || 'Consultor';
+
+    const item = await this.prisma.tapperPreRegistration.create({
+      data: {
+        companyId: dto.companyId,
+        farmId: dto.farmId,
+        farmName: farm.name,
+        requestedById: userId,
+        requestedByName,
+        fullName: dto.fullName.trim(),
+        cpf,
+        rg: dto.rg ?? null,
+        birthDate: d(dto.birthDate),
+        phone: dto.phone ?? null,
+        addressCity: dto.addressCity ?? null,
+        addressState: dto.addressState ?? null,
+        contractType: dto.contractType ?? null,
+        dailyRate: dto.dailyRate ?? null,
+        notes: dto.notes ?? null,
+      },
+    });
+
+    await this.prisma.alertEvent.create({
+      data: {
+        companyId: dto.companyId,
+        level: 'info',
+        title: 'Novo pré-cadastro provisório de sangrador',
+        message: `${item.fullName} foi enviado por ${requestedByName} para validação do RH.`,
+        meta: {
+          type: 'tapper_pre_registration',
+          preRegistrationId: item.id,
+          farmId: item.farmId,
+          farmName: item.farmName,
+          cpf: item.cpf,
+          requestedById: item.requestedById,
+          requestedByName,
+        },
+      },
+    });
+
+    return item;
+  }
+
+  async reviewPreRegistration(
+    userId: string,
+    id: string,
+    dto: {
+      companyId: string;
+      status: 'approved' | 'rejected';
+      personId?: string;
+      reviewNotes?: string;
+    },
+  ) {
+    await this.ensureManager(userId, dto.companyId);
+
+    const current = await this.prisma.tapperPreRegistration.findFirst({
+      where: { id, companyId: dto.companyId },
+    });
+    if (!current) throw new NotFoundException('Pré-cadastro não encontrado');
+
+    const reviewer = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true, email: true },
+    });
+    const reviewerName = reviewer?.fullName?.trim() || reviewer?.email || 'RH';
+
+    const updated = await this.prisma.tapperPreRegistration.update({
+      where: { id },
+      data: {
+        status: dto.status,
+        personId: dto.personId ?? current.personId,
+        reviewNotes: dto.reviewNotes ?? null,
+        reviewedById: userId,
+        reviewedAt: new Date(),
+      },
+    });
+
+    await this.prisma.alertEvent.create({
+      data: {
+        companyId: dto.companyId,
+        level: dto.status === 'approved' ? 'info' : 'warning',
+        title: dto.status === 'approved'
+          ? 'Pré-cadastro de sangrador aprovado'
+          : 'Pré-cadastro de sangrador arquivado',
+        message: `${updated.fullName} foi ${dto.status === 'approved' ? 'validado' : 'arquivado'} por ${reviewerName}.`,
+        meta: {
+          type: 'tapper_pre_registration_review',
+          preRegistrationId: updated.id,
+          status: dto.status,
+          personId: updated.personId,
+        },
+      },
+    });
+
+    return updated;
   }
 }
 

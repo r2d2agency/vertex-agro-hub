@@ -1,5 +1,5 @@
 import {
-  IsBoolean, IsDateString, IsNumber, IsOptional, IsString, IsUUID, MinLength,
+  IsBoolean, IsDateString, IsIn, IsNumber, IsOptional, IsString, IsUUID, MinLength,
 } from 'class-validator';
 
 export class CreateTapperDto {
@@ -57,4 +57,26 @@ export class UpsertTapperDto extends CreateTapperDto {
   /** Vincula automaticamente o sangrador a esta fazenda ao confirmar a ficha. */
   @IsOptional() @IsUUID() farmId?: string;
   @IsOptional() @IsDateString() stintStartAt?: string;
+}
+
+export class CreateTapperPreRegistrationDto {
+  @IsUUID() companyId!: string;
+  @IsUUID() farmId!: string;
+  @IsString() @MinLength(2) fullName!: string;
+  @IsString() @MinLength(11) cpf!: string;
+  @IsOptional() @IsString() rg?: string;
+  @IsOptional() @IsDateString() birthDate?: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() addressCity?: string;
+  @IsOptional() @IsString() addressState?: string;
+  @IsOptional() @IsString() contractType?: string;
+  @IsOptional() @IsNumber() dailyRate?: number;
+  @IsOptional() @IsString() notes?: string;
+}
+
+export class ReviewTapperPreRegistrationDto {
+  @IsUUID() companyId!: string;
+  @IsIn(['approved', 'rejected']) status!: 'approved' | 'rejected';
+  @IsOptional() @IsUUID() personId?: string;
+  @IsOptional() @IsString() reviewNotes?: string;
 }

@@ -137,6 +137,32 @@ export type TapperLookup = {
   currentFarm: { id: string; name: string } | null;
 };
 
+export type TapperPreRegistration = {
+  id: string;
+  companyId: string;
+  farmId: string | null;
+  farmName: string | null;
+  requestedById: string | null;
+  requestedByName: string | null;
+  reviewedById: string | null;
+  personId: string | null;
+  fullName: string;
+  cpf: string;
+  rg: string | null;
+  birthDate: string | null;
+  phone: string | null;
+  addressCity: string | null;
+  addressState: string | null;
+  contractType: string | null;
+  dailyRate: number | null;
+  notes: string | null;
+  status: "pending" | "approved" | "rejected";
+  reviewNotes: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export function lookupTapperByCpf(companyId: string, cpf: string) {
   return apiRequest<TapperLookup>(
     `/tappers/lookup?companyId=${encodeURIComponent(companyId)}&cpf=${encodeURIComponent(cpf)}`,
@@ -150,6 +176,42 @@ export function upsertTapperByCpf(input: TapperInput & {
   return apiRequest<{ tapper: Tapper; created: boolean }>(`/tappers/upsert`, {
     method: "POST",
     body: JSON.stringify({ companyId, cpf, farmId, stintStartAt, ...clean(rest) }),
+  });
+}
+
+export function listTapperPreRegistrations(companyId: string, status = "pending") {
+  return apiRequest<TapperPreRegistration[]>(
+    `/tappers/pre-registrations?companyId=${encodeURIComponent(companyId)}&status=${encodeURIComponent(status)}`,
+  );
+}
+
+export function createTapperPreRegistration(input: {
+  companyId: string;
+  farmId: string;
+  fullName: string;
+  cpf: string;
+  rg?: string | null;
+  birthDate?: string | null;
+  phone?: string | null;
+  addressCity?: string | null;
+  addressState?: string | null;
+  contractType?: string | null;
+  dailyRate?: number | null;
+  notes?: string | null;
+}) {
+  return apiRequest<TapperPreRegistration>(`/tappers/pre-registrations`, {
+    method: "POST",
+    body: JSON.stringify(clean(input)),
+  });
+}
+
+export function reviewTapperPreRegistration(
+  id: string,
+  input: { companyId: string; status: "approved" | "rejected"; personId?: string; reviewNotes?: string | null },
+) {
+  return apiRequest<TapperPreRegistration>(`/tappers/pre-registrations/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(clean(input)),
   });
 }
 

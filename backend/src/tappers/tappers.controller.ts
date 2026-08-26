@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { TappersService } from './tappers.service';
 import {
-  CreateStintDto, CreateTapperDto, EndStintDto, UpdateTapperDto, UpsertTapperDto,
+  CreateStintDto, CreateTapperDto, CreateTapperPreRegistrationDto, EndStintDto, ReviewTapperPreRegistrationDto, UpdateTapperDto, UpsertTapperDto,
 } from './dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,6 +30,29 @@ export class TappersController {
   @Post('upsert')
   upsert(@Req() req: any, @Body() dto: UpsertTapperDto) {
     return this.svc.upsertByCpf(req.user.sub, dto);
+  }
+
+  @Get('pre-registrations')
+  listPreRegistrations(
+    @Req() req: any,
+    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('status') status?: string,
+  ) {
+    return this.svc.listPreRegistrations(req.user.sub, companyId, { status });
+  }
+
+  @Post('pre-registrations')
+  createPreRegistration(@Req() req: any, @Body() dto: CreateTapperPreRegistrationDto) {
+    return this.svc.createPreRegistration(req.user.sub, dto);
+  }
+
+  @Patch('pre-registrations/:id')
+  reviewPreRegistration(
+    @Req() req: any,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReviewTapperPreRegistrationDto,
+  ) {
+    return this.svc.reviewPreRegistration(req.user.sub, id, dto);
   }
 
   @Get(':id')

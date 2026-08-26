@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
 import {
-  TAPPER_CONTRACT_TYPES, lookupTapperByCpf, maskCpf, onlyDigits, upsertTapperByCpf,
+  createTapperPreRegistration, TAPPER_CONTRACT_TYPES, lookupTapperByCpf, maskCpf, onlyDigits,
   type TapperInput,
 } from "@/lib/tappers.functions";
 
@@ -65,7 +65,7 @@ function SangradorPage() {
         });
         setStatus(res.sameCompany ? "existing" : "other-company");
         setCurrentFarm(res.currentFarm?.name ?? null);
-        toast.success(res.sameCompany ? "Ficha encontrada — confirme os dados" : "Cadastro encontrado em outra empresa — confirme e vincule");
+        toast.success(res.sameCompany ? "Ficha encontrada — revise os dados antes de enviar ao RH" : "Cadastro encontrado em outra empresa — revise e envie ao RH");
       } else {
         setForm({ cpf: digits, status: "ativo" });
         setStatus("new");
@@ -85,14 +85,21 @@ function SangradorPage() {
     if (!form.fullName || form.fullName.trim().length < 2) { toast.error("Informe o nome completo"); return; }
     setSaving(true);
     try {
-      const res = await upsertTapperByCpf({
-        ...form,
-        cpf: onlyDigits(form.cpf || cpf),
+      await createTapperPreRegistration({
         companyId: farm.companyId,
         farmId: farm.id,
-        stintStartAt: new Date().toISOString().slice(0, 10),
+        fullName: form.fullName.trim(),
+        cpf: onlyDigits(form.cpf || cpf),
+        rg: form.rg ?? null,
+        birthDate: form.birthDate ?? null,
+        phone: form.phone ?? null,
+        addressCity: form.addressCity ?? null,
+        addressState: form.addressState ?? null,
+        contractType: form.contractType ?? null,
+        dailyRate: form.dailyRate ?? null,
+        notes: form.notes ?? null,
       });
-      toast.success(res.created ? "Sangrador cadastrado e vinculado" : "Ficha atualizada e vínculo confirmado");
+      toast.success("Pré-cadastro enviado ao RH para validação");
       nav({ to: "/campo" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao salvar");
@@ -104,9 +111,9 @@ function SangradorPage() {
   return (
     <div>
       <StepHeader
-        title="Ficha do sangrador"
+        title="Pré-cadastro do sangrador"
         step={step}
-        steps={["CPF", "Dados", "Vincular"]}
+        steps={["CPF", "Dados", "Enviar"]}
         onBack={() => (step > 1 ? setStep(step - 1) : nav({ to: "/campo" }))}
       />
 
@@ -130,7 +137,7 @@ function SangradorPage() {
             />
           </F>
           <p className="text-xs text-muted-foreground">
-            O sistema consulta o CPF: se já houver ficha, os dados são carregados para você apenas confirmar e vincular à fazenda.
+            O sistema consulta o CPF para evitar retrabalho. Se já houver ficha legada, os dados são carregados para você apenas revisar antes de enviar ao RH.
           </p>
           <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={check} disabled={checking}>
             {checking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
@@ -145,7 +152,7 @@ function SangradorPage() {
             {status === "new" ? (
               <Badge variant="secondary" className="gap-1"><UserPlus className="h-3 w-3" /> Novo cadastro</Badge>
             ) : (
-              <Badge className="gap-1"><CheckCircle2 className="h-3 w-3" /> {status === "existing" ? "Ficha existente" : "Cadastro em outra empresa"}</Badge>
+              <Badge className="gap-1"><CheckCircle2 className="h-3 w-3" /> {status === "existing" ? "Ficha legada existente" : "Cadastro em outra empresa"}</Badge>
             )}
             {currentFarm && <span className="text-xs text-muted-foreground">Atual: {currentFarm}</span>}
           </div>
@@ -192,7 +199,7 @@ function SangradorPage() {
 
       {step === 3 && (
         <FieldCard className="space-y-4">
-          <h3 className="text-sm font-semibold">Confirmar vínculo</h3>
+          <h3 className="text-sm font-semibold">Confirmar envio ao RH</h3>
           <dl className="divide-y divide-border/60 rounded-xl border border-border/60 bg-background/40 text-sm">
             <Row label="Sangrador" value={form.fullName || "—"} />
             <Row label="CPF" value={maskCpf(form.cpf || cpf)} />
@@ -202,10 +209,10 @@ function SangradorPage() {
             <Row label="Fazenda" value={farm?.name ?? "—"} />
           </dl>
           <p className="text-xs text-muted-foreground">
-            Ao confirmar, o sangrador passa a constar nesta fazenda e o vínculo anterior é encerrado automaticamente com data de hoje.
+            Ao confirmar, o consultor envia um cadastro provisório para o RH. O vínculo definitivo e a regularização continuam sendo feitos no administrativo.
           </p>
           <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar e vincular
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Enviar pré-cadastro
           </Button>
         </FieldCard>
       )}

@@ -16,7 +16,7 @@ const TABS: Item[] = [
 ];
 
 const OPERATIONS = [
-  { to: "/campo/sangrador", label: "Cadastrar/vincular sangrador", emoji: "🧑‍🌾", roles: ["monitor", "admin"] },
+  { to: "/campo/sangrador", label: "Pré-cadastrar sangrador", emoji: "🧑‍🌾", roles: ["consultor", "admin"] },
   { to: "/campo/consultor", label: "Visita técnica (Consultoria)", emoji: "📋", roles: ["consultor", "admin"] },
   { to: "/campo/sangria", label: "Registrar sangria", emoji: "💧", roles: ["monitor", "admin"] },
   { to: "/campo/producao", label: "Registrar produção", emoji: "📦", roles: ["monitor", "admin"] },
