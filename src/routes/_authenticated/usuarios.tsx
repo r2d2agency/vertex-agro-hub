@@ -292,12 +292,7 @@ function InviteDialog({
   const [role, setRole] = useState<CompanyRole>("sangrador");
   const [grantAccess, setGrantAccess] = useState(false);
   const [formError, setFormError] = useState("");
-
-  const canSubmit = Boolean(
-    companyId &&
-    fullName.trim() &&
-    ((grantAccess && email.trim()) || (!grantAccess && cpf.trim())),
-  );
+  const cpfDigits = cpf.replace(/\D+/g, "");
 
   const mut = useMutation({
     mutationFn: () => invitePerson({
@@ -331,7 +326,7 @@ function InviteDialog({
         <DialogHeader>
           <DialogTitle>Nova pessoa</DialogTitle>
           <DialogDescription>
-            Para manter o cadastro unico, informe ao menos um identificador principal: `CPF` para base RH ou `e-mail` ao liberar acesso agora.
+            Para manter o cadastro unico, informe `CPF` no cadastro-base do RH ou `e-mail` ao liberar acesso agora.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -345,7 +340,13 @@ function InviteDialog({
               return;
             }
             if (!grantAccess && !cpf.trim()) {
-              const message = "Para cadastro-base sem acesso, informe o CPF";
+              const message = "CPF nao cadastrado. Informe o CPF para criar o colaborador no RH.";
+              setFormError(message);
+              toast.error(message);
+              return;
+            }
+            if (!grantAccess && cpfDigits.length !== 11) {
+              const message = "CPF invalido. Informe os 11 digitos do CPF.";
               setFormError(message);
               toast.error(message);
               return;
@@ -363,12 +364,17 @@ function InviteDialog({
           <div><Label>Nome completo *</Label><Input value={fullName} onChange={(e) => setFullName(e.target.value)} required /></div>
           <div className="space-y-1.5">
             <Label>{grantAccess ? "CPF" : "CPF *"}</Label>
-            <Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="Base RH única" />
+            <Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
             <p className="text-xs text-muted-foreground">
               {grantAccess
                 ? "Opcional quando o acesso for liberado agora com e-mail."
-                : "Obrigatório para criar o cadastro-base do RH sem acesso ao sistema."}
+                : "Obrigatorio para criar o colaborador no RH sem acesso ao sistema."}
             </p>
+            {!grantAccess && cpf.trim() && cpfDigits.length > 0 && cpfDigits.length !== 11 && (
+              <p className="text-xs text-destructive">
+                CPF invalido. Digite os 11 numeros.
+              </p>
+            )}
           </div>
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>
@@ -404,7 +410,7 @@ function InviteDialog({
           )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={mut.isPending || !canSubmit}>{mut.isPending ? "Salvando..." : "Cadastrar"}</Button>
+            <Button type="submit" disabled={mut.isPending}>{mut.isPending ? "Salvando..." : "Cadastrar"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
