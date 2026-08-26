@@ -291,7 +291,13 @@ function InviteDialog({
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<CompanyRole>("sangrador");
   const [grantAccess, setGrantAccess] = useState(false);
+  const [formError, setFormError] = useState("");
 
+  const canSubmit = Boolean(
+    companyId &&
+    fullName.trim() &&
+    ((grantAccess && email.trim()) || (!grantAccess && cpf.trim())),
+  );
 
   const mut = useMutation({
     mutationFn: () => invitePerson({
@@ -305,6 +311,7 @@ function InviteDialog({
     }),
     onSuccess: (r) => {
       toast.success("Pessoa cadastrada");
+      setFormError("");
       onSaved(r.id);
       onOpenChange(false);
       if (r.generatedPassword && r.email) {
@@ -312,25 +319,57 @@ function InviteDialog({
       }
       setEmail(""); setCpf(""); setFullName(""); setPassword(""); setRole("sangrador"); setGrantAccess(false);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      setFormError(e.message);
+      toast.error(e.message);
+    },
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Nova pessoa</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Nova pessoa</DialogTitle>
+          <DialogDescription>
+            Para manter o cadastro unico, informe ao menos um identificador principal: `CPF` para base RH ou `e-mail` ao liberar acesso agora.
+          </DialogDescription>
+        </DialogHeader>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!fullName.trim()) { toast.error("Preencha o nome"); return; }
-            if (!grantAccess && !cpf.trim()) { toast.error("Para cadastro-base sem acesso, informe o CPF"); return; }
-            if (grantAccess && !email.trim()) { toast.error("Informe o e-mail para liberar acesso"); return; }
+            setFormError("");
+            if (!fullName.trim()) {
+              const message = "Preencha o nome";
+              setFormError(message);
+              toast.error(message);
+              return;
+            }
+            if (!grantAccess && !cpf.trim()) {
+              const message = "Para cadastro-base sem acesso, informe o CPF";
+              setFormError(message);
+              toast.error(message);
+              return;
+            }
+            if (grantAccess && !email.trim()) {
+              const message = "Informe o e-mail para liberar acesso";
+              setFormError(message);
+              toast.error(message);
+              return;
+            }
             mut.mutate();
           }}
           className="grid gap-4"
         >
           <div><Label>Nome completo *</Label><Input value={fullName} onChange={(e) => setFullName(e.target.value)} required /></div>
-          <div><Label>CPF</Label><Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="Base RH única" /></div>
+          <div className="space-y-1.5">
+            <Label>{grantAccess ? "CPF" : "CPF *"}</Label>
+            <Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="Base RH única" />
+            <p className="text-xs text-muted-foreground">
+              {grantAccess
+                ? "Opcional quando o acesso for liberado agora com e-mail."
+                : "Obrigatório para criar o cadastro-base do RH sem acesso ao sistema."}
+            </p>
+          </div>
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>
               <p className="text-sm font-medium">Liberar acesso ao sistema agora</p>
@@ -338,6 +377,11 @@ function InviteDialog({
             </div>
             <Switch checked={grantAccess} onCheckedChange={setGrantAccess} />
           </div>
+          {formError && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {formError}
+            </div>
+          )}
           {grantAccess && (
             <>
               <div><Label>Email *</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
@@ -360,7 +404,7 @@ function InviteDialog({
           )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={mut.isPending}>{mut.isPending ? "Salvando..." : "Cadastrar"}</Button>
+            <Button type="submit" disabled={mut.isPending || !canSubmit}>{mut.isPending ? "Salvando..." : "Cadastrar"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

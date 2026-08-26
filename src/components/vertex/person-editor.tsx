@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, ExternalLink, Star, ShieldOff, ShieldCheck } from "lucide-react";
+import { Loader2, Plus, Trash2, ExternalLink, Star, ShieldOff, ShieldCheck, TriangleAlert } from "lucide-react";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -52,11 +52,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const EMPTY_PERSONAL: PersonalData = {};
 const EMPTY_EMPLOYMENT = (companyId: string): Employment => ({ companyId });
+const onlyDigits = (v?: string | null) => (v ?? "").replace(/\D+/g, "");
+
+function toIsoDateOrNull(value?: string | null) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return new Date(trimmed).toISOString();
+}
 
 export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
   const qc = useQueryClient();
   const [personal, setPersonal] = useState<PersonalData>(EMPTY_PERSONAL);
   const [employment, setEmployment] = useState<Employment>(EMPTY_EMPLOYMENT(companyId));
+  const [formError, setFormError] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["person", userId, companyId],
@@ -95,14 +104,21 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
   const savePersonal = useMutation({
     mutationFn: () => {
       if (!userId || userId === "new" || userId === "null") throw new Error("ID de usuário inválido");
-      return updatePersonPersonal(userId, companyId, personal);
+      return updatePersonPersonal(userId, companyId, {
+        ...personal,
+        birthDate: toIsoDateOrNull(personal.birthDate),
+      });
     },
     onSuccess: () => {
+      setFormError("");
       toast.success("Dados pessoais atualizados");
       qc.invalidateQueries({ queryKey: ["people", companyId] });
       qc.invalidateQueries({ queryKey: ["person", userId, companyId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      setFormError(e.message);
+      toast.error(e.message);
+    },
   });
 
   const saveEmployment = useMutation({
@@ -136,6 +152,7 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
 
   const set = (patch: Partial<PersonalData>) => setPersonal((p) => ({ ...p, ...patch }));
   const setE = (patch: Partial<Employment>) => setEmployment((p) => ({ ...p, ...patch }));
+  const cpfMissing = !onlyDigits(personal.cpf).trim();
 
 
   return (
@@ -172,6 +189,11 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
                     {data.hasAccess ? "Acesso ao sistema" : "Sem acesso configurado"}
                   </span>
                 </div>
+                {cpfMissing && (
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-700">
+                    <TriangleAlert className="mr-1 h-3 w-3" /> CPF nao cadastrado
+                  </Badge>
+                )}
               </div>
             )}
           </div>
@@ -196,12 +218,26 @@ export function PersonEditor({ open, onOpenChange, userId, companyId }: Props) {
             </TabsList>
 
             <div className="flex-1 overflow-y-auto pr-4 -mr-2">
+              {(cpfMissing || formError) && (
+                <div className="mb-4 grid gap-2">
+                  {cpfMissing && (
+                    <div className="rounded-md border border-amber-500/30 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      CPF nao cadastrado. Esse dado e importante para manter o cadastro unico do RH.
+                    </div>
+                  )}
+                  {formError && (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                      {formError}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <TabsContent value="personal" className="mt-4 grid gap-4 md:grid-cols-2">
                 <Field label="Nome completo *">
                   <Input value={personal.fullName ?? ""} onChange={(e) => set({ fullName: e.target.value })} />
                 </Field>
-                <Field label="CPF">
+                <Field label={cpfMissing ? "CPF *" : "CPF"}>
                   <Input value={personal.cpf ?? ""} onChange={(e) => set({ cpf: e.target.value })} placeholder="000.000.000-00" />
                 </Field>
                 <Field label="RG">
