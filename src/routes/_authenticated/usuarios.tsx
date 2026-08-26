@@ -158,20 +158,19 @@ function PeoplePage() {
                           <Badge key={r} variant="secondary" className="text-[10px] font-bold uppercase tracking-wider">{roleLabel(r)}</Badge>
                         ))}
                       </div>
-                      <div className="w-48">
-                        {p.hasAccess ? (
-                          <Select
-                            value={currentRole}
-                            onValueChange={(v) => changeRole.mutate({ userId: p.id, role: v as CompanyRole })}
-                          >
-                            <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {COMPANY_ROLES.map((r) => (
-                                <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
+                      <div className="w-48 space-y-2">
+                        <Select
+                          value={currentRole}
+                          onValueChange={(v) => changeRole.mutate({ userId: p.id, role: v as CompanyRole })}
+                        >
+                          <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {COMPANY_ROLES.map((r) => (
+                              <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {!p.hasAccess && (
                           <Button variant="outline" className="h-9 w-full text-xs" onClick={() => setGrantingAccessTo(p)}>
                             <ShieldCheck className="mr-2 h-4 w-4" /> Conceder acesso
                           </Button>
@@ -301,7 +300,7 @@ function InviteDialog({
       cpf: cpf || undefined,
       email: grantAccess ? email : undefined,
       password: grantAccess ? (password || undefined) : undefined,
-      role: grantAccess ? role : undefined,
+      role,
       grantAccess,
     }),
     onSuccess: (r) => {
@@ -326,7 +325,7 @@ function InviteDialog({
         <DialogHeader>
           <DialogTitle>Nova pessoa</DialogTitle>
           <DialogDescription>
-            Para manter o cadastro unico, informe `CPF` no cadastro-base do RH ou `e-mail` ao liberar acesso agora.
+            Para manter o cadastro unico, informe `CPF` no cadastro-base do RH ou `e-mail` ao liberar acesso agora. O papel define em quais menus operacionais essa pessoa aparece.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -376,6 +375,20 @@ function InviteDialog({
               </p>
             )}
           </div>
+          <div>
+            <Label>Papel na empresa</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as CompanyRole)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {COMPANY_ROLES.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Esse papel organiza a pessoa no sistema mesmo que o acesso ainda nao seja liberado.
+            </p>
+          </div>
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>
               <p className="text-sm font-medium">Liberar acesso ao sistema agora</p>
@@ -394,17 +407,6 @@ function InviteDialog({
               <div>
                 <Label>Senha inicial</Label>
                 <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Opcional — gerada se vazia" />
-              </div>
-              <div>
-                <Label>Papel</Label>
-                <Select value={role} onValueChange={(v) => setRole(v as CompanyRole)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {COMPANY_ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </>
           )}

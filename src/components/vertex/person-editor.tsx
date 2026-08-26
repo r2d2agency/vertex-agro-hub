@@ -569,16 +569,19 @@ function AssignmentsTab({ userId, companyId, personRoles }: { userId: string; co
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["person-assignments", userId, companyId],
     queryFn: () => listPersonAssignments(userId, companyId),
+    enabled: !!userId && userId !== "null" && userId !== "undefined" && !!companyId && companyId !== "null" && companyId !== "undefined",
   });
 
   const { data: farms = [] } = useQuery({
     queryKey: ["farms", companyId],
     queryFn: () => listFarms(companyId),
+    enabled: !!companyId && companyId !== "null" && companyId !== "undefined",
   });
 
   const { data: people = [] } = useQuery({
     queryKey: ["people", companyId],
     queryFn: () => listPeople(companyId),
+    enabled: !!companyId && companyId !== "null" && companyId !== "undefined",
   });
 
   const consultores = useMemo(

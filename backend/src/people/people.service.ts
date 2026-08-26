@@ -171,6 +171,14 @@ export class PeopleService {
     });
   }
 
+  private async assignCompanyRole(targetUserId: string, companyId: string, role?: CompanyRole | null) {
+    if (!role) return;
+    await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId } });
+    await this.prisma.userRole.create({
+      data: { userId: targetUserId, companyId, role },
+    });
+  }
+
   private async resolveExistingPerson(input: { email?: string | null; cpf?: string | null }) {
     const byCpf = input.cpf
       ? await this.prisma.user.findFirst({ where: { cpf: input.cpf } })
@@ -217,6 +225,7 @@ export class PeopleService {
     }
 
     await this.ensureCompanyLink(user.id, activeCompanyId, userId);
+    await this.assignCompanyRole(user.id, activeCompanyId, dto.role ?? null);
 
     let generatedPassword: string | undefined;
     const shouldGrantAccess = Boolean(dto.grantAccess || dto.role || dto.password);
@@ -279,14 +288,7 @@ export class PeopleService {
     await this.ensureCompanyLink(targetUserId, dto.companyId, userId);
 
     const roleToAssign = dto.role ?? 'consulta';
-    if (roleToAssign) {
-      await this.prisma.userRole.deleteMany({
-        where: { userId: targetUserId, companyId: dto.companyId },
-      });
-      await this.prisma.userRole.create({
-        data: { userId: targetUserId, companyId: dto.companyId, role: roleToAssign },
-      });
-    }
+    await this.assignCompanyRole(targetUserId, dto.companyId, roleToAssign);
 
     return {
       id: targetUserId,
@@ -405,10 +407,7 @@ export class PeopleService {
     if (target.email && target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()) {
       throw new ForbiddenException('Superadmin não pode ter papel alterado');
     }
-    await this.prisma.userRole.deleteMany({ where: { userId: targetUserId, companyId: activeCompanyId } });
-    await this.prisma.userRole.create({
-      data: { userId: targetUserId, companyId: activeCompanyId, role: dto.role },
-    });
+    await this.assignCompanyRole(targetUserId, activeCompanyId, dto.role);
     return { ok: true };
   }
 
