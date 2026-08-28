@@ -197,7 +197,8 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
     return uploadFile(file);
   }
   if (!response.ok) {
-    throw new Error(await readError(response));
+    const errorMsg = await readError(response);
+    throw new Error(errorMsg);
   }
   return (await response.json()) as UploadedFile;
 }
