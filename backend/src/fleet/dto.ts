@@ -44,6 +44,7 @@ export class CreateMachineDto {
   @IsOptional() @IsUUID() monitorUserId?: string;
   @IsOptional() @IsDateString() acquisitionDate?: string;
   @IsOptional() @IsString() supplier?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) photoUrls?: string[];
   @IsOptional() @IsString() photoUrl?: string;
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsString() notes?: string;

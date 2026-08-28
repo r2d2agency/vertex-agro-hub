@@ -14,6 +14,19 @@ export class FleetService {
     private readonly access: CompanyAccess,
   ) {}
 
+  private normalizeMachinePayload(dto: CreateMachineDto | UpdateMachineDto) {
+    const patch: any = { ...dto };
+
+    if (Array.isArray(patch.photoUrls)) {
+      patch.photoUrls = patch.photoUrls.filter((value: unknown) => typeof value === 'string' && value.trim().length > 0);
+    } else if (typeof patch.photoUrl === 'string' && patch.photoUrl.trim()) {
+      patch.photoUrls = [patch.photoUrl.trim()];
+    }
+
+    delete patch.photoUrl;
+    return patch;
+  }
+
   // ---------- Machines ----------
   async listMachines(userId: string, companyId: string, farmId?: string, status?: string) {
     await this.access.ensureCompany(userId, companyId);
@@ -42,7 +55,7 @@ export class FleetService {
   async createMachine(userId: string, dto: CreateMachineDto) {
     await this.access.ensureCompany(userId, dto.companyId);
     return this.prisma.machine.create({
-      data: { ...dto, createdById: userId, updatedById: userId } as any,
+      data: { ...this.normalizeMachinePayload(dto), createdById: userId, updatedById: userId } as any,
     });
   }
 
@@ -50,7 +63,7 @@ export class FleetService {
     const cur = await this.prisma.machine.findUnique({ where: { id } });
     if (!cur || cur.isDeleted) throw new NotFoundException();
     await this.access.ensureCompany(userId, cur.companyId);
-    const patch: any = { ...dto };
+    const patch: any = this.normalizeMachinePayload(dto);
     delete patch.companyId;
     // Log de mudança de status/horímetro
     if (dto.status && dto.status !== cur.status) {
