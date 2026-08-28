@@ -24,6 +24,47 @@ export class FleetService {
     }
 
     delete patch.photoUrl;
+    this.cleanReadOnlyFields(patch);
+    return patch;
+  }
+
+  private cleanReadOnlyFields(patch: any) {
+    const readOnly = [
+      'id', 'createdAt', 'updatedAt', 'version', 'syncStatus', 'deviceId',
+      'isDeleted', 'deletedAt', 'createdById',
+    ];
+    for (const k of readOnly) delete patch[k];
+  }
+
+  private normalizeImplementPayload(dto: Partial<any>) {
+    const patch: any = { ...dto };
+
+    if (Array.isArray(patch.photoUrls)) {
+      patch.photoUrls = patch.photoUrls.filter((value: unknown) => typeof value === 'string' && value.trim().length > 0);
+    } else if (typeof patch.photoUrl === 'string' && patch.photoUrl.trim()) {
+      patch.photoUrls = [patch.photoUrl.trim()];
+    } else if (!Array.isArray(patch.photoUrls)) {
+      patch.photoUrls = [];
+    }
+
+    delete patch.photoUrl;
+    this.cleanReadOnlyFields(patch);
+    return patch;
+  }
+
+  private normalizeOperatorPayload(dto: Partial<any>) {
+    const patch: any = { ...dto };
+
+    if (Array.isArray(patch.photoUrls)) {
+      patch.photoUrls = patch.photoUrls.filter((value: unknown) => typeof value === 'string' && value.trim().length > 0);
+    } else if (typeof patch.photoUrl === 'string' && patch.photoUrl.trim()) {
+      patch.photoUrls = [patch.photoUrl.trim()];
+    } else if (!Array.isArray(patch.photoUrls)) {
+      patch.photoUrls = [];
+    }
+
+    delete patch.photoUrl;
+    this.cleanReadOnlyFields(patch);
     return patch;
   }
 
@@ -159,16 +200,16 @@ export class FleetService {
 
   async createImplement(userId: string, dto: CreateImplementDto) {
     await this.access.ensureCompany(userId, dto.companyId);
-    return this.prisma.implement.create({
-      data: { ...dto, createdById: userId, updatedById: userId } as any,
-    });
+    const data = { ...this.normalizeImplementPayload(dto), createdById: userId, updatedById: userId } as any;
+    return this.prisma.implement.create({ data });
   }
 
   async updateImplement(userId: string, id: string, dto: Partial<CreateImplementDto>) {
     const cur = await this.prisma.implement.findUnique({ where: { id } });
     if (!cur || cur.isDeleted) throw new NotFoundException();
     await this.access.ensureCompany(userId, cur.companyId);
-    const patch: any = { ...dto }; delete patch.companyId;
+    const patch: any = this.normalizeImplementPayload(dto);
+    delete patch.companyId;
     return this.prisma.implement.update({
       where: { id },
       data: { ...patch, updatedById: userId, version: { increment: 1 } },
@@ -197,20 +238,20 @@ export class FleetService {
 
   async createOperator(userId: string, dto: CreateOperatorDto) {
     await this.access.ensureCompany(userId, dto.companyId);
-    return this.prisma.operator.create({
-      data: {
-        ...dto,
-        authorizedCategories: dto.authorizedCategories as any,
-        createdById: userId, updatedById: userId,
-      } as any,
-    });
+    const data = {
+      ...this.normalizeOperatorPayload(dto),
+      authorizedCategories: dto.authorizedCategories as any,
+      createdById: userId, updatedById: userId,
+    } as any;
+    return this.prisma.operator.create({ data });
   }
 
   async updateOperator(userId: string, id: string, dto: Partial<CreateOperatorDto>) {
     const cur = await this.prisma.operator.findUnique({ where: { id } });
     if (!cur || cur.isDeleted) throw new NotFoundException();
     await this.access.ensureCompany(userId, cur.companyId);
-    const patch: any = { ...dto }; delete patch.companyId;
+    const patch: any = this.normalizeOperatorPayload(dto);
+    delete patch.companyId;
     if (dto.authorizedCategories) patch.authorizedCategories = dto.authorizedCategories;
     return this.prisma.operator.update({
       where: { id },
@@ -241,8 +282,10 @@ export class FleetService {
 
   async createOperationType(userId: string, dto: CreateOperationTypeDto) {
     await this.access.ensureCompany(userId, dto.companyId);
+    const patch: any = { ...dto };
+    this.cleanReadOnlyFields(patch);
     return this.prisma.operationType.create({
-      data: { ...dto, createdById: userId, updatedById: userId } as any,
+      data: { ...patch, createdById: userId, updatedById: userId } as any,
     });
   }
 
@@ -250,7 +293,9 @@ export class FleetService {
     const cur = await this.prisma.operationType.findUnique({ where: { id } });
     if (!cur || cur.isDeleted) throw new NotFoundException();
     await this.access.ensureCompany(userId, cur.companyId);
-    const patch: any = { ...dto }; delete patch.companyId;
+    const patch: any = { ...dto };
+    delete patch.companyId;
+    this.cleanReadOnlyFields(patch);
     return this.prisma.operationType.update({
       where: { id },
       data: { ...patch, updatedById: userId, version: { increment: 1 } },

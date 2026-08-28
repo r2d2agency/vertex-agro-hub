@@ -66,6 +66,7 @@ export class CreateImplementDto {
   @IsOptional() @IsInt() year?: number;
   @IsOptional() @IsString() serial?: string;
   @IsOptional() @IsUUID() responsibleUserId?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) photoUrls?: string[];
   @IsOptional() @IsString() photoUrl?: string;
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsString() notes?: string;
@@ -82,6 +83,7 @@ export class CreateOperatorDto {
   @IsOptional() @IsString() cnhCategory?: string;
   @IsOptional() @IsDateString() cnhExpiresAt?: string;
   @IsOptional() @IsDateString() admissionDate?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) photoUrls?: string[];
   @IsOptional() @IsString() photoUrl?: string;
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsArray() authorizedCategories?: string[];

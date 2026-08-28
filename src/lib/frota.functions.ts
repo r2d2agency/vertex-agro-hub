@@ -39,15 +39,17 @@ export type Implement = {
   id: string; companyId: string; farmId: string | null; machineId: string | null;
   code: string | null; patrimony: string | null; name: string; category: string;
   brand: string | null; model: string | null; year: number | null; serial: string | null;
-  responsibleUserId: string | null; photoUrl: string | null; status: string; notes: string | null;
+  responsibleUserId: string | null; photoUrls: string[]; status: string; notes: string | null;
+  createdAt: string; updatedAt: string;
 };
 
 export type Operator = {
   id: string; companyId: string; farmId: string | null; name: string;
   cpf: string | null; phone: string | null; email: string | null;
   monitorUserId: string | null; cnhCategory: string | null; cnhExpiresAt: string | null;
-  admissionDate: string | null; photoUrl: string | null; status: string;
+  admissionDate: string | null; photoUrls: string[]; status: string;
   authorizedCategories: string[] | null; notes: string | null;
+  createdAt: string; updatedAt: string;
 };
 
 export type OperationType = {
