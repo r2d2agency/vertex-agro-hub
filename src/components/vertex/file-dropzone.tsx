@@ -13,6 +13,7 @@ type Props = {
   label?: string;
   preview?: "image" | "file";
   className?: string;
+  multiple?: boolean;
 };
 
 export function FileDropzone({
@@ -21,19 +22,22 @@ export function FileDropzone({
   label = "Arraste um arquivo ou clique para selecionar",
   preview = "file",
   className,
+  multiple = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(false);
 
   async function handleFiles(files: FileList | null) {
-    const file = files?.[0];
-    if (!file) return;
+    const selected = files ? Array.from(files) : [];
+    if (selected.length === 0) return;
     setBusy(true);
     try {
-      const res = await uploadFile(file);
-      onUploaded(res.url, { originalName: res.originalName, mime: res.mime, size: res.size });
-      toast.success("Arquivo enviado");
+      for (const file of selected) {
+        const res = await uploadFile(file);
+        onUploaded(res.url, { originalName: res.originalName, mime: res.mime, size: res.size });
+      }
+      toast.success(selected.length === 1 ? "Arquivo enviado" : `${selected.length} arquivos enviados`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha no upload");
     } finally {
@@ -71,6 +75,7 @@ export function FileDropzone({
           ref={inputRef}
           type="file"
           accept={accept}
+          multiple={multiple}
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
         />

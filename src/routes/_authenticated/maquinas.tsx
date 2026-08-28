@@ -25,6 +25,7 @@ import {
 } from "@/lib/frota.functions";
 import { listFarms } from "@/lib/fazendas.functions";
 import { listPeople } from "@/lib/people.functions";
+import { listChecklists } from "@/lib/frota-ops.functions";
 
 export const Route = createFileRoute("/_authenticated/maquinas")({
   head: () => ({ meta: [
@@ -185,6 +186,11 @@ function MachineDialog({
   const { data: farms = [] } = useQuery({ queryKey: ["farms", companyId], queryFn: () => listFarms(companyId!), enabled: !!companyId });
   const { data: implementsData = [] } = useQuery({ queryKey: ["implements", companyId], queryFn: () => listImplements(companyId!), enabled: !!companyId });
   const { data: operatorPeople = [] } = useQuery({ queryKey: ["people", companyId], queryFn: () => listPeople(companyId!), enabled: !!companyId });
+  const { data: checklists = [] } = useQuery({
+    queryKey: ["machine-checklists", companyId, initial?.id],
+    queryFn: () => listChecklists(companyId!, initial?.id),
+    enabled: !!companyId && !!initial?.id,
+  });
   const operators = operatorPeople.filter((person) => person.roles.includes("operador"));
 
   useEffect(() => {
@@ -323,7 +329,8 @@ function MachineDialog({
                 <FileDropzone
                   preview="image"
                   accept="image/*"
-                  label="Adicionar foto"
+                  label="Adicionar fotos"
+                  multiple
                   onUploaded={(url) => setV({ ...v, photoUrls: [...(v.photoUrls || []), url] })}
                   className="aspect-square"
                 />
@@ -331,9 +338,58 @@ function MachineDialog({
             </TabsContent>
 
             <TabsContent value="checklist" className="px-6 pb-6 space-y-4">
-              <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-                Funcionalidade de Checklist técnico será configurada no Módulo de Manutenção.
-              </div>
+              {!initial?.id ? (
+                <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+                  Salve a máquina primeiro para liberar os checklists vinculados.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-4">
+                    <div>
+                      <p className="text-sm font-medium">Checklists da máquina</p>
+                      <p className="text-sm text-muted-foreground">
+                        Consulte o histórico desta máquina e abra o módulo completo para lançar um novo checklist.
+                      </p>
+                    </div>
+                    <Button asChild variant="outline">
+                      <Link to="/checklists">Abrir checklists</Link>
+                    </Button>
+                  </div>
+
+                  {checklists.length === 0 ? (
+                    <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+                      Nenhum checklist encontrado para esta máquina.
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {checklists.slice(0, 5).map((checklist) => (
+                        <div key={checklist.id} className="rounded-md border p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-medium">
+                                {new Date(checklist.performedAt).toLocaleString("pt-BR")}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {checklist.kind} · {checklist.operator?.name ?? "Sem operador"}
+                              </p>
+                            </div>
+                            <Badge variant={checklist.overallStatus === "ok" ? "default" : "destructive"}>
+                              {checklist.overallStatus}
+                            </Badge>
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {checklist.items.length} itens verificados
+                            {checklist.hourmeter != null ? ` · Horímetro ${checklist.hourmeter}` : ""}
+                          </p>
+                          {checklist.notes && (
+                            <p className="mt-2 text-xs text-muted-foreground">{checklist.notes}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </TabsContent>
           </Tabs>
 

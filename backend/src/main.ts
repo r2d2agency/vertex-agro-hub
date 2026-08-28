@@ -70,6 +70,7 @@ function idempotencyMiddleware(request: Request, response: Response, next: NextF
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const uploadsStatic = express.static(UPLOADS_DIR, { maxAge: '7d', fallthrough: false });
 
   const prisma = app.get(PrismaService);
   try {
@@ -78,17 +79,17 @@ async function bootstrap() {
     console.error('[app-roles] failed:', e?.message || e);
   }
 
+  try {
+    await fixMissingColumns(prisma);
+  } catch (e: any) {
+    console.error('[fix-columns] failed:', e?.message || e);
+  }
+
   if (RUN_STARTUP_TASKS) {
     try {
       await ensureSuperadmin(prisma);
     } catch (e: any) {
       console.error('[superadmin] failed:', e?.message || e);
-    }
-
-    try {
-      await fixMissingColumns(prisma);
-    } catch (e: any) {
-      console.error('[fix-columns] failed:', e?.message || e);
     }
 
     try {
@@ -120,7 +121,13 @@ async function bootstrap() {
     maxAge: 86400,
   });
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-  app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '7d', fallthrough: false }));
+  app.use('/uploads', (request: Request, response: Response, next: NextFunction) => {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      next();
+      return;
+    }
+    uploadsStatic(request, response, next);
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
