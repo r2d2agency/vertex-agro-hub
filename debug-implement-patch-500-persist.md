@@ -1,0 +1,11 @@
+# Debug Session: implement-patch-500-persist
+- **Status**: [OPEN]
+- **Issue**: Mesmo após o commit `78c49ee` (limpeza de campos read-only), `PATCH /api/implements/:id` continua retornando 500 ao mudar status de `disponivel` para `em_uso` no ambiente publicado (EasyPanel).
+- **Debug Server**: pending
+- **Log File**: .dbg/trae-debug-log-implement-patch-500-persist.ndjson
+- **Hypotheses**:
+  - A: Correção não foi deployada; EasyPanel ainda roda o build antigo.
+  - B: Campos não cobertos pelo cleanReadOnlyFields (ex.: `documents`, `statusLogs`, `implements`, relação `machine`) estão presentes no patch.
+  - C: `farmId` ou `machineId` chegam como string vazia `""` (não `null`) e violam FK (PostgreSQL rejeita `""` como UUID válido).
+  - D: `year` chega como string `""` e o Prisma espera Int? ou null.
+  - E: O incremento de `version` conflita com outra trigger/regra do banco, ou `updatedById` tem FK não satisfeita.
