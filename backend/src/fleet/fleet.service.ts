@@ -283,8 +283,6 @@ export class FleetService {
             source: 'fleet.service.updateImplement',
             message,
             meta: {
-              id,
-              userId: userId ?? null,
               companyId: cur?.companyId ?? null,
               stage,
               ...traceStart,
