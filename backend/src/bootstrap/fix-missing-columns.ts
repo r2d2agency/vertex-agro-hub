@@ -23,6 +23,11 @@ export async function fixMissingColumns(prisma: PrismaClient) {
       ALTER TABLE machines ADD COLUMN IF NOT EXISTS photo_urls text[] DEFAULT '{}';
     `).catch(e => console.log('[fix-missing-columns] machines.photo_urls já existe ou erro:', e.message));
 
+    // 3.1. Tabela MACHINES - Remove FK legado de operador
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE machines DROP CONSTRAINT IF EXISTS machines_default_operator_fk;
+    `).catch(e => console.log('[fix-missing-columns] machines_default_operator_fk já removida ou erro:', e.message));
+
     // 4. Tabela INVENTORY_ITEMS - Colunas de fornecedor
     await prisma.$executeRawUnsafe(`
       ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS supplier_cnpj text;

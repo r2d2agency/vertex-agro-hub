@@ -204,6 +204,32 @@ function MachineDialog({
       if (!companyId) throw new Error("Selecione uma empresa");
       const { linkedImplementId, ...payload } = data;
       const dto = { ...payload, companyId, name: (data.name || "").trim() };
+      // #region debug-point B:machine-submit
+      fetch("http://127.0.0.1:7777/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "machine-save-500",
+          runId: "pre-fix",
+          hypothesisId: "B",
+          location: "src/routes/_authenticated/maquinas.tsx:mutationFn",
+          msg: "[DEBUG] machine form submit",
+          data: {
+            companyId,
+            initialId: initial?.id ?? null,
+            linkedImplementId: linkedImplementId ?? null,
+            dto: {
+              name: dto.name ?? null,
+              category: dto.category ?? null,
+              farmId: dto.farmId ?? null,
+              defaultOperatorId: dto.defaultOperatorId ?? null,
+              photoCount: Array.isArray(dto.photoUrls) ? dto.photoUrls.length : 0,
+            },
+          },
+          ts: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       const machine = initial ? await updateMachine(initial.id, dto as any) : await createMachine(dto as any);
       const currentMachineId = initial?.id ?? machine.id;
       const currentlyLinked = implementsData.filter((item) => item.machineId === currentMachineId);

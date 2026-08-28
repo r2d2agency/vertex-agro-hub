@@ -54,9 +54,59 @@ export class FleetService {
 
   async createMachine(userId: string, dto: CreateMachineDto) {
     await this.access.ensureCompany(userId, dto.companyId);
-    return this.prisma.machine.create({
-      data: { ...this.normalizeMachinePayload(dto), createdById: userId, updatedById: userId } as any,
-    });
+    const data = { ...this.normalizeMachinePayload(dto), createdById: userId, updatedById: userId } as any;
+
+    // #region debug-point A:create-machine-payload
+    void fetch('http://127.0.0.1:7777/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'machine-save-500',
+        runId: 'pre-fix',
+        hypothesisId: 'A',
+        location: 'backend/src/fleet/fleet.service.ts:createMachine',
+        msg: '[DEBUG] createMachine payload prepared',
+        data: {
+          userId,
+          companyId: dto.companyId,
+          payload: {
+            name: data.name ?? null,
+            category: data.category ?? null,
+            farmId: data.farmId ?? null,
+            defaultOperatorId: data.defaultOperatorId ?? null,
+            photoUrls: Array.isArray(data.photoUrls) ? data.photoUrls.length : null,
+          },
+        },
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+
+    try {
+      return await this.prisma.machine.create({ data });
+    } catch (error: any) {
+      // #region debug-point A:create-machine-error
+      void fetch('http://127.0.0.1:7777/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'machine-save-500',
+          runId: 'pre-fix',
+          hypothesisId: 'A',
+          location: 'backend/src/fleet/fleet.service.ts:createMachine',
+          msg: '[DEBUG] createMachine failed',
+          data: {
+            name: error?.name ?? null,
+            code: error?.code ?? null,
+            message: error?.message ?? null,
+            meta: error?.meta ?? null,
+          },
+          ts: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      throw error;
+    }
   }
 
   async updateMachine(userId: string, id: string, dto: UpdateMachineDto) {
