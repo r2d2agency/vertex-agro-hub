@@ -9,6 +9,7 @@ import {
   CreateImplementDto, CreateMachineDto, CreateOperatorDto,
   CreateOperationTypeDto, UpdateMachineDto,
 } from './dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 function req(companyId?: string) {
   if (!companyId) throw new BadRequestException('companyId é obrigatório');
@@ -18,7 +19,10 @@ function req(companyId?: string) {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class FleetController {
-  constructor(private readonly svc: FleetService) {}
+  constructor(
+    private readonly svc: FleetService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   // Overview
   @Get('fleet/overview')
@@ -63,8 +67,67 @@ export class FleetController {
     return this.svc.createImplement(r.user.sub, dto);
   }
   @Patch('implements/:id')
-  updateImpl(@Req() r: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: Partial<CreateImplementDto>) {
-    return this.svc.updateImplement(r.user.sub, id, dto);
+  async updateImpl(@Req() r: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: Partial<CreateImplementDto>) {
+    // #region debug-point C:controller-update-implement
+    const userId: string | undefined = r?.user?.sub;
+    const dtoMeta = Object.fromEntries(
+      Object.entries(dto ?? {}).map(([k, v]) => [
+        k,
+        { type: typeof v, value: v, isArray: Array.isArray(v) },
+      ]),
+    );
+    try {
+      void this.prisma.systemLog.create({
+        data: {
+          level: 'debug',
+          source: 'fleet.controller.updateImpl',
+          message: `[DBG implement-patch-500-persist] CONTROLLER-ENTER id=${id}`,
+          meta: { id, userId, dtoKeys: Object.keys(dto ?? {}), dtoMeta } as any,
+        },
+      }).catch(() => {});
+    } catch {}
+    try {
+      const result = await this.svc.updateImplement(userId as string, id, dto);
+      try {
+        void this.prisma.systemLog.create({
+          data: {
+            level: 'debug',
+            source: 'fleet.controller.updateImpl',
+            message: `[DBG implement-patch-500-persist] CONTROLLER-EXIT-OK id=${id} version=${(result as any)?.version ?? 'n/a'}`,
+            meta: { id, userId } as any,
+          },
+        }).catch(() => {});
+      } catch {}
+      return result;
+    } catch (error: any) {
+      try {
+        void this.prisma.systemLog.create({
+          data: {
+            level: 'error',
+            source: 'fleet.controller.updateImpl',
+            message: `[DBG implement-patch-500-persist] CONTROLLER-EXIT-ERR id=${id} name=${error?.name ?? 'unknown'} status=${error?.status ?? 'n/a'}`,
+            meta: {
+              id,
+              userId,
+              dtoKeys: Object.keys(dto ?? {}),
+              dtoMeta,
+              error: {
+                name: error?.name ?? null,
+                code: error?.code ?? null,
+                status: error?.status ?? null,
+                message: error?.message ?? null,
+                response: error?.response ?? null,
+                stack: typeof error?.stack === 'string' ? error.stack.slice(0, 3000) : null,
+                meta: error?.meta ?? null,
+                cause: typeof error?.cause === 'string' ? error.cause : (error?.cause?.message ?? error?.cause ?? null),
+              },
+            } as any,
+          },
+        }).catch(() => {});
+      } catch {}
+      throw error;
+    }
+    // #endregion
   }
   @Delete('implements/:id')
   delImpl(@Req() r: any, @Param('id', ParseUUIDPipe) id: string) {

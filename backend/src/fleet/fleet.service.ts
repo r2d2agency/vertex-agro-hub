@@ -258,81 +258,116 @@ export class FleetService {
   }
 
   async updateImplement(userId: string, id: string, dto: Partial<CreateImplementDto>) {
-    const cur = await this.prisma.implement.findUnique({ where: { id } });
-    if (!cur || cur.isDeleted) throw new NotFoundException();
-    await this.access.ensureCompany(userId, cur.companyId);
-    const patch: any = this.normalizeImplementPayload(dto);
-    delete patch.companyId;
-    // #region debug-point C:update-implement-preupdate
-    try {
-      void this.prisma.systemLog.create({
-        data: {
-          level: 'debug',
-          source: 'fleet.service.updateImplement',
-          message: `[DBG implement-patch-500-persist] payload prepared id=${id}`,
-          meta: {
-            id,
-            companyId: cur.companyId ?? null,
-            userId,
-            rawDto: Object.fromEntries(
-              Object.entries(dto ?? {}).map(([k, v]) => [
-                k,
-                { type: typeof v, value: v, isArray: Array.isArray(v) },
-              ]),
-            ),
-            normalizedPatch: Object.fromEntries(
-              Object.entries(patch ?? {}).map(([k, v]) => [
-                k,
-                { type: typeof v, value: v, isArray: Array.isArray(v) },
-              ]),
-            ),
-            normalizedKeys: Object.keys(patch ?? {}),
-          } as any,
-          companyId: cur.companyId ?? null,
-        },
-      }).catch(() => {});
-    } catch {}
-    // #endregion
-    try {
-      return await this.prisma.implement.update({
-        where: { id },
-        data: { ...patch, updatedById: userId, version: { increment: 1 } },
-      });
-    } catch (error: any) {
-      // #region debug-point C:update-implement-error
+    // #region debug-point C:update-implement-fullscope
+    const traceStart = {
+      userId: userId ?? null,
+      userIdType: typeof userId,
+      userIdLen: typeof userId === 'string' ? userId.length : -1,
+      id: id ?? null,
+      dtoKeys: Object.keys(dto ?? {}),
+      dtoEntries: Object.fromEntries(
+        Object.entries(dto ?? {}).map(([k, v]) => [
+          k,
+          { type: typeof v, value: v, isArray: Array.isArray(v) },
+        ]),
+      ),
+    };
+    let stage = 'entry';
+    let cur: any = null;
+    let patch: any = null;
+    const writeTraceLog = (level: 'debug' | 'error', message: string, extra: any = {}) => {
       try {
         void this.prisma.systemLog.create({
           data: {
-            level: 'error',
+            level,
             source: 'fleet.service.updateImplement',
-            message: `[DBG implement-patch-500-persist] FAILED id=${id} err=${error?.name ?? 'unknown'} code=${error?.code ?? 'n/a'}`,
+            message,
             meta: {
               id,
-              companyId: cur.companyId ?? null,
-              error: {
-                name: error?.name ?? null,
-                code: error?.code ?? null,
-                message: error?.message ?? null,
-                stack: typeof error?.stack === 'string' ? error.stack.slice(0, 2000) : null,
-                meta: error?.meta ?? null,
-                cause: error?.cause ?? null,
-              },
-              patchKeys: Object.keys(patch ?? {}),
-              patchTypes: Object.fromEntries(
-                Object.entries(patch ?? {}).map(([k, v]) => [k, typeof v + (Array.isArray(v) ? '[]' : '')]),
-              ),
-              curSnapshot: {
-                id: cur.id, status: cur.status, farmId: cur.farmId, machineId: cur.machineId,
-                companyId: cur.companyId, version: cur.version,
-              },
+              userId: userId ?? null,
+              companyId: cur?.companyId ?? null,
+              stage,
+              ...traceStart,
+              ...(extra || {}),
             } as any,
-            companyId: cur.companyId ?? null,
+            companyId: cur?.companyId ?? null,
           },
         }).catch(() => {});
       } catch {}
-      // #endregion
+    };
+    writeTraceLog('debug', `[DBG implement-patch-500-persist] ENTER id=${id}`);
+    try {
+      stage = 'findUnique';
+      cur = await this.prisma.implement.findUnique({ where: { id } });
+      if (!cur || cur.isDeleted) {
+        writeTraceLog('debug', `[DBG implement-patch-500-persist] not-found or deleted id=${id} curNull=${!cur} isDeleted=${cur?.isDeleted ?? 'n/a'}`);
+        throw new NotFoundException();
+      }
+      writeTraceLog('debug', `[DBG implement-patch-500-persist] found id=${id} status=${cur.status} version=${cur.version}`);
+
+      stage = 'ensureCompany';
+      await this.access.ensureCompany(userId, cur.companyId);
+
+      stage = 'normalize';
+      patch = this.normalizeImplementPayload(dto);
+      delete patch.companyId;
+
+      stage = 'pre-update';
+      writeTraceLog('debug', `[DBG implement-patch-500-persist] payload prepared id=${id}`, {
+        normalizedPatch: Object.fromEntries(
+          Object.entries(patch ?? {}).map(([k, v]) => [
+            k,
+            { type: typeof v, value: v, isArray: Array.isArray(v) },
+          ]),
+        ),
+        normalizedKeys: Object.keys(patch ?? {}),
+        curSnapshot: {
+          id: cur.id, status: cur.status, farmId: cur.farmId, machineId: cur.machineId,
+          companyId: cur.companyId, version: cur.version,
+          name: cur.name, category: cur.category, notes: cur.notes,
+        },
+      });
+
+      stage = 'prisma-update';
+      const result = await this.prisma.implement.update({
+        where: { id },
+        data: { ...patch, updatedById: userId, version: { increment: 1 } },
+      });
+      writeTraceLog('debug', `[DBG implement-patch-500-persist] SUCCESS id=${id} newVersion=${result.version}`);
+      return result;
+    } catch (error: any) {
+      writeTraceLog('error',
+        `[DBG implement-patch-500-persist] FAILED id=${id} err=${error?.name ?? 'unknown'} code=${error?.code ?? 'n/a'} stage=${stage}`,
+        {
+          caughtAt: stage,
+          normalizedPatch: patch ? Object.fromEntries(
+            Object.entries(patch ?? {}).map(([k, v]) => [
+              k,
+              { type: typeof v, value: v, isArray: Array.isArray(v) },
+            ]),
+          ) : null,
+          patchKeys: patch ? Object.keys(patch ?? {}) : null,
+          patchTypes: patch ? Object.fromEntries(
+            Object.entries(patch ?? {}).map(([k, v]) => [k, typeof v + (Array.isArray(v) ? '[]' : '')]),
+          ) : null,
+          curSnapshot: cur ? {
+            id: cur.id, status: cur.status, farmId: cur.farmId, machineId: cur.machineId,
+            companyId: cur.companyId, version: cur.version,
+          } : null,
+          error: {
+            name: error?.name ?? null,
+            code: error?.code ?? null,
+            message: error?.message ?? null,
+            stack: typeof error?.stack === 'string' ? error.stack.slice(0, 3000) : null,
+            meta: error?.meta ?? null,
+            cause: typeof error?.cause === 'string' ? error.cause : (error?.cause?.message ?? error?.cause ?? null),
+            response: error?.response ?? null,
+            status: error?.status ?? null,
+          },
+        });
       throw error;
     }
+    // #endregion
   }
 
   async deleteImplement(userId: string, id: string) {
