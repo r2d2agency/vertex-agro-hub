@@ -14,6 +14,53 @@ export class FleetService {
     private readonly access: CompanyAccess,
   ) {}
 
+  private cleanReadOnlyFields(patch: any) {
+    const readOnly = [
+      'id', 'createdAt', 'updatedAt', 'version', 'syncStatus', 'deviceId',
+      'isDeleted', 'deletedAt', 'createdById',
+    ];
+    for (const k of readOnly) delete patch[k];
+  }
+
+  private emptyToNull(v: unknown) {
+    return typeof v === 'string' && v.trim().length === 0 ? null : v;
+  }
+
+  private cleanEmptyUuid(patch: any, keys: string[]) {
+    for (const k of keys) {
+      if (!(k in patch)) continue;
+      const v = patch[k];
+      if (v === undefined) continue;
+      const cleaned = this.emptyToNull(v);
+      if (cleaned != null && (typeof cleaned !== 'string' || cleaned.length < 5)) {
+        patch[k] = null;
+      } else {
+        patch[k] = cleaned;
+      }
+    }
+  }
+
+  private cleanInt(patch: any, keys: string[]) {
+    for (const k of keys) {
+      if (!(k in patch)) continue;
+      const v = patch[k];
+      if (v === null || v === undefined) { patch[k] = v ?? null; continue; }
+      if (typeof v === 'number') { patch[k] = Number.isFinite(v) ? Math.trunc(v) : null; continue; }
+      if (typeof v === 'string') {
+        const t = v.trim();
+        if (t.length === 0) { patch[k] = null; continue; }
+        const n = Number(t);
+        patch[k] = Number.isFinite(n) ? Math.trunc(n) : null;
+      }
+    }
+  }
+
+  private cleanEmptyString(patch: any, keys: string[]) {
+    for (const k of keys) {
+      if (k in patch) patch[k] = this.emptyToNull(patch[k]);
+    }
+  }
+
   private normalizeMachinePayload(dto: CreateMachineDto | UpdateMachineDto) {
     const patch: any = { ...dto };
 
@@ -21,19 +68,20 @@ export class FleetService {
       patch.photoUrls = patch.photoUrls.filter((value: unknown) => typeof value === 'string' && value.trim().length > 0);
     } else if (typeof patch.photoUrl === 'string' && patch.photoUrl.trim()) {
       patch.photoUrls = [patch.photoUrl.trim()];
+    } else {
+      patch.photoUrls = [];
     }
 
     delete patch.photoUrl;
     this.cleanReadOnlyFields(patch);
+    this.cleanEmptyUuid(patch, ['regionalId', 'farmId', 'defaultOperatorId', 'monitorUserId']);
+    this.cleanInt(patch, ['year', 'tankCapacity']);
+    this.cleanEmptyString(patch, ['code', 'patrimony', 'brand', 'model', 'serial', 'plate', 'fuelType', 'hourmeterUnit', 'supplier']);
+    if (patch.hourmeter != null) {
+      const n = Number(patch.hourmeter);
+      patch.hourmeter = Number.isFinite(n) ? n : null;
+    }
     return patch;
-  }
-
-  private cleanReadOnlyFields(patch: any) {
-    const readOnly = [
-      'id', 'createdAt', 'updatedAt', 'version', 'syncStatus', 'deviceId',
-      'isDeleted', 'deletedAt', 'createdById',
-    ];
-    for (const k of readOnly) delete patch[k];
   }
 
   private normalizeImplementPayload(dto: Partial<any>) {
@@ -49,6 +97,9 @@ export class FleetService {
 
     delete patch.photoUrl;
     this.cleanReadOnlyFields(patch);
+    this.cleanEmptyUuid(patch, ['farmId', 'machineId', 'responsibleUserId']);
+    this.cleanInt(patch, ['year']);
+    this.cleanEmptyString(patch, ['code', 'patrimony', 'brand', 'model', 'serial', 'category', 'status', 'notes']);
     return patch;
   }
 
@@ -65,6 +116,8 @@ export class FleetService {
 
     delete patch.photoUrl;
     this.cleanReadOnlyFields(patch);
+    this.cleanEmptyUuid(patch, ['farmId', 'monitorUserId']);
+    this.cleanEmptyString(patch, ['cpf', 'phone', 'email', 'cnhCategory', 'name', 'status', 'notes']);
     return patch;
   }
 
@@ -350,6 +403,7 @@ export class FleetService {
     await this.access.ensureCompany(userId, dto.companyId);
     const patch: any = { ...dto };
     this.cleanReadOnlyFields(patch);
+    this.cleanEmptyString(patch, ['code', 'name', 'category', 'description', 'unit']);
     return this.prisma.operationType.create({
       data: { ...patch, createdById: userId, updatedById: userId } as any,
     });
@@ -362,6 +416,7 @@ export class FleetService {
     const patch: any = { ...dto };
     delete patch.companyId;
     this.cleanReadOnlyFields(patch);
+    this.cleanEmptyString(patch, ['code', 'name', 'category', 'description', 'unit']);
     return this.prisma.operationType.update({
       where: { id },
       data: { ...patch, updatedById: userId, version: { increment: 1 } },
