@@ -18,6 +18,12 @@ export const changelog: ChangelogRelease[] = [
     date: "2026-09-09",
     entries: [
       {
+        type: "correcao",
+        title: "Relatório de visita do consultor não era salvo",
+        description:
+          "O app do consultor gravava a visita técnica num endereço que não existia no backend — o relatório nunca era salvo, sem nenhum aviso. Agora o registro é real e aparece na tela de Visitas técnicas do admin.",
+      },
+      {
         type: "novidade",
         title: "Sangradores na gestão de vínculos do consultor",
         description:
