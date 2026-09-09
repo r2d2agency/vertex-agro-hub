@@ -18,6 +18,12 @@ export const changelog: ChangelogRelease[] = [
     date: "2026-09-09",
     entries: [
       {
+        type: "correcao",
+        title: "Fila offline tentava para sempre em registros com erro permanente",
+        description:
+          "Itens que falhavam por rota inexistente (404) ou erro de validação/permissão ficavam tentando reenviar indefinidamente na fila offline do app de campo, sem nenhum aviso. Agora esses itens ficam marcados como falha, aparecem destacados em Sincronização com o motivo do erro e podem ser descartados manualmente.",
+      },
+      {
         type: "novidade",
         title: "Consultor: versão mobile ou desktop conforme o dispositivo",
         description:

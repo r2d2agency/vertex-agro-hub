@@ -1,16 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { 
-  Wifi, 
-  WifiOff, 
-  RefreshCw, 
-  Moon, 
-  Sun, 
+import {
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Moon,
+  Sun,
   KeyRound,
   ChevronRight,
   ShieldCheck,
   Smartphone,
-  Info
+  Info,
+  AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
 import { subscribeOutbox, flushOutbox } from "@/lib/offline/queue";
@@ -21,6 +22,7 @@ function PreferenciasPage() {
   const navigate = useNavigate();
   const [online, setOnline] = useState(true);
   const [pending, setPending] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
   const [running, setRunning] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
@@ -34,6 +36,7 @@ function PreferenciasPage() {
     const un = subscribeOutbox((s) => {
       setPending(s.pending);
       setRunning(s.running);
+      setFailedCount(s.failedCount);
     });
 
     // Detect initial theme from document class
@@ -119,18 +122,38 @@ function PreferenciasPage() {
               <div>
                 <div className="text-sm font-semibold">Forçar sincronismo</div>
                 <div className="text-[11px] text-muted-foreground">
-                  {pending > 0 
-                    ? `${pending} registro(s) aguardando envio` 
+                  {pending - failedCount > 0
+                    ? `${pending - failedCount} registro(s) aguardando envio`
                     : "Todos os dados estão na nuvem"}
                 </div>
               </div>
             </div>
-            {pending > 0 && (
+            {pending - failedCount > 0 && (
               <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-primary-foreground animate-pulse">
-                {pending}
+                {pending - failedCount}
               </div>
             )}
           </button>
+
+          {failedCount > 0 && (
+            <button
+              onClick={() => navigate({ to: "/campo/sincronizacao" })}
+              className="flex w-full items-center justify-between rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-left transition active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-destructive/15 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-destructive">Falha ao sincronizar</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {failedCount} registro(s) não foram salvos — toque para ver detalhes
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-destructive" />
+            </button>
+          )}
         </div>
       </div>
 

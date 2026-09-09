@@ -22,10 +22,14 @@ export type OutboxItem = {
   createdAt: number;
   attempts: number;
   lastError?: string;
+  // true quando o item não deve mais ser reenviado automaticamente (erro de
+  // validação/permissão/rota inexistente, ou excedeu o limite de tentativas)
+  // — precisa de ação manual (descartar) em vez de ficar tentando para sempre.
+  permanentlyFailed?: boolean;
   label?: string; // rótulo humano (ex: "Ocorrência: Vazamento")
 };
 
-type Listener = (state: { pending: number; running: boolean }) => void;
+type Listener = (state: { pending: number; running: boolean; failedCount: number }) => void;
 const listeners = new Set<Listener>();
 let running = false;
 
@@ -35,8 +39,9 @@ function uuid() {
 }
 
 async function notify() {
-  const pending = await idbCount("outbox");
-  listeners.forEach((l) => l({ pending, running }));
+  const all = await idbGetAll<OutboxItem>("outbox");
+  const failedCount = all.filter((it) => it.permanentlyFailed).length;
+  listeners.forEach((l) => l({ pending: all.length, running, failedCount }));
 }
 
 export function subscribeOutbox(l: Listener) {
@@ -83,6 +88,10 @@ export async function flushOutbox(): Promise<{ sent: number; failed: number }> {
   try {
     const items = await listOutbox();
     for (const it of items) {
+      // Itens já marcados como falha permanente não são reenviados sozinhos —
+      // dependem de ação manual (ver clearOutboxItem) para não tentar para
+      // sempre contra uma rota que nunca vai funcionar.
+      if (it.permanentlyFailed) continue;
       try {
         await apiRequest(it.path, {
           method: it.method,
@@ -94,18 +103,17 @@ export async function flushOutbox(): Promise<{ sent: number; failed: number }> {
       } catch (e: any) {
         it.attempts = (it.attempts ?? 0) + 1;
         it.lastError = String(e?.message ?? e).slice(0, 300);
-        
-        // Se erro for de validação (400) ou permissão (403), ou se exceder tentativas,
-        // manter na fila mas marcar como falha para não descartar silenciosamente.
-        const isClientError = e?.message?.includes('400') || e?.message?.includes('403') || e?.message?.includes('401');
-        
+
+        // 400/401/403/404: erro de validação, permissão ou rota inexistente —
+        // nunca vai se resolver sozinho reenviando. Acima de 5 tentativas,
+        // desiste também mesmo que o erro pareça transitório.
+        const isClientError = /\b(400|401|403|404)\b/.test(it.lastError ?? "");
+
         if (it.attempts >= 5 || isClientError) {
-          // Mantém na fila mas não tenta mais automaticamente neste ciclo
+          it.permanentlyFailed = true;
           it.lastError = `[FALHA] ${it.lastError}`;
-          await idbPut("outbox", it);
-        } else {
-          await idbPut("outbox", it);
         }
+        await idbPut("outbox", it);
         failed++;
       }
       await notify();

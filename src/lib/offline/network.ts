@@ -32,7 +32,9 @@ export function useOnlineStatus() {
 }
 
 export function useOutboxState() {
-  const [state, setState] = useState<{ pending: number; running: boolean }>({ pending: 0, running: false });
-  useEffect(() => { const un = subscribeOutbox(setState); return () => { un; }; }, []);
+  const [state, setState] = useState<{ pending: number; running: boolean; failedCount: number }>({
+    pending: 0, running: false, failedCount: 0,
+  });
+  useEffect(() => { const un = subscribeOutbox(setState); return () => { un(); }; }, []);
   return state;
 }

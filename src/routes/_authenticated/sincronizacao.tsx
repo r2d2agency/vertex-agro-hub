@@ -63,7 +63,8 @@ function SyncPage() {
             <Badge variant={online ? "default" : "outline"} className={online ? "bg-emerald-600" : ""}>
               {online ? "Online" : "Offline"}
             </Badge>
-            <Badge variant="outline">{outbox.pending} pendente(s)</Badge>
+            <Badge variant="outline">{outbox.pending - outbox.failedCount} pendente(s)</Badge>
+            {outbox.failedCount > 0 && <Badge variant="destructive">{outbox.failedCount} com falha</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3">
