@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listFarms } from "@/lib/fazendas.functions";
+import { listTappers, type TapperListItem } from "@/lib/tappers.functions";
 import {
   createPersonAssignment,
   endPersonAssignment,
@@ -48,6 +49,11 @@ function ConsultoresPage() {
     queryFn: () => listCompanyAssignments(companyId!, { history: false }),
     enabled: !!companyId,
   });
+  const { data: tappers = [] } = useQuery({
+    queryKey: ["tappers", companyId],
+    queryFn: () => listTappers(companyId!),
+    enabled: !!companyId,
+  });
 
   const consultants = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -66,7 +72,7 @@ function ConsultoresPage() {
     <div className="grid gap-6">
       <PageHeader
         title="Consultores"
-        description="Aqui você gerencia quais fazendas cada consultor administra e acompanha os monitores vinculados a ele."
+        description="Gestão dos vínculos do gestor/consultor: fazendas administradas, sangradores e monitores de cada uma."
         actions={
           <Link to="/usuarios">
             <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Cadastro no RH</Button>
@@ -94,7 +100,9 @@ function ConsultoresPage() {
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {consultants.map((consultant) => {
                 const farmsManaged = consultantAssignments.filter((item) => item.userId === consultant.id);
+                const farmIds = new Set(farmsManaged.map((item) => item.farmId));
                 const monitored = monitorAssignments.filter((item) => item.consultorUserId === consultant.id);
+                const sangradores = tappers.filter((t) => t.stints.some((s) => !s.endAt && farmIds.has(s.farmId)));
                 return (
                   <Card key={consultant.id} className="transition-colors hover:border-primary/40">
                     <CardContent className="space-y-4 p-5">
@@ -105,6 +113,7 @@ function ConsultoresPage() {
 
                       <div className="flex flex-wrap gap-2 text-xs">
                         <Badge variant="outline"><Building2 className="mr-1 h-3 w-3" /> {farmsManaged.length} fazenda(s)</Badge>
+                        <Badge variant="outline"><Trees className="mr-1 h-3 w-3" /> {sangradores.length} sangrador(es)</Badge>
                         <Badge variant="outline"><Users className="mr-1 h-3 w-3" /> {monitored.length} monitor(es)</Badge>
                       </div>
 
@@ -119,7 +128,7 @@ function ConsultoresPage() {
                       </div>
 
                       <Button className="w-full" variant="outline" onClick={() => setSelected(consultant)}>
-                        Gerenciar fazendas e monitores
+                        Gerenciar fazendas, sangradores e monitores
                       </Button>
                     </CardContent>
                   </Card>
@@ -133,6 +142,7 @@ function ConsultoresPage() {
             companyId={companyId}
             assignments={consultantAssignments}
             monitorAssignments={monitorAssignments}
+            tappers={tappers}
             onClose={() => setSelected(null)}
           />
         </>
@@ -146,12 +156,14 @@ function ConsultantDialog({
   companyId,
   assignments,
   monitorAssignments,
+  tappers,
   onClose,
 }: {
   consultant: Person | null;
   companyId: string;
   assignments: FarmAssignment[];
   monitorAssignments: FarmAssignment[];
+  tappers: TapperListItem[];
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -195,7 +207,9 @@ function ConsultantDialog({
   if (!consultant) return null;
 
   const activeFarms = assignments.filter((item) => item.userId === consultant.id);
+  const activeFarmIds = new Set(activeFarms.map((item) => item.farmId));
   const administeredMonitors = monitorAssignments.filter((item) => item.consultorUserId === consultant.id);
+  const administeredTappers = tappers.filter((t) => t.stints.some((s) => !s.endAt && activeFarmIds.has(s.farmId)));
 
   return (
     <Dialog open={!!consultant} onOpenChange={(open) => !open && onClose()}>
@@ -248,6 +262,36 @@ function ConsultantDialog({
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Sangradores nas fazendas administradas</p>
+                <p className="text-xs text-muted-foreground">Sangradores com vínculo ativo em alguma das fazendas acima.</p>
+              </div>
+              <Link to="/sangradores" className="shrink-0 text-xs text-primary underline">Gerenciar sangradores</Link>
+            </div>
+            {administeredTappers.length === 0 ? (
+              <Card><CardContent className="p-6 text-sm text-muted-foreground">Nenhum sangrador vinculado às fazendas deste consultor.</CardContent></Card>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2">
+                {administeredTappers.map((t) => {
+                  const farmNames = t.stints.filter((s) => !s.endAt && activeFarmIds.has(s.farmId)).map((s) => s.farm?.name).filter(Boolean);
+                  return (
+                    <Card key={t.id}>
+                      <CardContent className="space-y-1 p-4">
+                        <p className="font-medium">{t.fullName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          <Trees className="mr-1 inline h-3 w-3" />
+                          {farmNames.length > 0 ? farmNames.join(", ") : "Sem fazenda"}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </section>

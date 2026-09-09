@@ -19,6 +19,12 @@ export const changelog: ChangelogRelease[] = [
     entries: [
       {
         type: "novidade",
+        title: "Sangradores na gestão de vínculos do consultor",
+        description:
+          "A tela Consultores agora mostra também os sangradores vinculados às fazendas administradas por cada consultor, além das fazendas e monitores.",
+      },
+      {
+        type: "novidade",
         title: "Menu Ajuda e Atualizações",
         description:
           "Novo item Ajuda no menu, com Documentação e esta página de Atualizações, listando novidades, melhorias e correções do sistema.",
