@@ -160,12 +160,13 @@ function StockPage() {
               <Card><CardContent className="p-0">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-left">
-                    <tr><th className="p-3">Data</th><th className="p-3">Item</th><th className="p-3">Tipo</th><th className="p-3">Qtd</th><th className="p-3">Motivo</th><th className="p-3">Custo</th></tr>
+                    <tr><th className="p-3">Data</th><th className="p-3">Fazenda</th><th className="p-3">Item</th><th className="p-3">Tipo</th><th className="p-3">Qtd</th><th className="p-3">Motivo</th><th className="p-3">Custo</th></tr>
                   </thead>
                   <tbody>
                     {movements.map(m => (
                       <tr key={m.id} className="border-t">
                         <td className="p-3">{new Date(m.occurredAt).toLocaleDateString("pt-BR")}</td>
+                        <td className="p-3 text-xs">{farms.find(f => f.id === m.farmId)?.name ?? "—"}</td>
                         <td className="p-3">{m.item?.name ?? "—"}</td>
                         <td className="p-3"><Badge variant={m.kind === "entrada" ? "default" : "secondary"}>{m.kind}</Badge></td>
                         <td className="p-3 font-medium">{m.quantity} {m.item?.unit}</td>
@@ -173,7 +174,7 @@ function StockPage() {
                         <td className="p-3">{m.totalCost != null ? `R$ ${m.totalCost.toFixed(2)}` : "—"}</td>
                       </tr>
                     ))}
-                    {movements.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhuma movimentação.</td></tr>}
+                    {movements.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhuma movimentação.</td></tr>}
                   </tbody>
                 </table>
               </CardContent></Card>

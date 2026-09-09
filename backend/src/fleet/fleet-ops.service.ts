@@ -48,13 +48,14 @@ export class FleetOpsService {
   }
 
   // ============ FUEL MOVEMENTS ============
-  async listFuelMovements(userId: string, companyId: string, opts: { tankId?: string; machineId?: string; kind?: string; from?: string; to?: string } = {}) {
+  async listFuelMovements(userId: string, companyId: string, opts: { tankId?: string; machineId?: string; farmId?: string; kind?: string; from?: string; to?: string } = {}) {
     await this.access.ensureCompany(userId, companyId);
     return this.prisma.fuelMovement.findMany({
       where: {
         companyId, isDeleted: false,
         ...(opts.tankId ? { tankId: opts.tankId } : {}),
         ...(opts.machineId ? { machineId: opts.machineId } : {}),
+        ...(opts.farmId ? { farmId: opts.farmId } : {}),
         ...(opts.kind ? { kind: opts.kind } : {}),
         ...(opts.from || opts.to ? { occurredAt: { ...(opts.from ? { gte: new Date(opts.from) } : {}), ...(opts.to ? { lte: new Date(opts.to) } : {}) } } : {}),
       },
@@ -80,6 +81,7 @@ export class FleetOpsService {
       const mv = await tx.fuelMovement.create({
         data: {
           ...dto,
+          farmId: dto.farmId ?? tank.farmId ?? undefined,
           totalCost: total,
           occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
           createdById: userId, updatedById: userId,
@@ -144,10 +146,10 @@ export class FleetOpsService {
   }
 
   // ============ INVENTORY MOVEMENTS ============
-  async listInventoryMovements(userId: string, companyId: string, itemId?: string) {
+  async listInventoryMovements(userId: string, companyId: string, itemId?: string, farmId?: string) {
     await this.access.ensureCompany(userId, companyId);
     return this.prisma.inventoryMovement.findMany({
-      where: { companyId, isDeleted: false, ...(itemId ? { itemId } : {}) },
+      where: { companyId, isDeleted: false, ...(itemId ? { itemId } : {}), ...(farmId ? { farmId } : {}) },
       orderBy: { occurredAt: 'desc' },
       take: 300,
       include: { item: { select: { name: true, unit: true, sku: true } }, machine: { select: { name: true } } },
@@ -168,7 +170,9 @@ export class FleetOpsService {
       const total = dto.totalCost ?? (dto.unitCost != null ? dto.unitCost * dto.quantity : undefined);
       const mv = await tx.inventoryMovement.create({
         data: {
-          ...dto, totalCost: total,
+          ...dto,
+          farmId: dto.farmId ?? item.farmId ?? undefined,
+          totalCost: total,
           occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
           createdById: userId, updatedById: userId,
         } as any,
@@ -370,10 +374,10 @@ export class FleetOpsService {
   }
 
   // ============ CHECKLISTS ============
-  async listChecklists(userId: string, companyId: string, machineId?: string) {
+  async listChecklists(userId: string, companyId: string, machineId?: string, farmId?: string) {
     await this.access.ensureCompany(userId, companyId);
     return this.prisma.machineChecklist.findMany({
-      where: { companyId, isDeleted: false, ...(machineId ? { machineId } : {}) },
+      where: { companyId, isDeleted: false, ...(machineId ? { machineId } : {}), ...(farmId ? { farmId } : {}) },
       orderBy: { performedAt: 'desc' },
       take: 200,
       include: { machine: { select: { name: true, plate: true } }, operator: { select: { name: true } } },
@@ -381,10 +385,13 @@ export class FleetOpsService {
   }
   async createChecklist(userId: string, dto: CreateChecklistDto) {
     await this.access.ensureCompany(userId, dto.companyId);
+    const machine = await this.prisma.machine.findUnique({ where: { id: dto.machineId } });
+    if (!machine || machine.companyId !== dto.companyId) throw new BadRequestException('Máquina inválida');
     const overall = dto.overallStatus ?? (dto.items.some(i => i.status === 'nok') ? 'nok' : 'ok');
     return this.prisma.machineChecklist.create({
       data: {
         ...dto,
+        farmId: dto.farmId ?? machine.farmId ?? undefined,
         overallStatus: overall,
         items: dto.items as any,
         performedAt: dto.performedAt ? new Date(dto.performedAt) : new Date(),

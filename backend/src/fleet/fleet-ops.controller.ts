@@ -51,11 +51,12 @@ export class FleetOpsController {
     @Query('companyId') c?: string,
     @Query('tankId') tankId?: string,
     @Query('machineId') machineId?: string,
+    @Query('farmId') farmId?: string,
     @Query('kind') kind?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.svc.listFuelMovements(r.user.sub, req(c), { tankId, machineId, kind, from, to });
+    return this.svc.listFuelMovements(r.user.sub, req(c), { tankId, machineId, farmId, kind, from, to });
   }
   @Post('fuel-movements')
   createFuelMv(@Req() r: any, @Body() dto: CreateFuelMovementDto) {
@@ -91,8 +92,8 @@ export class FleetOpsController {
 
   // ===== Inventory movements =====
   @Get('inventory-movements')
-  listInvMv(@Req() r: any, @Query('companyId') c?: string, @Query('itemId') itemId?: string) {
-    return this.svc.listInventoryMovements(r.user.sub, req(c), itemId);
+  listInvMv(@Req() r: any, @Query('companyId') c?: string, @Query('itemId') itemId?: string, @Query('farmId') farmId?: string) {
+    return this.svc.listInventoryMovements(r.user.sub, req(c), itemId, farmId);
   }
   @Post('inventory-movements')
   createInvMv(@Req() r: any, @Body() dto: CreateInventoryMovementDto) {
@@ -166,8 +167,8 @@ export class FleetOpsController {
 
   // ===== Checklists =====
   @Get('machine-checklists')
-  listChks(@Req() r: any, @Query('companyId') c?: string, @Query('machineId') machineId?: string) {
-    return this.svc.listChecklists(r.user.sub, req(c), machineId);
+  listChks(@Req() r: any, @Query('companyId') c?: string, @Query('machineId') machineId?: string, @Query('farmId') farmId?: string) {
+    return this.svc.listChecklists(r.user.sub, req(c), machineId, farmId);
   }
   @Post('machine-checklists')
   createChk(@Req() r: any, @Body() dto: CreateChecklistDto) {

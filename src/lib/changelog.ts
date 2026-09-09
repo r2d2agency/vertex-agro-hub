@@ -18,6 +18,12 @@ export const changelog: ChangelogRelease[] = [
     date: "2026-09-09",
     entries: [
       {
+        type: "melhoria",
+        title: "Fazenda em abastecimento, checklist e movimentação de estoque",
+        description:
+          "Abastecimento de máquina, checklist e movimentação de insumo agora guardam a fazenda de origem (preenchida automaticamente pelo tanque, item ou máquina vinculada) e podem ser filtrados por fazenda nas telas de Abastecimento, Checklists e Estoque.",
+      },
+      {
         type: "correcao",
         title: "Fila offline tentava para sempre em registros com erro permanente",
         description:

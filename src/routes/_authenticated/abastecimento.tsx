@@ -40,14 +40,15 @@ function FuelPage() {
   const qc = useQueryClient();
   const [tankForm, setTankForm] = useState<{ open: boolean; editing: FuelTank | null }>({ open: false, editing: null });
   const [mvForm, setMvForm] = useState<{ open: boolean; kind: "entrada" | "saida" | "ajuste"; tankId?: string } | null>(null);
+  const [farmFilter, setFarmFilter] = useState("__all");
 
   const { data: tanks = [] } = useQuery({
     queryKey: ["fuel-tanks", companyId], enabled: !!companyId,
     queryFn: () => listFuelTanks(companyId!),
   });
   const { data: movements = [] } = useQuery({
-    queryKey: ["fuel-movements", companyId], enabled: !!companyId,
-    queryFn: () => listFuelMovements(companyId!),
+    queryKey: ["fuel-movements", companyId, farmFilter], enabled: !!companyId,
+    queryFn: () => listFuelMovements(companyId!, { farmId: farmFilter !== "__all" ? farmFilter : undefined }),
   });
   const { data: farms = [] } = useQuery({
     queryKey: ["farms", companyId], enabled: !!companyId,
@@ -158,16 +159,27 @@ function FuelPage() {
               {tanks.length === 0 && <Card className="md:col-span-2"><CardContent className="p-8 text-center text-sm text-muted-foreground">Nenhum tanque cadastrado.</CardContent></Card>}
             </TabsContent>
 
-            <TabsContent value="movements" className="mt-4">
+            <TabsContent value="movements" className="mt-4 space-y-3">
+              <div className="max-w-xs">
+                <Label className="mb-1 block text-xs text-muted-foreground">Fazenda</Label>
+                <Select value={farmFilter} onValueChange={setFarmFilter}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all">Todas</SelectItem>
+                    {farms.map((f: { id: string; name: string }) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
               <Card><CardContent className="p-0">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-left">
-                    <tr><th className="p-3">Data</th><th className="p-3">Tanque</th><th className="p-3">Tipo</th><th className="p-3">Litros</th><th className="p-3">Máquina</th><th className="p-3">Custo</th><th className="p-3"></th></tr>
+                    <tr><th className="p-3">Data</th><th className="p-3">Fazenda</th><th className="p-3">Tanque</th><th className="p-3">Tipo</th><th className="p-3">Litros</th><th className="p-3">Máquina</th><th className="p-3">Custo</th><th className="p-3"></th></tr>
                   </thead>
                   <tbody>
                     {movements.map(m => (
                       <tr key={m.id} className="border-t">
                         <td className="p-3">{fmtDate(m.occurredAt)}</td>
+                        <td className="p-3">{farms.find((f: { id: string; name: string }) => f.id === m.farmId)?.name ?? "—"}</td>
                         <td className="p-3">{m.tank?.name ?? "—"}</td>
                         <td className="p-3">
                           <Badge variant={m.kind === "entrada" ? "default" : m.kind === "saida" ? "secondary" : "outline"}>{m.kind}</Badge>
@@ -182,7 +194,7 @@ function FuelPage() {
                         </td>
                       </tr>
                     ))}
-                    {movements.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada.</td></tr>}
+                    {movements.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada.</td></tr>}
                   </tbody>
                 </table>
               </CardContent></Card>

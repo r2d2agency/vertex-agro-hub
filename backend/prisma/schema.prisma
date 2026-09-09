@@ -1189,6 +1189,7 @@ model FuelTank {
 model FuelMovement {
   id             String    @id @default(uuid()) @db.Uuid
   companyId      String    @map("company_id") @db.Uuid
+  farmId         String?   @map("farm_id") @db.Uuid
   tankId         String    @map("tank_id") @db.Uuid
   kind           String
   occurredAt     DateTime  @default(now()) @map("occurred_at")
@@ -1221,6 +1222,7 @@ model FuelMovement {
   @@index([companyId, occurredAt(sort: Desc)])
   @@index([tankId, occurredAt(sort: Desc)])
   @@index([machineId, occurredAt(sort: Desc)])
+  @@index([farmId])
   @@map("fuel_movements")
 }
 
@@ -1265,6 +1267,7 @@ model InventoryItem {
 model InventoryMovement {
   id                   String    @id @default(uuid()) @db.Uuid
   companyId            String    @map("company_id") @db.Uuid
+  farmId               String?   @map("farm_id") @db.Uuid
   itemId               String    @map("item_id") @db.Uuid
   kind                 String
   occurredAt           DateTime  @default(now()) @map("occurred_at")
@@ -1294,6 +1297,7 @@ model InventoryMovement {
 
   @@index([companyId, occurredAt(sort: Desc)])
   @@index([itemId, occurredAt(sort: Desc)])
+  @@index([farmId])
   @@map("inventory_movements")
 }
 
@@ -1411,6 +1415,7 @@ model OperationLog {
 model MachineChecklist {
   id             String   @id @default(uuid()) @db.Uuid
   companyId      String   @map("company_id") @db.Uuid
+  farmId         String?  @map("farm_id") @db.Uuid
   machineId      String   @map("machine_id") @db.Uuid
   operatorId     String?  @map("operator_id") @db.Uuid
   operationLogId String?  @map("operation_log_id") @db.Uuid
@@ -1438,6 +1443,7 @@ model MachineChecklist {
 
   @@index([companyId, performedAt(sort: Desc)])
   @@index([machineId, performedAt(sort: Desc)])
+  @@index([farmId])
   @@map("machine_checklists")
 }
 

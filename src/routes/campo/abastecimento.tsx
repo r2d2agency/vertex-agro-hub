@@ -57,7 +57,7 @@ function AbastecimentoPage() {
     if (!companyId || !tankId || !liters) { toast.error("Preencha tanque e litros"); return; }
     setSaving(true);
     const res = await submitFuelMovement({
-      companyId, tankId, kind,
+      companyId, farmId: farmId || undefined, tankId, kind,
       liters: Number(liters.replace(",", ".")),
       occurredAt: getLocalIsoString(),
       machineId: machineId || undefined,

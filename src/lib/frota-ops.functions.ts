@@ -18,7 +18,7 @@ export type FuelTank = {
 };
 
 export type FuelMovement = {
-  id: string; companyId: string; tankId: string; kind: "entrada" | "saida" | "ajuste";
+  id: string; companyId: string; farmId: string | null; tankId: string; kind: "entrada" | "saida" | "ajuste";
   occurredAt: string; liters: number; unitCost: number | null; totalCost: number | null;
   supplier: string | null; invoiceNumber: string | null;
   machineId: string | null; operatorId: string | null; operationLogId: string | null;
@@ -39,7 +39,7 @@ export type InventoryItem = {
 };
 
 export type InventoryMovement = {
-  id: string; companyId: string; itemId: string; kind: "entrada" | "saida" | "ajuste";
+  id: string; companyId: string; farmId: string | null; itemId: string; kind: "entrada" | "saida" | "ajuste";
   occurredAt: string; quantity: number; unitCost: number | null; totalCost: number | null;
   reason: string | null; machineId: string | null; maintenanceOrderId: string | null;
   supplier: string | null; invoiceNumber: string | null; notes: string | null;
@@ -85,7 +85,7 @@ export type OperationLog = {
 
 export type MachineChecklistItem = { label: string; status: "ok" | "nok" | "na"; notes?: string };
 export type MachineChecklist = {
-  id: string; companyId: string; machineId: string; operatorId: string | null;
+  id: string; companyId: string; farmId: string | null; machineId: string; operatorId: string | null;
   operationLogId: string | null; kind: string; performedAt: string;
   hourmeter: number | null; overallStatus: string; items: MachineChecklistItem[];
   notes: string | null; photoUrl: string | null;
@@ -116,7 +116,7 @@ export const deleteFuelTank = (id: string) =>
 // ============ Fuel Movements ============
 export const listFuelMovements = (
   companyId: string,
-  opts: { tankId?: string; machineId?: string; kind?: string; from?: string; to?: string } = {}
+  opts: { tankId?: string; machineId?: string; farmId?: string; kind?: string; from?: string; to?: string } = {}
 ) => apiRequest<FuelMovement[]>(`/fuel-movements?${qs({ companyId, ...opts })}`);
 export const createFuelMovement = (dto: Partial<FuelMovement> & { companyId: string; tankId: string; kind: string; liters: number }) =>
   apiRequest<FuelMovement>(`/fuel-movements`, { method: "POST", body: JSON.stringify(dto) });
@@ -133,8 +133,8 @@ export const updateInventoryItem = (id: string, dto: Partial<InventoryItem>) =>
 export const deleteInventoryItem = (id: string) =>
   apiRequest<{ ok: true }>(`/inventory-items/${id}`, { method: "DELETE" });
 
-export const listInventoryMovements = (companyId: string, itemId?: string) =>
-  apiRequest<InventoryMovement[]>(`/inventory-movements?${qs({ companyId, itemId })}`);
+export const listInventoryMovements = (companyId: string, itemId?: string, farmId?: string) =>
+  apiRequest<InventoryMovement[]>(`/inventory-movements?${qs({ companyId, itemId, farmId })}`);
 export const createInventoryMovement = (
   dto: Partial<InventoryMovement> & { companyId: string; itemId: string; kind: string; quantity: number }
 ) => apiRequest<InventoryMovement>(`/inventory-movements`, { method: "POST", body: JSON.stringify(dto) });
@@ -171,10 +171,10 @@ export const deleteOperationLog = (id: string) =>
   apiRequest<{ ok: true }>(`/operation-logs/${id}`, { method: "DELETE" });
 
 // ============ Checklists ============
-export const listChecklists = (companyId: string, machineId?: string) =>
-  apiRequest<MachineChecklist[]>(`/machine-checklists?${qs({ companyId, machineId })}`);
+export const listChecklists = (companyId: string, machineId?: string, farmId?: string) =>
+  apiRequest<MachineChecklist[]>(`/machine-checklists?${qs({ companyId, machineId, farmId })}`);
 export const createChecklist = (
-  dto: { companyId: string; machineId: string; operatorId?: string; kind?: string; performedAt?: string; hourmeter?: number; items: MachineChecklistItem[]; overallStatus?: string; notes?: string; photoUrl?: string }
+  dto: { companyId: string; farmId?: string; machineId: string; operatorId?: string; kind?: string; performedAt?: string; hourmeter?: number; items: MachineChecklistItem[]; overallStatus?: string; notes?: string; photoUrl?: string }
 ) => apiRequest<MachineChecklist>(`/machine-checklists`, { method: "POST", body: JSON.stringify(dto) });
 export const deleteChecklist = (id: string) =>
   apiRequest<{ ok: true }>(`/machine-checklists/${id}`, { method: "DELETE" });

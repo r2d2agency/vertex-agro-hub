@@ -18,6 +18,7 @@ import {
   type MachineChecklistItem,
 } from "@/lib/frota-ops.functions";
 import { listMachines, listOperators } from "@/lib/frota.functions";
+import { listFarms } from "@/lib/fazendas.functions";
 
 export const Route = createFileRoute("/_authenticated/checklists")({
   head: () => ({ meta: [
@@ -38,10 +39,11 @@ function ChecklistsPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [farmFilter, setFarmFilter] = useState("__all");
 
   const { data: list = [] } = useQuery({
-    queryKey: ["checklists", companyId], enabled: !!companyId,
-    queryFn: () => listChecklists(companyId!),
+    queryKey: ["checklists", companyId, farmFilter], enabled: !!companyId,
+    queryFn: () => listChecklists(companyId!, undefined, farmFilter !== "__all" ? farmFilter : undefined),
   });
   const { data: machines = [] } = useQuery({
     queryKey: ["machines", companyId], enabled: !!companyId,
@@ -50,6 +52,10 @@ function ChecklistsPage() {
   const { data: operators = [] } = useQuery({
     queryKey: ["operators", companyId], enabled: !!companyId,
     queryFn: () => listOperators(companyId!),
+  });
+  const { data: farms = [] } = useQuery({
+    queryKey: ["farms", companyId], enabled: !!companyId,
+    queryFn: () => listFarms(companyId!),
   });
 
   const del = useMutation({
@@ -69,6 +75,19 @@ function ChecklistsPage() {
       {!isLoading && companies.length === 0 && <NoCompanyCard />}
 
       {companyId && (
+        <div className="max-w-xs">
+          <Label className="mb-1 block text-xs text-muted-foreground">Fazenda</Label>
+          <Select value={farmFilter} onValueChange={setFarmFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todas</SelectItem>
+              {farms.map((f: { id: string; name: string }) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {companyId && (
         <div className="grid gap-3">
           {list.map(c => (
             <Card key={c.id}>
@@ -84,7 +103,7 @@ function ChecklistsPage() {
                       </Badge>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(c.performedAt).toLocaleString("pt-BR")} · {c.operator?.name ?? "sem operador"} · {c.kind}
+                      {new Date(c.performedAt).toLocaleString("pt-BR")} · {farms.find((f: { id: string; name: string }) => f.id === c.farmId)?.name ?? "Sem fazenda"} · {c.operator?.name ?? "sem operador"} · {c.kind}
                     </div>
                   </div>
                   <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { if (confirm("Remover checklist?")) del.mutate(c.id); }}><Trash2 className="h-3 w-3" /></Button>

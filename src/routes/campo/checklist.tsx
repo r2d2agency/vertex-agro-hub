@@ -64,7 +64,7 @@ function ChecklistPage() {
     if (!companyId || !machineId) { toast.error("Selecione a máquina"); return; }
     setSaving(true);
     const res = await submitChecklist({
-      companyId, machineId,
+      companyId, farmId: farmId || undefined, machineId,
       operatorId: operatorId || undefined,
       kind, performedAt: getLocalIsoString(),
       hourmeter: hm ? Number(hm) : undefined,

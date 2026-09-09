@@ -51,7 +51,7 @@ function InsumoPage() {
     if (!companyId || !itemId || !quantity) { toast.error("Preencha item e quantidade"); return; }
     setSaving(true);
     const res = await submitInventoryMovement({
-      companyId, itemId, kind,
+      companyId, farmId: farmId || undefined, itemId, kind,
       quantity: Number(quantity.replace(",", ".")),
       occurredAt: getLocalIsoString(),
       reason: kind !== "entrada" ? (reason || `Uso na fazenda ${farm?.name ?? ""}`).trim() : undefined,

@@ -177,7 +177,7 @@ export async function submitOperationLog(input: any) {
 }
 
 export function submitFuelMovement(input: {
-  companyId: string; tankId: string; kind: "saida" | "entrada" | "ajuste";
+  companyId: string; farmId?: string; tankId: string; kind: "saida" | "entrada" | "ajuste";
   liters: number; occurredAt?: string; machineId?: string;
   operatorId?: string; hourmeter?: number; unitCost?: number;
   supplier?: string; notes?: string;
@@ -186,7 +186,7 @@ export function submitFuelMovement(input: {
 }
 
 export function submitChecklist(input: {
-  companyId: string; machineId: string; operatorId?: string;
+  companyId: string; farmId?: string; machineId: string; operatorId?: string;
   kind?: string; performedAt?: string; hourmeter?: number;
   overallStatus?: string; notes?: string;
   items: Array<{ label: string; status: "ok" | "nok" | "na"; notes?: string }>;
@@ -195,7 +195,7 @@ export function submitChecklist(input: {
 }
 
 export function submitInventoryMovement(input: {
-  companyId: string; itemId: string; kind: "entrada" | "saida" | "ajuste";
+  companyId: string; farmId?: string; itemId: string; kind: "entrada" | "saida" | "ajuste";
   quantity: number; occurredAt?: string;
   reason?: string; machineId?: string; supplier?: string;
   invoiceNumber?: string; unitCost?: number; notes?: string;

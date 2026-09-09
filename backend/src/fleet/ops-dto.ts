@@ -19,6 +19,7 @@ export class CreateFuelTankDto {
 
 export class CreateFuelMovementDto {
   @IsUUID() companyId!: string;
+  @IsOptional() @IsUUID() farmId?: string;
   @IsUUID() tankId!: string;
   @IsString() kind!: string; // entrada | saida | ajuste
   @IsOptional() @IsDateString() occurredAt?: string;
@@ -57,6 +58,7 @@ export class CreateInventoryItemDto {
 
 export class CreateInventoryMovementDto {
   @IsUUID() companyId!: string;
+  @IsOptional() @IsUUID() farmId?: string;
   @IsUUID() itemId!: string;
   @IsString() kind!: string; // entrada | saida | ajuste
   @IsOptional() @IsDateString() occurredAt?: string;
@@ -135,6 +137,7 @@ export class CreateOperationLogDto {
 // ============= Checklist =============
 export class CreateChecklistDto {
   @IsUUID() companyId!: string;
+  @IsOptional() @IsUUID() farmId?: string;
   @IsUUID() machineId!: string;
   @IsOptional() @IsUUID() operatorId?: string;
   @IsOptional() @IsUUID() operationLogId?: string;
