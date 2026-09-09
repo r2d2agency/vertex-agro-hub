@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { hasAuthTokens, logout } from "@/lib/api";
 import { getFieldMe, type FieldMe, captureLocation, submitCheckin, type Coords } from "@/lib/field.functions";
+import { isMobileViewport } from "@/hooks/use-mobile";
 import { subscribeOutbox, flushOutbox } from "@/lib/offline/queue";
 import { FieldBottomNav } from "@/components/vertex/field/bottom-nav";
 import { Button } from "@/components/ui/button";
@@ -21,17 +22,31 @@ export const Route = createFileRoute("/campo")({
     
     // Server-side check or early check for roles
     if (typeof window !== "undefined") {
+      // getFieldMe() pode falhar (offline, token expirado); nesse caso o
+      // FieldShell trata o loading/error. Mas um `redirect()` lançado abaixo
+      // não pode cair nesse mesmo catch, senão ele é engolido silenciosamente
+      // em vez de navegar — por isso a busca fica isolada num try/catch próprio.
+      let me: Awaited<ReturnType<typeof getFieldMe>> | null = null;
       try {
-        const me = await getFieldMe();
-        const isConsultant = me.primaryRole === "consultor";
+        me = await getFieldMe();
+      } catch {
+        me = null;
+      }
+
+      if (me) {
+        const isConsultant = me.primaryRole === "consultor" && !me.isAdmin;
         const isConsultantPath = location.pathname.includes("/consultor");
-        
+
+        // Consultor/gestor num computador (não celular) usa o painel desktop,
+        // não a versão mobile do app de campo.
+        if (isConsultant && !isMobileViewport()) {
+          throw redirect({ to: "/dashboard" });
+        }
+
         // Se for consultor e tentar acessar a raiz do campo, manda pro app dele
         if (isConsultant && !isConsultantPath && location.pathname === "/campo") {
           throw redirect({ to: "/campo/consultor" });
         }
-      } catch {
-        // Ignora erro aqui, o FieldShell trata o loading/error
       }
     }
   },

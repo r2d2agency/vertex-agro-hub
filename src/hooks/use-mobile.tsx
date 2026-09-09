@@ -2,6 +2,13 @@ import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;
 
+// Checagem síncrona de dispositivo fora de componentes React (ex.: dentro de
+// `beforeLoad`/roteamento pós-login, onde hooks não podem ser usados).
+export function isMobileViewport() {
+  if (typeof window === "undefined") return false;
+  return window.innerWidth < MOBILE_BREAKPOINT;
+}
+
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
 

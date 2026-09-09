@@ -18,6 +18,12 @@ export const changelog: ChangelogRelease[] = [
     date: "2026-09-09",
     entries: [
       {
+        type: "novidade",
+        title: "Consultor: versão mobile ou desktop conforme o dispositivo",
+        description:
+          "O consultor/gestor passa a ver a versão do app adequada ao dispositivo: painel mobile no celular, painel administrativo completo no computador — antes ficava sempre travado na versão mobile, independente de onde acessava.",
+      },
+      {
         type: "melhoria",
         title: "Dashboard do consultor com dados reais",
         description:
