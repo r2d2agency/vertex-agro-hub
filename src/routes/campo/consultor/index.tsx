@@ -38,7 +38,11 @@ import {
 
 import { toast } from "sonner";
 import { getFieldMe, type FieldMe, captureLocation, submitCheckin } from "@/lib/field.functions";
-import { submitConsultation, getVisitStatus, justifyMissedVisit, type VisitStatus } from "@/lib/consultor.functions";
+import {
+  submitConsultation, getVisitStatus, justifyMissedVisit, getConsultorDashboard,
+  type VisitStatus, type ConsultorDashboard,
+} from "@/lib/consultor.functions";
+import { listFarmTeam, type FarmAssignment as TeamAssignment } from "@/lib/people.functions";
 
 export const Route = createFileRoute("/campo/consultor/")({
   component: ConsultorFormPage,
@@ -72,6 +76,12 @@ function ConsultorFormPage() {
   const [justifyReason, setJustifyReason] = useState("");
   const [justifying, setJustifying] = useState(false);
 
+  // Dashboard e equipe (dados reais)
+  const [dashboard, setDashboard] = useState<ConsultorDashboard | null>(null);
+  const [team, setTeam] = useState<TeamAssignment[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [teamSearch, setTeamSearch] = useState("");
+
   useEffect(() => {
     getFieldMe().then(setMe).catch(console.error);
 
@@ -90,6 +100,22 @@ function ConsultorFormPage() {
     const companyId = me?.companies?.[0]?.id;
     if (!companyId) return;
     getVisitStatus(companyId).then(setVisitStatus).catch(() => undefined);
+    getConsultorDashboard(companyId).then(setDashboard).catch(() => undefined);
+  }, [me]);
+
+  useEffect(() => {
+    const companyId = me?.companies?.[0]?.id;
+    const farms = me?.assignments ?? [];
+    if (!companyId || farms.length === 0) return;
+    setTeamLoading(true);
+    Promise.all(farms.map((a) => listFarmTeam(a.farm.id, companyId).catch(() => [] as TeamAssignment[])))
+      .then((lists) => {
+        const merged = lists.flat().filter((m) => m.role === "monitor" || m.role === "sangrador");
+        const byUser = new Map<string, TeamAssignment>();
+        for (const m of merged) if (!byUser.has(m.userId)) byUser.set(m.userId, m);
+        setTeam([...byUser.values()]);
+      })
+      .finally(() => setTeamLoading(false));
   }, [me]);
 
   const farmVisit = (fId?: string) => visitStatus?.farms.find((f) => f.farmId === fId);
@@ -150,11 +176,10 @@ function ConsultorFormPage() {
     if (!me) return null;
     return {
       totalFarms: me.assignments?.length || 0,
-      monitors: 12, // Mock or derived
-      avgQuality: 4.2,
-      lastVisitDays: 5
+      monitors: dashboard?.totalMonitors ?? 0,
+      avgQuality: dashboard?.avgQuality ?? null,
     };
-  }, [me]);
+  }, [me, dashboard]);
 
   const handleSubmit = async () => {
     if (!farmId) {
@@ -281,27 +306,27 @@ function ConsultorFormPage() {
         </div>
       )}
 
-      {/* AI Suggestion */}
+      {/* Ação rápida */}
       <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-2 opacity-10">
           <Sparkles className="h-12 w-12 text-primary" />
         </div>
         <div className="flex items-center gap-2 text-primary font-bold text-sm mb-2">
-          <Sparkles className="h-4 w-4" />
-          Sugestão da IA / Gestão Regional
+          <ClipboardCheck className="h-4 w-4" />
+          Registrar nova visita
         </div>
-        <p className="text-sm leading-relaxed">
-          O monitor <span className="font-semibold">Ricardo Lima</span> na fazenda <span className="font-semibold">Boa Vista</span> registrou 4 sangrias hoje. A qualidade média reportada é 4.2. Recomendamos checagem técnica presencial.
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Faça o check-in na fazenda e registre o relatório de visita técnica.
         </p>
-        <Button 
-          variant="link" 
+        <Button
+          variant="link"
           className="p-0 h-auto mt-2 text-primary text-xs font-bold"
           onClick={() => {
             setFarmId(me.assignments?.[0]?.farm.id || "");
             setView("visit");
           }}
         >
-          Agendar visita agora →
+          Iniciar visita agora →
         </Button>
       </div>
 
@@ -313,7 +338,7 @@ function ConsultorFormPage() {
         </div>
         <div className="rounded-2xl border border-border/60 bg-card p-4">
           <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Qualidade Média</div>
-          <div className="text-2xl font-bold text-primary">{stats?.avgQuality}</div>
+          <div className="text-2xl font-bold text-primary">{stats?.avgQuality ?? "—"}</div>
         </div>
 
         {activeCheckin && (
@@ -644,84 +669,88 @@ function ConsultorFormPage() {
             <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Qualidade Global</h3>
             <TrendingUp className="h-4 w-4 text-primary" />
           </div>
-          <div className="text-4xl font-black text-primary mb-1">4.8</div>
-          <p className="text-xs text-muted-foreground">+0.3% em relação ao mês anterior</p>
+          <div className="text-4xl font-black text-primary mb-1">{dashboard?.avgQuality ?? "—"}</div>
+          <p className="text-xs text-muted-foreground">Média das visitas técnicas dos últimos 90 dias</p>
         </div>
-        
+
         <div className="rounded-2xl border border-border/60 bg-card p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Produtividade Estimada</h3>
             <Droplets className="h-4 w-4 text-primary" />
           </div>
-          <div className="text-3xl font-bold mb-1">2.450 <span className="text-sm font-normal text-muted-foreground">kg/ha</span></div>
-          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden mt-2">
-            <div className="h-full bg-primary w-[75%]" />
+          <div className="text-3xl font-bold mb-1">
+            {dashboard?.productivityKgHa ?? "—"} <span className="text-sm font-normal text-muted-foreground">kg/ha</span>
           </div>
+          <p className="text-xs text-muted-foreground">Kg secos entregues nos últimos 30 dias / área total das fazendas</p>
         </div>
 
         <div className="rounded-2xl border border-border/60 bg-card p-4">
-          <h3 className="font-bold text-xs uppercase text-muted-foreground mb-4">Top 5 Fazendas (Qualidade)</h3>
-          <div className="space-y-3">
-            {me.assignments.slice(0, 5).map((a, i) => (
-              <div key={a.id} className="flex items-center justify-between">
-                <div className="text-sm font-medium">{a.farm.name}</div>
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-24 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-primary" style={{ width: `${95 - i * 5}%` }} />
+          <h3 className="font-bold text-xs uppercase text-muted-foreground mb-4">Top fazendas (qualidade da visita)</h3>
+          {!dashboard?.topFarms.length ? (
+            <p className="text-sm text-muted-foreground">Sem visitas com nota registrada ainda.</p>
+          ) : (
+            <div className="space-y-3">
+              {dashboard.topFarms.map((f) => (
+                <div key={f.farmId} className="flex items-center justify-between">
+                  <div className="text-sm font-medium">{f.farmName}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-24 bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-primary" style={{ width: `${((f.avgQuality ?? 0) / 5) * 100}%` }} />
+                    </div>
+                    <span className="text-xs font-bold">{f.avgQuality?.toFixed(1)}</span>
                   </div>
-                  <span className="text-xs font-bold">{(4.9 - i * 0.1).toFixed(1)}</span>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 
-  const renderTeamView = () => (
-    <div className="space-y-6">
-      <header className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => setView("dashboard")}>
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-xl font-bold">Minha Equipe</h1>
-      </header>
+  const renderTeamView = () => {
+    const q = teamSearch.trim().toLowerCase();
+    const filtered = team.filter((m) => {
+      if (!q) return true;
+      return (m.user?.fullName ?? "").toLowerCase().includes(q) || (m.user?.email ?? "").toLowerCase().includes(q);
+    });
+    const monitors = filtered.filter((m) => m.role === "monitor");
+    const sangradores = filtered.filter((m) => m.role === "sangrador");
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input 
-          type="text" 
-          placeholder="Buscar monitor ou sangrador..." 
-          className="w-full pl-10 pr-4 py-3 bg-card border border-border/60 rounded-xl text-sm"
-        />
-      </div>
+    return (
+      <div className="space-y-6">
+        <header className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => setView("dashboard")}>
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-bold">Minha Equipe</h1>
+        </header>
 
-      <div className="space-y-4">
-        <h2 className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Monitores em Campo</h2>
-        {[
-          { name: "Ricardo Lima", farm: "Fazenda Boa Vista", status: "Em atividade", lastVisit: "Hoje" },
-          { name: "Ana Paula Silva", farm: "Seringal Ouro", status: "Pendente", lastVisit: "Ontem" },
-          { name: "Marcos Oliveira", farm: "Fazenda Progresso", status: "Em atividade", lastVisit: "Hoje" }
-        ].map((member, i) => (
-          <div key={i} className="rounded-2xl border border-border/60 bg-card p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                {member.name.charAt(0)}
-              </div>
-              <div>
-                <div className="font-bold text-sm">{member.name}</div>
-                <div className="text-[10px] text-muted-foreground">{member.farm} · {member.lastVisit}</div>
-              </div>
-            </div>
-            <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${member.status === 'Em atividade' ? 'bg-primary/20 text-primary' : 'bg-warning/20 text-warning'}`}>
-              {member.status}
-            </div>
-          </div>
-        ))}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Buscar monitor ou sangrador..."
+            className="w-full pl-10 pr-4 py-3 bg-card border border-border/60 rounded-xl text-sm"
+            value={teamSearch}
+            onChange={(e) => setTeamSearch(e.target.value)}
+          />
+        </div>
+
+        {teamLoading ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : (
+          <>
+            <TeamGroup title="Monitores" members={monitors} />
+            <TeamGroup title="Sangradores" members={sangradores} />
+            {team.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhum monitor ou sangrador vinculado às suas fazendas.</p>
+            )}
+          </>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="relative min-h-screen">
@@ -739,6 +768,31 @@ function ConsultorFormPage() {
         <NavButton active={view === "kpis"} onClick={() => setView("kpis")} icon={<BarChart3 className="h-5 w-5" />} label="KPIs" />
         <NavButton active={view === "team"} onClick={() => setView("team")} icon={<Users className="h-5 w-5" />} label="Equipe" />
       </nav>
+    </div>
+  );
+}
+
+function TeamGroup({ title, members }: { title: string; members: TeamAssignment[] }) {
+  if (members.length === 0) return null;
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xs font-bold uppercase text-muted-foreground tracking-wider">{title}</h2>
+      {members.map((m) => (
+        <div key={m.id} className="rounded-2xl border border-border/60 bg-card p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+              {(m.user?.fullName ?? m.user?.email ?? "?").charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="font-bold text-sm">{m.user?.fullName || m.user?.email || "Sem nome"}</div>
+              <div className="text-[10px] text-muted-foreground">{m.farm?.name ?? "Sem fazenda"}</div>
+            </div>
+          </div>
+          <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${m.user?.active ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
+            {m.user?.active ? "Ativo" : "Inativo"}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

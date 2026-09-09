@@ -87,12 +87,17 @@ export class ConsultationsService {
   // sempre que o app do consultor ou o admin consultam este endpoint.
   private readonly DEFAULT_VISIT_FREQUENCY_DAYS = 30;
 
+  private async isCompanyManager(userId: string, companyId: string) {
+    const found = await this.prisma.userRole.findFirst({
+      where: { userId, OR: [{ role: "admin_global" }, { companyId, role: { in: ["admin_empresa", "gestor"] } }] },
+    });
+    return !!found;
+  }
+
   async getVisitStatus(userId: string, companyId: string) {
     await this.access.ensureCompany(userId, companyId);
 
-    const isManager = await this.prisma.userRole.findFirst({
-      where: { userId, OR: [{ role: "admin_global" }, { companyId, role: { in: ["admin_empresa", "gestor"] } }] },
-    });
+    const isManager = await this.isCompanyManager(userId, companyId);
 
     const settings = await this.prisma.companySettings.findUnique({ where: { companyId } });
     const frequencyDays =
@@ -139,6 +144,81 @@ export class ConsultationsService {
     });
 
     return { frequencyDays, farms };
+  }
+
+  // ---------- Dashboard do consultor ----------
+  // Escopado como getVisitStatus: consultor vê só suas fazendas, admin/gestor
+  // vê todas as fazendas da empresa com consultor vinculado.
+  async getDashboard(userId: string, companyId: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const isManager = await this.isCompanyManager(userId, companyId);
+
+    const assignments = await this.prisma.farmAssignment.findMany({
+      where: { companyId, role: "consultor", endAt: null, ...(isManager ? {} : { userId }) },
+      include: { farm: { select: { id: true, name: true, totalAreaHa: true } } },
+    });
+    const farmIds = [...new Set(assignments.map((a) => a.farmId))];
+    if (farmIds.length === 0) {
+      return { totalFarms: 0, totalMonitors: 0, totalSangradores: 0, avgQuality: null, topFarms: [], productivityKgHa: null };
+    }
+
+    const since90 = new Date(Date.now() - 90 * 86400000);
+    const since30 = new Date(Date.now() - 30 * 86400000);
+
+    const [teamAssignments, consultations, deliveries] = await Promise.all([
+      this.prisma.farmAssignment.findMany({
+        where: { companyId, farmId: { in: farmIds }, endAt: null, role: { in: ["monitor", "sangrador"] } },
+        select: { farmId: true, role: true, userId: true },
+      }),
+      this.prisma.consultation.findMany({
+        where: { companyId, isDeleted: false, farmId: { in: farmIds }, conductedAt: { gte: since90 }, tappingQuality: { not: null } },
+        select: { farmId: true, tappingQuality: true },
+      }),
+      this.prisma.productionDelivery.findMany({
+        where: { companyId, isDeleted: false, farmId: { in: farmIds }, deliveryDate: { gte: since30 } },
+        select: { netWeightKg: true, drcAvgPercent: true, dryKg: true },
+      }),
+    ]);
+
+    const totalMonitors = new Set(teamAssignments.filter((a) => a.role === "monitor").map((a) => a.userId)).size;
+    const totalSangradores = new Set(teamAssignments.filter((a) => a.role === "sangrador").map((a) => a.userId)).size;
+
+    const qualityByFarm = new Map<string, { sum: number; count: number }>();
+    for (const c of consultations) {
+      if (!c.farmId || c.tappingQuality == null) continue;
+      const cur = qualityByFarm.get(c.farmId) ?? { sum: 0, count: 0 };
+      cur.sum += c.tappingQuality;
+      cur.count += 1;
+      qualityByFarm.set(c.farmId, cur);
+    }
+    const avgQuality = consultations.length
+      ? +(consultations.reduce((a, c) => a + (c.tappingQuality ?? 0), 0) / consultations.length).toFixed(1)
+      : null;
+
+    const topFarms = assignments
+      .map((a) => {
+        const q = qualityByFarm.get(a.farmId);
+        return { farmId: a.farmId, farmName: a.farm.name, avgQuality: q ? +(q.sum / q.count).toFixed(1) : null };
+      })
+      .filter((f) => f.avgQuality != null)
+      .sort((a, b) => (b.avgQuality ?? 0) - (a.avgQuality ?? 0))
+      .slice(0, 5);
+
+    const totalDryKg = deliveries.reduce(
+      (acc, d) => acc + (d.dryKg ?? (d.netWeightKg && d.drcAvgPercent ? d.netWeightKg * (d.drcAvgPercent / 100) : 0)),
+      0,
+    );
+    const totalAreaHa = assignments.reduce((acc, a) => acc + (a.farm.totalAreaHa ?? 0), 0);
+    const productivityKgHa = totalAreaHa > 0 ? +(totalDryKg / totalAreaHa).toFixed(1) : null;
+
+    return {
+      totalFarms: farmIds.length,
+      totalMonitors,
+      totalSangradores,
+      avgQuality,
+      topFarms,
+      productivityKgHa,
+    };
   }
 
   async justifyMissedVisit(

@@ -58,6 +58,11 @@ export class ConsultationsController {
     return this.svc.justifyMissedVisit(req.user.sub, dto);
   }
 
+  @Get("dashboard")
+  dashboard(@Req() req: any, @Query("companyId") companyId?: string) {
+    return this.svc.getDashboard(req.user.sub, need(companyId));
+  }
+
   @Patch(":id")
   update(
     @Req() req: any,

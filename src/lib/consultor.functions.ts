@@ -54,6 +54,19 @@ export function justifyMissedVisit(input: { companyId: string; farmId: string; r
   });
 }
 
+export type ConsultorDashboard = {
+  totalFarms: number;
+  totalMonitors: number;
+  totalSangradores: number;
+  avgQuality: number | null;
+  topFarms: Array<{ farmId: string; farmName: string; avgQuality: number | null }>;
+  productivityKgHa: number | null;
+};
+
+export function getConsultorDashboard(companyId: string) {
+  return apiRequest<ConsultorDashboard>(`/consultations/dashboard?companyId=${encodeURIComponent(companyId)}`);
+}
+
 export async function submitConsultation(input: Omit<ConsultationForm, "id">) {
   const online = typeof navigator === "undefined" || navigator.onLine;
   const path = "/consultations";

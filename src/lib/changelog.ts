@@ -18,6 +18,12 @@ export const changelog: ChangelogRelease[] = [
     date: "2026-09-09",
     entries: [
       {
+        type: "melhoria",
+        title: "Dashboard do consultor com dados reais",
+        description:
+          "O painel do consultor (qualidade global, produtividade estimada, top fazendas e equipe de monitores/sangradores) deixou de mostrar números fixos de exemplo e passa a usar dados reais das visitas, entregas e vínculos de cada consultor.",
+      },
+      {
         type: "novidade",
         title: "Alerta de visita atrasada e justificativa de falta",
         description:
