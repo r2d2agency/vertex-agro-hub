@@ -38,7 +38,7 @@ import {
 
 import { toast } from "sonner";
 import { getFieldMe, type FieldMe, captureLocation, submitCheckin } from "@/lib/field.functions";
-import { submitConsultation } from "@/lib/consultor.functions";
+import { submitConsultation, getVisitStatus, justifyMissedVisit, type VisitStatus } from "@/lib/consultor.functions";
 
 export const Route = createFileRoute("/campo/consultor/")({
   component: ConsultorFormPage,
@@ -66,9 +66,15 @@ function ConsultorFormPage() {
   const [isThirdPartyInspector, setIsThirdPartyInspector] = useState(false);
   const [consultantId, setConsultantId] = useState("");
 
+  // Visita obrigatória
+  const [visitStatus, setVisitStatus] = useState<VisitStatus | null>(null);
+  const [justifyingFarmId, setJustifyingFarmId] = useState<string | null>(null);
+  const [justifyReason, setJustifyReason] = useState("");
+  const [justifying, setJustifying] = useState(false);
+
   useEffect(() => {
     getFieldMe().then(setMe).catch(console.error);
-    
+
     // Check for existing session check-in
     const CHECKIN_KEY = "vertex.field.checkin.v1";
     const raw = sessionStorage.getItem(CHECKIN_KEY);
@@ -79,6 +85,32 @@ function ConsultorFormPage() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    const companyId = me?.companies?.[0]?.id;
+    if (!companyId) return;
+    getVisitStatus(companyId).then(setVisitStatus).catch(() => undefined);
+  }, [me]);
+
+  const farmVisit = (fId?: string) => visitStatus?.farms.find((f) => f.farmId === fId);
+  const overdueFarms = visitStatus?.farms.filter((f) => f.overdue) ?? [];
+
+  async function submitJustification() {
+    const companyId = me?.companies?.[0]?.id;
+    if (!justifyingFarmId || !companyId) return;
+    if (justifyReason.trim().length < 3) { toast.error("Descreva o motivo da falta de visita"); return; }
+    setJustifying(true);
+    try {
+      await justifyMissedVisit({ companyId, farmId: justifyingFarmId, reason: justifyReason.trim() });
+      toast.success("Justificativa registrada");
+      setJustifyingFarmId(null);
+      setJustifyReason("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao registrar justificativa");
+    } finally {
+      setJustifying(false);
+    }
+  }
 
   const handleNewCheckin = async (fId?: string, pId?: string) => {
     setGpsStatus("getting");
@@ -153,6 +185,7 @@ function ConsultorFormPage() {
       
       toast.success(res.queued ? "Ficha salva offline!" : "Consultoria registrada com sucesso!");
       setView("dashboard");
+      if (companyId) getVisitStatus(companyId).then(setVisitStatus).catch(() => undefined);
     } catch (error) {
       toast.error("Erro ao salvar ficha");
     } finally {
@@ -201,6 +234,53 @@ function ConsultorFormPage() {
         </div>
       </header>
 
+      {overdueFarms.length > 0 && (
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+          <div className="flex items-center gap-2 text-destructive font-bold text-sm mb-2">
+            <ShieldCheck className="h-4 w-4" />
+            {overdueFarms.length} fazenda(s) com visita atrasada
+          </div>
+          <div className="space-y-2">
+            {overdueFarms.map((f) => (
+              <div key={f.farmId} className="flex items-center justify-between gap-2 text-sm">
+                <span className="truncate">
+                  {f.farmName} — {f.lastVisitAt ? `há ${f.daysSinceVisit}d` : "nunca visitada"}
+                </span>
+                <div className="flex shrink-0 gap-2">
+                  <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => { setFarmId(f.farmId); setView("visit"); }}>
+                    Visitar
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px]" onClick={() => setJustifyingFarmId(f.farmId)}>
+                    Justificar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {justifyingFarmId && (
+        <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
+          <p className="text-sm font-semibold">
+            Justificar falta de visita — {visitStatus?.farms.find((f) => f.farmId === justifyingFarmId)?.farmName}
+          </p>
+          <Textarea
+            className="rounded-xl bg-background border-border"
+            placeholder="Explique o motivo pelo qual a visita não foi realizada..."
+            value={justifyReason}
+            onChange={(e) => setJustifyReason(e.target.value)}
+            rows={3}
+          />
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => { setJustifyingFarmId(null); setJustifyReason(""); }}>Cancelar</Button>
+            <Button size="sm" onClick={submitJustification} disabled={justifying}>
+              {justifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Enviar justificativa
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* AI Suggestion */}
       <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-2 opacity-10">
@@ -246,19 +326,19 @@ function ConsultorFormPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <div className="text-[10px] text-muted-foreground uppercase">Última Visita</div>
-                <div className="text-sm font-bold text-foreground">há 4 dias</div>
+                <div className={`text-sm font-bold ${farmVisit(activeCheckin?.farmId)?.overdue ? "text-destructive" : "text-foreground"}`}>
+                  {(() => {
+                    const v = farmVisit(activeCheckin?.farmId);
+                    if (!v) return "—";
+                    return v.lastVisitAt ? `há ${v.daysSinceVisit} dia(s)` : "Nunca visitada";
+                  })()}
+                </div>
               </div>
               <div className="space-y-1 text-right">
-                <div className="text-[10px] text-muted-foreground uppercase">Erros Reportados</div>
-                <div className="text-sm font-bold text-destructive">2 pendentes</div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-[10px] text-muted-foreground uppercase">KPI Produção</div>
-                <div className="text-sm font-bold text-primary">92% da meta</div>
-              </div>
-              <div className="space-y-1 text-right">
-                <div className="text-[10px] text-muted-foreground uppercase">Clima Atual</div>
-                <div className="text-sm font-bold text-foreground">24°C · Ensolarado</div>
+                <div className="text-[10px] text-muted-foreground uppercase">Status da visita</div>
+                <div className={`text-sm font-bold ${farmVisit(activeCheckin?.farmId)?.overdue ? "text-destructive" : "text-primary"}`}>
+                  {farmVisit(activeCheckin?.farmId)?.overdue ? "Atrasada" : "Em dia"}
+                </div>
               </div>
             </div>
           </div>
@@ -290,9 +370,13 @@ function ConsultorFormPage() {
                 </div>
                 <div>
                   <div className="font-bold text-sm">{a.farm.name}</div>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                  <div className={`flex items-center gap-2 text-[10px] ${farmVisit(a.farm.id)?.overdue ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
                     <Calendar className="h-3 w-3" />
-                    Visitada há 3 dias
+                    {(() => {
+                      const v = farmVisit(a.farm.id);
+                      if (!v) return "—";
+                      return v.lastVisitAt ? `Visitada há ${v.daysSinceVisit}d${v.overdue ? " · atrasada" : ""}` : "Nunca visitada";
+                    })()}
                   </div>
                 </div>
               </div>

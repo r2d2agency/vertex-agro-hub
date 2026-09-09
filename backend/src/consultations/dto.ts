@@ -9,6 +9,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
 } from "class-validator";
 
 export class CreateConsultationDto {
@@ -24,6 +25,12 @@ export class CreateConsultationDto {
   @IsOptional() @IsString() recommendations?: string;
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) photos?: string[];
+}
+
+export class JustifyMissedVisitDto {
+  @IsUUID() companyId!: string;
+  @IsUUID() farmId!: string;
+  @IsString() @MinLength(3) reason!: string;
 }
 
 export class UpdateConsultationDto {

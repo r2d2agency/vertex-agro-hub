@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/alertas")({
 const KINDS: Array<{ value: string; label: string; hint: string }> = [
   { value: "occurrence_open_days", label: "Ocorrência aberta há N dias", hint: '{"days": 3}' },
   { value: "drc_out_of_range", label: "DRC fora da faixa (7 dias)", hint: '{"min":25,"max":45}' },
+  { value: "visit_overdue", label: "Fazenda sem visita de consultor há N dias", hint: '{"days": 30}' },
 ];
 
 function AlertasPage() {

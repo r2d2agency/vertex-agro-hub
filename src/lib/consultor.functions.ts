@@ -21,10 +21,37 @@ export type ConsultationForm = {
   };
 };
 
+export type FarmVisitStatus = {
+  assignmentId: string;
+  farmId: string;
+  farmName: string;
+  consultantUserId: string;
+  consultantName: string;
+  lastVisitAt: string | null;
+  daysSinceVisit: number;
+  overdue: boolean;
+};
+
+export type VisitStatus = {
+  frequencyDays: number;
+  farms: FarmVisitStatus[];
+};
+
 export async function listConsultations(companyId: string, opts: { farmId?: string; consultantId?: string; from?: string; to?: string } = {}) {
   const qs = new URLSearchParams({ companyId });
   Object.entries(opts).forEach(([k, v]) => v && qs.set(k, v));
   return apiRequest<ConsultationForm[]>(`/consultations?${qs.toString()}`);
+}
+
+export function getVisitStatus(companyId: string) {
+  return apiRequest<VisitStatus>(`/consultations/visit-status?companyId=${encodeURIComponent(companyId)}`);
+}
+
+export function justifyMissedVisit(input: { companyId: string; farmId: string; reason: string }) {
+  return apiRequest(`/consultations/justify-visit`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function submitConsultation(input: Omit<ConsultationForm, "id">) {

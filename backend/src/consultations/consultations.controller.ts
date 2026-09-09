@@ -14,7 +14,7 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ConsultationsService } from "./consultations.service";
-import { CreateConsultationDto, UpdateConsultationDto } from "./dto";
+import { CreateConsultationDto, JustifyMissedVisitDto, UpdateConsultationDto } from "./dto";
 
 function need(v?: string) {
   if (!v) throw new BadRequestException("companyId é obrigatório");
@@ -43,6 +43,19 @@ export class ConsultationsController {
   @Post()
   create(@Req() req: any, @Body() dto: CreateConsultationDto) {
     return this.svc.create(req.user.sub, dto);
+  }
+
+  // Status de visita obrigatória por fazenda: para um consultor, retorna
+  // apenas as fazendas onde ele atua; para admin/gestor, todas as fazendas
+  // com consultor vinculado na empresa.
+  @Get("visit-status")
+  visitStatus(@Req() req: any, @Query("companyId") companyId?: string) {
+    return this.svc.getVisitStatus(req.user.sub, need(companyId));
+  }
+
+  @Post("justify-visit")
+  justifyVisit(@Req() req: any, @Body() dto: JustifyMissedVisitDto) {
+    return this.svc.justifyMissedVisit(req.user.sub, dto);
   }
 
   @Patch(":id")

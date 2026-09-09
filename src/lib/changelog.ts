@@ -18,6 +18,12 @@ export const changelog: ChangelogRelease[] = [
     date: "2026-09-09",
     entries: [
       {
+        type: "novidade",
+        title: "Alerta de visita atrasada e justificativa de falta",
+        description:
+          "O app do consultor agora avisa quando uma fazenda está há muito tempo sem visita registrada (prazo configurável em Configurações), com botão para visitar agora ou justificar a falta. Também é possível criar uma regra de alerta 'Fazenda sem visita' em Alertas.",
+      },
+      {
         type: "correcao",
         title: "Relatório de visita do consultor não era salvo",
         description:

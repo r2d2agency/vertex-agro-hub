@@ -76,6 +76,36 @@ export class AlertsService {
           } });
           created += 1;
         }
+      } else if (r.kind === 'visit_overdue') {
+        const days = Number((r.threshold as any)?.days ?? 30);
+        const cutoff = new Date(Date.now() - days * 86400000);
+        const assignments = await this.prisma.farmAssignment.findMany({
+          where: { companyId, role: 'consultor', endAt: null },
+          select: { farmId: true, startAt: true, farm: { select: { name: true } } },
+        });
+        if (assignments.length > 0) {
+          const farmIds = [...new Set(assignments.map((a) => a.farmId))];
+          const latest = await this.prisma.consultation.groupBy({
+            by: ['farmId'],
+            where: { companyId, isDeleted: false, farmId: { in: farmIds } },
+            _max: { conductedAt: true },
+          });
+          const lastByFarm = new Map(
+            latest.filter((l) => l.farmId != null).map((l) => [l.farmId as string, l._max.conductedAt as Date]),
+          );
+          const overdue = assignments.filter((a) => {
+            const last = lastByFarm.get(a.farmId) ?? a.startAt;
+            return last <= cutoff;
+          });
+          if (overdue.length > 0) {
+            await this.prisma.alertEvent.create({ data: {
+              companyId, ruleId: r.id, level: 'warning',
+              title: `${overdue.length} fazenda(s) sem visita de consultor há mais de ${days} dias`,
+              meta: { days, farms: overdue.map((a) => ({ farmId: a.farmId, farmName: a.farm.name })) },
+            } });
+            created += 1;
+          }
+        }
       }
     }
     return { evaluated: rules.length, created };

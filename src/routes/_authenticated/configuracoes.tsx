@@ -85,6 +85,15 @@ function ConfigPage() {
               <Label>Retenção de fotografias (dias)</Label>
               <Input type="number" value={form.photoRetentionDays ?? 365} onChange={(e) => setForm({ ...form, photoRetentionDays: Number(e.target.value) })} />
             </div>
+            <div className="grid gap-1">
+              <Label>Frequência mínima de visita do consultor (dias)</Label>
+              <Input
+                type="number"
+                value={form.extra?.visitFrequencyDays ?? 30}
+                onChange={(e) => setForm({ ...form, extra: { ...form.extra, visitFrequencyDays: Number(e.target.value) } })}
+              />
+              <p className="text-xs text-muted-foreground">Prazo máximo sem visita registrada antes de a fazenda aparecer como atrasada para o consultor.</p>
+            </div>
             <div className="md:col-span-2">
               <Button onClick={() => save.mutate()} disabled={save.isPending}>Salvar</Button>
             </div>
