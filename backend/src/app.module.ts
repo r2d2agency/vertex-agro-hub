@@ -1,6 +1,7 @@
 import { Global, Module } from "@nestjs/common";
 import { RolesGuard } from "./auth/guards/roles.guard";
 import { ConfigModule } from "@nestjs/config";
+import { ScheduleModule } from "@nestjs/schedule";
 import { PrismaModule } from "./prisma/prisma.module";
 import { CommonModule } from "./common/common.module";
 import { AuthModule } from "./auth/auth.module";
@@ -24,6 +25,7 @@ import { HealthController } from "./health.controller";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     CommonModule,
     AuthModule,

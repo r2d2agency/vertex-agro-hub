@@ -63,7 +63,7 @@ function AlertasPage() {
     <div className="grid gap-6">
       <PageHeader
         title="Alertas"
-        description="Motor de regras e histórico de eventos."
+        description={'Motor de regras e histórico de eventos. Regras ativas são avaliadas automaticamente 1x por dia (6h); use "Avaliar agora" para checar na hora.'}
         actions={companyId ? (
           <>
             <Button variant="outline" onClick={() => evalMut.mutate()} disabled={evalMut.isPending}>

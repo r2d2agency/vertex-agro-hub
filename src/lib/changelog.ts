@@ -18,6 +18,12 @@ export const changelog: ChangelogRelease[] = [
     date: "2026-09-09",
     entries: [
       {
+        type: "novidade",
+        title: "Avaliação automática de alertas (1x por dia)",
+        description:
+          'As regras de alerta (ocorrência aberta há muito tempo, DRC fora da faixa, fazenda sem visita de consultor) passam a ser avaliadas automaticamente todo dia às 6h, sem precisar clicar em "Avaliar agora". O botão manual continua disponível para checar na hora.',
+      },
+      {
         type: "melhoria",
         title: "Fazenda em abastecimento, checklist e movimentação de estoque",
         description:

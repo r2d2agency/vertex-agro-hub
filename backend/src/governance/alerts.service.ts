@@ -1,9 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
 
 @Injectable()
 export class AlertsService {
+  private readonly logger = new Logger(AlertsService.name);
+
   constructor(private readonly prisma: PrismaService, private readonly access: CompanyAccess) {}
 
   async listRules(userId: string, companyId: string) {
@@ -40,11 +43,55 @@ export class AlertsService {
     });
   }
 
+  // Chamada via HTTP (botão "Avaliar agora" no admin) — valida acesso do usuário.
   async evaluate(userId: string, companyId: string) {
     await this.access.ensureCompany(userId, companyId);
+    return this.evaluateCompanyRules(companyId);
+  }
+
+  // ---------- Execução automática (cron) ----------
+  // Roda 1x por dia, sem precisar de ninguém clicar em "Avaliar agora".
+  // Sem userId (não é uma requisição de um usuário): avalia todas as
+  // empresas ativas diretamente, sem passar por CompanyAccess.
+  @Cron(CronExpression.EVERY_DAY_AT_6AM, { name: 'daily-alerts-evaluation', timeZone: 'America/Sao_Paulo' })
+  async runDailyEvaluation() {
+    const companies = await this.prisma.company.findMany({
+      where: { isDeleted: false, active: true },
+      select: { id: true },
+    });
+    let totalCreated = 0;
+    for (const c of companies) {
+      try {
+        const r = await this.evaluateCompanyRules(c.id);
+        totalCreated += r.created;
+      } catch (e) {
+        this.logger.warn(`Falha ao avaliar alertas da empresa ${c.id}: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+    this.logger.log(`Avaliação diária de alertas concluída: ${companies.length} empresa(s), ${totalCreated} evento(s) criado(s).`);
+    return { companies: companies.length, created: totalCreated };
+  }
+
+  // Núcleo da avaliação, reaproveitado tanto pela chamada manual (evaluate)
+  // quanto pelo cron diário (runDailyEvaluation). Não recria um evento para a
+  // mesma regra se já existe um evento dela criado nas últimas 20h — evita
+  // duplicar alerta todo dia enquanto a mesma condição continuar valendo.
+  private async evaluateCompanyRules(companyId: string) {
     const rules = await this.prisma.alertRule.findMany({ where: { companyId, active: true } });
     let created = 0;
+    const recentCutoff = new Date(Date.now() - 20 * 3_600_000);
+
+    const alreadyFiredRecently = async (ruleId: string) => {
+      const recent = await this.prisma.alertEvent.findFirst({
+        where: { ruleId, createdAt: { gte: recentCutoff } },
+        select: { id: true },
+      });
+      return !!recent;
+    };
+
     for (const r of rules) {
+      if (await alreadyFiredRecently(r.id)) continue;
+
       if (r.kind === 'occurrence_open_days') {
         const days = Number((r.threshold as any)?.days ?? 3);
         const cutoff = new Date(Date.now() - days * 86400000);
