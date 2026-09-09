@@ -64,6 +64,7 @@ function ConsultorFormPage() {
   const [notes, setNotes] = useState("");
   const [sanitaryInspector, setSanitaryInspector] = useState("");
   const [isThirdPartyInspector, setIsThirdPartyInspector] = useState(false);
+  const [consultantId, setConsultantId] = useState("");
 
   useEffect(() => {
     getFieldMe().then(setMe).catch(console.error);
@@ -129,11 +130,18 @@ function ConsultorFormPage() {
       return;
     }
     
+    const companyId = me?.assignments.find((a) => a.farm.id === farmId)?.farm.companyId || me?.companies?.[0]?.id || "";
+    if (!companyId) {
+      toast.error("Não foi possível identificar a empresa desta fazenda");
+      return;
+    }
     setLoading(true);
     try {
       const res = await submitConsultation({
+        companyId,
         farmId: farmId || activeCheckin?.farmId || "",
-        consultantId: me?.user.id || "",
+        plotId: activeCheckin?.plotId || undefined,
+        consultantId: consultantId || me?.user.id || "",
         conductedAt: new Date().toISOString(),
         recommendations,
         sanitaryState,
@@ -333,25 +341,15 @@ function ConsultorFormPage() {
         {farmId && (
           <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
             <label className="text-sm font-medium">Consultor / Responsável</label>
-            <Select 
-              value={me.user.id} 
-              onValueChange={(v: string) => {/* ... */}}
+            <Select
+              value={consultantId || me.user.id}
+              onValueChange={(v: string) => setConsultantId(v === me.user.id ? "" : v)}
             >
-
               <SelectTrigger className="w-full rounded-xl h-12 bg-card border-border/60">
                 <SelectValue placeholder="Selecione o consultor..." />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={me.user.id}>{me.user.fullName} (Você)</SelectItem>
-                {/* Find other consultants linked to this farm in assignments */}
-                {me.assignments
-                  .filter(a => a.farm.id === farmId && a.role === 'consultor')
-                  .map(a => (
-                    <SelectItem key={a.id} value={a.id}>Consultor Vinculado</SelectItem>
-                  ))
-                }
-
-                <SelectItem value="add_new">+ Adicionar novo consultor à fazenda</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-[10px] text-muted-foreground px-1 italic">

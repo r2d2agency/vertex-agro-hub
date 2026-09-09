@@ -3,7 +3,9 @@ import { enqueueMutation } from "./offline/queue";
 
 export type ConsultationForm = {
   id: string;
+  companyId: string;
   farmId: string;
+  plotId?: string;
   consultantId: string;
   conductedAt: string;
   recommendations: string;

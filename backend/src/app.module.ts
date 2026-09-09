@@ -1,24 +1,25 @@
-import { Global, Module } from '@nestjs/common';
-import { RolesGuard } from './auth/guards/roles.guard';
-import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from './prisma/prisma.module';
-import { CommonModule } from './common/common.module';
-import { AuthModule } from './auth/auth.module';
-import { CompaniesModule } from './companies/companies.module';
-import { TerritorialModule } from './territorial/territorial.module';
-import { CatalogModule } from './catalog/catalog.module';
-import { OperationsModule } from './operations/operations.module';
-import { PeopleModule } from './people/people.module';
-import { TeamsModule } from './teams/teams.module';
-import { ActivitiesModule } from './activities/activities.module';
-import { FieldModule } from './field/field.module';
-import { UploadsModule } from './uploads/uploads.module';
-import { GovernanceModule } from './governance/governance.module';
-import { AiModule } from './ai/ai.module';
-import { FleetModule } from './fleet/fleet.module';
-import { TappersModule } from './tappers/tappers.module';
+import { Global, Module } from "@nestjs/common";
+import { RolesGuard } from "./auth/guards/roles.guard";
+import { ConfigModule } from "@nestjs/config";
+import { PrismaModule } from "./prisma/prisma.module";
+import { CommonModule } from "./common/common.module";
+import { AuthModule } from "./auth/auth.module";
+import { CompaniesModule } from "./companies/companies.module";
+import { TerritorialModule } from "./territorial/territorial.module";
+import { CatalogModule } from "./catalog/catalog.module";
+import { OperationsModule } from "./operations/operations.module";
+import { PeopleModule } from "./people/people.module";
+import { TeamsModule } from "./teams/teams.module";
+import { ActivitiesModule } from "./activities/activities.module";
+import { FieldModule } from "./field/field.module";
+import { UploadsModule } from "./uploads/uploads.module";
+import { GovernanceModule } from "./governance/governance.module";
+import { AiModule } from "./ai/ai.module";
+import { FleetModule } from "./fleet/fleet.module";
+import { TappersModule } from "./tappers/tappers.module";
+import { ConsultationsModule } from "./consultations/consultations.module";
 
-import { HealthController } from './health.controller';
+import { HealthController } from "./health.controller";
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { HealthController } from './health.controller';
     TeamsModule,
     ActivitiesModule,
     FieldModule,
+    ConsultationsModule,
     UploadsModule,
     GovernanceModule,
     AiModule,

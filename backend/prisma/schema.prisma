@@ -219,6 +219,7 @@ model Company {
   employments   PersonEmployment[]
   personDocuments PersonDocument[]
   stimulations Stimulation[]
+  consultations Consultation[]
   photos      Photo[]
   auditLogs   AuditLog[]
   systemLogs  SystemLog[]
@@ -670,6 +671,39 @@ model Stimulation {
   @@index([companyId, date])
   @@index([farmId])
   @@map("stimulations")
+}
+
+model Consultation {
+  id                    String   @id @default(uuid()) @db.Uuid
+  companyId             String   @map("company_id") @db.Uuid
+  farmId                String?  @map("farm_id") @db.Uuid
+  plotId                String?  @map("plot_id") @db.Uuid
+  consultantId          String?  @map("consultant_id") @db.Uuid
+  conductedAt           DateTime @map("conducted_at")
+  sanitaryState         String?  @map("sanitary_state")
+  tappingQuality        Int?     @map("tapping_quality")
+  sanitaryInspector     String?  @map("sanitary_inspector")
+  isThirdPartyInspector Boolean? @map("is_third_party_inspector")
+  recommendations       String?
+  notes                 String?
+  photos                String[] @default([])
+
+  version      Int        @default(1)
+  syncStatus   SyncStatus @default(synced) @map("sync_status")
+  deviceId     String?    @map("device_id")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdById  String?    @map("created_by") @db.Uuid
+  updatedById  String?    @map("updated_by") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, isDeleted])
+  @@index([companyId, conductedAt])
+  @@index([farmId])
+  @@map("consultations")
 }
 
 model Photo {

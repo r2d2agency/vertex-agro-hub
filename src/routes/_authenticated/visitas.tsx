@@ -16,6 +16,8 @@ import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/v
 import { listFarms } from "@/lib/fazendas.functions";
 import { createTask, listTasks, updateTask, type ScheduledTask } from "@/lib/agenda.functions";
 import { createOccurrence } from "@/lib/ocorrencias.functions";
+import { listConsultations } from "@/lib/consultor.functions";
+import { fmtDateBR } from "@/lib/csv";
 
 export const Route = createFileRoute("/_authenticated/visitas")({
   head: () => ({ meta: [
@@ -40,6 +42,11 @@ export function TaskCategoryPage({ category, title, description, emptyLabel }: {
     queryKey: ["tasks", companyId, category],
     queryFn: () => listTasks(companyId!),
     enabled: !!companyId,
+  });
+  const { data: consultations = [] } = useQuery({
+    queryKey: ["consultations", companyId],
+    queryFn: () => listConsultations(companyId!),
+    enabled: !!companyId && category === "visita",
   });
 
   const list = useMemo(
@@ -158,6 +165,43 @@ export function TaskCategoryPage({ category, title, description, emptyLabel }: {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {companyId && category === "visita" && (
+        <div className="grid gap-3">
+          <h2 className="text-sm font-semibold text-foreground">Relatórios de visita (app do consultor)</h2>
+          <Card>
+            <CardContent className="p-0">
+              {consultations.length === 0 ? (
+                <div className="p-8 text-center text-sm text-muted-foreground">Nenhum relatório de visita enviado ainda.</div>
+              ) : (
+                <ul className="divide-y">
+                  {consultations.map((c) => {
+                    const farm = farms.find((f) => f.id === c.farmId);
+                    return (
+                      <li key={c.id} className="p-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><CalendarDays className="h-3 w-3" />{fmtDateBR(c.conductedAt)}</span>
+                            {farm && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{farm.name}</span>}
+                            {c.sanitaryState && <Badge variant="outline">{c.sanitaryState}</Badge>}
+                            {c.tappingQuality != null && <Badge variant="outline">Qualidade {c.tappingQuality}/5</Badge>}
+                          </div>
+                          {c.recommendations && <p className="text-sm">{c.recommendations}</p>}
+                          {c.sanitaryInspector && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Inspecionado por {c.sanitaryInspector}{c.isThirdPartyInspector ? " (terceirizado)" : ""}
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
