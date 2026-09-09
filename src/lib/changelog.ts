@@ -15,6 +15,65 @@ export type ChangelogRelease = {
 // novidade, adicione uma entrada no release do dia (ou crie um novo release).
 export const changelog: ChangelogRelease[] = [
   {
+    date: "2026-09-09",
+    entries: [
+      {
+        type: "novidade",
+        title: "Menu Ajuda e Atualizações",
+        description:
+          "Novo item Ajuda no menu, com Documentação e esta página de Atualizações, listando novidades, melhorias e correções do sistema.",
+      },
+      {
+        type: "novidade",
+        title: "Árvores previstas na sangria a partir do talhão",
+        description:
+          "Ao lançar uma sangria, selecionar o talhão preenche automaticamente a quantidade de árvores prevista com base no cadastro do talhão (Nº de árvores).",
+      },
+      {
+        type: "novidade",
+        title: "Saldo, tabela de sangria, tarefa e período na sangria",
+        description:
+          "O lançamento de sangria (admin e app do monitor) agora mostra o saldo entre árvores previstas e realizadas, permite escolher a tabela de sangria (sugerida automaticamente pelo sistema do talhão), a extensão da tarefa (meia/inteira) e o período de término.",
+      },
+      {
+        type: "novidade",
+        title: "Sangrador selecionado do cadastro de RH",
+        description:
+          "Nos lançamentos de sangria e estimulação, o sangrador agora é selecionado a partir do cadastro de Sangradores vinculado à fazenda, em vez de digitado como texto livre.",
+      },
+      {
+        type: "novidade",
+        title: "Previsão de próxima sangria no detalhe da fazenda",
+        description:
+          "A ficha da fazenda no admin passa a mostrar, por talhão, a data da última sangria e o prazo previsto para a próxima, calculado pela frequência da tabela de sangria.",
+      },
+      {
+        type: "correcao",
+        title: "Estimulação do app do monitor gravava como Ocorrência",
+        description:
+          "O registro de estimulação feito pelo monitor não aparecia na tela de Estimulações do admin. Agora usa o cadastro correto, com talhão, sangrador, tabela de estimulação, concentração e motivo da não sangria no período.",
+      },
+      {
+        type: "correcao",
+        title: "Consultor sem acesso à própria equipe",
+        description:
+          "Usuários com o papel Consultor não conseguiam vincular/desvincular monitores e sangradores nem avaliar sua equipe. Agora o consultor tem acesso, restrito às fazendas onde atua.",
+      },
+      {
+        type: "correcao",
+        title: "Apontamento de operação de máquina não era salvo",
+        description:
+          '"Apontar operação de máquina" no app do monitor chamava um endereço inexistente e o lançamento nunca chegava a ser salvo nem aparecia no admin. Corrigido.',
+      },
+      {
+        type: "novidade",
+        title: "Pré-cadastro de sangrador com fotos de documento",
+        description:
+          "O pré-cadastro de sangrador pelo consultor passa a exigir quantidade de árvores e % da tarefa, além de foto obrigatória do RG e do CPF, visíveis para o RH na validação.",
+      },
+    ],
+  },
+  {
     date: "2026-08-28",
     entries: [
       {

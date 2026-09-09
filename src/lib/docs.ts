@@ -63,10 +63,12 @@ Depois disso, o dia a dia acontece em **Agenda**, **Sangrias**, **Produção** e
 
 1. Menu → **Talhões** → **Novo talhão**.
 2. Selecione a **Fazenda** — o contorno dela aparece como referência tracejada no mapa.
-3. Informe **Nome**, **Clone**, **Ano de plantio** e **Sistema de sangria**.
+3. Informe **Nome**, **Clone**, **Ano de plantio**, **Nº de árvores** e **Sistema de sangria** (tabela de sangria do talhão).
 4. Desenhe o polígono do talhão **dentro** do contorno da fazenda.
 5. A **área** em hectares é calculada automaticamente.
-6. Salve.`,
+6. Salve.
+
+> O **Nº de árvores** e a tabela de sangria escolhidos aqui são usados para sugerir automaticamente a quantidade prevista e a tabela ao lançar uma sangria naquele talhão, e para calcular o prazo da próxima sangria na ficha da fazenda.`,
   },
   {
     slug: "operacao-diaria",
@@ -75,7 +77,8 @@ Depois disso, o dia a dia acontece em **Agenda**, **Sangrias**, **Produção** e
     body: `## Operação diária
 
 - **Agenda**: planeje quem sangra qual talhão a cada dia.
-- **Sangrias**: registre cortes realizados, com sangrador, talhão e data.
+- **Sangrias**: registre cortes realizados. Ao escolher o **talhão**, o sistema já sugere a **quantidade de árvores prevista** (do cadastro do talhão) e a **tabela de sangria** — você ainda escolhe o **sangrador** (cadastro de RH), a **tarefa** (meia ou inteira) e o **período de término**. Depois de informar as árvores realizadas, o **saldo** (realizado − previsto) aparece automaticamente.
+- **Estimulação**: mesmo princípio da sangria — talhão, sangrador, tabela de estimulação, concentração (lista de 1/1 a 9/1) e o **motivo** de não ter havido sangria no período.
 - **Produção**: informe entregas com peso úmido; o sistema calcula o peso seco (DRC).
 - **Ocorrências**: registre ausências, doenças, quebras, roubos e faça o acompanhamento até a resolução.
 
@@ -117,6 +120,31 @@ As inspeções são realizadas através do **App Consultor**:
 ## Acompanhamento
 
 Gestores podem acompanhar o histórico de inspeções no **Prontuário da Fazenda** ou na aba **Visitas**, visualizando quem realizou a inspeção e quais foram as recomendações técnicas.`,
+  },
+  {
+    slug: "pre-cadastro-sangrador",
+    title: "Pré-cadastro de sangrador pelo consultor",
+    summary:
+      "Como o consultor inicia o cadastro de um sangrador em campo, para o RH completar depois.",
+    body: `## Pré-cadastro de sangrador (app do consultor)
+
+O consultor é quem inicia o cadastro de um sangrador direto na fazenda:
+
+1. No app, abra **Pré-cadastrar sangrador** e selecione a **fazenda**.
+2. Digite o **CPF** — o sistema consulta se já existe ficha (nesta empresa ou em outra) para evitar retrabalho.
+3. Preencha os dados pessoais e de contato (**telefone/WhatsApp** incluído).
+4. Em **Tarefa**, informe a **quantidade de árvores** que o sangrador vai sangrar e o **% da tarefa**.
+5. Anexe as **fotos do RG e do CPF** — são obrigatórias para enviar o pré-cadastro.
+6. Confirme e envie ao RH.
+
+## Validação pelo RH
+
+O pré-cadastro aparece em **Sangradores** como pendente, com todos os dados e as fotos de documento enviadas pelo consultor. O RH revisa e:
+
+- **Cria no RH** — gera o cadastro-base da pessoa a partir dos dados enviados; a regularização completa (contrato, PIS, dados bancários etc.) continua sendo feita no administrativo.
+- **Arquiva** — descarta o pré-cadastro.
+
+> O vínculo do sangrador com a fazenda e a ficha operacional (usada nos lançamentos de sangria) continuam sendo geridos em **Sangradores**, separado do cadastro de acesso ao sistema.`,
   },
   {
     slug: "frota-e-estoque",
