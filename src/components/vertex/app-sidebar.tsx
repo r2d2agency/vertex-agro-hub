@@ -48,6 +48,7 @@ import {
   Fuel,
   Package,
   Activity as ActivityIcon,
+  Rocket,
 } from "lucide-react";
 import {
   ChevronRight,
@@ -173,10 +174,11 @@ const groups: { label: string; items: Item[] }[] = [
     items: [{ title: "Central IA", url: "/ia", icon: Brain }],
   },
   {
-    label: "Apps e Ajuda",
+    label: "Ajuda",
     items: [
       { title: "Apps móveis", url: "/apps", icon: AppWindow },
       { title: "Documentação", url: "/documentacao", icon: BookOpen },
+      { title: "Atualizações", url: "/atualizacoes", icon: Rocket },
     ],
   },
 ];

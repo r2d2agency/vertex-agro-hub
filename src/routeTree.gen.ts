@@ -25,6 +25,7 @@ import { Route as AuthenticatedApontamentosRouteImport } from './routes/_authent
 import { Route as AuthenticatedAppsRouteImport } from './routes/_authenticated/apps'
 import { Route as AuthenticatedAssistenteRouteImport } from './routes/_authenticated/assistente'
 import { Route as AuthenticatedAtividadesRouteImport } from './routes/_authenticated/atividades'
+import { Route as AuthenticatedAtualizacoesRouteImport } from './routes/_authenticated/atualizacoes'
 import { Route as AuthenticatedAuditoriaRouteImport } from './routes/_authenticated/auditoria'
 import { Route as AuthenticatedChecklistsRouteImport } from './routes/_authenticated/checklists'
 import { Route as AuthenticatedClonesRouteImport } from './routes/_authenticated/clones'
@@ -175,6 +176,12 @@ const AuthenticatedAtividadesRoute = AuthenticatedAtividadesRouteImport.update({
   path: '/atividades',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAtualizacoesRoute =
+  AuthenticatedAtualizacoesRouteImport.update({
+    id: '/atualizacoes',
+    path: '/atualizacoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAuditoriaRoute = AuthenticatedAuditoriaRouteImport.update({
   id: '/auditoria',
   path: '/auditoria',
@@ -547,6 +554,7 @@ export interface FileRoutesByFullPath {
   '/apps': typeof AuthenticatedAppsRoute
   '/assistente': typeof AuthenticatedAssistenteRoute
   '/atividades': typeof AuthenticatedAtividadesRoute
+  '/atualizacoes': typeof AuthenticatedAtualizacoesRoute
   '/auditoria': typeof AuthenticatedAuditoriaRoute
   '/checklists': typeof AuthenticatedChecklistsRoute
   '/clones': typeof AuthenticatedClonesRoute
@@ -631,6 +639,7 @@ export interface FileRoutesByTo {
   '/apps': typeof AuthenticatedAppsRoute
   '/assistente': typeof AuthenticatedAssistenteRoute
   '/atividades': typeof AuthenticatedAtividadesRoute
+  '/atualizacoes': typeof AuthenticatedAtualizacoesRoute
   '/auditoria': typeof AuthenticatedAuditoriaRoute
   '/checklists': typeof AuthenticatedChecklistsRoute
   '/clones': typeof AuthenticatedClonesRoute
@@ -717,6 +726,7 @@ export interface FileRoutesById {
   '/_authenticated/apps': typeof AuthenticatedAppsRoute
   '/_authenticated/assistente': typeof AuthenticatedAssistenteRoute
   '/_authenticated/atividades': typeof AuthenticatedAtividadesRoute
+  '/_authenticated/atualizacoes': typeof AuthenticatedAtualizacoesRoute
   '/_authenticated/auditoria': typeof AuthenticatedAuditoriaRoute
   '/_authenticated/checklists': typeof AuthenticatedChecklistsRoute
   '/_authenticated/clones': typeof AuthenticatedClonesRoute
@@ -804,6 +814,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/assistente'
     | '/atividades'
+    | '/atualizacoes'
     | '/auditoria'
     | '/checklists'
     | '/clones'
@@ -888,6 +899,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/assistente'
     | '/atividades'
+    | '/atualizacoes'
     | '/auditoria'
     | '/checklists'
     | '/clones'
@@ -973,6 +985,7 @@ export interface FileRouteTypes {
     | '/_authenticated/apps'
     | '/_authenticated/assistente'
     | '/_authenticated/atividades'
+    | '/_authenticated/atualizacoes'
     | '/_authenticated/auditoria'
     | '/_authenticated/checklists'
     | '/_authenticated/clones'
@@ -1166,6 +1179,13 @@ declare module '@tanstack/react-router' {
       path: '/atividades'
       fullPath: '/atividades'
       preLoaderRoute: typeof AuthenticatedAtividadesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/atualizacoes': {
+      id: '/_authenticated/atualizacoes'
+      path: '/atualizacoes'
+      fullPath: '/atualizacoes'
+      preLoaderRoute: typeof AuthenticatedAtualizacoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/auditoria': {
@@ -1700,6 +1720,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppsRoute: typeof AuthenticatedAppsRoute
   AuthenticatedAssistenteRoute: typeof AuthenticatedAssistenteRoute
   AuthenticatedAtividadesRoute: typeof AuthenticatedAtividadesRoute
+  AuthenticatedAtualizacoesRoute: typeof AuthenticatedAtualizacoesRoute
   AuthenticatedAuditoriaRoute: typeof AuthenticatedAuditoriaRoute
   AuthenticatedChecklistsRoute: typeof AuthenticatedChecklistsRoute
   AuthenticatedClonesRoute: typeof AuthenticatedClonesRoute
@@ -1755,6 +1776,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppsRoute: AuthenticatedAppsRoute,
   AuthenticatedAssistenteRoute: AuthenticatedAssistenteRoute,
   AuthenticatedAtividadesRoute: AuthenticatedAtividadesRoute,
+  AuthenticatedAtualizacoesRoute: AuthenticatedAtualizacoesRoute,
   AuthenticatedAuditoriaRoute: AuthenticatedAuditoriaRoute,
   AuthenticatedChecklistsRoute: AuthenticatedChecklistsRoute,
   AuthenticatedClonesRoute: AuthenticatedClonesRoute,
@@ -1865,13 +1887,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
