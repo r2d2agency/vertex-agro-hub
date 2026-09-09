@@ -18,6 +18,12 @@ export const changelog: ChangelogRelease[] = [
     date: "2026-09-09",
     entries: [
       {
+        type: "correcao",
+        title: "Sangrador vinculado no RH não aparecia no consultor",
+        description:
+          "Ao vincular um sangrador a uma fazenda e a um consultor pelo Portal de RH, ele não aparecia no card do consultor (sempre mostrava 0 sangradores) nem na tela Sangradores. Corrigido: o card do consultor agora usa o mesmo vínculo gravado pelo RH, e a tela Sangradores ganhou uma seção listando os sangradores cadastrados por lá.",
+      },
+      {
         type: "novidade",
         title: "Avaliação automática de alertas (1x por dia)",
         description:
