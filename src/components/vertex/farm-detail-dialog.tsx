@@ -18,6 +18,7 @@ import { listOccurrences } from "@/lib/ocorrencias.functions";
 import { listTappingRecords } from "@/lib/sangrias.functions";
 import { listConsultations } from "@/lib/consultor.functions";
 import { listDeliveries } from "@/lib/producao.functions";
+import { fmtDateBR } from "@/lib/csv";
 import type { Farm } from "@/lib/fazendas.functions";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -351,6 +352,16 @@ export function FarmDetailDialog({
                       {p.treeCount != null && <span>{p.treeCount} árvores</span>}
                       {p.tappingSystem && <span>Sistema: {p.tappingSystem}</span>}
                     </div>
+                    {(p.lastTappingDate || p.nextTappingDate) && (
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+                        {p.lastTappingDate && (
+                          <span className="text-muted-foreground">Última sangria: {fmtDateBR(p.lastTappingDate)}</span>
+                        )}
+                        {p.nextTappingDate && (
+                          <span className="font-medium text-primary">Próxima sangria prevista: {fmtDateBR(p.nextTappingDate)}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

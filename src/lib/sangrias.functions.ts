@@ -1,5 +1,16 @@
 import { apiRequest } from "@/lib/api";
 
+export const TASK_EXTENTS = [
+  { value: "meia", label: "Meia (1/2)" },
+  { value: "inteira", label: "Inteira" },
+] as const;
+
+export const END_PERIODS = [
+  { value: "periodo_1", label: "1º período" },
+  { value: "periodo_2", label: "2º período" },
+  { value: "periodo_3", label: "3º período" },
+] as const;
+
 export type TappingRecord = {
   id: string;
   companyId: string;
@@ -8,6 +19,9 @@ export type TappingRecord = {
   tappingTableId?: string | null;
   date: string;
   sangradorName: string;
+  tapperId?: string | null;
+  taskExtent?: string | null;
+  endPeriod?: string | null;
   treesExpected?: number | null;
   treesTapped?: number | null;
   liters?: number | null;
@@ -26,6 +40,9 @@ export type TappingInput = {
   tappingTableId?: string;
   date: string;
   sangradorName: string;
+  tapperId?: string | null;
+  taskExtent?: string | null;
+  endPeriod?: string | null;
   treesExpected?: number | null;
   treesTapped?: number | null;
   liters?: number | null;
@@ -72,6 +89,9 @@ function clean(v: TappingInput) {
     tappingTableId: v.tappingTableId || undefined,
     date: v.date,
     sangradorName: v.sangradorName.trim(),
+    tapperId: v.tapperId || undefined,
+    taskExtent: v.taskExtent || undefined,
+    endPeriod: v.endPeriod || undefined,
     treesExpected: v.treesExpected ?? undefined,
     treesTapped: v.treesTapped ?? undefined,
     liters: v.liters ?? undefined,

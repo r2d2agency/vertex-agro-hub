@@ -456,6 +456,9 @@ model TappingRecord {
   tappingTableId String?  @map("tapping_table_id") @db.Uuid
   date           DateTime @db.Date
   sangradorName  String   @map("sangrador_name")
+  tapperId       String?  @map("tapper_id") @db.Uuid
+  taskExtent     String?  @map("task_extent")
+  endPeriod      String?  @map("end_period")
   treesExpected  Int?     @map("trees_expected")
   treesTapped    Int?     @map("trees_tapped")
   liters         Float?
@@ -642,6 +645,9 @@ model Stimulation {
   concentration   String?
   method          String?
   applicator      String?
+  tapperId        String?  @map("tapper_id") @db.Uuid
+  tappingTableId  String?  @map("tapping_table_id") @db.Uuid
+  reason          String?
   treesStimulated Int?     @map("trees_stimulated")
   doseMlPerTree   Float?   @map("dose_ml_per_tree")
   areaHa          Float?   @map("area_ha")

@@ -145,10 +145,50 @@ export class TerritorialService {
   // ---------- Plots ----------
   async listPlots(userId: string, companyId: string, farmId?: string) {
     await this.access.ensureCompany(userId, companyId);
-    return this.prisma.plot.findMany({
+    const plots = await this.prisma.plot.findMany({
       where: { companyId, isDeleted: false, ...(farmId ? { farmId } : {}) },
       orderBy: { name: 'asc' },
       include: { farm: { select: { id: true, name: true } } },
+    });
+    return this.withTappingSchedule(companyId, plots);
+  }
+
+  // Calcula, para cada talhão, a data da última sangria e o prazo previsto para a
+  // próxima (última data + frequência em dias da tabela de sangria associada ao
+  // talhão via Plot.tappingSystem, casando com notation/name da TappingTable).
+  private async withTappingSchedule<T extends { id: string; tappingSystem: string | null }>(
+    companyId: string,
+    plots: T[],
+  ): Promise<(T & { lastTappingDate: Date | null; nextTappingDate: Date | null })[]> {
+    if (plots.length === 0) return [];
+
+    const tables = await this.prisma.tappingTable.findMany({
+      where: { companyId, isDeleted: false },
+      select: { name: true, notation: true, frequencyDays: true },
+    });
+    const freqByLabel = new Map<string, number>();
+    for (const t of tables) {
+      if (t.frequencyDays == null) continue;
+      if (t.notation) freqByLabel.set(t.notation, t.frequencyDays);
+      freqByLabel.set(t.name, t.frequencyDays);
+    }
+
+    const plotIds = plots.map((p) => p.id);
+    const latest = await this.prisma.tappingRecord.groupBy({
+      by: ['plotId'],
+      where: { companyId, isDeleted: false, plotId: { in: plotIds } },
+      _max: { date: true },
+    });
+    const lastDateByPlot = new Map(
+      latest.filter((l) => l.plotId != null).map((l) => [l.plotId as string, l._max.date]),
+    );
+
+    return plots.map((p) => {
+      const lastTappingDate = lastDateByPlot.get(p.id) ?? null;
+      const freq = p.tappingSystem ? freqByLabel.get(p.tappingSystem) : undefined;
+      const nextTappingDate =
+        lastTappingDate && freq ? new Date(lastTappingDate.getTime() + freq * 86400000) : null;
+      return { ...p, lastTappingDate, nextTappingDate };
     });
   }
 

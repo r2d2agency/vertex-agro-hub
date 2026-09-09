@@ -24,12 +24,25 @@ export type FieldMe = {
       latitude?: number | null;
       longitude?: number | null;
       photoUrls: string[];
-      plots: Array<{ id: string; name: string; treeCount?: number | null }>;
+      plots: Array<{ id: string; name: string; treeCount?: number | null; tappingSystem?: string | null }>;
     };
   }>;
 };
 
+export type FieldTapper = { id: string; fullName: string; nickname?: string | null };
+export type FieldTappingTable = { id: string; name: string; notation?: string | null; frequencyDays?: number | null };
+
 export type Coords = { latitude: number; longitude: number; accuracyM?: number };
+
+export function listFieldTappers(companyId: string, farmId: string) {
+  const qs = new URLSearchParams({ companyId, farmId });
+  return apiRequest<FieldTapper[]>(`/field/tappers?${qs.toString()}`);
+}
+
+export function listFieldTappingTables(companyId: string) {
+  const qs = new URLSearchParams({ companyId });
+  return apiRequest<FieldTappingTable[]>(`/field/tapping-tables?${qs.toString()}`);
+}
 
 export async function getFieldMe(): Promise<FieldMe> {
   try {
@@ -70,11 +83,15 @@ function submit(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body:
 export function submitTapping(input: {
   companyId: string; farmId?: string; plotId?: string;
   tappingTableId?: string; date: string; sangradorName: string;
+  tapperId?: string | null; taskExtent?: string | null; endPeriod?: string | null;
   treesExpected?: number | null; treesTapped?: number | null; liters?: number | null; drcPercent?: number | null;
   dryKg?: number | null; adherencePct?: number | null; notes?: string;
   status?: string; quality?: string; tableCondition?: string;
 }) {
   const data = { ...input };
+  if (data.tapperId === null) delete data.tapperId;
+  if (data.taskExtent === null) delete data.taskExtent;
+  if (data.endPeriod === null) delete data.endPeriod;
   if (data.treesExpected === null) delete data.treesExpected;
   if (data.treesTapped === null) delete data.treesTapped;
   if (data.liters === null) delete data.liters;
@@ -82,6 +99,20 @@ export function submitTapping(input: {
   if (data.dryKg === null) delete data.dryKg;
   if (data.adherencePct === null) delete data.adherencePct;
   return submit("/tapping-records", "POST", data, `Sangria — ${input.sangradorName}`);
+}
+
+export function submitStimulation(input: {
+  companyId: string; farmId?: string; plotId?: string;
+  date: string; product: string; concentration?: string;
+  tapperId?: string | null; tappingTableId?: string | null; reason?: string;
+  treesStimulated?: number | null; doseMlPerTree?: number | null; notes?: string;
+}) {
+  const data = { ...input };
+  if (data.tapperId === null) delete data.tapperId;
+  if (data.tappingTableId === null) delete data.tappingTableId;
+  if (data.treesStimulated === null) delete data.treesStimulated;
+  if (data.doseMlPerTree === null) delete data.doseMlPerTree;
+  return submit("/stimulations", "POST", data, `Estimulação — ${input.product}`);
 }
 
 export function submitDelivery(input: {

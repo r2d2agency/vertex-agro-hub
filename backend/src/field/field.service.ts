@@ -56,7 +56,7 @@ export class FieldService {
             id: true, name: true, companyId: true, city: true, state: true, latitude: true, longitude: true,
             plots: {
               where: { isDeleted: false },
-              select: { id: true, name: true, treeCount: true },
+              select: { id: true, name: true, treeCount: true, tappingSystem: true },
               orderBy: { name: 'asc' },
             },
           },
@@ -83,6 +83,28 @@ export class FieldService {
         farm: a.farm,
       })),
     };
+  }
+
+  // ---------- Sangradores e tabelas (leitura, acessível a qualquer papel de campo) ----------
+  async listTappersForFarm(userId: string, companyId: string, farmId: string) {
+    await this.access.ensureCompany(userId, companyId);
+    return this.prisma.tapper.findMany({
+      where: {
+        companyId, isDeleted: false,
+        stints: { some: { farmId, endAt: null } },
+      },
+      select: { id: true, fullName: true, nickname: true },
+      orderBy: { fullName: 'asc' },
+    });
+  }
+
+  async listTappingTablesForCompany(userId: string, companyId: string) {
+    await this.access.ensureCompany(userId, companyId);
+    return this.prisma.tappingTable.findMany({
+      where: { companyId, isDeleted: false, active: true },
+      select: { id: true, name: true, notation: true, frequencyDays: true },
+      orderBy: { name: 'asc' },
+    });
   }
 
   async checkin(userId: string, dto: {

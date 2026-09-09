@@ -19,9 +19,12 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { listFarms } from "@/lib/fazendas.functions";
+import { listPlots } from "@/lib/talhoes.functions";
+import { listTappers } from "@/lib/tappers.functions";
+import { listTappingTables } from "@/lib/tabelas.functions";
 import {
   createStimulation, deleteStimulation, listStimulations, updateStimulation,
-  STIM_METHODS, type Stimulation, type StimulationInput,
+  STIM_METHODS, STIM_CONCENTRATIONS, type Stimulation, type StimulationInput,
 } from "@/lib/estimulacoes.functions";
 
 export const Route = createFileRoute("/_authenticated/estimulacoes")({
@@ -36,6 +39,7 @@ export const Route = createFileRoute("/_authenticated/estimulacoes")({
 const EMPTY: StimulationInput = {
   farmId: undefined, plotId: undefined, date: "2026-08-12",
   product: "", concentration: "", method: "pincel", applicator: "",
+  tapperId: null, tappingTableId: null, reason: "",
   treesStimulated: null, doseMlPerTree: null, areaHa: null, weather: "", notes: "",
 };
 
@@ -64,6 +68,26 @@ function EstimulacoesPage() {
     enabled: !!companyId,
   });
 
+  const { data: plots = [] } = useQuery({
+    queryKey: ["plots", companyId, form.farmId],
+    queryFn: () => listPlots(companyId!, form.farmId || undefined),
+    enabled: !!companyId && !!form.farmId,
+  });
+  const { data: allTappers = [] } = useQuery({
+    queryKey: ["tappers", companyId],
+    queryFn: () => listTappers(companyId!),
+    enabled: !!companyId,
+  });
+  const { data: tables = [] } = useQuery({
+    queryKey: ["tapping-tables", companyId],
+    queryFn: () => listTappingTables(companyId!),
+    enabled: !!companyId,
+  });
+  const tappers = useMemo(
+    () => allTappers.filter((t) => t.stints.some((s) => s.farmId === form.farmId && !s.endAt)),
+    [allTappers, form.farmId],
+  );
+
   const farmName = useMemo(() => {
     const map = new Map(farms.map((f) => [f.id, f.name]));
     return (id?: string | null) => (id ? map.get(id) ?? "—" : "—");
@@ -91,7 +115,8 @@ function EstimulacoesPage() {
       farmId: s.farmId ?? undefined, plotId: s.plotId ?? undefined,
       date: s.date.slice(0, 10), product: s.product,
       concentration: s.concentration ?? "", method: s.method ?? "pincel",
-      applicator: s.applicator ?? "", treesStimulated: s.treesStimulated ?? null,
+      applicator: s.applicator ?? "", tapperId: s.tapperId ?? null, tappingTableId: s.tappingTableId ?? null,
+      reason: s.reason ?? "", treesStimulated: s.treesStimulated ?? null,
       doseMlPerTree: s.doseMlPerTree ?? null, areaHa: s.areaHa ?? null,
       weather: s.weather ?? "", notes: s.notes ?? "",
     });
@@ -224,11 +249,60 @@ function EstimulacoesPage() {
             </div>
             <div className="grid gap-1">
               <Label>Fazenda</Label>
-              <Select value={form.farmId ?? "none"} onValueChange={(v) => setForm({ ...form, farmId: v === "none" ? undefined : v })}>
+              <Select
+                value={form.farmId ?? "none"}
+                onValueChange={(v) => setForm({ ...form, farmId: v === "none" ? undefined : v, plotId: undefined, tapperId: null })}
+              >
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">—</SelectItem>
                   {farms.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1">
+              <Label>Talhão</Label>
+              <Select
+                value={form.plotId ?? "none"}
+                onValueChange={(v) => {
+                  const plot = v !== "none" ? plots.find((p) => p.id === v) : undefined;
+                  const table = plot?.tappingSystem
+                    ? tables.find((t) => t.notation === plot.tappingSystem || t.name === plot.tappingSystem)
+                    : undefined;
+                  setForm((f) => ({ ...f, plotId: v === "none" ? undefined : v, tappingTableId: table?.id ?? f.tappingTableId }));
+                }}
+                disabled={!form.farmId}
+              >
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  {plots.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1">
+              <Label>Sangrador</Label>
+              <Select
+                value={form.tapperId ?? "none"}
+                onValueChange={(v) => {
+                  const t = v !== "none" ? tappers.find((x) => x.id === v) : undefined;
+                  setForm((f) => ({ ...f, tapperId: v === "none" ? null : v, applicator: t?.fullName ?? f.applicator }));
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder={form.farmId ? "—" : "Selecione a fazenda primeiro"} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  {tappers.map((t) => <SelectItem key={t.id} value={t.id}>{t.fullName}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1">
+              <Label>Tabela de estimulação</Label>
+              <Select value={form.tappingTableId ?? "none"} onValueChange={(v) => setForm({ ...form, tappingTableId: v === "none" ? null : v })}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  {tables.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -238,7 +312,13 @@ function EstimulacoesPage() {
             </div>
             <div className="grid gap-1">
               <Label>Concentração</Label>
-              <Input value={form.concentration ?? ""} onChange={(e) => setForm({ ...form, concentration: e.target.value })} placeholder="ex.: 2,5%" />
+              <Select value={form.concentration || "none"} onValueChange={(v) => setForm({ ...form, concentration: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  {STIM_CONCENTRATIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-1">
               <Label>Método</Label>
@@ -268,6 +348,10 @@ function EstimulacoesPage() {
             <div className="grid gap-1">
               <Label>Clima</Label>
               <Input value={form.weather ?? ""} onChange={(e) => setForm({ ...form, weather: e.target.value })} placeholder="ex.: nublado, 24°C" />
+            </div>
+            <div className="grid gap-1 md:col-span-2">
+              <Label>Motivo (por que não houve sangria neste período)</Label>
+              <Textarea rows={2} value={form.reason ?? ""} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="ex.: painel em repouso, estimulação preventiva, condição climática..." />
             </div>
             <div className="grid gap-1 md:col-span-2">
               <Label>Observações</Label>

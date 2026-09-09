@@ -16,6 +16,8 @@ export type Plot = {
   tappingSystem?: string | null;
   notes?: string | null;
   boundary?: GeoBoundary | null;
+  lastTappingDate?: string | null;
+  nextTappingDate?: string | null;
 };
 
 export type PlotInput = {

@@ -11,6 +11,9 @@ export class CreateStimulationDto {
   @IsOptional() @IsString() @MaxLength(60) concentration?: string;
   @IsOptional() @IsString() @MaxLength(60) method?: string;
   @IsOptional() @IsString() @MaxLength(200) applicator?: string;
+  @IsOptional() @IsUUID() tapperId?: string;
+  @IsOptional() @IsUUID() tappingTableId?: string;
+  @IsOptional() @IsString() reason?: string;
   @IsOptional() @IsInt() @Min(0) treesStimulated?: number;
   @IsOptional() @IsNumber() doseMlPerTree?: number;
   @IsOptional() @IsNumber() areaHa?: number;
@@ -26,6 +29,9 @@ export class UpdateStimulationDto {
   @IsOptional() @IsString() @MaxLength(60) concentration?: string;
   @IsOptional() @IsString() @MaxLength(60) method?: string;
   @IsOptional() @IsString() @MaxLength(200) applicator?: string;
+  @IsOptional() @IsUUID() tapperId?: string;
+  @IsOptional() @IsUUID() tappingTableId?: string;
+  @IsOptional() @IsString() reason?: string;
   @IsOptional() @IsInt() @Min(0) treesStimulated?: number;
   @IsOptional() @IsNumber() doseMlPerTree?: number;
   @IsOptional() @IsNumber() areaHa?: number;
@@ -66,6 +72,9 @@ export class CreateTappingRecordDto {
   @IsOptional() @IsUUID() tappingTableId?: string;
   @IsDateString() date!: string;
   @IsString() @MinLength(1) sangradorName!: string;
+  @IsOptional() @IsUUID() tapperId?: string;
+  @IsOptional() @IsString() taskExtent?: string;
+  @IsOptional() @IsString() endPeriod?: string;
   @IsOptional() @IsInt() @Min(0) treesExpected?: number;
   @IsOptional() @IsInt() @Min(0) treesTapped?: number;
   @IsOptional() @IsNumber() liters?: number;

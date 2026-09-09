@@ -1,7 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { getFieldMe, type FieldMe, submitTapping } from "@/lib/field.functions";
+import {
+  getFieldMe, submitTapping, listFieldTappers, listFieldTappingTables,
+  type FieldMe, type FieldTapper, type FieldTappingTable,
+} from "@/lib/field.functions";
+import { TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +25,12 @@ function SangriaPage() {
   // step 1 — info
   const [farmId, setFarmId] = useState("");
   const [plotId, setPlotId] = useState("");
-  const [sangrador, setSangrador] = useState("");
+  const [tapperId, setTapperId] = useState("");
+  const [tappers, setTappers] = useState<FieldTapper[]>([]);
+  const [tables, setTables] = useState<FieldTappingTable[]>([]);
+  const [tappingTableId, setTappingTableId] = useState("");
+  const [taskExtent, setTaskExtent] = useState("");
+  const [endPeriod, setEndPeriod] = useState("");
   const [previstas, setPrevistas] = useState("");
   const [realizadas, setRealizadas] = useState("");
 
@@ -39,7 +48,6 @@ function SangriaPage() {
   useEffect(() => {
     getFieldMe().then((m) => {
       setMe(m);
-      setSangrador(m.user.fullName ?? "");
       if (m.assignments[0]) setFarmId(m.assignments[0].farm.id);
     });
   }, []);
@@ -47,28 +55,44 @@ function SangriaPage() {
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
   const plots = farm?.plots ?? [];
   const plot = plots.find((p) => p.id === plotId);
+  const tapper = tappers.find((t) => t.id === tapperId);
+
+  useEffect(() => {
+    setTapperId(""); setTappingTableId(""); setPlotId("");
+    setTappers([]); setTables([]);
+    if (!farm) return;
+    listFieldTappers(farm.companyId, farm.id).then(setTappers).catch(() => undefined);
+    listFieldTappingTables(farm.companyId).then(setTables).catch(() => undefined);
+  }, [farm]);
 
   function selectFarm(id: string) {
     setFarmId(id);
-    setPlotId("");
   }
 
   function selectPlot(id: string) {
     setPlotId(id);
     const p = plots.find((x) => x.id === id);
     if (p?.treeCount != null) setPrevistas(String(p.treeCount));
+    const t = p?.tappingSystem
+      ? tables.find((table) => table.notation === p.tappingSystem || table.name === p.tappingSystem)
+      : undefined;
+    if (t) setTappingTableId(t.id);
   }
 
   if (!me) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   if (me.assignments.length === 0) return <p className="text-sm text-muted-foreground">Sem fazendas atribuídas.</p>;
 
   async function save() {
-    if (!farm || !sangrador.trim()) { toast.error("Preencha fazenda e sangrador"); return; }
+    if (!farm || !tapper) { toast.error("Preencha fazenda e sangrador"); return; }
     setSaving(true);
     const res = await submitTapping({
       companyId: farm.companyId, farmId: farm.id, plotId: plotId || undefined,
+      tappingTableId: tappingTableId || undefined,
       date: getLocalIsoDate(),
-      sangradorName: sangrador.trim(),
+      sangradorName: tapper.fullName,
+      tapperId: tapper.id,
+      taskExtent: taskExtent || undefined,
+      endPeriod: endPeriod || undefined,
       liters: liters ? Number(liters) : undefined,
       drcPercent: drc ? Number(drc) : undefined,
       adherencePct: ader ? Number(ader) : undefined,
@@ -105,17 +129,36 @@ function SangriaPage() {
             </Field>
           )}
           <Field label="Sangrador (Quem realizou a sangria)">
-            <Input 
-              className="h-11 rounded-xl border-primary/50 bg-primary/5" 
-              value={sangrador} 
-              onChange={(e) => setSangrador(e.target.value)} 
-              placeholder="Digite o nome do sangrador..."
-              required
-            />
+            <Select value={tapperId} onValueChange={setTapperId}>
+              <SelectTrigger className="h-11 rounded-xl border-primary/50 bg-primary/5"><SelectValue placeholder={tappers.length ? "Selecione o sangrador" : "Nenhum sangrador vinculado a esta fazenda"} /></SelectTrigger>
+              <SelectContent>{tappers.map((t) => <SelectItem key={t.id} value={t.id}>{t.fullName}</SelectItem>)}</SelectContent>
+            </Select>
             <p className="text-[10px] text-muted-foreground italic px-1">
               O monitor é responsável por registrar a atividade da sua equipe de sangradores.
             </p>
           </Field>
+          {tables.length > 0 && (
+            <Field label="Tabela de sangria">
+              <Select value={tappingTableId} onValueChange={setTappingTableId}>
+                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione a tabela" /></SelectTrigger>
+                <SelectContent>{tables.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Tarefa">
+              <Select value={taskExtent} onValueChange={setTaskExtent}>
+                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{TASK_EXTENTS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+            <Field label="Período de término">
+              <Select value={endPeriod} onValueChange={setEndPeriod}>
+                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{END_PERIODS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Árvores previstas">
               <Input className="h-11 rounded-xl" inputMode="numeric" value={previstas} onChange={(e) => setPrevistas(e.target.value)} />
@@ -177,8 +220,13 @@ function SangriaPage() {
           <h3 className="text-sm font-semibold">Confirmar registro</h3>
           <dl className="divide-y divide-border/60 rounded-xl border border-border/60 bg-background/40 text-sm">
             <Row label="Fazenda" value={farm?.name ?? "—"} />
-            <Row label="Sangrador" value={sangrador || "—"} />
-            <Row label="Árvores" value={`${realizadas || "—"} / ${previstas || "—"}`} />
+            <Row label="Talhão" value={plot?.name ?? "—"} />
+            <Row label="Sangrador" value={tapper?.fullName ?? "—"} />
+            <Row label="Árvores (realizadas / previstas)" value={`${realizadas || "—"} / ${previstas || "—"}`} />
+            <Row
+              label="Saldo"
+              value={realizadas && previstas ? `${Number(realizadas) - Number(previstas)} árvore(s)` : "—"}
+            />
             <Row label="Situação" value={situacao} />
             <Row label="Qualidade" value={qualidade} />
             <Row label="Litros" value={liters ? `${liters} L` : "—"} />

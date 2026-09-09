@@ -7,6 +7,8 @@ export const STIM_METHODS = [
   { value: "outro", label: "Outro" },
 ] as const;
 
+export const STIM_CONCENTRATIONS = Array.from({ length: 9 }, (_, i) => `${i + 1}/1`);
+
 export type Stimulation = {
   id: string;
   companyId: string;
@@ -17,6 +19,9 @@ export type Stimulation = {
   concentration?: string | null;
   method?: string | null;
   applicator?: string | null;
+  tapperId?: string | null;
+  tappingTableId?: string | null;
+  reason?: string | null;
   treesStimulated?: number | null;
   doseMlPerTree?: number | null;
   areaHa?: number | null;
@@ -32,6 +37,9 @@ export type StimulationInput = {
   concentration?: string;
   method?: string;
   applicator?: string;
+  tapperId?: string | null;
+  tappingTableId?: string | null;
+  reason?: string;
   treesStimulated?: number | null;
   doseMlPerTree?: number | null;
   areaHa?: number | null;
@@ -63,6 +71,9 @@ function clean(v: StimulationInput) {
     concentration: v.concentration?.trim() || undefined,
     method: v.method || undefined,
     applicator: v.applicator?.trim() || undefined,
+    tapperId: v.tapperId || undefined,
+    tappingTableId: v.tappingTableId || undefined,
+    reason: v.reason?.trim() || undefined,
     treesStimulated: v.treesStimulated ?? undefined,
     doseMlPerTree: v.doseMlPerTree ?? undefined,
     areaHa: v.areaHa ?? undefined,

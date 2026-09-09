@@ -26,8 +26,11 @@ import {
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { listFarms } from "@/lib/fazendas.functions";
 import { listPlots } from "@/lib/talhoes.functions";
+import { listTappers } from "@/lib/tappers.functions";
+import { listTappingTables } from "@/lib/tabelas.functions";
 import {
   createTappingRecord, deleteTappingRecord, listTappingRecords, updateTappingRecord,
+  TASK_EXTENTS, END_PERIODS,
   type TappingRecord, type TappingInput,
 } from "@/lib/sangrias.functions";
 
@@ -45,6 +48,7 @@ export const Route = createFileRoute("/_authenticated/sangrias")({
 const today = () => "2026-08-12";
 const empty: TappingInput = {
   farmId: "", plotId: "", date: today(), sangradorName: "",
+  tapperId: null, taskExtent: "", endPeriod: "",
   treesExpected: null, treesTapped: null, liters: null, drcPercent: null, dryKg: null, adherencePct: null, notes: "",
 };
 
@@ -171,6 +175,7 @@ function SangriasPage() {
                       <TableHead>Data</TableHead>
                       <TableHead>Sangrador</TableHead>
                       <TableHead className="text-right">Árvores</TableHead>
+                      <TableHead className="text-right">Saldo</TableHead>
                       <TableHead className="text-right">Litros</TableHead>
                       <TableHead className="text-right">DRC %</TableHead>
                       <TableHead className="text-right">Kg secos</TableHead>
@@ -190,6 +195,9 @@ function SangriasPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">{r.treesTapped ?? "—"}</TableCell>
+                        <TableCell className="text-right">
+                          <SaldoCell expected={r.treesExpected} tapped={r.treesTapped} />
+                        </TableCell>
                         <TableCell className="text-right">{r.liters?.toLocaleString("pt-BR") ?? "—"}</TableCell>
                         <TableCell className="text-right">{r.drcPercent != null ? `${r.drcPercent}%` : "—"}</TableCell>
                         <TableCell className="text-right">{r.dryKg?.toLocaleString("pt-BR") ?? "—"}</TableCell>
@@ -233,6 +241,13 @@ function SangriasPage() {
   );
 }
 
+function SaldoCell({ expected, tapped }: { expected?: number | null; tapped?: number | null }) {
+  if (expected == null || tapped == null) return <span>—</span>;
+  const saldo = tapped - expected;
+  if (saldo >= 0) return <span className="text-emerald-600 dark:text-emerald-500">+{saldo}</span>;
+  return <span className="text-amber-600 dark:text-amber-500">{saldo}</span>;
+}
+
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <Card><CardContent className="p-4">
@@ -258,6 +273,20 @@ function SangriaDialog({
     queryFn: () => listPlots(companyId!, values.farmId || undefined),
     enabled: !!companyId && !!values.farmId,
   });
+  const { data: allTappers = [] } = useQuery({
+    queryKey: ["tappers", companyId],
+    queryFn: () => listTappers(companyId!),
+    enabled: !!companyId,
+  });
+  const { data: tables = [] } = useQuery({
+    queryKey: ["tapping-tables", companyId],
+    queryFn: () => listTappingTables(companyId!),
+    enabled: !!companyId,
+  });
+  const tappers = useMemo(
+    () => allTappers.filter((t) => t.stints.some((s) => s.farmId === values.farmId && !s.endAt)),
+    [allTappers, values.farmId],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -267,6 +296,9 @@ function SangriaDialog({
       tappingTableId: initial.tappingTableId ?? "",
       date: initial.date.slice(0, 10),
       sangradorName: initial.sangradorName,
+      tapperId: initial.tapperId ?? null,
+      taskExtent: initial.taskExtent ?? "",
+      endPeriod: initial.endPeriod ?? "",
       treesExpected: initial.treesExpected ?? null,
       treesTapped: initial.treesTapped ?? null,
       liters: initial.liters ?? null,
@@ -316,10 +348,25 @@ function SangriaDialog({
           className="grid gap-3 md:grid-cols-2"
         >
           <div><Label>Data *</Label><Input type="date" value={values.date} onChange={(e) => setValues((v) => ({ ...v, date: e.target.value }))} required /></div>
-          <div><Label>Sangrador *</Label><Input value={values.sangradorName} onChange={(e) => setValues((v) => ({ ...v, sangradorName: e.target.value }))} required /></div>
+          <div>
+            <Label>Sangrador *</Label>
+            <Select
+              value={values.tapperId || "__none"}
+              onValueChange={(v) => {
+                const tapper = v !== "__none" ? tappers.find((t) => t.id === v) : undefined;
+                setValues((s) => ({ ...s, tapperId: v === "__none" ? null : v, sangradorName: tapper?.fullName ?? s.sangradorName }));
+              }}
+            >
+              <SelectTrigger><SelectValue placeholder={values.farmId ? "Selecione..." : "Selecione a fazenda primeiro"} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">—</SelectItem>
+                {tappers.map((t) => <SelectItem key={t.id} value={t.id}>{t.fullName}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label>Fazenda</Label>
-            <Select value={values.farmId || "__none"} onValueChange={(v) => setValues((s) => ({ ...s, farmId: v === "__none" ? "" : v, plotId: "" }))}>
+            <Select value={values.farmId || "__none"} onValueChange={(v) => setValues((s) => ({ ...s, farmId: v === "__none" ? "" : v, plotId: "", tapperId: null, sangradorName: "" }))}>
               <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">—</SelectItem>
@@ -333,10 +380,14 @@ function SangriaDialog({
               value={values.plotId || "__none"}
               onValueChange={(v) => {
                 const plot = v !== "__none" ? plots.find((p) => p.id === v) : undefined;
+                const table = plot?.tappingSystem
+                  ? tables.find((t) => t.notation === plot.tappingSystem || t.name === plot.tappingSystem)
+                  : undefined;
                 setValues((s) => ({
                   ...s,
                   plotId: v === "__none" ? "" : v,
                   treesExpected: plot?.treeCount ?? s.treesExpected,
+                  tappingTableId: table?.id ?? s.tappingTableId,
                 }));
               }}
               disabled={!values.farmId}
@@ -348,8 +399,43 @@ function SangriaDialog({
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label>Tabela de sangria</Label>
+            <Select value={values.tappingTableId || "__none"} onValueChange={(v) => setValues((s) => ({ ...s, tappingTableId: v === "__none" ? "" : v }))}>
+              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">—</SelectItem>
+                {tables.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Tarefa</Label>
+            <Select value={values.taskExtent || "__none"} onValueChange={(v) => setValues((s) => ({ ...s, taskExtent: v === "__none" ? "" : v }))}>
+              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">—</SelectItem>
+                {TASK_EXTENTS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Período de término</Label>
+            <Select value={values.endPeriod || "__none"} onValueChange={(v) => setValues((s) => ({ ...s, endPeriod: v === "__none" ? "" : v }))}>
+              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">—</SelectItem>
+                {END_PERIODS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div><Label>Árvores previstas</Label><Input type="number" value={values.treesExpected ?? ""} onChange={(e) => setValues((v) => ({ ...v, treesExpected: e.target.value ? Number(e.target.value) : null }))} /></div>
           <div><Label>Árvores sangradas</Label><Input type="number" value={values.treesTapped ?? ""} onChange={(e) => setValues((v) => ({ ...v, treesTapped: e.target.value ? Number(e.target.value) : null }))} /></div>
+          {values.treesExpected != null && values.treesTapped != null && (
+            <div className="md:col-span-2 -mt-1 text-xs text-muted-foreground">
+              Saldo: <SaldoCell expected={values.treesExpected} tapped={values.treesTapped} /> árvore(s)
+            </div>
+          )}
           <div><Label>Litros</Label><Input type="number" step="0.01" value={values.liters ?? ""} onChange={(e) => setValues((v) => ({ ...v, liters: e.target.value ? Number(e.target.value) : null }))} /></div>
           <div><Label>DRC (%)</Label><Input type="number" step="0.1" value={values.drcPercent ?? ""} onChange={(e) => setValues((v) => ({ ...v, drcPercent: e.target.value ? Number(e.target.value) : null }))} /></div>
           <div><Label>Aderência à tabela (%)</Label><Input type="number" step="0.1" value={values.adherencePct ?? ""} onChange={(e) => setValues((v) => ({ ...v, adherencePct: e.target.value ? Number(e.target.value) : null }))} /></div>

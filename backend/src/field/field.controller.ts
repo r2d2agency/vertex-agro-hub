@@ -23,6 +23,16 @@ export class FieldController {
   @Get('field/me')
   fieldMe(@Req() req: any) { return this.svc.fieldMe(req.user.sub); }
 
+  @Get('field/tappers')
+  listTappers(@Req() req: any, @Query('companyId') companyId?: string, @Query('farmId') farmId?: string) {
+    return this.svc.listTappersForFarm(req.user.sub, need(companyId), need(farmId));
+  }
+
+  @Get('field/tapping-tables')
+  listTappingTables(@Req() req: any, @Query('companyId') companyId?: string) {
+    return this.svc.listTappingTablesForCompany(req.user.sub, need(companyId));
+  }
+
   @Post('field/checkin')
   checkin(@Req() req: any, @Body() dto: {
     companyId: string; farmId?: string; plotId?: string;

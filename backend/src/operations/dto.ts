@@ -16,6 +16,9 @@ export class CreateTappingRecordDto {
   @IsOptional() @IsUUID() tappingTableId?: string;
   @IsDateString() date!: string;
   @IsString() @MaxLength(200) sangradorName!: string;
+  @IsOptional() @IsUUID() tapperId?: string;
+  @IsOptional() @IsString() taskExtent?: string;
+  @IsOptional() @IsString() endPeriod?: string;
   @IsOptional() @IsInt() @Min(0) treesExpected?: number;
   @IsOptional() @IsInt() @Min(0) treesTapped?: number;
   @IsOptional() @IsNumber() liters?: number;
@@ -34,6 +37,9 @@ export class UpdateTappingRecordDto {
   @IsOptional() @IsUUID() tappingTableId?: string;
   @IsOptional() @IsDateString() date?: string;
   @IsOptional() @IsString() @MaxLength(200) sangradorName?: string;
+  @IsOptional() @IsUUID() tapperId?: string;
+  @IsOptional() @IsString() taskExtent?: string;
+  @IsOptional() @IsString() endPeriod?: string;
   @IsOptional() @IsInt() @Min(0) treesExpected?: number;
   @IsOptional() @IsInt() @Min(0) treesTapped?: number;
   @IsOptional() @IsNumber() liters?: number;
