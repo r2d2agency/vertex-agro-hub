@@ -1462,6 +1462,10 @@ model TapperPreRegistration {
   addressState  String?  @map("address_state")
   contractType  String?  @map("contract_type")
   dailyRate     Float?   @map("daily_rate")
+  treesAssigned Int?     @map("trees_assigned")
+  taskPercent   Float?   @map("task_percent")
+  rgPhotoUrl    String?  @map("rg_photo_url")
+  cpfPhotoUrl   String?  @map("cpf_photo_url")
   notes         String?
   status        String   @default("pending")
   reviewNotes   String?  @map("review_notes")

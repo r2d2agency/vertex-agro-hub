@@ -9,16 +9,23 @@ import {
   EndAssignmentDto, InvitePersonDto, PersonalDataDto, ToggleActiveDto, UpdatePersonRoleDto, UpsertPersonAccessDto,
 } from './dto';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+// Guard de classe: apenas autenticação. RolesGuard (admin/gestor) é aplicado
+// por rota — algumas (equipe da fazenda, vínculos e avaliações de
+// monitor/sangrador) também são acessíveis a um consultor, restrito às
+// fazendas onde ele atua (ver PeopleService.ensureManagerOrFarmConsultor /
+// ensureManagerOrCanEvaluate).
+@UseGuards(JwtAuthGuard)
 @Controller('people')
 export class PeopleController {
   constructor(private readonly svc: PeopleService) {}
 
+  @UseGuards(RolesGuard)
   @Get()
   list(@Req() req: any, @Query('companyId') companyId: string) {
     return this.svc.list(req.user.sub, companyId);
   }
 
+  @UseGuards(RolesGuard)
   @Get('assignments')
   listCompanyAssignments(
     @Req() req: any,
@@ -48,6 +55,7 @@ export class PeopleController {
     return this.svc.listFarmTeam(req.user.sub, farmId, companyId, history === 'true');
   }
 
+  @UseGuards(RolesGuard)
   @Get(':userId')
   get(
     @Req() req: any,
@@ -57,11 +65,13 @@ export class PeopleController {
     return this.svc.get(req.user.sub, targetUserId, companyId);
   }
 
+  @UseGuards(RolesGuard)
   @Post('invite')
   invite(@Req() req: any, @Body() dto: InvitePersonDto) {
     return this.svc.invite(req.user.sub, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Patch(':userId/access')
   upsertAccess(
     @Req() req: any,
@@ -71,6 +81,7 @@ export class PeopleController {
     return this.svc.upsertAccess(req.user.sub, targetUserId, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Post(':userId/reset-password')
   resetPassword(
     @Req() req: any,
@@ -81,6 +92,7 @@ export class PeopleController {
   }
 
 
+  @UseGuards(RolesGuard)
   @Patch(':userId/personal')
   updatePersonal(
     @Req() req: any,
@@ -91,6 +103,7 @@ export class PeopleController {
     return this.svc.updatePersonal(req.user.sub, targetUserId, companyId, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Patch(':userId/employment')
   upsertEmployment(
     @Req() req: any,
@@ -100,6 +113,7 @@ export class PeopleController {
     return this.svc.upsertEmployment(req.user.sub, targetUserId, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Patch(':userId/active')
   setActive(
     @Req() req: any,
@@ -110,6 +124,7 @@ export class PeopleController {
     return this.svc.setActive(req.user.sub, targetUserId, companyId, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Get(':userId/documents')
   listDocs(
     @Req() req: any,
@@ -119,6 +134,7 @@ export class PeopleController {
     return this.svc.listDocuments(req.user.sub, targetUserId, companyId);
   }
 
+  @UseGuards(RolesGuard)
   @Post(':userId/documents')
   createDoc(
     @Req() req: any,
@@ -128,6 +144,7 @@ export class PeopleController {
     return this.svc.createDocument(req.user.sub, targetUserId, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Delete(':userId/documents/:docId')
   deleteDoc(
     @Req() req: any,
@@ -139,6 +156,7 @@ export class PeopleController {
   }
 
   // ===== Vínculos =====
+  @UseGuards(RolesGuard)
   @Get(':userId/assignments')
   listAssignments(
     @Req() req: any,
@@ -196,6 +214,7 @@ export class PeopleController {
     return this.svc.createEvaluation(req.user.sub, targetUserId, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Delete(':userId/evaluations/:evaluationId')
   deleteEval(
     @Req() req: any,
@@ -206,6 +225,7 @@ export class PeopleController {
     return this.svc.deleteEvaluation(req.user.sub, targetUserId, evaluationId, companyId);
   }
 
+  @UseGuards(RolesGuard)
   @Patch(':userId/role')
   updateRole(
     @Req() req: any,
@@ -215,6 +235,7 @@ export class PeopleController {
     return this.svc.updateRole(req.user.sub, userId, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Delete(':userId')
   remove(
     @Req() req: any,

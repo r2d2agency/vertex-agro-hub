@@ -56,6 +56,52 @@ export class PeopleService {
     if (!isCompanyAdmin) throw new ForbiddenException('Sem permissão para gerenciar recursos nesta empresa');
   }
 
+  private async isCompanyManager(userId: string, companyId: string) {
+    const isGlobal = await this.prisma.userRole.findFirst({ where: { userId, role: 'admin_global' } });
+    if (isGlobal) return true;
+    const isCompanyAdmin = await this.prisma.userRole.findFirst({
+      where: { userId, companyId, role: { in: ['admin_empresa', 'gestor'] } },
+    });
+    return !!isCompanyAdmin;
+  }
+
+  // Um consultor pode gerenciar vínculos (criar/encerrar) e avaliar apenas
+  // monitores/sangradores das fazendas onde ele próprio tem um vínculo ativo
+  // de consultor — nunca outros consultores, gestores ou admins.
+  private async ensureManagerOrFarmConsultor(
+    userId: string,
+    companyId: string,
+    farmId: string,
+    targetRole: string,
+  ) {
+    if (await this.isCompanyManager(userId, companyId)) return;
+    if (!['monitor', 'sangrador'].includes(targetRole)) {
+      throw new ForbiddenException('Consultor só pode gerenciar vínculos de monitor ou sangrador');
+    }
+    const isConsultorHere = await this.prisma.farmAssignment.findFirst({
+      where: { userId, companyId, farmId, role: 'consultor', endAt: null },
+    });
+    if (!isConsultorHere) throw new ForbiddenException('Sem permissão para gerenciar recursos nesta empresa');
+  }
+
+  private async ensureManagerOrCanEvaluate(userId: string, companyId: string, targetUserId: string) {
+    if (await this.isCompanyManager(userId, companyId)) return;
+    const consultorFarms = await this.prisma.farmAssignment.findMany({
+      where: { userId, companyId, role: 'consultor', endAt: null },
+      select: { farmId: true },
+    });
+    if (consultorFarms.length === 0) throw new ForbiddenException('Sem permissão para gerenciar recursos nesta empresa');
+    const targetLink = await this.prisma.farmAssignment.findFirst({
+      where: {
+        userId: targetUserId, companyId,
+        farmId: { in: consultorFarms.map((f) => f.farmId) },
+        role: { in: ['monitor', 'sangrador'] },
+        endAt: null,
+      },
+    });
+    if (!targetLink) throw new ForbiddenException('Consultor só pode avaliar monitores/sangradores das fazendas onde atua');
+  }
+
   private async ensureMember(targetUserId: string, companyId: string) {
     if (!targetUserId || targetUserId === 'null' || targetUserId === 'undefined') {
       throw new BadRequestException('ID de usuário inválido');
@@ -533,15 +579,14 @@ export class PeopleService {
 
   async createAssignment(userId: string, targetUserId: string, dto: CreateAssignmentDto) {
     const activeCompanyId = dto.companyId;
-    await this.ensureManager(userId, activeCompanyId);
-    await this.ensureMember(targetUserId, activeCompanyId);
-    
     if (!dto.farmId || dto.farmId === 'null' || dto.farmId === 'undefined') {
       throw new BadRequestException('ID da fazenda é obrigatório');
     }
+    await this.ensureManagerOrFarmConsultor(userId, activeCompanyId, dto.farmId, dto.role);
+    await this.ensureMember(targetUserId, activeCompanyId);
 
-    const farm = await this.prisma.farm.findFirst({ 
-      where: { id: dto.farmId, companyId: activeCompanyId } 
+    const farm = await this.prisma.farm.findFirst({
+      where: { id: dto.farmId, companyId: activeCompanyId }
     });
     if (!farm) throw new BadRequestException('Fazenda inválida ou pertence a outra empresa');
 
@@ -576,11 +621,11 @@ export class PeopleService {
 
   async endAssignment(userId: string, targetUserId: string, assignmentId: string, dto: EndAssignmentDto) {
     const activeCompanyId = dto.companyId;
-    await this.ensureManager(userId, activeCompanyId);
     const a = await this.prisma.farmAssignment.findUnique({ where: { id: assignmentId } });
     if (!a || a.userId !== targetUserId || a.companyId !== activeCompanyId) {
       throw new NotFoundException('Vínculo não encontrado ou pertence a outra empresa');
     }
+    await this.ensureManagerOrFarmConsultor(userId, activeCompanyId, a.farmId, a.role);
     return this.prisma.farmAssignment.update({
       where: { id: assignmentId },
       data: {
@@ -592,10 +637,12 @@ export class PeopleService {
 
   async deleteAssignment(userId: string, targetUserId: string, assignmentId: string, companyId: string) {
     const activeCompanyId = companyId;
-    await this.ensureManager(userId, activeCompanyId);
-    await this.prisma.farmAssignment.deleteMany({
+    const a = await this.prisma.farmAssignment.findFirst({
       where: { id: assignmentId, userId: targetUserId, companyId: activeCompanyId },
     });
+    if (!a) return { ok: true };
+    await this.ensureManagerOrFarmConsultor(userId, activeCompanyId, a.farmId, a.role);
+    await this.prisma.farmAssignment.delete({ where: { id: a.id } });
     return { ok: true };
   }
 
@@ -612,7 +659,7 @@ export class PeopleService {
 
   async createEvaluation(userId: string, targetUserId: string, dto: CreateEvaluationDto) {
     const activeCompanyId = dto.companyId;
-    await this.ensureManager(userId, activeCompanyId);
+    await this.ensureManagerOrCanEvaluate(userId, activeCompanyId, targetUserId);
     await this.ensureMember(targetUserId, activeCompanyId);
     return this.prisma.personEvaluation.create({
       data: {

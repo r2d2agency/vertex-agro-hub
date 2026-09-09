@@ -155,6 +155,10 @@ export type TapperPreRegistration = {
   addressState: string | null;
   contractType: string | null;
   dailyRate: number | null;
+  treesAssigned: number | null;
+  taskPercent: number | null;
+  rgPhotoUrl: string | null;
+  cpfPhotoUrl: string | null;
   notes: string | null;
   status: "pending" | "approved" | "rejected";
   reviewNotes: string | null;
@@ -197,6 +201,10 @@ export function createTapperPreRegistration(input: {
   addressState?: string | null;
   contractType?: string | null;
   dailyRate?: number | null;
+  treesAssigned?: number | null;
+  taskPercent?: number | null;
+  rgPhotoUrl: string;
+  cpfPhotoUrl: string;
   notes?: string | null;
 }) {
   return apiRequest<TapperPreRegistration>(`/tappers/pre-registrations`, {

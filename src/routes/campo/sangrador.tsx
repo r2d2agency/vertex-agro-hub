@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Search, UserPlus, CheckCircle2 } from "lucide-react";
+import { Camera, Loader2, Search, UserPlus, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { getFieldMe, type FieldMe } from "@/lib/field.functions";
+import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +18,11 @@ import {
 
 export const Route = createFileRoute("/campo/sangrador")({ component: SangradorPage });
 
-type Form = TapperInput & { cpf: string };
+type Form = TapperInput & {
+  cpf: string;
+  treesAssigned?: number | null;
+  taskPercent?: number | null;
+};
 
 function SangradorPage() {
   const nav = useNavigate();
@@ -31,6 +36,10 @@ function SangradorPage() {
   const [status, setStatus] = useState<"new" | "existing" | "other-company" | null>(null);
   const [currentFarm, setCurrentFarm] = useState<string | null>(null);
   const [form, setForm] = useState<Form>({ cpf: "", status: "ativo" });
+  const [rgPhotoUrl, setRgPhotoUrl] = useState("");
+  const [cpfPhotoUrl, setCpfPhotoUrl] = useState("");
+  const [uploadingRg, setUploadingRg] = useState(false);
+  const [uploadingCpf, setUploadingCpf] = useState(false);
 
   useEffect(() => {
     getFieldMe().then((m) => {
@@ -80,9 +89,25 @@ function SangradorPage() {
     }
   }
 
+  async function onPhoto(kind: "rg" | "cpf", f: File | null) {
+    if (!f) return;
+    const setUploading = kind === "rg" ? setUploadingRg : setUploadingCpf;
+    const setUrl = kind === "rg" ? setRgPhotoUrl : setCpfPhotoUrl;
+    setUploading(true);
+    try {
+      const r = await uploadFile(f);
+      setUrl(r.url);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao enviar foto");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function save() {
     if (!farm) return;
     if (!form.fullName || form.fullName.trim().length < 2) { toast.error("Informe o nome completo"); return; }
+    if (!rgPhotoUrl || !cpfPhotoUrl) { toast.error("Envie as fotos do RG e do CPF do sangrador"); return; }
     setSaving(true);
     try {
       await createTapperPreRegistration({
@@ -97,6 +122,10 @@ function SangradorPage() {
         addressState: form.addressState ?? null,
         contractType: form.contractType ?? null,
         dailyRate: form.dailyRate ?? null,
+        treesAssigned: form.treesAssigned ?? null,
+        taskPercent: form.taskPercent ?? null,
+        rgPhotoUrl,
+        cpfPhotoUrl,
         notes: form.notes ?? null,
       });
       toast.success("Pré-cadastro enviado ao RH para validação");
@@ -168,10 +197,44 @@ function SangradorPage() {
 
           <p className="pt-2 text-xs font-semibold uppercase text-muted-foreground">Contatos</p>
           <div className="grid grid-cols-2 gap-3">
-            <F label="Telefone"><Input className="h-11 rounded-xl" inputMode="tel" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} /></F>
+            <F label="Telefone / WhatsApp"><Input className="h-11 rounded-xl" inputMode="tel" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} /></F>
             <F label="Cidade"><Input className="h-11 rounded-xl" value={form.addressCity ?? ""} onChange={(e) => set("addressCity", e.target.value)} /></F>
             <F label="Emergência (nome)"><Input className="h-11 rounded-xl" value={form.emergencyContactName ?? ""} onChange={(e) => set("emergencyContactName", e.target.value)} /></F>
             <F label="Emergência (fone)"><Input className="h-11 rounded-xl" inputMode="tel" value={form.emergencyContactPhone ?? ""} onChange={(e) => set("emergencyContactPhone", e.target.value)} /></F>
+          </div>
+
+          <p className="pt-2 text-xs font-semibold uppercase text-muted-foreground">Tarefa</p>
+          <div className="grid grid-cols-2 gap-3">
+            <F label="Árvores que vai sangrar">
+              <Input className="h-11 rounded-xl" inputMode="numeric" value={form.treesAssigned ?? ""} onChange={(e) => set("treesAssigned", e.target.value ? Number(e.target.value) : null)} />
+            </F>
+            <F label="% da tarefa">
+              <Input className="h-11 rounded-xl" inputMode="numeric" placeholder="ex.: 100" value={form.taskPercent ?? ""} onChange={(e) => set("taskPercent", e.target.value ? Number(e.target.value) : null)} />
+            </F>
+          </div>
+
+          <p className="pt-2 text-xs font-semibold uppercase text-muted-foreground">Documentos (obrigatório)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <F label="Foto do RG *">
+              {rgPhotoUrl ? (
+                <img src={rgPhotoUrl} alt="RG" className="h-24 w-full rounded-xl border border-border/60 object-cover" />
+              ) : (
+                <label className="grid h-24 w-full cursor-pointer place-items-center rounded-xl border border-dashed border-border/60 bg-background/40 text-muted-foreground hover:border-primary hover:text-primary">
+                  {uploadingRg ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPhoto("rg", e.target.files?.[0] ?? null)} />
+                </label>
+              )}
+            </F>
+            <F label="Foto do CPF *">
+              {cpfPhotoUrl ? (
+                <img src={cpfPhotoUrl} alt="CPF" className="h-24 w-full rounded-xl border border-border/60 object-cover" />
+              ) : (
+                <label className="grid h-24 w-full cursor-pointer place-items-center rounded-xl border border-dashed border-border/60 bg-background/40 text-muted-foreground hover:border-primary hover:text-primary">
+                  {uploadingCpf ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPhoto("cpf", e.target.files?.[0] ?? null)} />
+                </label>
+              )}
+            </F>
           </div>
 
           <p className="pt-2 text-xs font-semibold uppercase text-muted-foreground">Financeiro</p>
@@ -193,7 +256,15 @@ function SangradorPage() {
 
           <F label="Observações"><Textarea rows={2} className="rounded-xl" value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} /></F>
 
-          <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={() => setStep(3)}>Continuar</Button>
+          <Button
+            className="h-12 w-full rounded-xl text-base font-semibold"
+            onClick={() => {
+              if (!rgPhotoUrl || !cpfPhotoUrl) { toast.error("Envie as fotos do RG e do CPF do sangrador"); return; }
+              setStep(3);
+            }}
+          >
+            Continuar
+          </Button>
         </FieldCard>
       )}
 
@@ -204,9 +275,11 @@ function SangradorPage() {
             <Row label="Sangrador" value={form.fullName || "—"} />
             <Row label="CPF" value={maskCpf(form.cpf || cpf)} />
             <Row label="Telefone" value={form.phone || "—"} />
+            <Row label="Árvores / % tarefa" value={`${form.treesAssigned ?? "—"} / ${form.taskPercent != null ? `${form.taskPercent}%` : "—"}`} />
             <Row label="Contrato" value={form.contractType || "—"} />
             <Row label="Diária" value={form.dailyRate ? `R$ ${form.dailyRate}` : "—"} />
             <Row label="Fazenda" value={farm?.name ?? "—"} />
+            <Row label="Documentos" value={rgPhotoUrl && cpfPhotoUrl ? "RG e CPF anexados" : "Pendente"} />
           </dl>
           <p className="text-xs text-muted-foreground">
             Ao confirmar, o consultor envia um cadastro provisório para o RH. O vínculo definitivo e a regularização continuam sendo feitos no administrativo.

@@ -1,5 +1,5 @@
 import {
-  IsBoolean, IsDateString, IsIn, IsNumber, IsOptional, IsString, IsUUID, MinLength,
+  IsBoolean, IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, Min, MinLength,
 } from 'class-validator';
 
 export class CreateTapperDto {
@@ -71,6 +71,10 @@ export class CreateTapperPreRegistrationDto {
   @IsOptional() @IsString() addressState?: string;
   @IsOptional() @IsString() contractType?: string;
   @IsOptional() @IsNumber() dailyRate?: number;
+  @IsOptional() @IsInt() @Min(0) treesAssigned?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(100) taskPercent?: number;
+  @IsString() @MinLength(1) rgPhotoUrl!: string;
+  @IsString() @MinLength(1) cpfPhotoUrl!: string;
   @IsOptional() @IsString() notes?: string;
 }
 

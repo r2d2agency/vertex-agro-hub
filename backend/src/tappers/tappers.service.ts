@@ -370,6 +370,10 @@ export class TappersService {
       addressState?: string;
       contractType?: string;
       dailyRate?: number;
+      treesAssigned?: number;
+      taskPercent?: number;
+      rgPhotoUrl: string;
+      cpfPhotoUrl: string;
       notes?: string;
     },
   ) {
@@ -417,6 +421,10 @@ export class TappersService {
         addressState: dto.addressState ?? null,
         contractType: dto.contractType ?? null,
         dailyRate: dto.dailyRate ?? null,
+        treesAssigned: dto.treesAssigned ?? null,
+        taskPercent: dto.taskPercent ?? null,
+        rgPhotoUrl: dto.rgPhotoUrl,
+        cpfPhotoUrl: dto.cpfPhotoUrl,
         notes: dto.notes ?? null,
       },
     });

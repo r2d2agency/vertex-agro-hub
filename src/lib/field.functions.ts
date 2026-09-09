@@ -157,11 +157,23 @@ export async function submitCheckin(input: {
   return submit("/field/checkin", "POST", input, "Check-in GPS");
 }
 
-export function submitOperationLog(input: any) {
+export async function submitOperationLog(input: any) {
   const desc = input.finishedAt ? "Finalizar Operação" : "Iniciar Operação";
-  const path = input.id ? `/machine-operations/${input.id}` : "/machine-operations";
-  const method = input.id ? "PATCH" : "POST";
-  return submit(path, method, input, desc);
+  const { id, ...body } = input;
+  const path = id ? `/operation-logs/${id}` : "/operation-logs";
+  const method = id ? "PATCH" : "POST";
+  // Envia direto quando online para poder retornar o id do registro criado
+  // (necessário para depois "finalizar" a mesma operação); cai para a fila
+  // offline se não houver rede ou a chamada direta falhar.
+  if (typeof navigator !== "undefined" && navigator.onLine) {
+    try {
+      const data = await apiRequest<any>(path, { method, body: JSON.stringify(body) });
+      return { queued: false, data };
+    } catch {
+      // segue para a fila offline abaixo
+    }
+  }
+  return submit(path, method, body, desc);
 }
 
 export function submitFuelMovement(input: {

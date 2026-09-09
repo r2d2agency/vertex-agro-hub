@@ -213,6 +213,17 @@ function SangradoresPage() {
                             <p className="mt-1 text-xs text-muted-foreground">
                               {item.phone || "Sem telefone"} {item.contractType ? `· ${item.contractType}` : ""} {item.addressCity ? `· ${item.addressCity}/${item.addressState ?? "—"}` : ""}
                             </p>
+                            {(item.treesAssigned != null || item.taskPercent != null) && (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Tarefa: {item.treesAssigned ?? "—"} árvores {item.taskPercent != null ? `· ${item.taskPercent}%` : ""}
+                              </p>
+                            )}
+                            {(item.rgPhotoUrl || item.cpfPhotoUrl) && (
+                              <p className="mt-1 flex gap-3 text-xs">
+                                {item.rgPhotoUrl && <a href={item.rgPhotoUrl} target="_blank" rel="noreferrer" className="text-primary underline">Foto do RG</a>}
+                                {item.cpfPhotoUrl && <a href={item.cpfPhotoUrl} target="_blank" rel="noreferrer" className="text-primary underline">Foto do CPF</a>}
+                              </p>
+                            )}
                             {item.notes && <p className="mt-2 text-xs text-muted-foreground">{item.notes}</p>}
                           </div>
                           <div className="flex flex-wrap gap-2">

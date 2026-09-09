@@ -8,11 +8,16 @@ import {
   CreateStintDto, CreateTapperDto, CreateTapperPreRegistrationDto, EndStintDto, ReviewTapperPreRegistrationDto, UpdateTapperDto, UpsertTapperDto,
 } from './dto';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+// Guard de classe: apenas autenticação. RolesGuard (admin/gestor) é aplicado
+// por rota — `lookup` e `pre-registrations` (POST) também são usadas pelo
+// consultor no app de campo; TappersService.createPreRegistration já
+// restringe a criação a consultores da fazenda (ensureConsultorSubmission).
+@UseGuards(JwtAuthGuard)
 @Controller('tappers')
 export class TappersController {
   constructor(private readonly svc: TappersService) {}
 
+  @UseGuards(RolesGuard)
   @Get()
   list(@Req() req: any, @Query('companyId', ParseUUIDPipe) companyId: string) {
     return this.svc.list(req.user.sub, companyId);
@@ -27,11 +32,13 @@ export class TappersController {
     return this.svc.lookupByCpf(req.user.sub, companyId, cpf ?? '');
   }
 
+  @UseGuards(RolesGuard)
   @Post('upsert')
   upsert(@Req() req: any, @Body() dto: UpsertTapperDto) {
     return this.svc.upsertByCpf(req.user.sub, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Get('pre-registrations')
   listPreRegistrations(
     @Req() req: any,
@@ -46,6 +53,7 @@ export class TappersController {
     return this.svc.createPreRegistration(req.user.sub, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Patch('pre-registrations/:id')
   reviewPreRegistration(
     @Req() req: any,
@@ -55,6 +63,7 @@ export class TappersController {
     return this.svc.reviewPreRegistration(req.user.sub, id, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Get(':id')
   get(
     @Req() req: any,
@@ -64,26 +73,31 @@ export class TappersController {
     return this.svc.get(req.user.sub, id, companyId);
   }
 
+  @UseGuards(RolesGuard)
   @Post()
   create(@Req() req: any, @Body() dto: CreateTapperDto) {
     return this.svc.create(req.user.sub, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Patch(':id')
   update(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTapperDto) {
     return this.svc.update(req.user.sub, id, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Delete(':id')
   remove(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.remove(req.user.sub, id);
   }
 
+  @UseGuards(RolesGuard)
   @Post(':id/stints')
   addStint(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateStintDto) {
     return this.svc.addStint(req.user.sub, id, dto);
   }
 
+  @UseGuards(RolesGuard)
   @Patch(':id/stints/:stintId/end')
   endStint(
     @Req() req: any,
