@@ -50,7 +50,18 @@ export class FieldService {
     });
     const assignments = await this.prisma.farmAssignment.findMany({
       where: { userId, OR: [{ endAt: null }, { endAt: { gte: getNow() } }] },
-      include: { farm: { select: { id: true, name: true, companyId: true, city: true, state: true, latitude: true, longitude: true } } },
+      include: {
+        farm: {
+          select: {
+            id: true, name: true, companyId: true, city: true, state: true, latitude: true, longitude: true,
+            plots: {
+              where: { isDeleted: false },
+              select: { id: true, name: true, treeCount: true },
+              orderBy: { name: 'asc' },
+            },
+          },
+        },
+      },
       orderBy: { startAt: 'desc' },
     });
     const roleStrings = roleNames as string[];

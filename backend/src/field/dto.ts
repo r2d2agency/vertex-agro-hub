@@ -66,6 +66,7 @@ export class CreateTappingRecordDto {
   @IsOptional() @IsUUID() tappingTableId?: string;
   @IsDateString() date!: string;
   @IsString() @MinLength(1) sangradorName!: string;
+  @IsOptional() @IsInt() @Min(0) treesExpected?: number;
   @IsOptional() @IsInt() @Min(0) treesTapped?: number;
   @IsOptional() @IsNumber() liters?: number;
   @IsOptional() @IsNumber() drcPercent?: number;

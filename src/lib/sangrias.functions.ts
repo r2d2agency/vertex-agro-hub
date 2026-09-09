@@ -8,6 +8,7 @@ export type TappingRecord = {
   tappingTableId?: string | null;
   date: string;
   sangradorName: string;
+  treesExpected?: number | null;
   treesTapped?: number | null;
   liters?: number | null;
   drcPercent?: number | null;
@@ -25,6 +26,7 @@ export type TappingInput = {
   tappingTableId?: string;
   date: string;
   sangradorName: string;
+  treesExpected?: number | null;
   treesTapped?: number | null;
   liters?: number | null;
   drcPercent?: number | null;
@@ -70,6 +72,7 @@ function clean(v: TappingInput) {
     tappingTableId: v.tappingTableId || undefined,
     date: v.date,
     sangradorName: v.sangradorName.trim(),
+    treesExpected: v.treesExpected ?? undefined,
     treesTapped: v.treesTapped ?? undefined,
     liters: v.liters ?? undefined,
     drcPercent: v.drcPercent ?? undefined,

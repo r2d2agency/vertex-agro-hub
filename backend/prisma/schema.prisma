@@ -456,6 +456,7 @@ model TappingRecord {
   tappingTableId String?  @map("tapping_table_id") @db.Uuid
   date           DateTime @db.Date
   sangradorName  String   @map("sangrador_name")
+  treesExpected  Int?     @map("trees_expected")
   treesTapped    Int?     @map("trees_tapped")
   liters         Float?
   drcPercent     Float?   @map("drc_percent")

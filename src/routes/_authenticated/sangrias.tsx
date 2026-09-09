@@ -45,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/sangrias")({
 const today = () => "2026-08-12";
 const empty: TappingInput = {
   farmId: "", plotId: "", date: today(), sangradorName: "",
-  treesTapped: null, liters: null, drcPercent: null, dryKg: null, adherencePct: null, notes: "",
+  treesExpected: null, treesTapped: null, liters: null, drcPercent: null, dryKg: null, adherencePct: null, notes: "",
 };
 
 function SangriasPage() {
@@ -267,6 +267,7 @@ function SangriaDialog({
       tappingTableId: initial.tappingTableId ?? "",
       date: initial.date.slice(0, 10),
       sangradorName: initial.sangradorName,
+      treesExpected: initial.treesExpected ?? null,
       treesTapped: initial.treesTapped ?? null,
       liters: initial.liters ?? null,
       drcPercent: initial.drcPercent ?? null,
@@ -328,7 +329,18 @@ function SangriaDialog({
           </div>
           <div>
             <Label>Talhão</Label>
-            <Select value={values.plotId || "__none"} onValueChange={(v) => setValues((s) => ({ ...s, plotId: v === "__none" ? "" : v }))} disabled={!values.farmId}>
+            <Select
+              value={values.plotId || "__none"}
+              onValueChange={(v) => {
+                const plot = v !== "__none" ? plots.find((p) => p.id === v) : undefined;
+                setValues((s) => ({
+                  ...s,
+                  plotId: v === "__none" ? "" : v,
+                  treesExpected: plot?.treeCount ?? s.treesExpected,
+                }));
+              }}
+              disabled={!values.farmId}
+            >
               <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">—</SelectItem>
@@ -336,6 +348,7 @@ function SangriaDialog({
               </SelectContent>
             </Select>
           </div>
+          <div><Label>Árvores previstas</Label><Input type="number" value={values.treesExpected ?? ""} onChange={(e) => setValues((v) => ({ ...v, treesExpected: e.target.value ? Number(e.target.value) : null }))} /></div>
           <div><Label>Árvores sangradas</Label><Input type="number" value={values.treesTapped ?? ""} onChange={(e) => setValues((v) => ({ ...v, treesTapped: e.target.value ? Number(e.target.value) : null }))} /></div>
           <div><Label>Litros</Label><Input type="number" step="0.01" value={values.liters ?? ""} onChange={(e) => setValues((v) => ({ ...v, liters: e.target.value ? Number(e.target.value) : null }))} /></div>
           <div><Label>DRC (%)</Label><Input type="number" step="0.1" value={values.drcPercent ?? ""} onChange={(e) => setValues((v) => ({ ...v, drcPercent: e.target.value ? Number(e.target.value) : null }))} /></div>

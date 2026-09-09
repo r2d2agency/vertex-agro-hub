@@ -24,7 +24,7 @@ export type FieldMe = {
       latitude?: number | null;
       longitude?: number | null;
       photoUrls: string[];
-      plots: Array<{ id: string; name: string }>;
+      plots: Array<{ id: string; name: string; treeCount?: number | null }>;
     };
   }>;
 };
@@ -70,11 +70,12 @@ function submit(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body:
 export function submitTapping(input: {
   companyId: string; farmId?: string; plotId?: string;
   tappingTableId?: string; date: string; sangradorName: string;
-  treesTapped?: number | null; liters?: number | null; drcPercent?: number | null;
+  treesExpected?: number | null; treesTapped?: number | null; liters?: number | null; drcPercent?: number | null;
   dryKg?: number | null; adherencePct?: number | null; notes?: string;
   status?: string; quality?: string; tableCondition?: string;
 }) {
   const data = { ...input };
+  if (data.treesExpected === null) delete data.treesExpected;
   if (data.treesTapped === null) delete data.treesTapped;
   if (data.liters === null) delete data.liters;
   if (data.drcPercent === null) delete data.drcPercent;

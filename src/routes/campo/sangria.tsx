@@ -20,6 +20,7 @@ function SangriaPage() {
 
   // step 1 — info
   const [farmId, setFarmId] = useState("");
+  const [plotId, setPlotId] = useState("");
   const [sangrador, setSangrador] = useState("");
   const [previstas, setPrevistas] = useState("");
   const [realizadas, setRealizadas] = useState("");
@@ -44,6 +45,19 @@ function SangriaPage() {
   }, []);
 
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
+  const plots = farm?.plots ?? [];
+  const plot = plots.find((p) => p.id === plotId);
+
+  function selectFarm(id: string) {
+    setFarmId(id);
+    setPlotId("");
+  }
+
+  function selectPlot(id: string) {
+    setPlotId(id);
+    const p = plots.find((x) => x.id === id);
+    if (p?.treeCount != null) setPrevistas(String(p.treeCount));
+  }
 
   if (!me) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   if (me.assignments.length === 0) return <p className="text-sm text-muted-foreground">Sem fazendas atribuídas.</p>;
@@ -52,12 +66,13 @@ function SangriaPage() {
     if (!farm || !sangrador.trim()) { toast.error("Preencha fazenda e sangrador"); return; }
     setSaving(true);
     const res = await submitTapping({
-      companyId: farm.companyId, farmId: farm.id,
+      companyId: farm.companyId, farmId: farm.id, plotId: plotId || undefined,
       date: getLocalIsoDate(),
       sangradorName: sangrador.trim(),
       liters: liters ? Number(liters) : undefined,
       drcPercent: drc ? Number(drc) : undefined,
       adherencePct: ader ? Number(ader) : undefined,
+      treesExpected: previstas ? Number(previstas) : undefined,
       treesTapped: realizadas ? Number(realizadas) : undefined,
       notes: notes.trim() || undefined,
       status: situacao,
@@ -76,11 +91,19 @@ function SangriaPage() {
       {step === 1 && (
         <FieldCard className="space-y-4">
           <Field label="Fazenda">
-            <Select value={farmId} onValueChange={setFarmId}>
+            <Select value={farmId} onValueChange={selectFarm}>
               <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
               <SelectContent>{me.assignments.map((a) => <SelectItem key={a.farm.id} value={a.farm.id}>{a.farm.name}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
+          {plots.length > 0 && (
+            <Field label="Talhão">
+              <Select value={plotId} onValueChange={selectPlot}>
+                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione o talhão" /></SelectTrigger>
+                <SelectContent>{plots.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+          )}
           <Field label="Sangrador (Quem realizou a sangria)">
             <Input 
               className="h-11 rounded-xl border-primary/50 bg-primary/5" 
@@ -94,7 +117,12 @@ function SangriaPage() {
             </p>
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Árvores previstas"><Input className="h-11 rounded-xl" inputMode="numeric" value={previstas} onChange={(e) => setPrevistas(e.target.value)} /></Field>
+            <Field label="Árvores previstas">
+              <Input className="h-11 rounded-xl" inputMode="numeric" value={previstas} onChange={(e) => setPrevistas(e.target.value)} />
+              {plot?.treeCount != null && (
+                <p className="text-[10px] text-muted-foreground italic px-1">Sugerido pelo cadastro do talhão, edite se necessário.</p>
+              )}
+            </Field>
             <Field label="Árvores realizadas"><Input className="h-11 rounded-xl" inputMode="numeric" value={realizadas} onChange={(e) => setRealizadas(e.target.value)} /></Field>
           </div>
           <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={() => setStep(2)}>Continuar</Button>
