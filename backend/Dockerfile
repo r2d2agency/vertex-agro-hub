@@ -33,5 +33,10 @@ COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 
 EXPOSE 3000
+# TEMPORÁRIO — remover a linha "migrate resolve" abaixo depois que o próximo
+# deploy subir com sucesso. Ela limpa o registro de falha da migration
+# 20260909160000_fleet_movements_farm_id (o SQL dela já foi corrigido); o
+# "|| true" garante que isso não trave o start em deploys futuros, já que
+# depois da primeira vez essa migration não estará mais marcada como falha.
 # Roda migrações Prisma antes de iniciar (idempotente)
-CMD sh -c "npx prisma migrate deploy && node dist/main.js"
+CMD sh -c "npx prisma migrate resolve --rolled-back 20260909160000_fleet_movements_farm_id || true; npx prisma migrate deploy && node dist/main.js"
