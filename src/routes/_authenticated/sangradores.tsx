@@ -23,7 +23,7 @@ import {
   type TapperPreRegistration,
   type TapperListItem,
 } from "@/lib/tappers.functions";
-import { invitePerson, listPeople, type Person } from "@/lib/people.functions";
+import { invitePerson, listCompanyAssignments, listPeople, type Person } from "@/lib/people.functions";
 
 export const Route = createFileRoute("/_authenticated/sangradores")({
   head: () => ({
@@ -64,6 +64,12 @@ function SangradoresPage() {
   const { data: pendingPreRegistrations = [] } = useQuery({
     queryKey: ["tapper-pre-registrations", companyId],
     queryFn: () => listTapperPreRegistrations(companyId!),
+    enabled: !!companyId,
+  });
+
+  const { data: rhSangradores = [] } = useQuery({
+    queryKey: ["company-assignments", companyId, "sangrador"],
+    queryFn: () => listCompanyAssignments(companyId!, { role: "sangrador", history: false }),
     enabled: !!companyId,
   });
 
@@ -181,6 +187,38 @@ function SangradoresPage() {
       ) : (
         <>
           <CompanyPicker companies={companies} companyId={companyId} onChange={setCompanyId} />
+
+          {companyId && (
+            <Card className="mb-4">
+              <CardContent className="p-4">
+                <div className="mb-3">
+                  <p className="text-sm font-semibold">Sangradores cadastrados no RH</p>
+                  <p className="text-xs text-muted-foreground">
+                    Vínculo de fazenda e consultor feito pelo Portal de RH. Separado da ficha operacional (lista abaixo), usada nos lançamentos de sangria.
+                  </p>
+                </div>
+                {rhSangradores.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum sangrador vinculado por fazenda no RH ainda.</p>
+                ) : (
+                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    {rhSangradores.map((assignment) => (
+                      <div key={assignment.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 p-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{assignment.user?.fullName || assignment.user?.email || "Sem nome"}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {assignment.farm?.name ?? "Sem fazenda"}{assignment.consultor ? ` · consultor: ${assignment.consultor.fullName || assignment.consultor.email}` : ""}
+                          </p>
+                        </div>
+                        <Button size="sm" variant="ghost" className="shrink-0" onClick={() => setEditingUserId(assignment.userId)}>
+                          Abrir no RH
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {companyId && (
             <Card className="mb-4 border-primary/20 bg-primary/5">

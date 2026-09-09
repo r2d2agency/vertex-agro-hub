@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listFarms } from "@/lib/fazendas.functions";
-import { listTappers, type TapperListItem } from "@/lib/tappers.functions";
 import {
   createPersonAssignment,
   endPersonAssignment,
@@ -49,12 +48,6 @@ function ConsultoresPage() {
     queryFn: () => listCompanyAssignments(companyId!, { history: false }),
     enabled: !!companyId,
   });
-  const { data: tappers = [] } = useQuery({
-    queryKey: ["tappers", companyId],
-    queryFn: () => listTappers(companyId!),
-    enabled: !!companyId,
-  });
-
   const consultants = useMemo(() => {
     const q = search.trim().toLowerCase();
     return people
@@ -67,6 +60,7 @@ function ConsultoresPage() {
 
   const consultantAssignments = assignments.filter((assignment) => assignment.role === "consultor");
   const monitorAssignments = assignments.filter((assignment) => assignment.role === "monitor");
+  const sangradorAssignments = assignments.filter((assignment) => assignment.role === "sangrador");
 
   return (
     <div className="grid gap-6">
@@ -100,9 +94,8 @@ function ConsultoresPage() {
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {consultants.map((consultant) => {
                 const farmsManaged = consultantAssignments.filter((item) => item.userId === consultant.id);
-                const farmIds = new Set(farmsManaged.map((item) => item.farmId));
                 const monitored = monitorAssignments.filter((item) => item.consultorUserId === consultant.id);
-                const sangradores = tappers.filter((t) => t.stints.some((s) => !s.endAt && farmIds.has(s.farmId)));
+                const sangradores = sangradorAssignments.filter((item) => item.consultorUserId === consultant.id);
                 return (
                   <Card key={consultant.id} className="transition-colors hover:border-primary/40">
                     <CardContent className="space-y-4 p-5">
@@ -142,7 +135,7 @@ function ConsultoresPage() {
             companyId={companyId}
             assignments={consultantAssignments}
             monitorAssignments={monitorAssignments}
-            tappers={tappers}
+            sangradorAssignments={sangradorAssignments}
             onClose={() => setSelected(null)}
           />
         </>
@@ -156,14 +149,14 @@ function ConsultantDialog({
   companyId,
   assignments,
   monitorAssignments,
-  tappers,
+  sangradorAssignments,
   onClose,
 }: {
   consultant: Person | null;
   companyId: string;
   assignments: FarmAssignment[];
   monitorAssignments: FarmAssignment[];
-  tappers: TapperListItem[];
+  sangradorAssignments: FarmAssignment[];
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -207,9 +200,8 @@ function ConsultantDialog({
   if (!consultant) return null;
 
   const activeFarms = assignments.filter((item) => item.userId === consultant.id);
-  const activeFarmIds = new Set(activeFarms.map((item) => item.farmId));
   const administeredMonitors = monitorAssignments.filter((item) => item.consultorUserId === consultant.id);
-  const administeredTappers = tappers.filter((t) => t.stints.some((s) => !s.endAt && activeFarmIds.has(s.farmId)));
+  const administeredSangradores = sangradorAssignments.filter((item) => item.consultorUserId === consultant.id);
 
   return (
     <Dialog open={!!consultant} onOpenChange={(open) => !open && onClose()}>
@@ -269,29 +261,26 @@ function ConsultantDialog({
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">Sangradores nas fazendas administradas</p>
-                <p className="text-xs text-muted-foreground">Sangradores com vínculo ativo em alguma das fazendas acima.</p>
+                <p className="text-sm font-medium">Sangradores administrados</p>
+                <p className="text-xs text-muted-foreground">Mostra os sangradores que hoje respondem a este consultor.</p>
               </div>
               <Link to="/sangradores" className="shrink-0 text-xs text-primary underline">Gerenciar sangradores</Link>
             </div>
-            {administeredTappers.length === 0 ? (
-              <Card><CardContent className="p-6 text-sm text-muted-foreground">Nenhum sangrador vinculado às fazendas deste consultor.</CardContent></Card>
+            {administeredSangradores.length === 0 ? (
+              <Card><CardContent className="p-6 text-sm text-muted-foreground">Nenhum sangrador vinculado a este consultor.</CardContent></Card>
             ) : (
               <div className="grid gap-2 md:grid-cols-2">
-                {administeredTappers.map((t) => {
-                  const farmNames = t.stints.filter((s) => !s.endAt && activeFarmIds.has(s.farmId)).map((s) => s.farm?.name).filter(Boolean);
-                  return (
-                    <Card key={t.id}>
-                      <CardContent className="space-y-1 p-4">
-                        <p className="font-medium">{t.fullName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          <Trees className="mr-1 inline h-3 w-3" />
-                          {farmNames.length > 0 ? farmNames.join(", ") : "Sem fazenda"}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                {administeredSangradores.map((assignment) => (
+                  <Card key={assignment.id}>
+                    <CardContent className="space-y-1 p-4">
+                      <p className="font-medium">{assignment.user?.fullName || assignment.user?.email || "Sangrador"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        <Trees className="mr-1 inline h-3 w-3" />
+                        {assignment.farm?.name ?? "Sem fazenda"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             )}
           </section>
