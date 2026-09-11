@@ -6,9 +6,9 @@ import {
 } from "lucide-react";
 import { hasAuthTokens, logout } from "@/lib/api";
 import { getFieldMe, type FieldMe, captureLocation, submitCheckin, type Coords } from "@/lib/field.functions";
-import { isMobileViewport } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { subscribeOutbox, flushOutbox } from "@/lib/offline/queue";
-import { FieldBottomNav } from "@/components/vertex/field/bottom-nav";
+import { FieldBottomNav, FieldDesktopNav } from "@/components/vertex/field/bottom-nav";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import vertexLogo from "@/assets/vertex-logo.png";
@@ -35,16 +35,10 @@ export const Route = createFileRoute("/campo")({
 
       if (me) {
         const isConsultant = me.primaryRole === "consultor" && !me.isAdmin;
-        const isConsultantPath = location.pathname.includes("/consultor");
-
-        // Consultor/gestor num computador (não celular) usa o painel desktop,
-        // não a versão mobile do app de campo.
-        if (isConsultant && !isMobileViewport()) {
-          throw redirect({ to: "/dashboard" });
-        }
 
         // Se for consultor e tentar acessar a raiz do campo, manda pro app dele
-        if (isConsultant && !isConsultantPath && location.pathname === "/campo") {
+        // (funciona tanto no celular quanto no computador — o layout se adapta).
+        if (isConsultant && location.pathname === "/campo") {
           throw redirect({ to: "/campo/consultor" });
         }
       }
@@ -127,6 +121,7 @@ function readCheckin(): { farmId?: string; at: number } | null {
 function FieldShell() {
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile() ?? true;
   const [me, setMe] = useState<FieldMe | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [online, setOnline] = useState(true);
@@ -215,9 +210,9 @@ function FieldShell() {
     const GpsIcon = gpsBadge.icon;
     const isConsultantRoute = location.pathname.includes("/consultor");
     return (
-      <div className="min-h-screen bg-background text-foreground pb-24">
+      <div className={`min-h-screen bg-background text-foreground ${isMobile ? "pb-24" : "pb-10"}`}>
         <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
-          <div className="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3">
+          <div className={`mx-auto flex items-center justify-between gap-3 px-4 py-3 ${isMobile ? "max-w-lg" : "max-w-5xl"}`}>
             <div className="flex min-w-0 items-center gap-3">
               <img src={vertexLogo} alt="Vertex" className="h-9 w-9 shrink-0" />
               <div className="min-w-0">
@@ -265,7 +260,9 @@ function FieldShell() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-lg px-4 py-4">
+        {!isMobile && !isConsultantRoute && <FieldDesktopNav role={role} />}
+
+        <main className={`mx-auto px-4 py-4 ${isMobile ? "max-w-lg" : "max-w-2xl"}`}>
           {checkin || isConsultantRoute ? (
             <Outlet />
           ) : (
@@ -277,7 +274,7 @@ function FieldShell() {
           )}
         </main>
 
-        {!isConsultantRoute && <FieldBottomNav role={role} />}
+        {isMobile && !isConsultantRoute && <FieldBottomNav role={role} />}
       </div>
     );
   })();

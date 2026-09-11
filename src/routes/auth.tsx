@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { hasAuthTokens, login } from "@/lib/api";
 import { getFieldMe } from "@/lib/field.functions";
-import { isMobileViewport } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,13 +28,12 @@ async function routeAfterLogin(navigate: ReturnType<typeof useNavigate>) {
     const isMonitor = me.primaryRole === "monitor";
     const isAdmin = !!me.isAdmin;
     
-    // Monitor/sangrador sempre vão para o app de campo (mobile), independente
-    // do dispositivo. Consultor/gestor vê a versão mobile no celular e o
-    // painel administrativo desktop no computador — nunca travado por papel.
+    // Monitor/sangrador e consultor sempre vão para o app de campo — a tela se
+    // adapta sozinha entre a versão mobile (celular) e a desktop (computador).
     if (isMonitor && !isAdmin) {
       navigate({ to: "/campo", replace: true });
     } else if (isConsultant && !isAdmin) {
-      navigate({ to: isMobileViewport() ? "/campo/consultor" : "/dashboard", replace: true });
+      navigate({ to: "/campo/consultor", replace: true });
     } else {
       navigate({ to: "/dashboard", replace: true });
     }

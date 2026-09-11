@@ -1,9 +1,13 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, History, Home, MoreHorizontal, Plus } from "lucide-react";
+import { CalendarDays, ChevronDown, History, Home, MoreHorizontal, Plus } from "lucide-react";
 import { useState } from "react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 type Item = { to: string; label: string; icon: any };
 
@@ -15,7 +19,7 @@ const TABS: Item[] = [
   { to: "/campo/mais", label: "Mais", icon: MoreHorizontal },
 ];
 
-const OPERATIONS = [
+export const OPERATIONS = [
   { to: "/campo/sangrador", label: "Pré-cadastrar sangrador", emoji: "🧑‍🌾", roles: ["consultor", "admin"] },
   { to: "/campo/monitor-pre-cadastro", label: "Pré-cadastrar monitor", emoji: "🧑‍💼", roles: ["consultor", "admin"] },
   { to: "/campo/operador-pre-cadastro", label: "Pré-cadastrar operador", emoji: "🚜", roles: ["consultor", "admin"] },
@@ -95,6 +99,61 @@ export function FieldBottomNav({ role }: { role: string }) {
           );
         })}
       </ul>
+    </nav>
+  );
+}
+
+const DESKTOP_TABS = TABS.filter((it) => it.to !== "__fab__");
+
+export function FieldDesktopNav({ role }: { role: string }) {
+  const location = useLocation();
+  const pathname = location.pathname;
+  const navigate = useNavigate();
+  const operations = OPERATIONS.filter((op) => !op.roles || op.roles.includes(role));
+
+  return (
+    <nav className="border-b border-border/60 bg-card/60">
+      <div className="mx-auto flex max-w-5xl items-center gap-1 px-4">
+        {DESKTOP_TABS.map((it) => {
+          const to = it.to === "/campo" && role === "consultor" ? "/campo/consultor" : it.to;
+          const active = pathname === to || (to !== "/campo" && pathname.startsWith(to));
+          const Icon = it.icon;
+          return (
+            <Link
+              key={it.to}
+              to={to as any}
+              className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+                active
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {it.label}
+            </Link>
+          );
+        })}
+
+        {operations.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="ml-auto gap-1 text-sm font-medium">
+                <Plus className="h-4 w-4" />
+                Nova operação
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              {operations.map((op) => (
+                <DropdownMenuItem key={op.to} onClick={() => navigate({ to: op.to as any })} className="gap-2">
+                  <span className="text-base">{op.emoji}</span>
+                  {op.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
     </nav>
   );
 }
