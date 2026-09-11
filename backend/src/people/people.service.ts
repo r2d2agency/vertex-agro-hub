@@ -325,6 +325,9 @@ export class PeopleService {
       data: {
         email,
         ...(effectivePassword ? { passwordHash: await bcrypt.hash(effectivePassword, 10) } : {}),
+        // Senha gerada automaticamente é temporária: exige troca no próximo
+        // login. Senha definida manualmente pelo admin não força troca.
+        ...(generatedPassword ? { mustChangePassword: true } : dto.password ? { mustChangePassword: false } : {}),
         active: dto.active ?? true,
         deactivatedAt: dto.active === false ? new Date() : null,
         deactivationReason: dto.active === false ? 'Acesso desativado manualmente' : null,
@@ -357,7 +360,7 @@ export class PeopleService {
     }
     const password = this.generateTempPassword();
     const passwordHash = await bcrypt.hash(password, 10);
-    await this.prisma.user.update({ where: { id: targetUserId }, data: { passwordHash } });
+    await this.prisma.user.update({ where: { id: targetUserId }, data: { passwordHash, mustChangePassword: true } });
     // Invalida sessões existentes
     await this.prisma.refreshToken.deleteMany({ where: { userId: targetUserId } }).catch(() => undefined);
     return { email: target.email, fullName: target.fullName, password };

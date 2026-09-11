@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { hasAuthTokens, login } from "@/lib/api";
-import { getFieldMe } from "@/lib/field.functions";
+import { routeAfterAuth } from "@/lib/route-after-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,27 +21,6 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-async function routeAfterLogin(navigate: ReturnType<typeof useNavigate>) {
-  try {
-    const me = await getFieldMe();
-    const isConsultant = me.primaryRole === "consultor";
-    const isMonitor = me.primaryRole === "monitor";
-    const isAdmin = !!me.isAdmin;
-    
-    // Monitor/sangrador e consultor sempre vão para o app de campo — a tela se
-    // adapta sozinha entre a versão mobile (celular) e a desktop (computador).
-    if (isMonitor && !isAdmin) {
-      navigate({ to: "/campo", replace: true });
-    } else if (isConsultant && !isAdmin) {
-      navigate({ to: "/campo/consultor", replace: true });
-    } else {
-      navigate({ to: "/dashboard", replace: true });
-    }
-  } catch {
-    navigate({ to: "/campo", replace: true });
-  }
-}
-
 function AuthPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -60,7 +39,7 @@ function AuthPage() {
     };
   }, []);
 
-  useEffect(() => { if (hasAuthTokens()) void routeAfterLogin(navigate); }, [navigate]);
+  useEffect(() => { if (hasAuthTokens()) void routeAfterAuth(navigate); }, [navigate]);
 
 
   async function handleSignIn(e: React.FormEvent<HTMLFormElement>) {
@@ -70,7 +49,7 @@ function AuthPage() {
     try {
       await login(String(fd.get("email")), String(fd.get("password")));
       toast.success("Bem-vindo!");
-      await routeAfterLogin(navigate);
+      await routeAfterAuth(navigate);
     } catch (error) {
       toast.error("Erro ao entrar", { description: error instanceof Error ? error.message : "Tente novamente." });
     } finally {

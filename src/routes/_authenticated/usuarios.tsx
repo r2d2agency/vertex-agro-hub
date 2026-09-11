@@ -522,7 +522,7 @@ function CredentialsDialog({
         <DialogHeader>
           <DialogTitle>Credenciais de acesso</DialogTitle>
           <DialogDescription>
-            Copie e envie ao usuário. Esta senha temporária não será exibida novamente.
+            Copie e envie ao usuário. Esta senha temporária não será exibida novamente — ao entrar com ela, o sistema vai pedir pra definir uma senha nova antes de liberar o resto do acesso.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">

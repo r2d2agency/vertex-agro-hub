@@ -14,6 +14,7 @@ export type AuthUser = {
   fullName?: string | null;
   avatarUrl?: string | null;
   roles?: Array<{ role: string; companyId?: string | null }>;
+  mustChangePassword?: boolean;
 };
 
 function ensureApiUrl() {

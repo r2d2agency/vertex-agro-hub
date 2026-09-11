@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CampoRouteRouteImport } from './routes/campo/route'
 import { Route as ConsultorRouteImport } from './routes/consultor'
+import { Route as DefinirSenhaRouteImport } from './routes/definir-senha'
 import { Route as MonitorRouteImport } from './routes/monitor'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -119,6 +120,11 @@ const CampoRouteRoute = CampoRouteRouteImport.update({
 const ConsultorRoute = ConsultorRouteImport.update({
   id: '/consultor',
   path: '/consultor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DefinirSenhaRoute = DefinirSenhaRouteImport.update({
+  id: '/definir-senha',
+  path: '/definir-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MonitorRoute = MonitorRouteImport.update({
@@ -556,6 +562,7 @@ export interface FileRoutesByFullPath {
   '/campo': typeof CampoRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/consultor': typeof ConsultorRoute
+  '/definir-senha': typeof DefinirSenhaRoute
   '/monitor': typeof MonitorRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -643,6 +650,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/consultor': typeof ConsultorRoute
+  '/definir-senha': typeof DefinirSenhaRoute
   '/monitor': typeof MonitorRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -732,6 +740,7 @@ export interface FileRoutesById {
   '/campo': typeof CampoRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/consultor': typeof ConsultorRoute
+  '/definir-senha': typeof DefinirSenhaRoute
   '/monitor': typeof MonitorRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -822,6 +831,7 @@ export interface FileRouteTypes {
     | '/campo'
     | '/auth'
     | '/consultor'
+    | '/definir-senha'
     | '/monitor'
     | '/reset-password'
     | '/sitemap.xml'
@@ -909,6 +919,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/consultor'
+    | '/definir-senha'
     | '/monitor'
     | '/reset-password'
     | '/sitemap.xml'
@@ -997,6 +1008,7 @@ export interface FileRouteTypes {
     | '/campo'
     | '/auth'
     | '/consultor'
+    | '/definir-senha'
     | '/monitor'
     | '/reset-password'
     | '/sitemap.xml'
@@ -1087,6 +1099,7 @@ export interface RootRouteChildren {
   CampoRouteRoute: typeof CampoRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ConsultorRoute: typeof ConsultorRoute
+  DefinirSenhaRoute: typeof DefinirSenhaRoute
   MonitorRoute: typeof MonitorRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -1127,6 +1140,13 @@ declare module '@tanstack/react-router' {
       path: '/consultor'
       fullPath: '/consultor'
       preLoaderRoute: typeof ConsultorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/definir-senha': {
+      id: '/definir-senha'
+      path: '/definir-senha'
+      fullPath: '/definir-senha'
+      preLoaderRoute: typeof DefinirSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/monitor': {
@@ -1923,6 +1943,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampoRouteRoute: CampoRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ConsultorRoute: ConsultorRoute,
+  DefinirSenhaRoute: DefinirSenhaRoute,
   MonitorRoute: MonitorRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,

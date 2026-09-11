@@ -26,8 +26,8 @@ function PerfilPage() {
       toast.error("As senhas não coincidem");
       return;
     }
-    if (newPassword.length < 6) {
-      toast.error("A nova senha deve ter pelo menos 6 caracteres");
+    if (newPassword.length < 8) {
+      toast.error("A nova senha deve ter pelo menos 8 caracteres");
       return;
     }
 

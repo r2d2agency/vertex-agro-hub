@@ -139,7 +139,7 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(newPw, 10);
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash },
+      data: { passwordHash, mustChangePassword: false },
     });
     
     // Invalida outros tokens

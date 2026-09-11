@@ -34,6 +34,11 @@ export const Route = createFileRoute("/campo")({
       }
 
       if (me) {
+        // Senha temporária: bloqueia o resto do app até trocar.
+        if (me.user.mustChangePassword) {
+          throw redirect({ to: "/definir-senha" });
+        }
+
         const isConsultant = me.primaryRole === "consultor" && !me.isAdmin;
 
         // Se for consultor e tentar acessar a raiz do campo, manda pro app dele

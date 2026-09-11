@@ -6,11 +6,13 @@ export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
     if (!hasAuthTokens()) throw redirect({ to: "/auth" });
+    let me: Awaited<ReturnType<typeof getCurrentUser>>;
     try {
-      await getCurrentUser();
+      me = await getCurrentUser();
     } catch {
       throw redirect({ to: "/auth" });
     }
+    if (me.mustChangePassword) throw redirect({ to: "/definir-senha" });
   },
   component: () => (
     <AppShell>

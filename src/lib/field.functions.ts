@@ -5,7 +5,7 @@ import { idbGet, idbPut } from "@/lib/offline/idb";
 const FIELD_ME_CACHE_KEY = "field:me";
 
 export type FieldMe = {
-  user: { id: string; email: string; fullName?: string | null };
+  user: { id: string; email: string; fullName?: string | null; mustChangePassword?: boolean };
   roles: string[];
   primaryRole: string;
   isAdmin: boolean;

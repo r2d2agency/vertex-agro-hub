@@ -43,6 +43,7 @@ export class FieldService {
         id: true,
         email: true,
         fullName: true,
+        mustChangePassword: true,
         roles: { select: { role: true, companyId: true } },
         companyLinks: { where: { active: true }, select: { companyId: true } },
       },
@@ -87,7 +88,7 @@ export class FieldService {
       ? 'sangrador'
       : (roleStrings[0] ?? 'user');
     return {
-      user: { id: user.id, email: user.email, fullName: user.fullName },
+      user: { id: user.id, email: user.email, fullName: user.fullName, mustChangePassword: user.mustChangePassword },
       roles: roleNames,
       primaryRole,
       isAdmin,
