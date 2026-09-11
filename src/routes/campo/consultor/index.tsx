@@ -44,6 +44,7 @@ import {
 import { toast } from "sonner";
 import { getFieldMe, type FieldMe, type Coords, captureLocation, submitEvaluation } from "@/lib/field.functions";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
+import { MiniCalendar } from "@/components/vertex/field/mini-calendar";
 import {
   submitConsultation, getVisitStatus, justifyMissedVisit, getConsultorDashboard, listConsultations,
   type VisitStatus, type ConsultorDashboard, type ConsultationForm,
@@ -93,6 +94,9 @@ function ConsultorFormPage() {
   const [farmTasks, setFarmTasks] = useState<ScheduledTask[]>([]);
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [scheduleRepeat, setScheduleRepeat] = useState(false);
+  const [scheduleIntervalDays, setScheduleIntervalDays] = useState(15);
+  const [scheduleOccurrences, setScheduleOccurrences] = useState(4);
   const [scheduling, setScheduling] = useState(false);
 
   // Histórico (aba própria, com filtro de data)
@@ -104,6 +108,9 @@ function ConsultorFormPage() {
 
   // Agenda (aba própria — com ou sem fazenda selecionada)
   const [agendaPeriod, setAgendaPeriod] = useState<"hoje" | "semana" | "mes">("semana");
+  const [agendaView, setAgendaView] = useState<"lista" | "calendario">("lista");
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [calendarSelectedDate, setCalendarSelectedDate] = useState<string | null>(null);
   const [allFarmsTasks, setAllFarmsTasks] = useState<ScheduledTask[]>([]);
   const [allFarmsTasksLoading, setAllFarmsTasksLoading] = useState(false);
 
@@ -240,6 +247,18 @@ function ConsultorFormPage() {
     return { from: today, to: getLocalIsoDate(new Date(Date.now() + days * 86400000)) };
   }, [agendaPeriod]);
 
+  const calendarRange = useMemo(() => {
+    const y = calendarMonth.getFullYear();
+    const m = calendarMonth.getMonth();
+    return {
+      from: getLocalIsoDate(new Date(y, m, 1)),
+      to: getLocalIsoDate(new Date(y, m + 1, 0)),
+    };
+  }, [calendarMonth]);
+
+  // Na visão calendário, busca o mês exibido; na lista, o período Hoje/Semana/Mês escolhido.
+  const effectiveAgendaRange = agendaView === "calendario" ? calendarRange : agendaRange;
+
   // Agenda sem fazenda selecionada — junta as tarefas de todas as fazendas do consultor.
   useEffect(() => {
     const companyId = me?.companies?.[0]?.id;
@@ -248,12 +267,31 @@ function ConsultorFormPage() {
     setAllFarmsTasksLoading(true);
     Promise.all(
       farms.map((a) =>
-        listTasks(companyId, { farmId: a.farm.id, from: agendaRange.from, to: agendaRange.to }).catch(() => [] as ScheduledTask[]),
+        listTasks(companyId, { farmId: a.farm.id, from: effectiveAgendaRange.from, to: effectiveAgendaRange.to }).catch(() => [] as ScheduledTask[]),
       ),
     )
       .then((lists) => setAllFarmsTasks(lists.flat()))
       .finally(() => setAllFarmsTasksLoading(false));
-  }, [tab, selectedFarmId, agendaRange.from, agendaRange.to, me]);
+  }, [tab, selectedFarmId, effectiveAgendaRange.from, effectiveAgendaRange.to, me]);
+
+  // Verifica se já existe outra visita marcada no mesmo dia+horário, em
+  // qualquer fazenda do consultor (ele só pode estar num lugar por vez).
+  async function findScheduleConflict(scheduledAtIso: string) {
+    const farms = me?.assignments ?? [];
+    const day = scheduledAtIso.slice(0, 10);
+    const lists = await Promise.all(
+      farms.map((a) =>
+        listTasks(a.farm.companyId, { farmId: a.farm.id, from: day, to: day }).catch(() => [] as ScheduledTask[]),
+      ),
+    );
+    const target = new Date(scheduledAtIso).getTime();
+    const hit = lists.flat().find(
+      (t) => t.category === "visita" && t.status !== "cancelada" && new Date(t.scheduledAt).getTime() === target,
+    );
+    if (!hit) return null;
+    const farmName = farms.find((a) => a.farm.id === hit.farmId)?.farm.name ?? "outra fazenda";
+    return { task: hit, farmName };
+  }
 
   // Ficha do colaborador — avaliações + atividade recente (sangria/check-in), casada pelo nome.
   useEffect(() => {
@@ -332,20 +370,44 @@ function ConsultorFormPage() {
       || me?.companies?.[0]?.id;
     if (!selectedFarmId || !companyId) { toast.error("Selecione uma fazenda"); return; }
     if (!scheduleDate) { toast.error("Escolha a data da visita"); return; }
+    if (!scheduleTime) { toast.error("Escolha o horário da visita"); return; }
+
+    const occurrences = scheduleRepeat ? Math.max(1, Math.min(52, scheduleOccurrences)) : 1;
+    const intervalDays = Math.max(1, scheduleIntervalDays);
+    const baseDate = new Date(`${scheduleDate}T${scheduleTime}:00`);
+    const dates = Array.from({ length: occurrences }, (_, i) => {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() + i * intervalDays);
+      return d.toISOString();
+    });
+
     setScheduling(true);
     try {
-      const scheduledAt = new Date(`${scheduleDate}T${scheduleTime || "09:00"}:00`).toISOString();
-      await createTask(companyId, {
-        farmId: selectedFarmId,
-        title: "Visita técnica",
-        category: "visita",
-        priority: "media",
-        status: "planejada",
-        scheduledAt,
-        responsible: me?.user.fullName ?? undefined,
-      });
-      toast.success("Visita agendada");
+      for (const iso of dates) {
+        const conflict = await findScheduleConflict(iso);
+        if (conflict) {
+          toast.error(
+            `Conflito de agenda: já existe uma visita marcada para ${new Date(iso).toLocaleString("pt-BR", {
+              day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+            })} (${conflict.farmName}). Nada foi agendado.`,
+          );
+          return;
+        }
+      }
+      for (const iso of dates) {
+        await createTask(companyId, {
+          farmId: selectedFarmId,
+          title: "Visita técnica",
+          category: "visita",
+          priority: "media",
+          status: "planejada",
+          scheduledAt: iso,
+          responsible: me?.user.fullName ?? undefined,
+        });
+      }
+      toast.success(occurrences > 1 ? `${occurrences} visitas agendadas` : "Visita agendada");
       setScheduleDate("");
+      setScheduleRepeat(false);
       const tasks = await listTasks(companyId, { farmId: selectedFarmId }).catch(() => [] as ScheduledTask[]);
       setFarmTasks(tasks);
     } catch (e) {
@@ -751,6 +813,27 @@ function ConsultorFormPage() {
   };
 
   const renderAgenda = () => {
+    const viewToggle = (
+      <div className="flex gap-2">
+        {([
+          { value: "lista", label: "Lista" },
+          { value: "calendario", label: "Calendário" },
+        ] as const).map((v) => (
+          <button
+            key={v.value}
+            onClick={() => setAgendaView(v.value)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              agendaView === v.value
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border/60 bg-background text-muted-foreground"
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+    );
+
     const periodTabs = (
       <div className="flex gap-2">
         {([
@@ -795,89 +878,150 @@ function ConsultorFormPage() {
       </li>
     );
 
-    if (!selectedFarmId || !selectedFarm) {
-      const sorted = [...allFarmsTasks].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
-      return (
-        <div className="space-y-6">
-          <h1 className="text-xl font-bold">Agenda — todas as fazendas</h1>
-          {periodTabs}
+    const noFarm = !selectedFarmId || !selectedFarm;
+    const sourceTasks = noFarm ? allFarmsTasks : farmTasks;
+    const sourceLoading = noFarm ? allFarmsTasksLoading : farmDetailLoading;
 
-          <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
-            <div className="flex items-center gap-2 font-semibold text-primary">
-              <CalendarClock className="h-4 w-4" />
-              <h2 className="text-sm">Tarefas e visitas agendadas</h2>
-            </div>
-            {allFarmsTasksLoading ? (
-              <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-            ) : sorted.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Nenhuma tarefa agendada nesse período.</p>
-            ) : (
-              <ul className="space-y-2">
-                {sorted.map((t) => taskItem(t, me.assignments.find((a) => a.farm.id === t.farmId)?.farm.name))}
-              </ul>
-            )}
-          </section>
+    const listTasksSorted = [...sourceTasks]
+      .filter((t) => noFarm || (t.scheduledAt.slice(0, 10) >= agendaRange.from && t.scheduledAt.slice(0, 10) <= agendaRange.to))
+      .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
 
+    const monthTasks = sourceTasks.filter(
+      (t) => t.category === "visita" && t.status !== "cancelada"
+        && t.scheduledAt.slice(0, 10) >= calendarRange.from && t.scheduledAt.slice(0, 10) <= calendarRange.to,
+    );
+    const countsByDate = new Map<string, number>();
+    for (const t of monthTasks) {
+      const d = t.scheduledAt.slice(0, 10);
+      countsByDate.set(d, (countsByDate.get(d) ?? 0) + 1);
+    }
+    const dayTasks = calendarSelectedDate
+      ? sourceTasks.filter((t) => t.scheduledAt.slice(0, 10) === calendarSelectedDate).sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
+      : [];
+
+    const farmNameFor = (t: ScheduledTask) => (noFarm ? me.assignments.find((a) => a.farm.id === t.farmId)?.farm.name : undefined);
+
+    return (
+      <div className="space-y-6 pb-10">
+        {noFarm ? <h1 className="text-xl font-bold">Agenda — todas as fazendas</h1> : (
+          <>
+            <FarmSwitcherBar />
+            <h1 className="text-xl font-bold">Agenda</h1>
+          </>
+        )}
+        {viewToggle}
+
+        {agendaView === "lista" ? (
+          <>
+            {periodTabs}
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <CalendarClock className="h-4 w-4" />
+                <h2 className="text-sm">Tarefas e visitas agendadas</h2>
+              </div>
+              {sourceLoading ? (
+                <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+              ) : listTasksSorted.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhuma tarefa agendada para esse período.</p>
+              ) : (
+                <ul className="space-y-2">{listTasksSorted.map((t) => taskItem(t, farmNameFor(t)))}</ul>
+              )}
+            </section>
+          </>
+        ) : (
+          <>
+            <MiniCalendar
+              month={calendarMonth}
+              onMonthChange={(m) => { setCalendarMonth(m); setCalendarSelectedDate(null); }}
+              countsByDate={countsByDate}
+              selectedDate={calendarSelectedDate}
+              onSelectDate={setCalendarSelectedDate}
+            />
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+              <h2 className="text-sm font-semibold">
+                {calendarSelectedDate
+                  ? new Date(`${calendarSelectedDate}T00:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })
+                  : "Selecione um dia no calendário"}
+              </h2>
+              {sourceLoading ? (
+                <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+              ) : !calendarSelectedDate ? (
+                <p className="text-xs text-muted-foreground">Os dias com bolinha têm visita marcada.</p>
+              ) : dayTasks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nada agendado nesse dia.</p>
+              ) : (
+                <ul className="space-y-2">{dayTasks.map((t) => taskItem(t, farmNameFor(t)))}</ul>
+              )}
+            </section>
+          </>
+        )}
+
+        {noFarm ? (
           <section>
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
               Selecione uma fazenda para agendar uma visita
             </h2>
             <FarmPickerList />
           </section>
-        </div>
-      );
-    }
-
-    const sortedTasks = [...farmTasks]
-      .filter((t) => t.scheduledAt.slice(0, 10) >= agendaRange.from && t.scheduledAt.slice(0, 10) <= agendaRange.to)
-      .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
-
-    return (
-      <div className="space-y-6 pb-10">
-        <FarmSwitcherBar />
-        <h1 className="text-xl font-bold">Agenda</h1>
-        {periodTabs}
-
-        {farmDetailLoading ? (
-          <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
-          <>
-            <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
-              <div className="flex items-center gap-2 font-semibold text-primary">
-                <CalendarClock className="h-4 w-4" />
-                <h2 className="text-sm">Tarefas e visitas agendadas</h2>
-              </div>
-              {sortedTasks.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma tarefa agendada para esse período nesta fazenda.</p>
-              ) : (
-                <ul className="space-y-2">{sortedTasks.map((t) => taskItem(t))}</ul>
-              )}
-            </section>
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+            <div className="flex items-center gap-2 font-semibold text-primary">
+              <Calendar className="h-4 w-4" />
+              <h2 className="text-sm">Agendar visita técnica</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                className="flex-1 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+                value={scheduleDate}
+                onChange={(e) => setScheduleDate(e.target.value)}
+              />
+              <input
+                type="time"
+                className="w-24 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+                value={scheduleTime}
+                onChange={(e) => setScheduleTime(e.target.value)}
+              />
+            </div>
 
-            <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
-              <div className="flex items-center gap-2 font-semibold text-primary">
-                <Calendar className="h-4 w-4" />
-                <h2 className="text-sm">Agendar visita técnica</h2>
-              </div>
-              <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={scheduleRepeat}
+                onChange={(e) => setScheduleRepeat(e.target.checked)}
+                className="h-4 w-4 rounded border-border/60"
+              />
+              Repetir esta visita
+            </label>
+
+            {scheduleRepeat && (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">A cada</span>
                 <input
-                  type="date"
-                  className="flex-1 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
-                  value={scheduleDate}
-                  onChange={(e) => setScheduleDate(e.target.value)}
+                  type="number"
+                  min={1}
+                  className="w-16 rounded-xl border border-border/60 bg-background px-2 py-2 text-center"
+                  value={scheduleIntervalDays}
+                  onChange={(e) => setScheduleIntervalDays(Math.max(1, Number(e.target.value) || 1))}
                 />
+                <span className="text-muted-foreground">dias, por</span>
                 <input
-                  type="time"
-                  className="w-24 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
-                  value={scheduleTime}
-                  onChange={(e) => setScheduleTime(e.target.value)}
+                  type="number"
+                  min={1}
+                  max={52}
+                  className="w-16 rounded-xl border border-border/60 bg-background px-2 py-2 text-center"
+                  value={scheduleOccurrences}
+                  onChange={(e) => setScheduleOccurrences(Math.max(1, Number(e.target.value) || 1))}
                 />
-                <Button size="sm" onClick={scheduleVisit} disabled={scheduling}>
-                  {scheduling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Agendar"}
-                </Button>
+                <span className="text-muted-foreground">vezes</span>
               </div>
-            </section>
-          </>
+            )}
+
+            <Button size="sm" className="w-full" onClick={scheduleVisit} disabled={scheduling}>
+              {scheduling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {scheduleRepeat ? "Agendar visitas" : "Agendar"}
+            </Button>
+          </section>
         )}
       </div>
     );
@@ -1422,6 +1566,9 @@ function ConsultorFormPage() {
           companyId={selectedFarm?.companyId || me.companies?.[0]?.id || ""}
           farmId={selectedFarmId}
           farmName={selectedFarm?.name}
+          farmLat={selectedFarm?.latitude}
+          farmLng={selectedFarm?.longitude}
+          checkinRadiusM={selectedFarm?.checkinRadiusM}
           taskId={checkinTaskId}
           coords={checkinCoords}
           onDone={onCheckinDone}

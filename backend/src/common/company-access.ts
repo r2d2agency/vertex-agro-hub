@@ -17,7 +17,21 @@ export class CompanyAccess {
     const member = await this.prisma.userCompany.findFirst({
       where: { userId, companyId, active: true },
     });
-    if (!member) throw new ForbiddenException('Sem acesso à empresa');
+    if (member) return;
+
+    // getFieldMe() lista as fazendas do usuário a partir só de FarmAssignment,
+    // sem exigir UserCompany — então quem tem um vínculo ativo de fazenda
+    // numa empresa (consultor, monitor, sangrador, operador) já enxerga essa
+    // fazenda no app de campo. Sem essa checagem aqui, ações nessa mesma
+    // fazenda (agenda, ocorrências etc.) eram bloqueadas por falta de
+    // UserCompany, mesmo a fazenda aparecendo normalmente pro usuário —
+    // sintoma: funciona numa fazenda e não em outra, sem erro visível.
+    const farmLink = await this.prisma.farmAssignment.findFirst({
+      where: { userId, companyId, OR: [{ endAt: null }, { endAt: { gte: new Date() } }] },
+    });
+    if (farmLink) return;
+
+    throw new ForbiddenException('Sem acesso à empresa');
   }
 
   async accessibleCompanyIds(userId: string): Promise<string[] | 'all'> {

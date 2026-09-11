@@ -67,6 +67,7 @@ export class FieldService {
         farm: {
           select: {
             id: true, name: true, companyId: true, city: true, state: true, latitude: true, longitude: true,
+            checkinRadiusM: true,
             plots: {
               where: { isDeleted: false },
               select: { id: true, name: true, treeCount: true, tappingSystem: true },

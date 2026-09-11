@@ -23,6 +23,7 @@ export type FieldMe = {
       state?: string | null;
       latitude?: number | null;
       longitude?: number | null;
+      checkinRadiusM?: number | null;
       photoUrls: string[];
       plots: Array<{ id: string; name: string; treeCount?: number | null; tappingSystem?: string | null }>;
     };

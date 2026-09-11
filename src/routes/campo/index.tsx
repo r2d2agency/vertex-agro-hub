@@ -273,6 +273,9 @@ function FieldHome() {
         companyId={me.companies?.[0]?.id || ""}
         farmId={activeCheckin?.farmId}
         farmName={farmName(activeCheckin?.farmId)}
+        farmLat={(me.assignments || []).find((a) => a.farm.id === activeCheckin?.farmId)?.farm.latitude}
+        farmLng={(me.assignments || []).find((a) => a.farm.id === activeCheckin?.farmId)?.farm.longitude}
+        checkinRadiusM={(me.assignments || []).find((a) => a.farm.id === activeCheckin?.farmId)?.farm.checkinRadiusM}
         plotId={activeCheckin?.plotId}
         coords={checkinCoords}
         onDone={(stamp) => setActiveCheckin(stamp)}

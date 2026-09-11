@@ -370,6 +370,9 @@ function CheckinGate({
           companyId={companyId}
           farmId={farmId || undefined}
           farmName={farm?.name}
+          farmLat={farm?.latitude}
+          farmLng={farm?.longitude}
+          checkinRadiusM={farm?.checkinRadiusM}
           plotId={plotId || undefined}
           coords={gpsReady ? gps.coords : null}
           onDone={onDone}

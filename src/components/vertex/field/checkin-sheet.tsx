@@ -1,10 +1,13 @@
-import { useState } from "react";
-import { Camera, Loader2, MapPin } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Camera, Loader2, MapPin, MapPinOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { uploadFile } from "@/lib/api";
 import { submitCheckin, type Coords } from "@/lib/field.functions";
+import { distanceMeters } from "@/lib/geo";
+
+const DEFAULT_RADIUS_M = 200;
 
 export function CheckinSheet({
   open,
@@ -12,6 +15,9 @@ export function CheckinSheet({
   companyId,
   farmId,
   farmName,
+  farmLat,
+  farmLng,
+  checkinRadiusM,
   plotId,
   taskId,
   coords,
@@ -22,6 +28,9 @@ export function CheckinSheet({
   companyId: string;
   farmId?: string;
   farmName?: string;
+  farmLat?: number | null;
+  farmLng?: number | null;
+  checkinRadiusM?: number | null;
   plotId?: string;
   taskId?: string;
   coords: Coords | null;
@@ -30,6 +39,13 @@ export function CheckinSheet({
   const [photoUrl, setPhotoUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const radius = checkinRadiusM ?? DEFAULT_RADIUS_M;
+  const distance = useMemo(() => {
+    if (!coords || farmLat == null || farmLng == null) return null;
+    return distanceMeters(coords.latitude, coords.longitude, farmLat, farmLng);
+  }, [coords, farmLat, farmLng]);
+  const outOfRange = distance != null && distance > radius;
 
   async function onPick(f: File | null) {
     if (!f) return;
@@ -46,6 +62,10 @@ export function CheckinSheet({
 
   async function confirm() {
     if (!coords) { toast.error("GPS não detectado"); return; }
+    if (outOfRange) {
+      toast.error(`Você está a ${Math.round(distance!)}m da fazenda. Aproxime-se para fazer o check-in.`);
+      return;
+    }
     if (!photoUrl) { toast.error("Tire uma foto da propriedade"); return; }
     setSaving(true);
     try {
@@ -82,12 +102,31 @@ export function CheckinSheet({
         <div className="mt-4 space-y-4 pb-6">
           <div
             className={`flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
-              coords ? "border-primary/40 bg-primary/10 text-primary" : "border-muted-foreground/30 bg-muted text-muted-foreground"
+              !coords
+                ? "border-muted-foreground/30 bg-muted text-muted-foreground"
+                : outOfRange
+                ? "border-destructive/40 bg-destructive/10 text-destructive"
+                : "border-primary/40 bg-primary/10 text-primary"
             }`}
           >
-            <MapPin className="h-3.5 w-3.5" />
-            {coords ? `GPS ativo${coords.accuracyM ? ` · ${Math.round(coords.accuracyM)}m` : ""}` : "Obtendo localização…"}
+            {!coords ? <MapPin className="h-3.5 w-3.5" /> : outOfRange ? <MapPinOff className="h-3.5 w-3.5" /> : <MapPin className="h-3.5 w-3.5" />}
+            {!coords
+              ? "Obtendo localização…"
+              : `GPS ativo${coords.accuracyM ? ` · ${Math.round(coords.accuracyM)}m` : ""}`}
           </div>
+
+          {coords && distance != null && (
+            outOfRange ? (
+              <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                Você está a <strong>{Math.round(distance)}m</strong> da fazenda{farmName ? ` ${farmName}` : ""}.
+                Aproxime-se para fazer o check-in (raio liberado: {radius}m).
+              </div>
+            ) : (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm text-primary">
+                Você está dentro da área de check-in ({Math.round(distance)}m da fazenda, raio de {radius}m).
+              </div>
+            )
+          )}
 
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Foto da propriedade *</label>
@@ -111,7 +150,7 @@ export function CheckinSheet({
           <Button
             className="h-12 w-full rounded-xl text-base font-semibold"
             onClick={confirm}
-            disabled={saving || uploading || !coords || !photoUrl}
+            disabled={saving || uploading || !coords || !photoUrl || outOfRange}
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Confirmar check-in
           </Button>
