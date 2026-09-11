@@ -1,4 +1,4 @@
-import { IsDateString, IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsDateString, IsIn, IsObject, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 const OCC_TYPES = ['praga', 'doenca', 'clima', 'equipamento', 'seguranca', 'processo', 'checkin', 'outro'] as const;
 const SEVERITIES = ['baixa', 'media', 'alta', 'critica'] as const;
@@ -45,6 +45,7 @@ export class CreateTaskDto {
   @IsDateString() scheduledAt!: string;
   @IsOptional() @IsDateString() dueAt?: string;
   @IsOptional() @IsString() responsible?: string;
+  @IsOptional() @IsObject() meta?: Record<string, any>;
 }
 export class UpdateTaskDto {
   @IsOptional() @IsUUID() farmId?: string;
@@ -58,4 +59,5 @@ export class UpdateTaskDto {
   @IsOptional() @IsDateString() scheduledAt?: string;
   @IsOptional() @IsDateString() dueAt?: string;
   @IsOptional() @IsString() responsible?: string;
+  @IsOptional() @IsObject() meta?: Record<string, any>;
 }

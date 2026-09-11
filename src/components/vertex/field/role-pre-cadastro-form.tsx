@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Camera, Clock3, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { getFieldMe, type FieldMe } from "@/lib/field.functions";
+import { getFieldMe, listFieldTappingTables, type FieldMe, type FieldTappingTable } from "@/lib/field.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,9 +20,15 @@ type Form = {
   phone: string;
   contractType: string;
   dailyRate: string;
+  treesAssigned: string;
+  taskPercent: string;
+  tappingTableId: string;
 };
 
-const EMPTY_FORM: Form = { fullName: "", rg: "", phone: "", contractType: "", dailyRate: "" };
+const EMPTY_FORM: Form = {
+  fullName: "", rg: "", phone: "", contractType: "", dailyRate: "",
+  treesAssigned: "", taskPercent: "", tappingTableId: "",
+};
 
 const STATUS_LABEL: Record<string, string> = { pending: "Pendente", approved: "Aprovado", rejected: "Arquivado" };
 const STATUS_CLASS: Record<string, string> = {
@@ -52,6 +58,7 @@ export function RolePreCadastroForm({
   const [uploadingBack, setUploadingBack] = useState(false);
   const [saving, setSaving] = useState(false);
   const [myPreRegistrations, setMyPreRegistrations] = useState<TapperPreRegistration[]>([]);
+  const [tables, setTables] = useState<FieldTappingTable[]>([]);
 
   useEffect(() => {
     getFieldMe().then((m) => {
@@ -69,6 +76,12 @@ export function RolePreCadastroForm({
     listTapperPreRegistrations(farm.companyId, { role, status: "" })
       .then(setMyPreRegistrations)
       .catch(() => setMyPreRegistrations([]));
+  }, [farm?.companyId, role]);
+
+  // Sistema de sangria (tabela) só faz sentido pro pré-cadastro de sangrador.
+  useEffect(() => {
+    if (!farm?.companyId || role !== "sangrador") { setTables([]); return; }
+    listFieldTappingTables(farm.companyId).then(setTables).catch(() => setTables([]));
   }, [farm?.companyId, role]);
   const set = (k: keyof Form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -112,6 +125,9 @@ export function RolePreCadastroForm({
         phone: form.phone || null,
         contractType: form.contractType || null,
         dailyRate: form.dailyRate ? Number(form.dailyRate) : null,
+        treesAssigned: form.treesAssigned ? Number(form.treesAssigned) : null,
+        taskPercent: form.taskPercent ? Number(form.taskPercent) : null,
+        tappingTableId: form.tappingTableId || null,
         rgPhotoUrl: docFrontUrl,
         cpfPhotoUrl: docBackUrl,
       });
@@ -202,6 +218,27 @@ export function RolePreCadastroForm({
             </F>
           </div>
 
+          {role === "sangrador" && (
+            <>
+              <F label="Sistema de sangria">
+                <Select value={form.tappingTableId} onValueChange={(v) => set("tappingTableId", v)}>
+                  <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder={tables.length ? "Selecione a tabela" : "Nenhuma tabela cadastrada"} /></SelectTrigger>
+                  <SelectContent>
+                    {tables.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </F>
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Número de plantas">
+                  <Input className="h-11 rounded-xl" inputMode="numeric" value={form.treesAssigned} onChange={(e) => set("treesAssigned", e.target.value)} />
+                </F>
+                <F label="% da tarefa">
+                  <Input className="h-11 rounded-xl" inputMode="decimal" value={form.taskPercent} onChange={(e) => set("taskPercent", e.target.value)} />
+                </F>
+              </div>
+            </>
+          )}
+
           <p className="pt-2 text-xs font-semibold uppercase text-muted-foreground">Documento (RG ou CNH) — obrigatório</p>
           <div className="grid grid-cols-2 gap-3">
             <F label="Frente *">
@@ -242,6 +279,13 @@ export function RolePreCadastroForm({
             <Row label="WhatsApp" value={form.phone || "—"} />
             <Row label="Contratação" value={form.contractType || "—"} />
             <Row label="Salário / Diária" value={form.dailyRate ? `R$ ${form.dailyRate}` : "—"} />
+            {role === "sangrador" && (
+              <>
+                <Row label="Sistema de sangria" value={tables.find((t) => t.id === form.tappingTableId)?.name ?? "—"} />
+                <Row label="Número de plantas" value={form.treesAssigned || "—"} />
+                <Row label="% da tarefa" value={form.taskPercent ? `${form.taskPercent}%` : "—"} />
+              </>
+            )}
             <Row label="Fazenda" value={farm?.name ?? "—"} />
             <Row label="Documento" value={docFrontUrl && docBackUrl ? "Frente e verso anexados" : "Pendente"} />
           </dl>

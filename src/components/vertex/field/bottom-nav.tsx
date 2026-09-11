@@ -26,7 +26,7 @@ export const OPERATIONS = [
   { to: "/campo/consultor", label: "Visita técnica (Consultoria)", emoji: "📋", roles: ["consultor", "admin"] },
   { to: "/campo/sangria", label: "Registrar sangria", emoji: "💧", roles: ["monitor", "admin"] },
   { to: "/campo/producao", label: "Registrar produção", emoji: "📦", roles: ["admin"] },
-  { to: "/campo/estimulacao", label: "Registrar estimulação", emoji: "🧪", roles: ["monitor", "admin"] },
+  { to: "/campo/estimulacao", label: "Registrar estimulação", emoji: "🧪", roles: ["admin"] },
   { to: "/campo/ocorrencia", label: "Registrar ocorrência", emoji: "⚠️" },
   { to: "/campo/operacao-maquina", label: "Apontar operação de máquina", emoji: "🚜" },
   { to: "/campo/abastecimento", label: "Abastecer máquina", emoji: "⛽" },

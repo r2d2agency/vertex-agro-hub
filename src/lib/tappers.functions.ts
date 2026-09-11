@@ -160,6 +160,7 @@ export type TapperPreRegistration = {
   dailyRate: number | null;
   treesAssigned: number | null;
   taskPercent: number | null;
+  tappingTableId: string | null;
   rgPhotoUrl: string | null;
   cpfPhotoUrl: string | null;
   notes: string | null;
@@ -211,6 +212,7 @@ export function createTapperPreRegistration(input: {
   dailyRate?: number | null;
   treesAssigned?: number | null;
   taskPercent?: number | null;
+  tappingTableId?: string | null;
   rgPhotoUrl: string;
   cpfPhotoUrl: string;
   notes?: string | null;

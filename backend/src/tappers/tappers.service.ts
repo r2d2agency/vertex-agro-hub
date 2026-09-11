@@ -398,6 +398,7 @@ export class TappersService {
       dailyRate?: number;
       treesAssigned?: number;
       taskPercent?: number;
+      tappingTableId?: string;
       rgPhotoUrl: string;
       cpfPhotoUrl: string;
       notes?: string;
@@ -451,6 +452,7 @@ export class TappersService {
         dailyRate: dto.dailyRate ?? null,
         treesAssigned: dto.treesAssigned ?? null,
         taskPercent: dto.taskPercent ?? null,
+        tappingTableId: dto.tappingTableId ?? null,
         rgPhotoUrl: dto.rgPhotoUrl,
         cpfPhotoUrl: dto.cpfPhotoUrl,
         notes: dto.notes ?? null,
@@ -513,6 +515,23 @@ export class TappersService {
         reviewedAt: new Date(),
       },
     });
+
+    // Se o sangrador informou o sistema de sangria (tabela) no pré-cadastro,
+    // já cria o vínculo com a quantidade de árvores ao aprovar — evita o RH
+    // ou o monitor terem que refazer esse passo manualmente depois.
+    if (dto.status === 'approved' && dto.personId && current.role === 'sangrador' && current.tappingTableId) {
+      await this.prisma.tapperTableLink.upsert({
+        where: { userId_tappingTableId: { userId: dto.personId, tappingTableId: current.tappingTableId } },
+        update: { active: true, treeCount: current.treesAssigned ?? undefined },
+        create: {
+          companyId: dto.companyId,
+          userId: dto.personId,
+          tappingTableId: current.tappingTableId,
+          treeCount: current.treesAssigned,
+          createdById: userId,
+        },
+      }).catch(() => undefined);
+    }
 
     await this.prisma.alertEvent.create({
       data: {

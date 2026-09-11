@@ -76,6 +76,7 @@ export class CreateTapperPreRegistrationDto {
   @IsOptional() @IsNumber() dailyRate?: number;
   @IsOptional() @IsInt() @Min(0) treesAssigned?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) taskPercent?: number;
+  @IsOptional() @IsUUID() tappingTableId?: string;
   @IsString() @MinLength(1) rgPhotoUrl!: string;
   @IsString() @MinLength(1) cpfPhotoUrl!: string;
   @IsOptional() @IsString() notes?: string;

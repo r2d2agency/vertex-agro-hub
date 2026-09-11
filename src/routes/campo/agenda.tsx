@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
-import { getFieldMe, type FieldMe, captureLocation, submitCheckin } from "@/lib/field.functions";
-import { listTasks, type ScheduledTask } from "@/lib/agenda.functions";
+import { Camera, CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
+import { getFieldMe, captureLocation, submitCheckin, submitStimulation, type FieldMe } from "@/lib/field.functions";
+import { listTasks, updateTask, type ScheduledTask, type StimulationTaskMeta } from "@/lib/agenda.functions";
+import { uploadFile } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { getLocalIsoDate } from "@/lib/date-utils";
 import { toast } from "sonner";
 
@@ -25,6 +30,15 @@ function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>("hoje");
+
+  // Confirmação de execução de estimulação agendada (monitor só confirma —
+  // não escolhe os parâmetros, que vêm de t.meta definidos pelo consultor).
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [confirmTrees, setConfirmTrees] = useState("");
+  const [confirmNotes, setConfirmNotes] = useState("");
+  const [confirmPhotos, setConfirmPhotos] = useState<string[]>([]);
+  const [confirmUploading, setConfirmUploading] = useState(false);
+  const [confirmSaving, setConfirmSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -77,6 +91,62 @@ function AgendaPage() {
     toast.success(res.queued ? "Conclusão em fila" : "Tarefa concluída");
   }
 
+  function openConfirm(t: ScheduledTask) {
+    setConfirmingId((cur) => cur === t.id ? null : t.id);
+    setConfirmTrees(""); setConfirmNotes(""); setConfirmPhotos([]);
+  }
+
+  async function onConfirmPhoto(f: File | null) {
+    if (!f) return;
+    setConfirmUploading(true);
+    try { const r = await uploadFile(f); setConfirmPhotos((c) => [...c, r.url]); }
+    catch (e: any) { toast.error(e?.message ?? "Falha no upload da foto"); }
+    finally { setConfirmUploading(false); }
+  }
+
+  async function confirmStimulation(t: ScheduledTask) {
+    const meta = (t.meta ?? {}) as StimulationTaskMeta;
+    if (!meta.product) { toast.error("Agendamento sem parâmetros de estimulação"); return; }
+    setConfirmSaving(true);
+    try {
+      await submitStimulation({
+        companyId: t.companyId, farmId: t.farmId ?? undefined,
+        date: getLocalIsoDate(),
+        product: meta.product,
+        concentration: meta.concentration ?? undefined,
+        tapperId: meta.tapperId ?? undefined,
+        tappingTableId: meta.tappingTableId ?? undefined,
+        reason: meta.reason ?? undefined,
+        doseMlPerTree: meta.doseMlPerTree ?? undefined,
+        treesStimulated: confirmTrees ? Number(confirmTrees) : undefined,
+        notes: [
+          confirmNotes.trim() || undefined,
+          confirmPhotos.length ? `Fotos: ${confirmPhotos.join(", ")}` : undefined,
+        ].filter(Boolean).join("\n") || undefined,
+      });
+      await updateTask(t.id, {
+        farmId: t.farmId ?? undefined,
+        plotId: t.plotId ?? undefined,
+        teamId: t.teamId ?? undefined,
+        title: t.title,
+        description: t.description ?? undefined,
+        category: t.category,
+        priority: t.priority,
+        status: "concluida",
+        scheduledAt: t.scheduledAt,
+        dueAt: t.dueAt ?? undefined,
+        responsible: t.responsible ?? undefined,
+      });
+      setTasks((cur) => cur.map((x) => x.id === t.id ? { ...x, status: "concluida" } : x));
+      setConfirmingId(null);
+      toast.success("Estimulação confirmada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao confirmar");
+    } finally {
+      setConfirmSaving(false);
+    }
+  }
+
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (
@@ -101,6 +171,8 @@ function AgendaPage() {
           const overdue = !done && new Date(t.scheduledAt).getTime() < Date.now();
           const farmName = t.farmId ? farmById.get(t.farmId) : null;
           const time = new Date(t.scheduledAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+          const isScheduledStim = t.category === "estimulacao" && !!t.meta?.product;
+          const meta = (t.meta ?? {}) as StimulationTaskMeta;
           return (
             <li key={t.id} className="rounded-2xl border border-border/60 bg-card p-4">
               <div className="flex items-center gap-3">
@@ -119,9 +191,32 @@ function AgendaPage() {
               </div>
               <div className="mt-2 font-semibold">{farmName ?? t.title}</div>
               <div className="text-xs text-muted-foreground">{t.title}</div>
+
+              {isScheduledStim && !done && (
+                <div className="mt-2 rounded-lg bg-muted/40 p-2 text-[11px] text-muted-foreground">
+                  <p>Produto: <span className="font-medium text-foreground">{meta.product}</span>{meta.concentration ? ` · ${meta.concentration}` : ""}</p>
+                  {meta.tappingTableName && <p>Tabela: <span className="font-medium text-foreground">{meta.tappingTableName}</span></p>}
+                  {meta.doseMlPerTree != null && <p>Dose: {meta.doseMlPerTree} ml/árvore</p>}
+                  {meta.reason && <p>Motivo: {meta.reason}</p>}
+                </div>
+              )}
+
               {!done && (
                 <>
-                  {!(me?.primaryRole === "monitor" && t.category === "visita") ? (
+                  {me?.primaryRole === "monitor" && t.category === "visita" ? (
+                    <div className="mt-3 rounded-xl bg-muted/30 py-2 text-center text-[10px] text-muted-foreground">
+                      Visita técnica do consultor vinculada
+                    </div>
+                  ) : isScheduledStim ? (
+                    <button
+                      onClick={() => openConfirm(t)}
+                      className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary/10 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Confirmar execução
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  ) : (
                     <button
                       onClick={() => conclude(t)}
                       disabled={busy === t.id}
@@ -131,12 +226,37 @@ function AgendaPage() {
                       Concluir
                       <ChevronRight className="h-3.5 w-3.5" />
                     </button>
-                  ) : (
-                    <div className="mt-3 rounded-xl bg-muted/30 py-2 text-center text-[10px] text-muted-foreground">
-                      Visita técnica do consultor vinculada
-                    </div>
                   )}
                 </>
+              )}
+
+              {confirmingId === t.id && (
+                <div className="mt-3 space-y-3 border-t border-border/40 pt-3">
+                  <div>
+                    <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">Árvores estimuladas (opcional)</Label>
+                    <Input className="h-10 rounded-xl" inputMode="numeric" value={confirmTrees} onChange={(e) => setConfirmTrees(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">Observações</Label>
+                    <Textarea rows={2} className="rounded-xl" value={confirmNotes} onChange={(e) => setConfirmNotes(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">Fotos (opcional)</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {confirmPhotos.map((u, i) => <img key={i} src={u} alt="" className="h-16 w-full rounded-lg object-cover" />)}
+                      <label className="grid h-16 w-full cursor-pointer place-items-center rounded-lg border border-dashed border-border/60 bg-background/40 text-muted-foreground hover:border-primary hover:text-primary">
+                        {confirmUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => onConfirmPhoto(e.target.files?.[0] ?? null)} />
+                      </label>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmingId(null)}>Cancelar</Button>
+                    <Button type="button" size="sm" onClick={() => confirmStimulation(t)} disabled={confirmSaving}>
+                      {confirmSaving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />} Confirmar
+                    </Button>
+                  </div>
+                </div>
               )}
             </li>
           );

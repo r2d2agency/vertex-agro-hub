@@ -620,6 +620,9 @@ model ScheduledTask {
   dueAt       DateTime? @map("due_at")
   completedAt DateTime? @map("completed_at")
   responsible String?
+  // Parâmetros específicos da categoria (ex.: produto/dose/tabela/sangrador
+  // de uma estimulação agendada) — o executor só confirma, não escolhe.
+  meta        Json?
 
   version      Int        @default(1)
   syncStatus   SyncStatus @default(synced) @map("sync_status")
@@ -1541,6 +1544,7 @@ model TapperPreRegistration {
   dailyRate     Float?   @map("daily_rate")
   treesAssigned Int?     @map("trees_assigned")
   taskPercent   Float?   @map("task_percent")
+  tappingTableId String? @map("tapping_table_id") @db.Uuid
   rgPhotoUrl    String?  @map("rg_photo_url")
   cpfPhotoUrl   String?  @map("cpf_photo_url")
   notes         String?

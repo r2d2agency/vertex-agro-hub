@@ -19,6 +19,18 @@ export const changelog: ChangelogRelease[] = [
     entries: [
       {
         type: "novidade",
+        title: "Estimulação agendada: consultor/admin planeja, monitor confirma",
+        description:
+          "Estimulação virou uma atividade agendada: o consultor (aba Agenda) ou o admin (Agenda Operacional) marca a data, o sangrador, a tabela, o produto, a concentração, a dose e o motivo. O monitor recebe o agendamento no app e só confirma a execução (com árvores estimuladas, foto e observações opcionais) — não registra mais uma estimulação livremente.",
+      },
+      {
+        type: "novidade",
+        title: "Pré-cadastro de sangrador: número de plantas, % e sistema de sangria",
+        description:
+          "O pré-cadastro de sangrador (consultor ou monitor) ganhou de volta os campos de número de plantas e % da tarefa, e agora também tem \"Sistema de sangria\" (a tabela). Ao aprovar, o vínculo com a tabela e a quantidade de árvores já é criado automaticamente.",
+      },
+      {
+        type: "novidade",
         title: "Checklist de máquina: foto com data, hora e GPS carimbados",
         description:
           "As fotos anexadas ao checklist de máquina agora saem com data/hora e coordenadas GPS gravadas na própria imagem, documentando quando e onde o checklist foi feito.",

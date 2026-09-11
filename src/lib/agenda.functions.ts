@@ -37,6 +37,21 @@ export type ScheduledTask = {
   dueAt?: string | null;
   completedAt?: string | null;
   responsible?: string | null;
+  meta?: Record<string, any> | null;
+};
+
+// Parâmetros de uma estimulação agendada (category: "estimulacao"),
+// guardados em ScheduledTask.meta — definidos por quem agenda (consultor/
+// admin); o monitor só confirma a execução, não escolhe.
+export type StimulationTaskMeta = {
+  tapperId?: string | null;
+  tapperName?: string | null;
+  tappingTableId?: string | null;
+  tappingTableName?: string | null;
+  product: string;
+  concentration?: string | null;
+  doseMlPerTree?: number | null;
+  reason?: string | null;
 };
 
 export type TaskInput = {
@@ -51,6 +66,7 @@ export type TaskInput = {
   scheduledAt: string;
   dueAt?: string;
   responsible?: string;
+  meta?: Record<string, any>;
 };
 
 export function listTasks(companyId: string, opts: { farmId?: string; teamId?: string; status?: string; from?: string; to?: string } = {}) {
@@ -81,5 +97,6 @@ function clean(v: TaskInput) {
     scheduledAt: new Date(v.scheduledAt).toISOString(),
     dueAt: v.dueAt ? new Date(v.dueAt).toISOString() : undefined,
     responsible: v.responsible?.trim() || undefined,
+    meta: v.meta && Object.keys(v.meta).length ? v.meta : undefined,
   };
 }

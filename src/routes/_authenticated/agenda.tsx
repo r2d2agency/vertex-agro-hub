@@ -23,8 +23,12 @@ import { listTeams } from "@/lib/teams.functions";
 import {
   createTask, deleteTask, listTasks, updateTask,
   TASK_CATEGORIES, TASK_PRIORITIES, TASK_STATUS,
-  type ScheduledTask, type TaskInput,
+  type ScheduledTask, type TaskInput, type StimulationTaskMeta,
 } from "@/lib/agenda.functions";
+import { listFieldTappers, listFieldTapperTables, type FieldTapper, type FieldTapperTable } from "@/lib/field.functions";
+import { STIM_CONCENTRATIONS } from "@/lib/estimulacoes.functions";
+
+const STIM_PRODUCTS = ["Ethephon 48%", "Ethephon 25%", "Ethephon 5%", "Outro"];
 
 export const Route = createFileRoute("/_authenticated/agenda")({
   head: () => ({ meta: [
@@ -272,26 +276,74 @@ function TaskDialog({
 }) {
   const [values, setValues] = useState<TaskInput>(empty);
 
+  // Parâmetros de estimulação (só usados quando category === "estimulacao")
+  // — o monitor só confirma a execução, então isso precisa vir definido aqui.
+  const [stimTapperId, setStimTapperId] = useState("");
+  const [stimTappers, setStimTappers] = useState<FieldTapper[]>([]);
+  const [stimTableId, setStimTableId] = useState("");
+  const [stimTables, setStimTables] = useState<FieldTapperTable[]>([]);
+  const [stimProduct, setStimProduct] = useState(STIM_PRODUCTS[0]);
+  const [stimConcentration, setStimConcentration] = useState("");
+  const [stimDose, setStimDose] = useState("");
+  const [stimReason, setStimReason] = useState("");
+
   useEffect(() => {
     if (!open) return;
-    if (initial) setValues({
-      farmId: initial.farmId ?? "",
-      plotId: initial.plotId ?? "",
-      teamId: initial.teamId ?? "",
-      title: initial.title,
-      description: initial.description ?? "",
-      category: initial.category,
-      priority: initial.priority,
-      status: initial.status,
-      scheduledAt: initial.scheduledAt.slice(0, 16),
-      dueAt: initial.dueAt ? initial.dueAt.slice(0, 16) : "",
-      responsible: initial.responsible ?? "",
-    });
-    else setValues({ ...empty, scheduledAt: nowIso() });
+    if (initial) {
+      setValues({
+        farmId: initial.farmId ?? "",
+        plotId: initial.plotId ?? "",
+        teamId: initial.teamId ?? "",
+        title: initial.title,
+        description: initial.description ?? "",
+        category: initial.category,
+        priority: initial.priority,
+        status: initial.status,
+        scheduledAt: initial.scheduledAt.slice(0, 16),
+        dueAt: initial.dueAt ? initial.dueAt.slice(0, 16) : "",
+        responsible: initial.responsible ?? "",
+      });
+      const meta = (initial.meta ?? {}) as Partial<StimulationTaskMeta>;
+      setStimTapperId(meta.tapperId ?? "");
+      setStimTableId(meta.tappingTableId ?? "");
+      setStimProduct(meta.product ?? STIM_PRODUCTS[0]);
+      setStimConcentration(meta.concentration ?? "");
+      setStimDose(meta.doseMlPerTree != null ? String(meta.doseMlPerTree) : "");
+      setStimReason(meta.reason ?? "");
+    } else {
+      setValues({ ...empty, scheduledAt: nowIso() });
+      setStimTapperId(""); setStimTableId(""); setStimProduct(STIM_PRODUCTS[0]);
+      setStimConcentration(""); setStimDose(""); setStimReason("");
+    }
   }, [open, initial]);
 
+  useEffect(() => {
+    setStimTappers([]);
+    if (!companyId || !values.farmId || values.category !== "estimulacao") return;
+    listFieldTappers(companyId, values.farmId).then(setStimTappers).catch(() => setStimTappers([]));
+  }, [companyId, values.farmId, values.category]);
+
+  useEffect(() => {
+    setStimTables([]);
+    if (!companyId || !stimTapperId) return;
+    listFieldTapperTables(companyId, stimTapperId).then(setStimTables).catch(() => setStimTables([]));
+  }, [companyId, stimTapperId]);
+
   const mut = useMutation({
-    mutationFn: async () => initial ? updateTask(initial.id, values) : createTask(companyId!, values),
+    mutationFn: async () => {
+      const meta: StimulationTaskMeta | undefined = values.category === "estimulacao" ? {
+        tapperId: stimTapperId && !stimTapperId.startsWith("rh:") ? stimTapperId : undefined,
+        tapperName: stimTappers.find((t) => t.id === stimTapperId)?.fullName,
+        tappingTableId: stimTableId || undefined,
+        tappingTableName: stimTables.find((t) => t.id === stimTableId)?.name,
+        product: stimProduct,
+        concentration: stimConcentration || undefined,
+        doseMlPerTree: stimDose ? Number(stimDose.replace(",", ".")) : undefined,
+        reason: stimReason.trim() || undefined,
+      } : undefined;
+      const payload = { ...values, meta };
+      return initial ? updateTask(initial.id, payload) : createTask(companyId!, payload);
+    },
     onSuccess: () => { toast.success(initial ? "Atividade atualizada" : "Atividade criada"); onSaved(); onOpenChange(false); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -355,6 +407,57 @@ function TaskDialog({
           </div>
           <div className="md:col-span-2"><Label>Responsável</Label><Input value={values.responsible ?? ""} onChange={(e) => setValues((v) => ({ ...v, responsible: e.target.value }))} /></div>
           <div className="md:col-span-2"><Label>Descrição</Label><Textarea rows={3} value={values.description ?? ""} onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))} /></div>
+
+          {values.category === "estimulacao" && (
+            <div className="md:col-span-2 space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">
+                Parâmetros da estimulação — o monitor só confirma a execução, não escolhe
+              </p>
+              {!values.farmId ? (
+                <p className="text-xs text-muted-foreground">Selecione a fazenda para escolher o sangrador.</p>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>Sangrador</Label>
+                    <Select value={stimTapperId} onValueChange={setStimTapperId}>
+                      <SelectTrigger><SelectValue placeholder={stimTappers.length ? "Selecione" : "Nenhum sangrador nesta fazenda"} /></SelectTrigger>
+                      <SelectContent>{stimTappers.map((t) => <SelectItem key={t.id} value={t.id}>{t.fullName}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Tabela</Label>
+                    <Select value={stimTableId} onValueChange={setStimTableId} disabled={!stimTapperId}>
+                      <SelectTrigger><SelectValue placeholder={stimTables.length ? "Selecione" : "—"} /></SelectTrigger>
+                      <SelectContent>{stimTables.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Produto</Label>
+                    <Select value={stimProduct} onValueChange={setStimProduct}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{STIM_PRODUCTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Concentração</Label>
+                    <Select value={stimConcentration} onValueChange={setStimConcentration}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>{STIM_CONCENTRATIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Dose (ml/árvore)</Label>
+                    <Input inputMode="decimal" value={stimDose} onChange={(e) => setStimDose(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Motivo</Label>
+                    <Input value={stimReason} onChange={(e) => setStimReason(e.target.value)} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter className="md:col-span-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={mut.isPending}>{mut.isPending ? "Salvando..." : "Salvar"}</Button>

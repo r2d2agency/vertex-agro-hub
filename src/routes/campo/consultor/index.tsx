@@ -44,7 +44,8 @@ import {
 import { toast } from "sonner";
 import {
   getFieldMe, type FieldMe, type Coords, captureLocation, submitEvaluation,
-  listFieldTappers, listFieldTappingTables,
+  listFieldTappers, listFieldTappingTables, listFieldTapperTables,
+  type FieldTapper, type FieldTapperTable,
 } from "@/lib/field.functions";
 import { TapperTablesDialog } from "@/components/vertex/tapper-tables-dialog";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
@@ -58,9 +59,12 @@ import {
 } from "@/lib/people.functions";
 import { listOccurrences, OCC_TYPES, type Occurrence } from "@/lib/ocorrencias.functions";
 import { listTappingRecords, type TappingRecord } from "@/lib/sangrias.functions";
+import { STIM_CONCENTRATIONS } from "@/lib/estimulacoes.functions";
 import { listAlertEvents, type AlertEvent } from "@/lib/alertas.functions";
 import { listInsights, type AiInsight } from "@/lib/ai.functions";
 import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
+
+const STIM_PRODUCTS = ["Ethephon 48%", "Ethephon 25%", "Ethephon 5%", "Outro"];
 import { listTasks, createTask, TASK_CATEGORIES, type ScheduledTask } from "@/lib/agenda.functions";
 import { getLocalIsoDate, getLocalIsoString } from "@/lib/date-utils";
 
@@ -103,6 +107,20 @@ function ConsultorFormPage() {
   const [scheduleIntervalDays, setScheduleIntervalDays] = useState(15);
   const [scheduleOccurrences, setScheduleOccurrences] = useState(4);
   const [scheduling, setScheduling] = useState(false);
+
+  // Agendar estimulação: o monitor só confirma a execução, os parâmetros são
+  // definidos aqui pelo consultor.
+  const [stimDate, setStimDate] = useState("");
+  const [stimTime, setStimTime] = useState("09:00");
+  const [stimTappers, setStimTappers] = useState<FieldTapper[]>([]);
+  const [stimTapperId, setStimTapperId] = useState("");
+  const [stimTables, setStimTables] = useState<FieldTapperTable[]>([]);
+  const [stimTableId, setStimTableId] = useState("");
+  const [stimProduct, setStimProduct] = useState(STIM_PRODUCTS[0]);
+  const [stimConcentration, setStimConcentration] = useState("");
+  const [stimDose, setStimDose] = useState("2,5");
+  const [stimReason, setStimReason] = useState("");
+  const [stimScheduling, setStimScheduling] = useState(false);
 
   // Histórico (aba própria, com filtro de data)
   const [historyFrom, setHistoryFrom] = useState(() => getLocalIsoDate(new Date(Date.now() - 30 * 86400000)));
@@ -423,6 +441,61 @@ function ConsultorFormPage() {
       toast.error(e instanceof Error ? e.message : "Erro ao agendar visita");
     } finally {
       setScheduling(false);
+    }
+  }
+
+  useEffect(() => {
+    setStimTappers([]); setStimTapperId("");
+    const companyId = me?.assignments.find((a) => a.farm.id === selectedFarmId)?.farm.companyId;
+    if (!selectedFarmId || !companyId) return;
+    listFieldTappers(companyId, selectedFarmId).then(setStimTappers).catch(() => setStimTappers([]));
+  }, [selectedFarmId, me]);
+
+  useEffect(() => {
+    setStimTables([]); setStimTableId("");
+    const companyId = me?.assignments.find((a) => a.farm.id === selectedFarmId)?.farm.companyId;
+    if (!companyId || !stimTapperId) return;
+    listFieldTapperTables(companyId, stimTapperId).then(setStimTables).catch(() => setStimTables([]));
+  }, [stimTapperId, selectedFarmId, me]);
+
+  async function scheduleStimulation() {
+    const companyId = me?.assignments.find((a) => a.farm.id === selectedFarmId)?.farm.companyId
+      || me?.companies?.[0]?.id;
+    if (!selectedFarmId || !companyId) { toast.error("Selecione uma fazenda"); return; }
+    if (!stimDate || !stimTime) { toast.error("Escolha a data e o horário"); return; }
+    if (!stimTapperId) { toast.error("Selecione o sangrador"); return; }
+    const tapper = stimTappers.find((t) => t.id === stimTapperId);
+    const table = stimTables.find((t) => t.id === stimTableId);
+
+    setStimScheduling(true);
+    try {
+      await createTask(companyId, {
+        farmId: selectedFarmId,
+        title: `Estimulação — ${tapper?.fullName ?? "Sangrador"}`,
+        category: "estimulacao",
+        priority: "media",
+        status: "planejada",
+        scheduledAt: new Date(`${stimDate}T${stimTime}:00`).toISOString(),
+        responsible: me?.user.fullName ?? undefined,
+        meta: {
+          tapperId: stimTapperId.startsWith("rh:") ? undefined : stimTapperId,
+          tapperName: tapper?.fullName,
+          tappingTableId: stimTableId || undefined,
+          tappingTableName: table?.name,
+          product: stimProduct,
+          concentration: stimConcentration || undefined,
+          doseMlPerTree: stimDose ? Number(stimDose.replace(",", ".")) : undefined,
+          reason: stimReason.trim() || undefined,
+        },
+      });
+      toast.success("Estimulação agendada");
+      setStimDate(""); setStimReason("");
+      const tasks = await listTasks(companyId, { farmId: selectedFarmId }).catch(() => [] as ScheduledTask[]);
+      setFarmTasks(tasks);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao agendar estimulação");
+    } finally {
+      setStimScheduling(false);
     }
   }
 
@@ -1067,6 +1140,91 @@ function ConsultorFormPage() {
             <Button size="sm" className="w-full" onClick={scheduleVisit} disabled={scheduling}>
               {scheduling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {scheduleRepeat ? "Agendar visitas" : "Agendar"}
+            </Button>
+          </section>
+        )}
+
+        {!noFarm && (
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+            <div className="flex items-center gap-2 font-semibold text-primary">
+              <Calendar className="h-4 w-4" />
+              <h2 className="text-sm">Agendar estimulação</h2>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              O monitor só recebe o agendamento e confirma a execução — os parâmetros abaixo são definidos aqui.
+            </p>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                className="flex-1 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+                value={stimDate}
+                onChange={(e) => setStimDate(e.target.value)}
+              />
+              <input
+                type="time"
+                className="w-24 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+                value={stimTime}
+                onChange={(e) => setStimTime(e.target.value)}
+              />
+            </div>
+
+            <select
+              value={stimTapperId}
+              onChange={(e) => setStimTapperId(e.target.value)}
+              className="w-full rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+            >
+              <option value="">{stimTappers.length ? "Selecione o sangrador" : "Nenhum sangrador nesta fazenda"}</option>
+              {stimTappers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+            </select>
+
+            {stimTapperId && (
+              <select
+                value={stimTableId}
+                onChange={(e) => setStimTableId(e.target.value)}
+                className="w-full rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+              >
+                <option value="">{stimTables.length ? "Tabela (opcional)" : "Sangrador sem tabela vinculada"}</option>
+                {stimTables.map((t) => <option key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</option>)}
+              </select>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={stimProduct}
+                onChange={(e) => setStimProduct(e.target.value)}
+                className="rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+              >
+                {STIM_PRODUCTS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <select
+                value={stimConcentration}
+                onChange={(e) => setStimConcentration(e.target.value)}
+                className="rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+              >
+                <option value="">Concentração</option>
+                {STIM_CONCENTRATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text" inputMode="decimal" placeholder="Dose (ml/árvore)"
+                className="w-32 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+                value={stimDose}
+                onChange={(e) => setStimDose(e.target.value)}
+              />
+              <input
+                type="text" placeholder="Motivo (opcional)"
+                className="flex-1 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+                value={stimReason}
+                onChange={(e) => setStimReason(e.target.value)}
+              />
+            </div>
+
+            <Button size="sm" className="w-full" onClick={scheduleStimulation} disabled={stimScheduling}>
+              {stimScheduling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Agendar estimulação
             </Button>
           </section>
         )}
