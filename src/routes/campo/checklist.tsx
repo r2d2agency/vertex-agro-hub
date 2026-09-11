@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Check, X, Minus, Camera } from "lucide-react";
-import { getFieldMe, type FieldMe, submitChecklist } from "@/lib/field.functions";
+import { getFieldMe, captureLocation, type FieldMe, submitChecklist } from "@/lib/field.functions";
 import { listMachines, listOperators } from "@/lib/frota.functions";
 import { uploadFile } from "@/lib/api";
+import { stampPhoto } from "@/lib/photo-stamp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,8 +51,14 @@ function ChecklistPage() {
   async function onPhoto(f: File | null) {
     if (!f) return;
     setUploadingPhoto(true);
-    try { const r = await uploadFile(f); setPhotoUrls((c) => [...c, r.url]); }
-    catch (e: any) { toast.error(e?.message ?? "Falha no upload da foto"); }
+    try {
+      // Carimba data/hora e GPS na própria foto, pra documentar o checklist
+      // (fica gravado na imagem, não só num campo separado).
+      const coords = await captureLocation().catch(() => null);
+      const stamped = await stampPhoto(f, coords);
+      const r = await uploadFile(stamped);
+      setPhotoUrls((c) => [...c, r.url]);
+    } catch (e: any) { toast.error(e?.message ?? "Falha no upload da foto"); }
     finally { setUploadingPhoto(false); }
   }
 

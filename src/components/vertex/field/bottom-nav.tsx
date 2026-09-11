@@ -20,9 +20,9 @@ const TABS: Item[] = [
 ];
 
 export const OPERATIONS = [
-  { to: "/campo/sangrador", label: "Pré-cadastrar sangrador", emoji: "🧑‍🌾", roles: ["consultor", "admin"] },
+  { to: "/campo/sangrador", label: "Pré-cadastrar sangrador", emoji: "🧑‍🌾", roles: ["consultor", "monitor", "admin"] },
   { to: "/campo/monitor-pre-cadastro", label: "Pré-cadastrar monitor", emoji: "🧑‍💼", roles: ["consultor", "admin"] },
-  { to: "/campo/operador-pre-cadastro", label: "Pré-cadastrar operador", emoji: "🚜", roles: ["consultor", "admin"] },
+  { to: "/campo/operador-pre-cadastro", label: "Pré-cadastrar operador", emoji: "🚜", roles: ["consultor", "monitor", "admin"] },
   { to: "/campo/consultor", label: "Visita técnica (Consultoria)", emoji: "📋", roles: ["consultor", "admin"] },
   { to: "/campo/sangria", label: "Registrar sangria", emoji: "💧", roles: ["monitor", "admin"] },
   { to: "/campo/producao", label: "Registrar produção", emoji: "📦", roles: ["admin"] },
@@ -32,7 +32,7 @@ export const OPERATIONS = [
   { to: "/campo/abastecimento", label: "Abastecer máquina", emoji: "⛽" },
   { to: "/campo/checklist", label: "Checklist de máquina", emoji: "🧾" },
   { to: "/campo/insumo", label: "Consumo de insumo", emoji: "🧴" },
-  { to: "/campo/avaliacao", label: "Avaliar equipe", emoji: "⭐", roles: ["monitor", "consultor", "admin"] },
+  { to: "/campo/avaliacao", label: "Equipe / Avaliar", emoji: "⭐", roles: ["monitor", "consultor", "admin"] },
   { to: "/campo/chuva", label: "Informar chuva", emoji: "🌧️" },
 ];
 

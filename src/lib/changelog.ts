@@ -19,6 +19,30 @@ export const changelog: ChangelogRelease[] = [
     entries: [
       {
         type: "novidade",
+        title: "Checklist de máquina: foto com data, hora e GPS carimbados",
+        description:
+          "As fotos anexadas ao checklist de máquina agora saem com data/hora e coordenadas GPS gravadas na própria imagem, documentando quando e onde o checklist foi feito.",
+      },
+      {
+        type: "correcao",
+        title: "Corrigidas colunas de foto quebradas em 6 tabelas da frota",
+        description:
+          "Máquinas, implementos, operadores, ordens de manutenção, apontamento de operação e checklist tinham a coluna de fotos criada errado no banco (texto único em vez de lista), o que podia quebrar leituras e gravações nessas telas. Corrigido.",
+      },
+      {
+        type: "novidade",
+        title: "Monitor: histórico completo, resumo no painel e detalhe por sangrador",
+        description:
+          "O Histórico do app de campo (que estava sempre vazio por um bug) foi refeito: linha do tempo com filtro de período e fazenda (sangria, produção, estimulação, ocorrência), e uma visão \"Por sangrador\" mostrando quantas sangrias e em quais tabelas cada um trabalhou no período. O painel inicial do monitor ganhou um resumo \"O que eu fiz hoje\", e a tela de Equipe ganhou um botão \"Detalhes\" por sangrador com o mesmo tipo de resumo (hoje/7 dias/30 dias).",
+      },
+      {
+        type: "novidade",
+        title: "Monitor pode pré-cadastrar sangrador e operador",
+        description:
+          "Além do consultor, o monitor agora também pode pré-cadastrar sangrador e operador direto pelo app de campo (pré-cadastro de monitor continua só com o consultor).",
+      },
+      {
+        type: "novidade",
         title: "Sangria: foto e áudio opcionais no registro",
         description:
           "Ao registrar uma sangria, agora dá pra anexar foto (tirar na hora ou escolher da galeria) e gravar um áudio, ambos opcionais, direto na etapa de observações — fica tudo salvo junto com o registro.",

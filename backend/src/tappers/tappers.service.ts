@@ -48,7 +48,9 @@ export class TappersService {
     return !!isCompanyAdmin;
   }
 
-  private async ensureConsultorSubmission(userId: string, companyId: string, farmId: string) {
+  // Consultor pode pré-cadastrar monitor, sangrador ou operador; monitor só
+  // sangrador/operador da própria fazenda (não outro monitor).
+  private async ensureConsultorSubmission(userId: string, companyId: string, farmId: string, targetRole: string) {
     const isGlobal = await this.prisma.userRole.findFirst({
       where: { userId, role: 'admin_global' },
     });
@@ -59,17 +61,16 @@ export class TappersService {
     });
     if (isCompanyAdmin) return;
 
+    const allowedRoles = targetRole === 'monitor' ? ['consultor'] : ['consultor', 'monitor'];
     const assignment = await this.prisma.farmAssignment.findFirst({
       where: {
-        userId,
-        companyId,
-        farmId,
-        role: 'consultor',
+        userId, companyId, farmId,
+        role: { in: allowedRoles },
         OR: [{ endAt: null }, { endAt: { gte: new Date() } }],
       },
     });
     if (!assignment) {
-      throw new ForbiddenException('Somente consultores da fazenda podem enviar este pré-cadastro');
+      throw new ForbiddenException('Sem permissão para enviar este pré-cadastro nesta fazenda');
     }
   }
 
@@ -403,9 +404,8 @@ export class TappersService {
     },
   ) {
     await this.access.ensureCompany(userId, dto.companyId);
-    await this.ensureConsultorSubmission(userId, dto.companyId, dto.farmId);
-
     const role = dto.role ?? 'sangrador';
+    await this.ensureConsultorSubmission(userId, dto.companyId, dto.farmId, role);
 
     const cpf = onlyDigits(dto.cpf);
     if (cpf.length !== 11) {

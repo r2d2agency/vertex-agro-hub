@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeftRight, ListTree, Loader2, Star } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, BarChart3, ListTree, Loader2, Star, Trees } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getFieldMe, listFieldTappers, listFieldTappingTables, submitEvaluation, submitOccurrence,
-  type FieldMe, type FieldTapper,
+  getFieldMe, listFieldTappers, listFieldTappingTables, listFieldTapperTables, submitEvaluation, submitOccurrence,
+  type FieldMe, type FieldTapper, type FieldTapperTable,
 } from "@/lib/field.functions";
+import { listTappingRecords, type TappingRecord, TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
 import { OCC_SEVERITIES } from "@/lib/ocorrencias.functions";
 import { apiRequest } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,12 @@ function AvaliacaoPage() {
   const [canonicalTappers, setCanonicalTappers] = useState<FieldTapper[]>([]);
   const [tablesTarget, setTablesTarget] = useState<{ key: string; name: string } | null>(null);
 
+  const [statsTargetId, setStatsTargetId] = useState<string | null>(null);
+  const [statsPeriod, setStatsPeriod] = useState<"hoje" | "semana" | "mes">("semana");
+  const [statsRecords, setStatsRecords] = useState<TappingRecord[]>([]);
+  const [statsTables, setStatsTables] = useState<FieldTapperTable[]>([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+
   useEffect(() => {
     getFieldMe().then((m) => {
       setMe(m);
@@ -100,6 +107,33 @@ function AvaliacaoPage() {
     const match = canonicalTappers.find((t) => t.fullName.trim().toLowerCase() === name);
     return match?.id ?? `rh:${m.userId}`;
   }
+
+  useEffect(() => {
+    setStatsRecords([]); setStatsTables([]);
+    if (!farm || !statsTargetId) return;
+    const member = team.find((m) => m.userId === statsTargetId);
+    if (!member) return;
+    const tapperKey = tapperKeyFor(member);
+    const to = getLocalIsoDate();
+    const days = statsPeriod === "hoje" ? 0 : statsPeriod === "semana" ? 7 : 30;
+    const from = getLocalIsoDate(new Date(Date.now() - days * 86400000));
+    setStatsLoading(true);
+    Promise.all([
+      listTappingRecords(farm.companyId, { farmId: farm.id, from, to }),
+      listFieldTapperTables(farm.companyId, tapperKey).catch(() => []),
+    ])
+      .then(([records, tables]) => {
+        const filtered = records.filter((r) =>
+          tapperKey.startsWith("rh:")
+            ? r.sangradorName.trim().toLowerCase() === (member.user.fullName ?? member.user.email ?? "").trim().toLowerCase()
+            : r.tapperId === tapperKey,
+        );
+        setStatsRecords(filtered);
+        setStatsTables(tables);
+      })
+      .finally(() => setStatsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [farm?.id, statsTargetId, statsPeriod]);
 
   if (!me) {
     return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -231,6 +265,12 @@ function AvaliacaoPage() {
                             <>
                               <Button
                                 type="button" variant="outline" size="sm" className="h-8 rounded-lg text-xs"
+                                onClick={() => setStatsTargetId((cur) => cur === m.userId ? null : m.userId)}
+                              >
+                                <BarChart3 className="mr-1 h-3 w-3" /> Detalhes
+                              </Button>
+                              <Button
+                                type="button" variant="outline" size="sm" className="h-8 rounded-lg text-xs"
                                 onClick={() => setTablesTarget({ key: tapperKeyFor(m), name })}
                               >
                                 <ListTree className="mr-1 h-3 w-3" /> Tabelas
@@ -264,6 +304,63 @@ function AvaliacaoPage() {
                               {swapSaving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />} Enviar ao consultor
                             </Button>
                           </div>
+                        </div>
+                      )}
+
+                      {statsTargetId === m.userId && (
+                        <div className="mt-3 space-y-3 border-t border-border/40 pt-3">
+                          <div className="flex gap-1.5">
+                            {(["hoje", "semana", "mes"] as const).map((p) => (
+                              <button
+                                key={p} type="button" onClick={() => setStatsPeriod(p)}
+                                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                                  statsPeriod === p ? "border-primary bg-primary/15 text-primary" : "border-border/60 text-muted-foreground"
+                                }`}
+                              >
+                                {p === "hoje" ? "Hoje" : p === "semana" ? "7 dias" : "30 dias"}
+                              </button>
+                            ))}
+                          </div>
+
+                          {statsLoading ? (
+                            <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+                          ) : (
+                            <>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-lg bg-background/60 p-2 text-center">
+                                  <p className="text-lg font-bold text-foreground">{statsRecords.length}</p>
+                                  <p className="text-[10px] uppercase text-muted-foreground">Sangrias</p>
+                                </div>
+                                <div className="rounded-lg bg-background/60 p-2 text-center">
+                                  <p className="text-lg font-bold text-foreground">
+                                    {new Set(statsRecords.map((r) => new Date(r.date).toISOString().slice(0, 10))).size}
+                                  </p>
+                                  <p className="text-[10px] uppercase text-muted-foreground">Dias com registro</p>
+                                </div>
+                              </div>
+                              {statsRecords.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">Nenhuma sangria no período.</p>
+                              ) : (
+                                <ul className="space-y-1.5">
+                                  {statsRecords.map((r) => (
+                                    <li key={r.id} className="rounded-lg bg-background/60 p-2 text-xs">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium">{new Date(r.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
+                                        {r.endPeriod && (
+                                          <span className="text-[10px] text-muted-foreground">{END_PERIODS.find((p) => p.value === r.endPeriod)?.label ?? r.endPeriod}</span>
+                                        )}
+                                      </div>
+                                      <div className="mt-0.5 flex items-center gap-1 text-muted-foreground">
+                                        <Trees className="h-3 w-3 text-primary" />
+                                        {statsTables.find((t) => t.id === r.tappingTableId)?.name ?? "Sem tabela"}
+                                        {r.taskExtent && ` · ${r.taskExtent.split(",").map((v) => TASK_EXTENTS.find((t) => t.value === v)?.label ?? v).join(" + ")}`}
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </>
+                          )}
                         </div>
                       )}
                     </li>

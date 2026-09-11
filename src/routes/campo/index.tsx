@@ -4,9 +4,23 @@ import { Loader2, ChevronRight, AlertTriangle, RefreshCw, Wifi, WifiOff, ShieldC
 import { getFieldMe, type FieldMe, type Coords, captureLocation } from "@/lib/field.functions";
 import { toast } from "sonner";
 import { listTasks, type ScheduledTask } from "@/lib/agenda.functions";
+import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
 import { flushOutbox, subscribeOutbox } from "@/lib/offline/queue";
 import { getLocalIsoDate } from "@/lib/date-utils";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
+
+const HISTORY_KIND_LABEL: Record<string, string> = {
+  sangria: "Sangria", producao: "Produção", estimulacao: "Estimulação",
+  ocorrencia: "Ocorrência", agenda: "Agenda", fotografia: "Foto",
+};
+const HISTORY_KIND_STYLE: Record<string, string> = {
+  sangria: "bg-primary/15 text-primary",
+  producao: "bg-chart-2/20 text-chart-2",
+  estimulacao: "bg-chart-3/20 text-chart-3",
+  ocorrencia: "bg-destructive/15 text-destructive",
+  agenda: "bg-warning/20 text-warning",
+  fotografia: "bg-muted text-muted-foreground",
+};
 
 export const Route = createFileRoute("/campo/")({ component: FieldHome });
 
@@ -29,6 +43,8 @@ function FieldHome() {
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
   const [checkinSheetOpen, setCheckinSheetOpen] = useState(false);
   const [checkinCoords, setCheckinCoords] = useState<Coords | null>(null);
+  const [todayActivity, setTodayActivity] = useState<HistoryEvent[]>([]);
+  const [loadingActivity, setLoadingActivity] = useState(true);
 
   useEffect(() => {
     const CHECKIN_KEY = "vertex.field.checkin.v1";
@@ -64,7 +80,15 @@ function FieldHome() {
           try { all.push(...(await listTasks(cid, { from: today, to: in7 }))); } catch { /* ignore */ }
         }
         setTasks(all.sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt)));
-      } finally { setLoading(false); }
+
+        const cidsForHistory = m.isAdmin ? (m.companies || []).map((c) => c.id) : Array.from(new Set((m.assignments || []).map((a) => a.farm.companyId)));
+        const activity: HistoryEvent[] = [];
+        for (const cid of cidsForHistory) {
+          try { activity.push(...(await listHistory(cid, { from: today, to: today, limit: 50 }))); } catch { /* ignore */ }
+        }
+        activity.sort((a, b) => (a.date < b.date ? 1 : -1));
+        setTodayActivity(activity);
+      } finally { setLoading(false); setLoadingActivity(false); }
     })();
   }, []);
 
@@ -226,6 +250,40 @@ function FieldHome() {
           </div>
         </section>
       )}
+
+      {/* O que eu fiz hoje */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">O que eu fiz hoje</h2>
+          <Link to="/campo/historico" className="flex items-center gap-0.5 text-xs font-medium text-primary">
+            Ver tudo <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+        {loadingActivity ? (
+          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+        ) : todayActivity.length === 0 ? (
+          <p className="rounded-2xl border border-border/60 bg-card p-4 text-center text-xs text-muted-foreground">
+            Nenhum registro hoje ainda.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {todayActivity.slice(0, 5).map((e) => (
+              <li key={e.id} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-3">
+                <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${HISTORY_KIND_STYLE[e.kind] ?? "bg-muted text-muted-foreground"}`}>
+                  {HISTORY_KIND_LABEL[e.kind] ?? e.kind}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{e.title}</div>
+                  {e.subtitle && <div className="truncate text-[11px] text-muted-foreground">{e.subtitle}</div>}
+                </div>
+                <span className="shrink-0 text-[11px] text-muted-foreground">
+                  {new Date(e.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {/* Alertas */}
       {stats.overdue > 0 && (
