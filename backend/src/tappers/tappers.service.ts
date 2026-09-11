@@ -444,6 +444,7 @@ export class TappersService {
     await this.prisma.alertEvent.create({
       data: {
         companyId: dto.companyId,
+        farmId: dto.farmId,
         level: 'info',
         title: `Novo pré-cadastro provisório de ${roleLabel(role)}`,
         message: `${item.fullName} foi enviado por ${requestedByName} para validação do RH.`,
@@ -500,6 +501,7 @@ export class TappersService {
     await this.prisma.alertEvent.create({
       data: {
         companyId: dto.companyId,
+        farmId: current.farmId,
         level: dto.status === 'approved' ? 'info' : 'warning',
         title: dto.status === 'approved'
           ? `Pré-cadastro de ${roleLabel(current.role)} aprovado`

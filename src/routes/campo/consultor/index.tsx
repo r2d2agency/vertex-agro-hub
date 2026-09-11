@@ -1,29 +1,29 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
-import { 
-  ClipboardCheck, 
-  Stethoscope, 
-  Droplets, 
-  Camera, 
+import {
+  ClipboardCheck,
+  Stethoscope,
+  Droplets,
+  Camera,
   Save,
   ChevronLeft,
+  ChevronRight,
   Info,
   Loader2,
   Users,
   LayoutDashboard,
   MapPin,
   Calendar,
+  CalendarClock,
   Sparkles,
   Search,
-  ChevronRight,
   TrendingUp,
   BarChart3,
   Mic,
   Video,
-  PlusCircle,
   ShieldCheck,
-  Crosshair,
-  MapPinOff
+  AlertTriangle,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,25 +35,60 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
 
 import { toast } from "sonner";
 import { getFieldMe, type FieldMe, captureLocation, submitCheckin } from "@/lib/field.functions";
 import {
-  submitConsultation, getVisitStatus, justifyMissedVisit, getConsultorDashboard,
-  type VisitStatus, type ConsultorDashboard,
+  submitConsultation, getVisitStatus, justifyMissedVisit, getConsultorDashboard, listConsultations,
+  type VisitStatus, type ConsultorDashboard, type ConsultationForm,
 } from "@/lib/consultor.functions";
 import { listFarmTeam, type FarmAssignment as TeamAssignment } from "@/lib/people.functions";
+import { listOccurrences, type Occurrence } from "@/lib/ocorrencias.functions";
+import { listTappingRecords, type TappingRecord } from "@/lib/sangrias.functions";
+import { listAlertEvents, type AlertEvent } from "@/lib/alertas.functions";
+import { listInsights, type AiInsight } from "@/lib/ai.functions";
+import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
+import { listTasks, createTask, TASK_CATEGORIES, type ScheduledTask } from "@/lib/agenda.functions";
+import { getLocalIsoDate } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/consultor/")({
   component: ConsultorFormPage,
 });
 
+const SELECTED_FARM_KEY = "vertex.field.selectedFarm.v1";
+
+type Tab = "painel" | "agenda" | "historico" | "kpis" | "equipe";
+
 function ConsultorFormPage() {
   const navigate = useNavigate();
   const [me, setMe] = useState<FieldMe | null>(null);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<"dashboard" | "visit" | "team" | "kpis">("dashboard");
-  
+  const [mode, setMode] = useState<"tabs" | "visit">("tabs");
+  const [tab, setTab] = useState<Tab>("painel");
+
+  // Fazenda selecionada — contexto persistente de toda a navegação
+  const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null);
+  const [farmSwitcherOpen, setFarmSwitcherOpen] = useState(false);
+  const [farmDetailLoading, setFarmDetailLoading] = useState(false);
+  const [farmCheckinsToday, setFarmCheckinsToday] = useState<Occurrence[]>([]);
+  const [farmTappingToday, setFarmTappingToday] = useState<TappingRecord[]>([]);
+  const [farmAlerts, setFarmAlerts] = useState<AlertEvent[]>([]);
+  const [farmInsights, setFarmInsights] = useState<AiInsight[]>([]);
+  const [farmTasks, setFarmTasks] = useState<ScheduledTask[]>([]);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [scheduling, setScheduling] = useState(false);
+
+  // Histórico (aba própria, com filtro de data)
+  const [historyFrom, setHistoryFrom] = useState(() => getLocalIsoDate(new Date(Date.now() - 30 * 86400000)));
+  const [historyTo, setHistoryTo] = useState(() => getLocalIsoDate());
+  const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([]);
+  const [historyVisits, setHistoryVisits] = useState<ConsultationForm[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   // Check-in state
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
   const [gpsStatus, setGpsStatus] = useState<"idle" | "getting" | "active" | "error">("idle");
@@ -85,7 +120,6 @@ function ConsultorFormPage() {
   useEffect(() => {
     getFieldMe().then(setMe).catch(console.error);
 
-    // Check for existing session check-in
     const CHECKIN_KEY = "vertex.field.checkin.v1";
     const raw = sessionStorage.getItem(CHECKIN_KEY);
     if (raw) {
@@ -94,7 +128,15 @@ function ConsultorFormPage() {
         setActiveCheckin(stamp);
       }
     }
+
+    const savedFarm = sessionStorage.getItem(SELECTED_FARM_KEY);
+    if (savedFarm) setSelectedFarmId(savedFarm);
   }, []);
+
+  useEffect(() => {
+    if (selectedFarmId) sessionStorage.setItem(SELECTED_FARM_KEY, selectedFarmId);
+    else sessionStorage.removeItem(SELECTED_FARM_KEY);
+  }, [selectedFarmId]);
 
   useEffect(() => {
     const companyId = me?.companies?.[0]?.id;
@@ -118,8 +160,53 @@ function ConsultorFormPage() {
       .finally(() => setTeamLoading(false));
   }, [me]);
 
+  // Dados do "dia" da fazenda selecionada — alimenta a aba Painel e a lista de
+  // tarefas usada tanto na Agenda quanto para achar a visita agendada de hoje.
+  useEffect(() => {
+    const companyId = me?.assignments.find((a) => a.farm.id === selectedFarmId)?.farm.companyId
+      || me?.companies?.[0]?.id;
+    if (!selectedFarmId || !companyId) return;
+    const today = getLocalIsoDate();
+    setFarmDetailLoading(true);
+    Promise.all([
+      listOccurrences(companyId, { farmId: selectedFarmId, from: today, to: today }).catch(() => [] as Occurrence[]),
+      listTappingRecords(companyId, { farmId: selectedFarmId, from: today, to: today }).catch(() => [] as TappingRecord[]),
+      listAlertEvents(companyId, { farmId: selectedFarmId, limit: 20 }).catch(() => [] as AlertEvent[]),
+      listInsights(companyId).catch(() => [] as AiInsight[]),
+      listTasks(companyId, { farmId: selectedFarmId }).catch(() => [] as ScheduledTask[]),
+    ])
+      .then(([occurrences, tapping, alerts, insights, tasks]) => {
+        setFarmCheckinsToday(occurrences.filter((o) => o.type === "checkin"));
+        setFarmTappingToday(tapping);
+        setFarmAlerts(alerts);
+        setFarmInsights(insights.filter((i) => i.farmId === selectedFarmId));
+        setFarmTasks(tasks);
+      })
+      .finally(() => setFarmDetailLoading(false));
+  }, [selectedFarmId, me]);
+
+  // Histórico da fazenda selecionada — reage ao intervalo de datas escolhido na aba.
+  useEffect(() => {
+    const companyId = me?.assignments.find((a) => a.farm.id === selectedFarmId)?.farm.companyId
+      || me?.companies?.[0]?.id;
+    if (!selectedFarmId || !companyId) return;
+    setHistoryLoading(true);
+    Promise.all([
+      listConsultations(companyId, { farmId: selectedFarmId, from: historyFrom, to: historyTo }).catch(() => [] as ConsultationForm[]),
+      listHistory(companyId, { farmId: selectedFarmId, from: historyFrom, to: historyTo, limit: 50 }).catch(() => [] as HistoryEvent[]),
+    ])
+      .then(([visits, history]) => {
+        setHistoryVisits(visits);
+        setHistoryEvents(history);
+      })
+      .finally(() => setHistoryLoading(false));
+  }, [selectedFarmId, historyFrom, historyTo, me]);
+
   const farmVisit = (fId?: string) => visitStatus?.farms.find((f) => f.farmId === fId);
   const overdueFarms = visitStatus?.farms.filter((f) => f.overdue) ?? [];
+  const farmVisitTasks = useMemo(() => farmTasks.filter((t) => t.category === "visita"), [farmTasks]);
+  const selectedFarm = me?.assignments.find((a) => a.farm.id === selectedFarmId)?.farm ?? null;
+  const farmStat = dashboard?.farmStats.find((f) => f.farmId === selectedFarmId) ?? null;
 
   async function submitJustification() {
     const companyId = me?.companies?.[0]?.id;
@@ -138,7 +225,7 @@ function ConsultorFormPage() {
     }
   }
 
-  const handleNewCheckin = async (fId?: string, pId?: string) => {
+  const handleNewCheckin = async (fId?: string, pId?: string, taskId?: string) => {
     setGpsStatus("getting");
     const loc = await captureLocation();
     if (!loc) {
@@ -146,31 +233,79 @@ function ConsultorFormPage() {
       setGpsStatus("error");
       return;
     }
-    
+
     setCoords({ lat: loc.latitude, lng: loc.longitude });
     setGpsStatus("active");
-    
-    const companyId = me?.companies?.[0]?.id || "";
+
+    const companyId = me?.assignments.find((a) => a.farm.id === (fId || farmId))?.farm.companyId
+      || me?.companies?.[0]?.id || "";
     try {
       await submitCheckin({
         companyId,
         farmId: fId || farmId || undefined,
         plotId: pId || plotId || undefined,
+        taskId,
         latitude: loc.latitude,
         longitude: loc.longitude,
         accuracyM: loc.accuracyM
       });
-      
+
       const stamp = { farmId: fId || farmId || undefined, plotId: pId || plotId || undefined, at: Date.now() };
       sessionStorage.setItem("vertex.field.checkin.v1", JSON.stringify(stamp));
       setActiveCheckin(stamp);
-      
+
       const farmName = me?.assignments.find(a => a.farm.id === (fId || farmId))?.farm.name;
       toast.success(`Check-in realizado em ${farmName || 'Fazenda'}`);
     } catch (e) {
       toast.error("Erro ao registrar check-in");
     }
   };
+
+  async function scheduleVisit() {
+    const companyId = me?.assignments.find((a) => a.farm.id === selectedFarmId)?.farm.companyId
+      || me?.companies?.[0]?.id;
+    if (!selectedFarmId || !companyId) { toast.error("Selecione uma fazenda"); return; }
+    if (!scheduleDate) { toast.error("Escolha a data da visita"); return; }
+    setScheduling(true);
+    try {
+      const scheduledAt = new Date(`${scheduleDate}T${scheduleTime || "09:00"}:00`).toISOString();
+      await createTask(companyId, {
+        farmId: selectedFarmId,
+        title: "Visita técnica",
+        category: "visita",
+        priority: "media",
+        status: "planejada",
+        scheduledAt,
+        responsible: me?.user.fullName ?? undefined,
+      });
+      toast.success("Visita agendada");
+      setScheduleDate("");
+      const tasks = await listTasks(companyId, { farmId: selectedFarmId }).catch(() => [] as ScheduledTask[]);
+      setFarmTasks(tasks);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao agendar visita");
+    } finally {
+      setScheduling(false);
+    }
+  }
+
+  async function startVisitWithCheckin() {
+    if (!selectedFarmId) return;
+    if (activeCheckin?.farmId !== selectedFarmId) {
+      const today = getLocalIsoDate();
+      const todaysTask = farmVisitTasks.find(
+        (t) => t.scheduledAt.slice(0, 10) === today && t.status !== "concluida" && t.status !== "cancelada",
+      );
+      await handleNewCheckin(selectedFarmId, undefined, todaysTask?.id);
+    }
+    setFarmId(selectedFarmId);
+    setMode("visit");
+  }
+
+  function pickFarm(fId: string | null) {
+    setSelectedFarmId(fId);
+    setFarmSwitcherOpen(false);
+  }
 
   const stats = useMemo(() => {
     if (!me) return null;
@@ -186,7 +321,7 @@ function ConsultorFormPage() {
       toast.error("Selecione uma fazenda");
       return;
     }
-    
+
     const companyId = me?.assignments.find((a) => a.farm.id === farmId)?.farm.companyId || me?.companies?.[0]?.id || "";
     if (!companyId) {
       toast.error("Não foi possível identificar a empresa desta fazenda");
@@ -207,9 +342,10 @@ function ConsultorFormPage() {
         sanitaryInspector,
         isThirdPartyInspector,
       });
-      
+
       toast.success(res.queued ? "Ficha salva offline!" : "Consultoria registrada com sucesso!");
-      setView("dashboard");
+      setMode("tabs");
+      setTab("painel");
       if (companyId) getVisitStatus(companyId).then(setVisitStatus).catch(() => undefined);
     } catch (error) {
       toast.error("Erro ao salvar ficha");
@@ -220,211 +356,584 @@ function ConsultorFormPage() {
 
   if (!me) return <div className="p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>;
 
-  const renderDashboard = () => (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Olá, {me.user.fullName?.split(" ")[0]}</h1>
-          {activeCheckin ? (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-primary mt-0.5">
-              <ShieldCheck className="h-3 w-3" />
-              <div className="flex flex-col">
-                <span className="leading-tight">
-                  {(me.assignments || []).find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}
-                </span>
-                {activeCheckin.plotId && (
-                  <span className="text-[10px] text-muted-foreground font-normal">
-                    Talhão: {activeCheckin.plotId}
-                  </span>
-                )}
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Painel do Consultor</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {activeCheckin && (
-            <button 
-              onClick={() => handleNewCheckin(activeCheckin.farmId)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 transition-transform"
-              title="Trocar Talhão / Novo Check-in"
-            >
-              <PlusCircle className="h-5 w-5" />
-            </button>
-          )}
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-            <Users className="h-5 w-5" />
+  const FarmSwitcherBar = () => {
+    if (!selectedFarm) return null;
+    return (
+      <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+            <MapPin className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold">{selectedFarm.name}</p>
+            <p className="text-[10px] text-muted-foreground">Fazenda selecionada</p>
           </div>
         </div>
-      </header>
+        <Button size="sm" variant="outline" onClick={() => setFarmSwitcherOpen(true)}>Trocar</Button>
+      </div>
+    );
+  };
 
-      {overdueFarms.length > 0 && (
-        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
-          <div className="flex items-center gap-2 text-destructive font-bold text-sm mb-2">
-            <ShieldCheck className="h-4 w-4" />
-            {overdueFarms.length} fazenda(s) com visita atrasada
-          </div>
-          <div className="space-y-2">
-            {overdueFarms.map((f) => (
-              <div key={f.farmId} className="flex items-center justify-between gap-2 text-sm">
-                <span className="truncate">
-                  {f.farmName} — {f.lastVisitAt ? `há ${f.daysSinceVisit}d` : "nunca visitada"}
-                </span>
-                <div className="flex shrink-0 gap-2">
-                  <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => { setFarmId(f.farmId); setView("visit"); }}>
-                    Visitar
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px]" onClick={() => setJustifyingFarmId(f.farmId)}>
-                    Justificar
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {justifyingFarmId && (
-        <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
-          <p className="text-sm font-semibold">
-            Justificar falta de visita — {visitStatus?.farms.find((f) => f.farmId === justifyingFarmId)?.farmName}
-          </p>
-          <Textarea
-            className="rounded-xl bg-background border-border"
-            placeholder="Explique o motivo pelo qual a visita não foi realizada..."
-            value={justifyReason}
-            onChange={(e) => setJustifyReason(e.target.value)}
-            rows={3}
-          />
-          <div className="flex gap-2">
-            <Button size="sm" variant="ghost" onClick={() => { setJustifyingFarmId(null); setJustifyReason(""); }}>Cancelar</Button>
-            <Button size="sm" onClick={submitJustification} disabled={justifying}>
-              {justifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Enviar justificativa
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Ação rápida */}
-      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-2 opacity-10">
-          <Sparkles className="h-12 w-12 text-primary" />
-        </div>
-        <div className="flex items-center gap-2 text-primary font-bold text-sm mb-2">
-          <ClipboardCheck className="h-4 w-4" />
-          Registrar nova visita
-        </div>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Faça o check-in na fazenda e registre o relatório de visita técnica.
-        </p>
-        <Button
-          variant="link"
-          className="p-0 h-auto mt-2 text-primary text-xs font-bold"
-          onClick={() => {
-            setFarmId(me.assignments?.[0]?.farm.id || "");
-            setView("visit");
-          }}
+  const FarmPickerList = () => (
+    <div className="space-y-3">
+      {(me.assignments || []).map((a) => (
+        <button
+          key={a.id}
+          onClick={() => setSelectedFarmId(a.farm.id)}
+          className="flex w-full items-center justify-between rounded-2xl border border-border/60 bg-card p-4 text-left transition-transform active:scale-[0.98]"
         >
-          Iniciar visita agora →
-        </Button>
-      </div>
-
-      {/* Stats and Info Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-border/60 bg-card p-4">
-          <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Fazendas sob gestão</div>
-          <div className="text-2xl font-bold">{stats?.totalFarms}</div>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-card p-4">
-          <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Qualidade Média</div>
-          <div className="text-2xl font-bold text-primary">{stats?.avgQuality ?? "—"}</div>
-        </div>
-
-        {activeCheckin && (
-          <div className="col-span-2 rounded-2xl border border-primary/20 bg-primary/5 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[10px] uppercase font-bold text-primary tracking-widest">Status da Fazenda Atual</h3>
-              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
+              <MapPin className="h-5 w-5" />
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <div className="text-[10px] text-muted-foreground uppercase">Última Visita</div>
-                <div className={`text-sm font-bold ${farmVisit(activeCheckin?.farmId)?.overdue ? "text-destructive" : "text-foreground"}`}>
-                  {(() => {
-                    const v = farmVisit(activeCheckin?.farmId);
-                    if (!v) return "—";
-                    return v.lastVisitAt ? `há ${v.daysSinceVisit} dia(s)` : "Nunca visitada";
-                  })()}
-                </div>
-              </div>
-              <div className="space-y-1 text-right">
-                <div className="text-[10px] text-muted-foreground uppercase">Status da visita</div>
-                <div className={`text-sm font-bold ${farmVisit(activeCheckin?.farmId)?.overdue ? "text-destructive" : "text-primary"}`}>
-                  {farmVisit(activeCheckin?.farmId)?.overdue ? "Atrasada" : "Em dia"}
-                </div>
+            <div>
+              <div className="text-sm font-bold">{a.farm.name}</div>
+              <div className={`flex items-center gap-2 text-[10px] ${farmVisit(a.farm.id)?.overdue ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+                <Calendar className="h-3 w-3" />
+                {(() => {
+                  const v = farmVisit(a.farm.id);
+                  if (!v) return "—";
+                  return v.lastVisitAt ? `Visitada há ${v.daysSinceVisit}d${v.overdue ? " · atrasada" : ""}` : "Nunca visitada";
+                })()}
               </div>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Farm List */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Minhas Fazendas</h2>
-          <Button variant="ghost" size="sm" className="text-xs h-7">Ver todas</Button>
-        </div>
-        <div className="space-y-3">
-          {(me.assignments || []).map((a) => (
-            <div 
-              key={a.id} 
-              onClick={() => {
-                setFarmId(a.farm.id);
-                // Se o check-in não for desta fazenda, abre o formulário para iniciar nova visita
-                if (activeCheckin?.farmId !== a.farm.id) {
-                  setView("visit");
-                }
-              }}
-              className={`rounded-2xl border border-border/60 bg-card p-4 flex items-center justify-between group active:scale-[0.98] transition-transform ${activeCheckin?.farmId === a.farm.id ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${activeCheckin?.farmId === a.farm.id ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
-                  <MapPin className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="font-bold text-sm">{a.farm.name}</div>
-                  <div className={`flex items-center gap-2 text-[10px] ${farmVisit(a.farm.id)?.overdue ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
-                    <Calendar className="h-3 w-3" />
-                    {(() => {
-                      const v = farmVisit(a.farm.id);
-                      if (!v) return "—";
-                      return v.lastVisitAt ? `Visitada há ${v.daysSinceVisit}d${v.overdue ? " · atrasada" : ""}` : "Nunca visitada";
-                    })()}
-                  </div>
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground group-active:text-primary" />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Quick Action FAB */}
-      <button 
-        onClick={() => setView("visit")}
-        className="fixed bottom-24 right-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center animate-bounce-slow"
-      >
-        <ClipboardCheck className="h-6 w-6" />
-      </button>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </button>
+      ))}
     </div>
   );
+
+  const renderPainel = () => {
+    if (!selectedFarmId || !selectedFarm) {
+      return (
+        <div className="space-y-6">
+          <header className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Olá, {me.user.fullName?.split(" ")[0]}</h1>
+              <p className="text-sm text-muted-foreground">Painel do Consultor</p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+              <Users className="h-5 w-5" />
+            </div>
+          </header>
+
+          {overdueFarms.length > 0 && (
+            <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm font-bold text-destructive">
+                <ShieldCheck className="h-4 w-4" />
+                {overdueFarms.length} fazenda(s) com visita atrasada
+              </div>
+              <div className="space-y-2">
+                {overdueFarms.map((f) => (
+                  <div key={f.farmId} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate">
+                      {f.farmName} — {f.lastVisitAt ? `há ${f.daysSinceVisit}d` : "nunca visitada"}
+                    </span>
+                    <div className="flex shrink-0 gap-2">
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => setSelectedFarmId(f.farmId)}>
+                        Visitar
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px]" onClick={() => setJustifyingFarmId(f.farmId)}>
+                        Justificar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {justifyingFarmId && (
+            <div className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+              <p className="text-sm font-semibold">
+                Justificar falta de visita — {visitStatus?.farms.find((f) => f.farmId === justifyingFarmId)?.farmName}
+              </p>
+              <Textarea
+                className="rounded-xl border-border bg-background"
+                placeholder="Explique o motivo pelo qual a visita não foi realizada..."
+                value={justifyReason}
+                onChange={(e) => setJustifyReason(e.target.value)}
+                rows={3}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="ghost" onClick={() => { setJustifyingFarmId(null); setJustifyReason(""); }}>Cancelar</Button>
+                <Button size="sm" onClick={submitJustification} disabled={justifying}>
+                  {justifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Enviar justificativa
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-border/60 bg-card p-4">
+              <div className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Fazendas sob gestão</div>
+              <div className="text-2xl font-bold">{stats?.totalFarms}</div>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card p-4">
+              <div className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Qualidade Média</div>
+              <div className="text-2xl font-bold text-primary">{stats?.avgQuality ?? "—"}</div>
+            </div>
+          </div>
+
+          <section>
+            <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              Minhas fazendas — selecione uma para começar
+            </h2>
+            <FarmPickerList />
+          </section>
+        </div>
+      );
+    }
+
+    const isCheckedInHere = activeCheckin?.farmId === selectedFarm.id;
+    const v = farmVisit(selectedFarm.id);
+    const farmTeam = team.filter((m) => m.farm?.id === selectedFarm.id);
+    const tappingTotals = farmTappingToday.reduce(
+      (acc, r) => { acc.liters += r.liters ?? 0; acc.dryKg += r.dryKg ?? 0; return acc; },
+      { liters: 0, dryKg: 0 },
+    );
+
+    return (
+      <div className="space-y-6 pb-24">
+        <FarmSwitcherBar />
+
+        <header>
+          {isCheckedInHere ? (
+            <p className="flex items-center gap-1 text-sm font-medium text-primary">
+              <ShieldCheck className="h-4 w-4" /> Check-in ativo nesta fazenda
+            </p>
+          ) : (
+            <p className={`text-sm ${v?.overdue ? "font-semibold text-destructive" : "text-muted-foreground"}`}>
+              {v?.lastVisitAt ? `Última visita há ${v.daysSinceVisit} dia(s)` : "Nunca visitada"}
+              {v?.overdue ? " · atrasada" : ""}
+            </p>
+          )}
+        </header>
+
+        {farmDetailLoading ? (
+          <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : (
+          <>
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Users className="h-4 w-4" />
+                <h2 className="text-sm">Hoje na fazenda</h2>
+              </div>
+              {farmCheckinsToday.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Ninguém fez check-in nesta fazenda hoje.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {farmCheckinsToday.map((o) => (
+                    <li key={o.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <ShieldCheck className="h-3 w-3 text-primary" />
+                      {o.title}
+                      {o.resolvedAt && (
+                        <span>· {new Date(o.resolvedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {farmTeam.length > 0 && (
+                <div className="border-t border-border/40 pt-2">
+                  <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Equipe vinculada</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {farmTeam.map((m) => (
+                      <span key={m.id} className="rounded-full bg-secondary px-2 py-1 text-[10px] font-medium">
+                        {m.user?.fullName || m.user?.email || "Sem nome"} · {m.role}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Droplets className="h-4 w-4" />
+                <h2 className="text-sm">Sangrias de hoje</h2>
+              </div>
+              {farmTappingToday.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhuma sangria lançada hoje ainda.</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3 text-center">
+                    <div className="rounded-xl bg-secondary/40 p-2">
+                      <div className="text-[10px] uppercase text-muted-foreground">Litros</div>
+                      <div className="text-lg font-bold">{tappingTotals.liters.toLocaleString("pt-BR")}</div>
+                    </div>
+                    <div className="rounded-xl bg-secondary/40 p-2">
+                      <div className="text-[10px] uppercase text-muted-foreground">Kg seco</div>
+                      <div className="text-lg font-bold">{tappingTotals.dryKg.toLocaleString("pt-BR")}</div>
+                    </div>
+                  </div>
+                  <ul className="space-y-1">
+                    {farmTappingToday.map((r) => (
+                      <li key={r.id} className="flex justify-between text-xs text-muted-foreground">
+                        <span>{r.sangradorName}</span>
+                        <span>{r.liters ?? "—"} L</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </section>
+
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <AlertTriangle className="h-4 w-4" />
+                <h2 className="text-sm">Alertas da fazenda</h2>
+              </div>
+              {farmAlerts.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Sem alertas nesta fazenda.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {farmAlerts.map((a) => (
+                    <li
+                      key={a.id}
+                      className={`rounded-xl border p-2 text-xs ${
+                        a.level === "warning" ? "border-warning/40 bg-warning/10" : "border-border/60 bg-background/40"
+                      }`}
+                    >
+                      <p className="font-semibold">{a.title}</p>
+                      {a.message && <p className="text-muted-foreground">{a.message}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="space-y-3 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Sparkles className="h-4 w-4" />
+                <h2 className="text-sm">Insights da IA</h2>
+              </div>
+              {farmInsights.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Sem insights gerados para esta fazenda ainda.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {farmInsights.map((i) => (
+                    <li key={i.id} className="rounded-xl border border-border/60 bg-background p-2 text-xs">
+                      <p className="font-semibold">{i.title}</p>
+                      {i.summary && <p className="text-muted-foreground">{i.summary}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <Button className="h-14 w-full rounded-2xl text-base font-bold" onClick={startVisitWithCheckin}>
+              <ClipboardCheck className="mr-2 h-5 w-5" />
+              {isCheckedInHere ? "Continuar visita" : "Fazer check-in e iniciar visita"}
+            </Button>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderAgenda = () => {
+    if (!selectedFarmId || !selectedFarm) {
+      return (
+        <div className="space-y-6">
+          <h1 className="text-xl font-bold">Agenda</h1>
+          <p className="text-sm text-muted-foreground">Selecione uma fazenda para ver e agendar visitas e tarefas.</p>
+          <FarmPickerList />
+        </div>
+      );
+    }
+
+    const sortedTasks = [...farmTasks].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+
+    return (
+      <div className="space-y-6 pb-24">
+        <FarmSwitcherBar />
+        <h1 className="text-xl font-bold">Agenda</h1>
+
+        {farmDetailLoading ? (
+          <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : (
+          <>
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <CalendarClock className="h-4 w-4" />
+                <h2 className="text-sm">Tarefas e visitas agendadas</h2>
+              </div>
+              {sortedTasks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhuma tarefa agendada para esta fazenda.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {sortedTasks.map((t) => (
+                    <li key={t.id} className="rounded-xl border border-border/60 bg-background p-3 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold">{t.title}</span>
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase">
+                          {t.status}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between text-muted-foreground">
+                        <span>{TASK_CATEGORIES.find((c) => c.value === t.category)?.label ?? t.category}</span>
+                        <span>
+                          {new Date(t.scheduledAt).toLocaleString("pt-BR", {
+                            day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Calendar className="h-4 w-4" />
+                <h2 className="text-sm">Agendar visita técnica</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  className="flex-1 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                />
+                <input
+                  type="time"
+                  className="w-24 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+                  value={scheduleTime}
+                  onChange={(e) => setScheduleTime(e.target.value)}
+                />
+                <Button size="sm" onClick={scheduleVisit} disabled={scheduling}>
+                  {scheduling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Agendar"}
+                </Button>
+              </div>
+            </section>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderHistorico = () => {
+    if (!selectedFarmId || !selectedFarm) {
+      return (
+        <div className="space-y-6">
+          <h1 className="text-xl font-bold">Histórico</h1>
+          <p className="text-sm text-muted-foreground">Selecione uma fazenda para ver o histórico.</p>
+          <FarmPickerList />
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6 pb-24">
+        <FarmSwitcherBar />
+        <h1 className="text-xl font-bold">Histórico</h1>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            className="flex-1 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+            value={historyFrom}
+            onChange={(e) => setHistoryFrom(e.target.value)}
+          />
+          <span className="text-xs text-muted-foreground">até</span>
+          <input
+            type="date"
+            className="flex-1 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+            value={historyTo}
+            onChange={(e) => setHistoryTo(e.target.value)}
+          />
+        </div>
+
+        {historyLoading ? (
+          <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : (
+          <>
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <ClipboardCheck className="h-4 w-4" />
+                <h2 className="text-sm">Visitas realizadas</h2>
+              </div>
+              {historyVisits.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhuma visita registrada nesse período.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {historyVisits.map((v) => (
+                    <li key={v.id} className="rounded-xl border border-border/60 bg-background p-3 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold">
+                          {new Date(v.conductedAt).toLocaleDateString("pt-BR")}
+                        </span>
+                        <span className="text-muted-foreground">Nota {v.tappingQuality}/5 · {v.sanitaryState}</span>
+                      </div>
+                      {v.recommendations && <p className="mt-1 text-muted-foreground">{v.recommendations}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <History className="h-4 w-4" />
+                <h2 className="text-sm">Linha do tempo</h2>
+              </div>
+              {historyEvents.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Sem eventos nesse período.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {historyEvents.map((h) => (
+                    <li key={h.id} className="text-xs">
+                      <span className="text-muted-foreground">{new Date(h.date).toLocaleDateString("pt-BR")}</span>
+                      {" — "}
+                      <span className="font-medium">{h.title}</span>
+                      {h.subtitle && <span className="text-muted-foreground"> · {h.subtitle}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderKpis = () => {
+    if (!selectedFarmId || !selectedFarm) {
+      return (
+        <div className="space-y-6">
+          <h1 className="text-xl font-bold">Indicadores (KPIs)</h1>
+
+          <div className="grid grid-cols-1 gap-4">
+            <div className="rounded-2xl border border-border/60 bg-card p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Qualidade Global</h3>
+                <TrendingUp className="h-4 w-4 text-primary" />
+              </div>
+              <div className="mb-1 text-4xl font-black text-primary">{dashboard?.avgQuality ?? "—"}</div>
+              <p className="text-xs text-muted-foreground">Média das visitas técnicas dos últimos 90 dias</p>
+            </div>
+
+            <div className="rounded-2xl border border-border/60 bg-card p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Produtividade Estimada</h3>
+                <Droplets className="h-4 w-4 text-primary" />
+              </div>
+              <div className="mb-1 text-3xl font-bold">
+                {dashboard?.productivityKgHa ?? "—"} <span className="text-sm font-normal text-muted-foreground">kg/ha</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Kg secos entregues nos últimos 30 dias / área total das fazendas</p>
+            </div>
+
+            <div className="rounded-2xl border border-border/60 bg-card p-4">
+              <h3 className="mb-4 text-xs font-bold uppercase text-muted-foreground">Top fazendas (qualidade da visita)</h3>
+              {!dashboard?.topFarms.length ? (
+                <p className="text-sm text-muted-foreground">Sem visitas com nota registrada ainda.</p>
+              ) : (
+                <div className="space-y-3">
+                  {dashboard.topFarms.map((f) => (
+                    <button
+                      key={f.farmId}
+                      onClick={() => setSelectedFarmId(f.farmId)}
+                      className="flex w-full items-center justify-between text-left"
+                    >
+                      <div className="text-sm font-medium">{f.farmName}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-secondary">
+                          <div className="h-full bg-primary" style={{ width: `${((f.avgQuality ?? 0) / 5) * 100}%` }} />
+                        </div>
+                        <span className="text-xs font-bold">{f.avgQuality?.toFixed(1)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6 pb-24">
+        <FarmSwitcherBar />
+        <h1 className="text-xl font-bold">Indicadores (KPIs)</h1>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-border/60 bg-card p-4">
+            <div className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Qualidade média</div>
+            <div className="text-2xl font-bold text-primary">{farmStat?.avgQuality ?? "—"}</div>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-card p-4">
+            <div className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Produtividade</div>
+            <div className="text-2xl font-bold">
+              {farmStat?.productivityKgHa ?? "—"} <span className="text-xs font-normal text-muted-foreground">kg/ha</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border/60 bg-card p-4">
+          <div className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Produção (últimos 30 dias)</div>
+          <div className="text-2xl font-bold">{farmStat?.totalDryKg ?? "—"} <span className="text-sm font-normal text-muted-foreground">kg seco</span></div>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Qualidade calculada sobre as visitas técnicas dos últimos 90 dias; produtividade e produção sobre as entregas dos últimos 30 dias.
+        </p>
+      </div>
+    );
+  };
+
+  const renderEquipe = () => {
+    const q = teamSearch.trim().toLowerCase();
+    const scopedTeam = selectedFarmId ? team.filter((m) => m.farm?.id === selectedFarmId) : team;
+    const filtered = scopedTeam.filter((m) => {
+      if (!q) return true;
+      return (m.user?.fullName ?? "").toLowerCase().includes(q) || (m.user?.email ?? "").toLowerCase().includes(q);
+    });
+    const monitors = filtered.filter((m) => m.role === "monitor");
+    const sangradores = filtered.filter((m) => m.role === "sangrador");
+
+    return (
+      <div className="space-y-6 pb-24">
+        <FarmSwitcherBar />
+        <h1 className="text-xl font-bold">Equipe</h1>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Buscar monitor ou sangrador..."
+            className="w-full rounded-xl border border-border/60 bg-card py-3 pl-10 pr-4 text-sm"
+            value={teamSearch}
+            onChange={(e) => setTeamSearch(e.target.value)}
+          />
+        </div>
+
+        {teamLoading ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : (
+          <>
+            <TeamGroup title="Monitores" members={monitors} />
+            <TeamGroup title="Sangradores" members={sangradores} />
+            {scopedTeam.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                {selectedFarmId ? "Nenhum monitor ou sangrador vinculado a esta fazenda." : "Nenhum monitor ou sangrador vinculado às suas fazendas."}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
 
   const renderVisitForm = () => (
     <div className="space-y-6 pb-20">
       <header className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => setView("dashboard")}>
+        <Button variant="ghost" size="icon" onClick={() => setMode("tabs")}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-xl font-bold">Nova Visita Técnica</h1>
@@ -486,9 +995,9 @@ function ConsultorFormPage() {
                   </div>
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="h-8 px-2 text-[10px] font-bold uppercase text-primary"
                 onClick={() => handleNewCheckin(activeCheckin.farmId)}
               >
@@ -497,15 +1006,14 @@ function ConsultorFormPage() {
             </div>
           )}
 
-          
           <div className="grid grid-cols-2 gap-2">
             {["Ótimo", "Bom", "Alerta", "Crítico"].map((status) => (
               <button
                 key={status}
                 onClick={() => setSanitaryState(status)}
                 className={`rounded-xl border py-2 text-sm font-medium transition-colors ${
-                  sanitaryState === status 
-                    ? "bg-primary text-primary-foreground border-primary" 
+                  sanitaryState === status
+                    ? "bg-primary text-primary-foreground border-primary"
                     : "bg-background border-border"
                 }`}
               >
@@ -534,7 +1042,6 @@ function ConsultorFormPage() {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSanitaryInspector(e.target.value)}
               className="bg-background border-border rounded-xl"
             />
-
           </div>
         </section>
 
@@ -544,7 +1051,7 @@ function ConsultorFormPage() {
             <Droplets className="h-5 w-5" />
             <h2>Qualidade da Sangria</h2>
           </div>
-          
+
           <div className="flex justify-between gap-1">
             {[1, 2, 3, 4, 5].map((score) => (
               <button
@@ -572,8 +1079,8 @@ function ConsultorFormPage() {
             <ClipboardCheck className="h-5 w-5" />
             <h2>Recomendações Técnicas</h2>
           </div>
-          <Textarea 
-            placeholder="Descreva as orientações para o produtor/equipe..." 
+          <Textarea
+            placeholder="Descreva as orientações para o produtor/equipe..."
             className="min-h-[120px] bg-background border-border rounded-xl"
             value={recommendations}
             onChange={(e) => setRecommendations(e.target.value)}
@@ -586,7 +1093,7 @@ function ConsultorFormPage() {
             <Info className="h-5 w-5" />
             <h2>Fotos e Mídia</h2>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-3">
             <Button variant="outline" className="h-28 rounded-2xl border-dashed border-2 flex flex-col items-center justify-center gap-2 group active:bg-secondary">
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-active:scale-110 transition-transform">
@@ -597,7 +1104,7 @@ function ConsultorFormPage() {
                 <span className="text-[10px] text-muted-foreground uppercase">Georeferenciada</span>
               </div>
             </Button>
-            
+
             <Button variant="outline" className="h-28 rounded-2xl border-dashed border-2 flex flex-col items-center justify-center gap-2 group active:bg-secondary">
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-active:scale-110 transition-transform">
                 <Mic className="h-5 w-5 text-primary" />
@@ -624,9 +1131,7 @@ function ConsultorFormPage() {
               </div>
               <p className="text-[10px] leading-tight text-muted-foreground italic">
                 {activeCheckin ? (
-                  <>
-                    Registrando coords, timestamp e consultor no rodapé da mídia para rastreabilidade total.
-                  </>
+                  <>Registrando coords, timestamp e consultor no rodapé da mídia para rastreabilidade total.</>
                 ) : (
                   <>Check-in necessário para carimbar dados de localização.</>
                 )}
@@ -634,15 +1139,15 @@ function ConsultorFormPage() {
             </div>
           </div>
 
-          <Textarea 
-            placeholder="Notas internas ou lembretes..." 
+          <Textarea
+            placeholder="Notas internas ou lembretes..."
             className="bg-background border-border rounded-xl"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
         </section>
 
-        <Button 
+        <Button
           className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl flex gap-2"
           onClick={handleSubmit}
           disabled={loading}
@@ -653,121 +1158,73 @@ function ConsultorFormPage() {
       </div>
     </div>
   );
-  
-  const renderKpiView = () => (
-    <div className="space-y-6">
-      <header className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => setView("dashboard")}>
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-xl font-bold">Indicadores (KPIs)</h1>
-      </header>
-      
-      <div className="grid grid-cols-1 gap-4">
-        <div className="rounded-2xl border border-border/60 bg-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Qualidade Global</h3>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </div>
-          <div className="text-4xl font-black text-primary mb-1">{dashboard?.avgQuality ?? "—"}</div>
-          <p className="text-xs text-muted-foreground">Média das visitas técnicas dos últimos 90 dias</p>
-        </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Produtividade Estimada</h3>
-            <Droplets className="h-4 w-4 text-primary" />
-          </div>
-          <div className="text-3xl font-bold mb-1">
-            {dashboard?.productivityKgHa ?? "—"} <span className="text-sm font-normal text-muted-foreground">kg/ha</span>
-          </div>
-          <p className="text-xs text-muted-foreground">Kg secos entregues nos últimos 30 dias / área total das fazendas</p>
-        </div>
-
-        <div className="rounded-2xl border border-border/60 bg-card p-4">
-          <h3 className="font-bold text-xs uppercase text-muted-foreground mb-4">Top fazendas (qualidade da visita)</h3>
-          {!dashboard?.topFarms.length ? (
-            <p className="text-sm text-muted-foreground">Sem visitas com nota registrada ainda.</p>
-          ) : (
-            <div className="space-y-3">
-              {dashboard.topFarms.map((f) => (
-                <div key={f.farmId} className="flex items-center justify-between">
-                  <div className="text-sm font-medium">{f.farmName}</div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-24 bg-secondary rounded-full overflow-hidden">
-                      <div className="h-full bg-primary" style={{ width: `${((f.avgQuality ?? 0) / 5) * 100}%` }} />
-                    </div>
-                    <span className="text-xs font-bold">{f.avgQuality?.toFixed(1)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderTeamView = () => {
-    const q = teamSearch.trim().toLowerCase();
-    const filtered = team.filter((m) => {
-      if (!q) return true;
-      return (m.user?.fullName ?? "").toLowerCase().includes(q) || (m.user?.email ?? "").toLowerCase().includes(q);
-    });
-    const monitors = filtered.filter((m) => m.role === "monitor");
-    const sangradores = filtered.filter((m) => m.role === "sangrador");
-
-    return (
-      <div className="space-y-6">
-        <header className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setView("dashboard")}>
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-xl font-bold">Minha Equipe</h1>
-        </header>
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Buscar monitor ou sangrador..."
-            className="w-full pl-10 pr-4 py-3 bg-card border border-border/60 rounded-xl text-sm"
-            value={teamSearch}
-            onChange={(e) => setTeamSearch(e.target.value)}
-          />
-        </div>
-
-        {teamLoading ? (
-          <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-        ) : (
-          <>
-            <TeamGroup title="Monitores" members={monitors} />
-            <TeamGroup title="Sangradores" members={sangradores} />
-            {team.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">Nenhum monitor ou sangrador vinculado às suas fazendas.</p>
-            )}
-          </>
-        )}
-      </div>
-    );
-  };
+  const goTab = (t: Tab) => { setMode("tabs"); setTab(t); };
 
   return (
     <div className="relative min-h-screen">
       <div className="p-6">
-        {view === "dashboard" && renderDashboard()}
-        {view === "visit" && renderVisitForm()}
-        {view === "kpis" && renderKpiView()}
-        {view === "team" && renderTeamView()}
+        {mode === "visit" ? (
+          renderVisitForm()
+        ) : (
+          <>
+            {tab === "painel" && renderPainel()}
+            {tab === "agenda" && renderAgenda()}
+            {tab === "historico" && renderHistorico()}
+            {tab === "kpis" && renderKpis()}
+            {tab === "equipe" && renderEquipe()}
+          </>
+        )}
       </div>
 
+      {mode === "tabs" && selectedFarmId && (
+        <button
+          onClick={startVisitWithCheckin}
+          className="fixed bottom-24 right-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center animate-bounce-slow"
+        >
+          <ClipboardCheck className="h-6 w-6" />
+        </button>
+      )}
+
       {/* Mobile Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card/80 backdrop-blur-md px-6 py-3 flex justify-between items-center z-50">
-        <NavButton active={view === "dashboard"} onClick={() => setView("dashboard")} icon={<LayoutDashboard className="h-5 w-5" />} label="Painel" />
-        <NavButton active={view === "visit"} onClick={() => setView("visit")} icon={<ClipboardCheck className="h-5 w-5" />} label="Visitas" />
-        <NavButton active={view === "kpis"} onClick={() => setView("kpis")} icon={<BarChart3 className="h-5 w-5" />} label="KPIs" />
-        <NavButton active={view === "team"} onClick={() => setView("team")} icon={<Users className="h-5 w-5" />} label="Equipe" />
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between border-t border-border bg-card/80 px-3 py-3 backdrop-blur-md">
+        <NavButton active={mode === "tabs" && tab === "painel"} onClick={() => goTab("painel")} icon={<LayoutDashboard className="h-5 w-5" />} label="Painel" />
+        <NavButton active={mode === "tabs" && tab === "agenda"} onClick={() => goTab("agenda")} icon={<CalendarClock className="h-5 w-5" />} label="Agenda" />
+        <NavButton active={mode === "tabs" && tab === "historico"} onClick={() => goTab("historico")} icon={<History className="h-5 w-5" />} label="Histórico" />
+        <NavButton active={mode === "tabs" && tab === "kpis"} onClick={() => goTab("kpis")} icon={<BarChart3 className="h-5 w-5" />} label="KPIs" />
+        <NavButton active={mode === "tabs" && tab === "equipe"} onClick={() => goTab("equipe")} icon={<Users className="h-5 w-5" />} label="Equipe" />
       </nav>
+
+      <Sheet open={farmSwitcherOpen} onOpenChange={setFarmSwitcherOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl border-border/60 bg-card">
+          <SheetHeader>
+            <SheetTitle className="text-left">Trocar de fazenda</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 grid gap-2 pb-6">
+            <button
+              onClick={() => pickFarm(null)}
+              className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/40 p-3 text-left transition hover:border-primary/60 hover:bg-primary/5"
+            >
+              <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Ver todas as fazendas</span>
+            </button>
+            {me.assignments.map((a) => (
+              <button
+                key={a.farm.id}
+                onClick={() => pickFarm(a.farm.id)}
+                className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${
+                  a.farm.id === selectedFarmId
+                    ? "border-primary/60 bg-primary/5"
+                    : "border-border/60 bg-background/40 hover:border-primary/60 hover:bg-primary/5"
+                }`}
+              >
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">{a.farm.name}</span>
+              </button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -799,12 +1256,12 @@ function TeamGroup({ title, members }: { title: string; members: TeamAssignment[
 
 function NavButton({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <button 
+    <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
+      className={`flex flex-1 flex-col items-center gap-1 transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
     >
       {icon}
-      <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+      <span className="text-[9px] font-bold uppercase tracking-wider">{label}</span>
     </button>
   );
 }

@@ -35,10 +35,11 @@ export class AlertsService {
     return { ok: true };
   }
 
-  async listEvents(userId: string, companyId: string, opts: { limit?: number } = {}) {
+  async listEvents(userId: string, companyId: string, opts: { limit?: number; farmId?: string } = {}) {
     await this.access.ensureCompany(userId, companyId);
     return this.prisma.alertEvent.findMany({
-      where: { companyId }, orderBy: { createdAt: 'desc' },
+      where: { companyId, ...(opts.farmId ? { farmId: opts.farmId } : {}) },
+      orderBy: { createdAt: 'desc' },
       take: Math.min(opts.limit ?? 100, 500),
     });
   }
@@ -95,16 +96,30 @@ export class AlertsService {
       if (r.kind === 'occurrence_open_days') {
         const days = Number((r.threshold as any)?.days ?? 3);
         const cutoff = new Date(Date.now() - days * 86400000);
-        const stale = await this.prisma.occurrence.count({
+        const stale = await this.prisma.occurrence.findMany({
           where: { companyId, isDeleted: false, status: { not: 'resolvida' }, date: { lte: cutoff } },
+          select: { farmId: true },
         });
-        if (stale > 0) {
-          await this.prisma.alertEvent.create({ data: {
-            companyId, ruleId: r.id, level: 'warning',
-            title: `${stale} ocorrências abertas há mais de ${days} dias`,
-            meta: { stale, days },
-          } });
-          created += 1;
+        if (stale.length > 0) {
+          const byFarm = new Map<string | null, number>();
+          for (const o of stale) byFarm.set(o.farmId, (byFarm.get(o.farmId) ?? 0) + 1);
+          const farmIds = [...byFarm.keys()].filter((id): id is string => !!id);
+          const farms = farmIds.length
+            ? await this.prisma.farm.findMany({ where: { id: { in: farmIds } }, select: { id: true, name: true } })
+            : [];
+          const farmNameById = new Map(farms.map((f) => [f.id, f.name]));
+
+          for (const [farmId, count] of byFarm.entries()) {
+            const farmName = farmId ? farmNameById.get(farmId) : undefined;
+            await this.prisma.alertEvent.create({ data: {
+              companyId, farmId, ruleId: r.id, level: 'warning',
+              title: farmName
+                ? `${count} ocorrência(s) abertas há mais de ${days} dias em ${farmName}`
+                : `${count} ocorrências abertas há mais de ${days} dias`,
+              meta: { stale: count, days, farmId, farmName },
+            } });
+            created += 1;
+          }
         }
       } else if (r.kind === 'drc_out_of_range') {
         const min = Number((r.threshold as any)?.min ?? 25);
@@ -116,12 +131,25 @@ export class AlertsService {
         });
         const off = rows.filter((r2) => r2.drcAvgPercent! < min || r2.drcAvgPercent! > max);
         if (off.length > 0) {
-          await this.prisma.alertEvent.create({ data: {
-            companyId, ruleId: r.id, level: 'warning',
-            title: `${off.length} entregas com DRC fora da faixa (${min}%–${max}%)`,
-            meta: { min, max, count: off.length },
-          } });
-          created += 1;
+          const byFarm = new Map<string | null, number>();
+          for (const d of off) byFarm.set(d.farmId, (byFarm.get(d.farmId) ?? 0) + 1);
+          const farmIds = [...byFarm.keys()].filter((id): id is string => !!id);
+          const farms = farmIds.length
+            ? await this.prisma.farm.findMany({ where: { id: { in: farmIds } }, select: { id: true, name: true } })
+            : [];
+          const farmNameById = new Map(farms.map((f) => [f.id, f.name]));
+
+          for (const [farmId, count] of byFarm.entries()) {
+            const farmName = farmId ? farmNameById.get(farmId) : undefined;
+            await this.prisma.alertEvent.create({ data: {
+              companyId, farmId, ruleId: r.id, level: 'warning',
+              title: farmName
+                ? `${count} entrega(s) com DRC fora da faixa (${min}%–${max}%) em ${farmName}`
+                : `${count} entregas com DRC fora da faixa (${min}%–${max}%)`,
+              meta: { min, max, count, farmId, farmName },
+            } });
+            created += 1;
+          }
         }
       } else if (r.kind === 'visit_overdue') {
         const days = Number((r.threshold as any)?.days ?? 30);
@@ -144,11 +172,11 @@ export class AlertsService {
             const last = lastByFarm.get(a.farmId) ?? a.startAt;
             return last <= cutoff;
           });
-          if (overdue.length > 0) {
+          for (const a of overdue) {
             await this.prisma.alertEvent.create({ data: {
-              companyId, ruleId: r.id, level: 'warning',
-              title: `${overdue.length} fazenda(s) sem visita de consultor há mais de ${days} dias`,
-              meta: { days, farms: overdue.map((a) => ({ farmId: a.farmId, farmName: a.farm.name })) },
+              companyId, farmId: a.farmId, ruleId: r.id, level: 'warning',
+              title: `${a.farm.name} está sem visita de consultor há mais de ${days} dias`,
+              meta: { days, farmId: a.farmId, farmName: a.farm.name },
             } });
             created += 1;
           }

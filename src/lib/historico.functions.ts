@@ -13,5 +13,5 @@ export type HistoryEvent = {
 export function listHistory(companyId: string, opts: { farmId?: string; from?: string; to?: string; limit?: number } = {}) {
   const qs = new URLSearchParams({ companyId });
   Object.entries(opts).forEach(([k, v]) => v != null && v !== "" && qs.set(k, String(v)));
-  return apiRequest<HistoryEvent[]>(`/history?${qs.toString()}`);
+  return apiRequest<HistoryEvent[]>(`/historico?${qs.toString()}`);
 }

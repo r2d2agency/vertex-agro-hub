@@ -5,7 +5,7 @@ export type AlertRule = {
   threshold?: any; channel: string; active: boolean; createdAt: string; updatedAt: string;
 };
 export type AlertEvent = {
-  id: string; ruleId?: string | null; companyId: string;
+  id: string; ruleId?: string | null; companyId: string; farmId?: string | null;
   level: string; title: string; message?: string | null; meta?: any; createdAt: string;
 };
 
@@ -17,8 +17,12 @@ export const updateAlertRule = (id: string, dto: Partial<AlertRule>) =>
   apiRequest<AlertRule>(`/alerts/rules/${id}`, { method: "PATCH", body: JSON.stringify(dto) });
 export const deleteAlertRule = (id: string) =>
   apiRequest<{ ok: boolean }>(`/alerts/rules/${id}`, { method: "DELETE" });
-export const listAlertEvents = (companyId: string, limit = 100) =>
-  apiRequest<AlertEvent[]>(`/alerts/events?companyId=${companyId}&limit=${limit}`);
+export const listAlertEvents = (companyId: string, opts: { limit?: number; farmId?: string } = {}) => {
+  const { limit = 100, farmId } = opts;
+  const params = new URLSearchParams({ companyId, limit: String(limit) });
+  if (farmId) params.set("farmId", farmId);
+  return apiRequest<AlertEvent[]>(`/alerts/events?${params.toString()}`);
+};
 export const evaluateAlerts = (companyId: string) =>
   apiRequest<{ evaluated: number; created: number }>(`/alerts/evaluate`, {
     method: "POST", body: JSON.stringify({ companyId }),

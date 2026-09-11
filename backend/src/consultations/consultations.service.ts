@@ -159,7 +159,7 @@ export class ConsultationsService {
     });
     const farmIds = [...new Set(assignments.map((a) => a.farmId))];
     if (farmIds.length === 0) {
-      return { totalFarms: 0, totalMonitors: 0, totalSangradores: 0, avgQuality: null, topFarms: [], productivityKgHa: null };
+      return { totalFarms: 0, totalMonitors: 0, totalSangradores: 0, avgQuality: null, topFarms: [], productivityKgHa: null, farmStats: [] };
     }
 
     const since90 = new Date(Date.now() - 90 * 86400000);
@@ -176,7 +176,7 @@ export class ConsultationsService {
       }),
       this.prisma.productionDelivery.findMany({
         where: { companyId, isDeleted: false, farmId: { in: farmIds }, deliveryDate: { gte: since30 } },
-        select: { netWeightKg: true, drcAvgPercent: true, dryKg: true },
+        select: { farmId: true, netWeightKg: true, drcAvgPercent: true, dryKg: true },
       }),
     ]);
 
@@ -204,12 +204,35 @@ export class ConsultationsService {
       .sort((a, b) => (b.avgQuality ?? 0) - (a.avgQuality ?? 0))
       .slice(0, 5);
 
-    const totalDryKg = deliveries.reduce(
-      (acc, d) => acc + (d.dryKg ?? (d.netWeightKg && d.drcAvgPercent ? d.netWeightKg * (d.drcAvgPercent / 100) : 0)),
-      0,
-    );
+    const dryKgByFarm = (d: typeof deliveries) =>
+      d.reduce((acc, x) => acc + (x.dryKg ?? (x.netWeightKg && x.drcAvgPercent ? x.netWeightKg * (x.drcAvgPercent / 100) : 0)), 0);
+
+    const totalDryKg = dryKgByFarm(deliveries);
     const totalAreaHa = assignments.reduce((acc, a) => acc + (a.farm.totalAreaHa ?? 0), 0);
     const productivityKgHa = totalAreaHa > 0 ? +(totalDryKg / totalAreaHa).toFixed(1) : null;
+
+    const deliveriesByFarm = new Map<string, typeof deliveries>();
+    for (const d of deliveries) {
+      if (!d.farmId) continue;
+      const cur = deliveriesByFarm.get(d.farmId) ?? [];
+      cur.push(d);
+      deliveriesByFarm.set(d.farmId, cur);
+    }
+
+    // Cobre TODAS as fazendas do consultor (diferente de topFarms, que só traz
+    // as top 5 com qualidade registrada) — usado pela aba de KPI por fazenda.
+    const farmStats = assignments.map((a) => {
+      const q = qualityByFarm.get(a.farmId);
+      const farmDryKg = dryKgByFarm(deliveriesByFarm.get(a.farmId) ?? []);
+      const farmAreaHa = a.farm.totalAreaHa ?? 0;
+      return {
+        farmId: a.farmId,
+        farmName: a.farm.name,
+        avgQuality: q ? +(q.sum / q.count).toFixed(1) : null,
+        productivityKgHa: farmAreaHa > 0 ? +(farmDryKg / farmAreaHa).toFixed(1) : null,
+        totalDryKg: +farmDryKg.toFixed(1),
+      };
+    });
 
     return {
       totalFarms: farmIds.length,
@@ -218,6 +241,7 @@ export class ConsultationsService {
       avgQuality,
       topFarms,
       productivityKgHa,
+      farmStats,
     };
   }
 

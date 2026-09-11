@@ -61,6 +61,13 @@ export type ConsultorDashboard = {
   avgQuality: number | null;
   topFarms: Array<{ farmId: string; farmName: string; avgQuality: number | null }>;
   productivityKgHa: number | null;
+  farmStats: Array<{
+    farmId: string;
+    farmName: string;
+    avgQuality: number | null;
+    productivityKgHa: number | null;
+    totalDryKg: number;
+  }>;
 };
 
 export function getConsultorDashboard(companyId: string) {

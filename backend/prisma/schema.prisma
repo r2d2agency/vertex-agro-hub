@@ -825,6 +825,7 @@ model AlertEvent {
   id        String   @id @default(uuid()) @db.Uuid
   ruleId    String?  @map("rule_id") @db.Uuid
   companyId String   @map("company_id") @db.Uuid
+  farmId    String?  @map("farm_id") @db.Uuid
   level     String   @default("info")
   title     String
   message   String?
@@ -835,6 +836,7 @@ model AlertEvent {
   company Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId, createdAt])
+  @@index([companyId, farmId, createdAt])
   @@map("alert_event")
 }
 

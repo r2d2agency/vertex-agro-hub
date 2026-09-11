@@ -87,8 +87,13 @@ export class GovernanceController {
   @Delete('alerts/rules/:id')
   deleteRule(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) { return this.alerts.deleteRule(req.user.sub, id); }
   @Get('alerts/events')
-  listEvents(@Req() req: any, @Query('companyId') companyId?: string, @Query('limit') limit?: string) {
-    return this.alerts.listEvents(req.user.sub, need(companyId), { limit: limit ? +limit : undefined });
+  listEvents(
+    @Req() req: any,
+    @Query('companyId') companyId?: string,
+    @Query('limit') limit?: string,
+    @Query('farmId') farmId?: string,
+  ) {
+    return this.alerts.listEvents(req.user.sub, need(companyId), { limit: limit ? +limit : undefined, farmId });
   }
   @Post('alerts/evaluate')
   evaluate(@Req() req: any, @Body() body: { companyId: string }) {
