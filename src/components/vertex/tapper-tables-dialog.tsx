@@ -102,35 +102,37 @@ export function TapperTablesDialog({
         ) : links.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma tabela vinculada ainda.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="max-h-[45vh] space-y-2 overflow-y-auto">
             {links.map((l) => (
-              <li key={l.id} className="flex items-center gap-2 rounded-lg border p-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
+              <li key={l.id} className="space-y-2 rounded-lg border p-2">
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <p className="min-w-0 truncate text-sm font-medium">
                     {l.tappingTable?.name ?? "Tabela removida"}
                     {l.tappingTable?.notation ? ` — ${l.tappingTable.notation}` : ""}
                   </p>
+                  <Button
+                    size="icon" variant="ghost" className="h-8 w-8 shrink-0"
+                    disabled={removeMutation.isPending}
+                    onClick={() => removeMutation.mutate(l.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
-                <Input
-                  type="number" min={0} className="h-9 w-24"
-                  value={edits[l.id] ?? (l.treeCount ?? "")}
-                  onChange={(e) => setEdits((c) => ({ ...c, [l.id]: e.target.value }))}
-                  placeholder="Árvores"
-                />
-                <Button
-                  size="sm" variant="outline"
-                  disabled={saveMutation.isPending}
-                  onClick={() => saveMutation.mutate(l.id)}
-                >
-                  Salvar
-                </Button>
-                <Button
-                  size="sm" variant="ghost"
-                  disabled={removeMutation.isPending}
-                  onClick={() => removeMutation.mutate(l.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex min-w-0 gap-2">
+                  <Input
+                    type="number" min={0} className="h-9 min-w-0 flex-1"
+                    value={edits[l.id] ?? (l.treeCount ?? "")}
+                    onChange={(e) => setEdits((c) => ({ ...c, [l.id]: e.target.value }))}
+                    placeholder="Árvores"
+                  />
+                  <Button
+                    size="sm" variant="outline" className="shrink-0"
+                    disabled={saveMutation.isPending}
+                    onClick={() => saveMutation.mutate(l.id)}
+                  >
+                    Salvar
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
@@ -138,20 +140,20 @@ export function TapperTablesDialog({
 
         <div className="space-y-2 border-t pt-3">
           <Label className="text-xs font-medium text-muted-foreground">Vincular nova tabela</Label>
-          <div className="flex gap-2">
-            <Select value={newTableId} onValueChange={setNewTableId}>
-              <SelectTrigger className="h-10 flex-1"><SelectValue placeholder="Tabela" /></SelectTrigger>
-              <SelectContent>
-                {availableTables.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Select value={newTableId} onValueChange={setNewTableId}>
+            <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Tabela" /></SelectTrigger>
+            <SelectContent>
+              {availableTables.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex min-w-0 gap-2">
             <Input
-              type="number" min={0} className="h-10 w-24" placeholder="Árvores"
+              type="number" min={0} className="h-10 min-w-0 flex-1" placeholder="Árvores"
               value={newTreeCount} onChange={(e) => setNewTreeCount(e.target.value)}
             />
-            <Button disabled={!newTableId || addMutation.isPending} onClick={() => addMutation.mutate()}>
+            <Button className="shrink-0" disabled={!newTableId || addMutation.isPending} onClick={() => addMutation.mutate()}>
               Adicionar
             </Button>
           </div>

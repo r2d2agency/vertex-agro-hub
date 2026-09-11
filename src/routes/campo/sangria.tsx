@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, Loader2 } from "lucide-react";
+import { Camera, Loader2, Trees } from "lucide-react";
 import {
   getFieldMe, submitTapping, listFieldTappers, listFieldTapperTables,
   type FieldMe, type FieldTapper, type FieldTapperTable,
@@ -8,7 +8,6 @@ import {
 import { TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,8 +32,6 @@ function SangriaPage() {
   const [tappingTableId, setTappingTableId] = useState("");
   const [taskExtents, setTaskExtents] = useState<string[]>([]);
   const [endPeriod, setEndPeriod] = useState("");
-  const [previstas, setPrevistas] = useState("");
-  const [realizadas, setRealizadas] = useState("");
 
   // step 2 — observações
   const [notes, setNotes] = useState("");
@@ -66,7 +63,7 @@ function SangriaPage() {
   // fazer — cada sangrador pode ter várias tabelas vinculadas, cada uma com
   // sua própria quantidade.
   useEffect(() => {
-    setTappingTableId(""); setTables([]); setPrevistas("");
+    setTappingTableId(""); setTables([]);
     if (!farm || !tapperId) return;
     setTablesLoading(true);
     listFieldTapperTables(farm.companyId, tapperId)
@@ -74,12 +71,6 @@ function SangriaPage() {
       .catch(() => setTables([]))
       .finally(() => setTablesLoading(false));
   }, [farm, tapperId]);
-
-  function selectTable(id: string) {
-    setTappingTableId(id);
-    const t = tables.find((x) => x.id === id);
-    if (t?.treeCount != null) setPrevistas(String(t.treeCount));
-  }
 
   function toggleTask(value: string) {
     setTaskExtents((cur) => cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value]);
@@ -110,8 +101,7 @@ function SangriaPage() {
       tapperId: tapper.id.startsWith("rh:") ? undefined : tapper.id,
       taskExtent: taskExtents.length ? taskExtents.join(",") : undefined,
       endPeriod: endPeriod || undefined,
-      treesExpected: previstas ? Number(previstas) : undefined,
-      treesTapped: realizadas ? Number(realizadas) : undefined,
+      treesExpected: table?.treeCount ?? undefined,
       notes: notes.trim() || undefined,
       photoUrls: photoUrls.length ? photoUrls : undefined,
       audioUrl: audioUrl || undefined,
@@ -161,12 +151,19 @@ function SangriaPage() {
                   Nenhuma tabela vinculada a este sangrador. Vincule em Sangradores &gt; Tabelas, no admin.
                 </div>
               ) : (
-                <Select value={tappingTableId} onValueChange={selectTable}>
+                <Select value={tappingTableId} onValueChange={setTappingTableId}>
                   <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione a tabela" /></SelectTrigger>
                   <SelectContent>{tables.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>)}</SelectContent>
                 </Select>
               )}
             </Field>
+          )}
+          {table && (
+            <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
+              <Trees className="h-4 w-4 text-primary" />
+              <span className="text-muted-foreground">Árvores previstas nesta tabela:</span>
+              <span className="font-semibold text-foreground">{table.treeCount ?? "—"}</span>
+            </div>
           )}
           {tappingTableId && (
             <div>
@@ -197,15 +194,6 @@ function SangriaPage() {
               <SelectContent>{END_PERIODS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Árvores previstas">
-              <Input className="h-11 rounded-xl" inputMode="numeric" value={previstas} onChange={(e) => setPrevistas(e.target.value)} />
-              {table?.treeCount != null && (
-                <p className="text-[10px] text-muted-foreground italic px-1">Sugerido pela tabela, edite se necessário.</p>
-              )}
-            </Field>
-            <Field label="Árvores realizadas"><Input className="h-11 rounded-xl" inputMode="numeric" value={realizadas} onChange={(e) => setRealizadas(e.target.value)} /></Field>
-          </div>
           <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={() => setStep(2)}>Continuar</Button>
         </FieldCard>
       )}
@@ -242,11 +230,8 @@ function SangriaPage() {
             <Row label="Sangrador" value={tapper?.fullName ?? "—"} />
             <Row label="Tabela" value={table?.name ?? "—"} />
             <Row label="Tarefa" value={taskExtents.length ? taskExtents.map((v) => TASK_EXTENTS.find((t) => t.value === v)?.label ?? v).join(", ") : "—"} />
-            <Row label="Árvores (realizadas / previstas)" value={`${realizadas || "—"} / ${previstas || "—"}`} />
-            <Row
-              label="Saldo"
-              value={realizadas && previstas ? `${Number(realizadas) - Number(previstas)} árvore(s)` : "—"}
-            />
+            <Row label="Período realizado" value={END_PERIODS.find((p) => p.value === endPeriod)?.label ?? "—"} />
+            <Row label="Árvores previstas na tabela" value={table?.treeCount != null ? String(table.treeCount) : "—"} />
           </dl>
           <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar sangria
