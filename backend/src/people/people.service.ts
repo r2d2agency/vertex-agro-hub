@@ -84,22 +84,28 @@ export class PeopleService {
     if (!isConsultorHere) throw new ForbiddenException('Sem permissão para gerenciar recursos nesta empresa');
   }
 
+  // Consultor avalia monitor/sangrador das fazendas onde é consultor; monitor
+  // avalia sangrador das fazendas onde é monitor (mesma regra, papel de baixo
+  // avaliando o de baixo — nunca outro monitor ou o próprio consultor).
   private async ensureManagerOrCanEvaluate(userId: string, companyId: string, targetUserId: string) {
     if (await this.isCompanyManager(userId, companyId)) return;
-    const consultorFarms = await this.prisma.farmAssignment.findMany({
-      where: { userId, companyId, role: 'consultor', endAt: null },
-      select: { farmId: true },
+    const myLinks = await this.prisma.farmAssignment.findMany({
+      where: { userId, companyId, role: { in: ['consultor', 'monitor'] }, endAt: null },
+      select: { farmId: true, role: true },
     });
-    if (consultorFarms.length === 0) throw new ForbiddenException('Sem permissão para gerenciar recursos nesta empresa');
+    if (myLinks.length === 0) throw new ForbiddenException('Sem permissão para gerenciar recursos nesta empresa');
+    const consultorFarmIds = myLinks.filter((l) => l.role === 'consultor').map((l) => l.farmId);
+    const monitorFarmIds = myLinks.filter((l) => l.role === 'monitor').map((l) => l.farmId);
     const targetLink = await this.prisma.farmAssignment.findFirst({
       where: {
-        userId: targetUserId, companyId,
-        farmId: { in: consultorFarms.map((f) => f.farmId) },
-        role: { in: ['monitor', 'sangrador'] },
-        endAt: null,
+        userId: targetUserId, companyId, endAt: null,
+        OR: [
+          { farmId: { in: consultorFarmIds }, role: { in: ['monitor', 'sangrador'] } },
+          { farmId: { in: monitorFarmIds }, role: 'sangrador' },
+        ],
       },
     });
-    if (!targetLink) throw new ForbiddenException('Consultor só pode avaliar monitores/sangradores das fazendas onde atua');
+    if (!targetLink) throw new ForbiddenException('Você só pode avaliar colaboradores das fazendas onde atua');
   }
 
   private async ensureMember(targetUserId: string, companyId: string) {

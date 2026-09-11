@@ -380,11 +380,58 @@ export class FleetService {
   }
 
   // ---------- Operators ----------
+  // Um operador pode existir de duas formas desconectadas: um registro de
+  // frota (`Operator`, com CNH etc.) criado direto no admin, ou um vínculo de
+  // RH (`FarmAssignment` role='operador') criado no fluxo de pessoas/pré-
+  // cadastro. Antes, telas de campo (apontamento de operação, abastecimento,
+  // checklist) só liam `Operator`, então um operador só cadastrado pelo RH
+  // nunca aparecia pra ser selecionado. Diferente do caso do sangrador,
+  // `operatorId` aqui é uma FK obrigatória sem campo de nome livre em nenhuma
+  // tabela (FuelMovement/OperationLog/MachineChecklist), então não dá pra usar
+  // um id sintético — a saída é garantir que todo vínculo de RH também tenha
+  // um `Operator` real (auto-provisionado, ligado por `userId`) antes de listar.
   async listOperators(userId: string, companyId: string, farmId?: string) {
     await this.access.ensureCompany(userId, companyId);
+    await this.syncOperatorsFromRh(companyId, farmId);
     return this.prisma.operator.findMany({
       where: { companyId, isDeleted: false, ...(farmId ? { farmId } : {}) },
       orderBy: { name: 'asc' },
+    });
+  }
+
+  private async syncOperatorsFromRh(companyId: string, farmId?: string) {
+    const assignments = await this.prisma.farmAssignment.findMany({
+      where: {
+        companyId, role: 'operador', ...(farmId ? { farmId } : {}),
+        OR: [{ endAt: null }, { endAt: { gte: new Date() } }],
+      },
+      select: { userId: true, farmId: true, user: { select: { fullName: true, email: true } } },
+    });
+    if (assignments.length === 0) return;
+
+    const linkedUserIds = [...new Set(assignments.map((a) => a.userId))];
+    const existing = await this.prisma.operator.findMany({
+      where: { companyId, userId: { in: linkedUserIds } },
+      select: { userId: true },
+    });
+    const existingUserIds = new Set(existing.map((o) => o.userId));
+    const seen = new Set<string>();
+    const missing = assignments.filter((a) => {
+      if (existingUserIds.has(a.userId) || seen.has(a.userId)) return false;
+      seen.add(a.userId);
+      return true;
+    });
+    if (missing.length === 0) return;
+
+    await this.prisma.operator.createMany({
+      data: missing.map((a) => ({
+        companyId,
+        farmId: a.farmId,
+        userId: a.userId,
+        name: (a.user?.fullName || a.user?.email || 'Operador').trim(),
+        status: 'ativo',
+      })),
+      skipDuplicates: true,
     });
   }
 

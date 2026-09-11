@@ -52,7 +52,7 @@ import {
 import {
   listFarmTeam, listPersonEvaluations, type FarmAssignment as TeamAssignment, type PersonEvaluation,
 } from "@/lib/people.functions";
-import { listOccurrences, type Occurrence } from "@/lib/ocorrencias.functions";
+import { listOccurrences, OCC_TYPES, type Occurrence } from "@/lib/ocorrencias.functions";
 import { listTappingRecords, type TappingRecord } from "@/lib/sangrias.functions";
 import { listAlertEvents, type AlertEvent } from "@/lib/alertas.functions";
 import { listInsights, type AiInsight } from "@/lib/ai.functions";
@@ -90,6 +90,7 @@ function ConsultorFormPage() {
   const [farmCheckinsToday, setFarmCheckinsToday] = useState<Occurrence[]>([]);
   const [farmTappingToday, setFarmTappingToday] = useState<TappingRecord[]>([]);
   const [farmAlerts, setFarmAlerts] = useState<AlertEvent[]>([]);
+  const [farmOpenOccurrences, setFarmOpenOccurrences] = useState<Occurrence[]>([]);
   const [farmInsights, setFarmInsights] = useState<AiInsight[]>([]);
   const [farmTasks, setFarmTasks] = useState<ScheduledTask[]>([]);
   const [scheduleDate, setScheduleDate] = useState("");
@@ -212,13 +213,15 @@ function ConsultorFormPage() {
       listAlertEvents(companyId, { farmId: selectedFarmId, limit: 20 }).catch(() => [] as AlertEvent[]),
       listInsights(companyId).catch(() => [] as AiInsight[]),
       listTasks(companyId, { farmId: selectedFarmId }).catch(() => [] as ScheduledTask[]),
+      listOccurrences(companyId, { farmId: selectedFarmId, status: "aberta" }).catch(() => [] as Occurrence[]),
     ])
-      .then(([occurrences, tapping, alerts, insights, tasks]) => {
+      .then(([occurrences, tapping, alerts, insights, tasks, openOccurrences]) => {
         setFarmCheckinsToday(occurrences.filter((o) => o.type === "checkin"));
         setFarmTappingToday(tapping);
         setFarmAlerts(alerts);
         setFarmInsights(insights.filter((i) => i.farmId === selectedFarmId));
         setFarmTasks(tasks);
+        setFarmOpenOccurrences(openOccurrences.filter((o) => o.type !== "checkin"));
       })
       .finally(() => setFarmDetailLoading(false));
   }, [selectedFarmId, me]);
@@ -764,7 +767,7 @@ function ConsultorFormPage() {
                 <AlertTriangle className="h-4 w-4" />
                 <h2 className="text-sm">Alertas da fazenda</h2>
               </div>
-              {farmAlerts.length === 0 ? (
+              {farmAlerts.length === 0 && farmOpenOccurrences.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Sem alertas nesta fazenda.</p>
               ) : (
                 <ul className="space-y-2">
@@ -777,6 +780,23 @@ function ConsultorFormPage() {
                     >
                       <p className="font-semibold">{a.title}</p>
                       {a.message && <p className="text-muted-foreground">{a.message}</p>}
+                    </li>
+                  ))}
+                  {farmOpenOccurrences.map((o) => (
+                    <li
+                      key={o.id}
+                      className={`rounded-xl border p-2 text-xs ${
+                        o.severity === "critica" || o.severity === "alta"
+                          ? "border-destructive/40 bg-destructive/10"
+                          : "border-warning/40 bg-warning/10"
+                      }`}
+                    >
+                      <p className="font-semibold">{o.title}</p>
+                      {o.description && <p className="whitespace-pre-line text-muted-foreground">{o.description}</p>}
+                      <p className="mt-1 text-[10px] uppercase text-muted-foreground">
+                        {OCC_TYPES.find((t) => t.value === o.type)?.label ?? o.type}
+                        {o.responsible ? ` · reportado por ${o.responsible}` : ""}
+                      </p>
                     </li>
                   ))}
                 </ul>

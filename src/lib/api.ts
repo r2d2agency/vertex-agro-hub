@@ -72,7 +72,25 @@ export function clearAuthTokens() {
   window.dispatchEvent(new Event("vertex-auth-change"));
 }
 
+// Toda tela de campo dispara getFieldMe() tanto no shell (route.tsx) quanto
+// no próprio componente da página ao montar — se o access token já expirou,
+// as duas chamadas tomam 401 quase ao mesmo tempo e cada uma tentava renovar
+// o token sozinha. O backend roda rotação de refresh token (o antigo é
+// invalidado ao emitir um novo), então a segunda renovação usava um
+// refresh_token já trocado, falhava, e derrubava a sessão inteira — um
+// "deslogou sozinho" que não tinha nada a ver com a tela em si. Compartilhar
+// a mesma promise entre chamadas concorrentes elimina a corrida.
+let refreshPromise: Promise<boolean> | null = null;
+
 async function refreshAccessToken() {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = doRefreshAccessToken().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
+}
+
+async function doRefreshAccessToken() {
   const refresh_token = getRefreshToken();
   if (!refresh_token) return false;
 

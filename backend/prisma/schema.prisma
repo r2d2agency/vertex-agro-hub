@@ -1062,6 +1062,7 @@ model Operator {
   cpf                    String?
   phone                  String?
   email                  String?
+  userId                 String?  @map("user_id") @db.Uuid
   monitorUserId          String?  @map("monitor_user_id") @db.Uuid
   cnhCategory            String?  @map("cnh_category")
   cnhExpiresAt           DateTime? @map("cnh_expires_at") @db.Date
@@ -1087,6 +1088,7 @@ model Operator {
 
   @@index([companyId, isDeleted])
   @@index([farmId])
+  @@unique([companyId, userId])
   @@map("operators")
 }
 

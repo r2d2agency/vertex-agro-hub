@@ -72,13 +72,22 @@ export async function captureLocation(timeout = 10000): Promise<Coords | null> {
   });
 }
 
-function submit(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body: any, label: string) {
-  return enqueueMutation({
-    path,
-    method,
-    body,
-    label,
-  }).then(key => ({ queued: true, key }));
+async function submit(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body: any, label: string) {
+  // Se já está online, tenta enviar direto — só cai na fila offline se a
+  // tentativa falhar (rede caiu na hora, servidor fora) ou se o dispositivo
+  // já estiver offline. Antes, todo registro ia direto pra fila e só saía
+  // de lá com uma ação manual ou uma transição offline→online do navegador,
+  // então ficava "pendente" mesmo com internet normal.
+  if (typeof navigator === "undefined" || navigator.onLine) {
+    try {
+      await apiRequest(path, { method, body: JSON.stringify(body) });
+      return { queued: false };
+    } catch {
+      // segue para a fila abaixo
+    }
+  }
+  const key = await enqueueMutation({ path, method, body, label });
+  return { queued: true, key };
 }
 
 export function submitTapping(input: {

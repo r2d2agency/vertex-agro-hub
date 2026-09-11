@@ -7,6 +7,7 @@ export const OCC_TYPES = [
   { value: "equipamento", label: "Equipamento" },
   { value: "seguranca", label: "Segurança" },
   { value: "processo", label: "Processo" },
+  { value: "equipe", label: "Equipe / Pessoal" },
   { value: "outro", label: "Outro" },
 ] as const;
 
