@@ -286,6 +286,7 @@ model Farm {
   centroidLng  Float?   @map("centroid_lng")
   bboxJson     Json?    @map("bbox")
   photoUrls    String[]   @default([]) @map("photo_urls")
+  checkinRadiusM Int?     @map("checkin_radius_m")
 
 
   version      Int        @default(1)

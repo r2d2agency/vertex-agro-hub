@@ -37,7 +37,7 @@ export class FieldController {
   checkin(@Req() req: any, @Body() dto: {
     companyId: string; farmId?: string; plotId?: string;
     latitude?: number; longitude?: number; accuracyM?: number;
-    taskId?: string; notes?: string;
+    taskId?: string; notes?: string; photoUrl?: string; strict?: boolean;
   }) { return this.svc.checkin(req.user.sub, dto); }
 
   // ---------- Estimulações ----------

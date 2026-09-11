@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { toZonedTime } from 'date-fns-tz';
 import { format } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
@@ -9,6 +9,7 @@ import {
 } from './dto';
 
 const TIMEZONE = 'America/Sao_Paulo';
+const DEFAULT_CHECKIN_RADIUS_M = 200;
 
 function getNow() {
   return toZonedTime(new Date(), TIMEZONE);
@@ -16,6 +17,18 @@ function getNow() {
 
 function parseInputDate(dateStr: string | Date) {
   return toZonedTime(new Date(dateStr), TIMEZONE);
+}
+
+// Distância em metros entre duas coordenadas (fórmula de Haversine).
+function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 @Injectable()
@@ -110,10 +123,43 @@ export class FieldService {
   async checkin(userId: string, dto: {
     companyId: string; farmId?: string; plotId?: string;
     latitude?: number; longitude?: number; accuracyM?: number;
-    taskId?: string; notes?: string;
+    taskId?: string; notes?: string; photoUrl?: string;
+    // strict = fluxo "check-in ativo" de verdade (gate do app de campo / início
+    // de visita do consultor): exige GPS dentro do raio da fazenda + foto da
+    // propriedade. Sem strict, mantém o comportamento leve de sempre (usado
+    // pra carimbar localização ao concluir uma tarefa da agenda).
+    strict?: boolean;
   }) {
     if (!dto?.companyId) throw new NotFoundException('companyId obrigatório');
     await this.access.ensureCompany(userId, dto.companyId);
+
+    if (dto.strict) {
+      if (dto.latitude == null || dto.longitude == null) {
+        throw new BadRequestException('Localização (GPS) é obrigatória para o check-in');
+      }
+      if (!dto.photoUrl) {
+        throw new BadRequestException('Foto da propriedade é obrigatória para o check-in');
+      }
+    }
+
+    let farm: { name: string; latitude: number | null; longitude: number | null; checkinRadiusM: number | null } | null = null;
+    if (dto.farmId) {
+      farm = await this.prisma.farm.findFirst({
+        where: { id: dto.farmId, companyId: dto.companyId, isDeleted: false },
+        select: { name: true, latitude: true, longitude: true, checkinRadiusM: true },
+      });
+      if (!farm) throw new BadRequestException('Fazenda inválida');
+      if (dto.strict && farm.latitude != null && farm.longitude != null && dto.latitude != null && dto.longitude != null) {
+        const radius = farm.checkinRadiusM ?? DEFAULT_CHECKIN_RADIUS_M;
+        const distance = distanceMeters(dto.latitude, dto.longitude, farm.latitude, farm.longitude);
+        if (distance > radius) {
+          throw new BadRequestException(
+            `Você está a ${Math.round(distance)}m da fazenda ${farm.name} (máximo permitido: ${radius}m). Aproxime-se para fazer o check-in.`,
+          );
+        }
+      }
+    }
+
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { fullName: true, email: true } });
     const who = user?.fullName || user?.email || 'usuário';
     const parts: string[] = [];
@@ -122,23 +168,43 @@ export class FieldService {
     }
     if (dto.accuracyM != null) parts.push(`±${Math.round(Number(dto.accuracyM))}m`);
     if (dto.notes) parts.push(dto.notes);
+
+    const now = getNow();
     const occ = await this.prisma.occurrence.create({
       data: {
         companyId: dto.companyId,
         farmId: dto.farmId ?? null,
         plotId: dto.plotId ?? null,
-        date: getNow(),
+        date: now,
         type: 'checkin',
         severity: 'baixa',
         status: 'resolvida',
         title: `Check-in de ${who}`,
         description: parts.join(' · ') || null,
         responsible: who,
-        resolvedAt: getNow(),
+        resolvedAt: now,
         createdById: userId,
         updatedById: userId,
       },
     });
+    if (dto.photoUrl) {
+      await this.prisma.photo.create({
+        data: {
+          companyId: dto.companyId,
+          farmId: dto.farmId ?? null,
+          plotId: dto.plotId ?? null,
+          takenAt: now,
+          url: dto.photoUrl,
+          latitude: dto.latitude ?? null,
+          longitude: dto.longitude ?? null,
+          accuracyM: dto.accuracyM ?? null,
+          category: 'checkin',
+          author: who,
+          createdById: userId,
+          updatedById: userId,
+        },
+      });
+    }
     if (dto.taskId) {
       await this.prisma.scheduledTask.updateMany({
         where: { id: dto.taskId, companyId: dto.companyId },

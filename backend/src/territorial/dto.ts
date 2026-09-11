@@ -1,4 +1,4 @@
-import { IsNumber, IsObject, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
 
 export class CreateRegionalDto {
   @IsUUID() companyId!: string;
@@ -31,6 +31,7 @@ export class CreateFarmDto {
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsObject() boundary?: Record<string, unknown>;
   @IsOptional() @IsString({ each: true }) photoUrls?: string[];
+  @IsOptional() @IsInt() @Min(0) checkinRadiusM?: number;
 }
 
 export class UpdateFarmDto {
@@ -46,6 +47,7 @@ export class UpdateFarmDto {
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsObject() boundary?: Record<string, unknown> | null;
   @IsOptional() @IsString({ each: true }) photoUrls?: string[];
+  @IsOptional() @IsInt() @Min(0) checkinRadiusM?: number | null;
 }
 
 export class CreatePlotDto {

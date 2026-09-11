@@ -145,7 +145,7 @@ export function submitEvaluation(input: {
 export async function submitCheckin(input: {
   companyId: string; farmId?: string; plotId?: string;
   taskId?: string; latitude?: number; longitude?: number;
-  accuracyM?: number; notes?: string;
+  accuracyM?: number; notes?: string; photoUrl?: string; strict?: boolean;
 }) {
   if (typeof navigator !== "undefined" && navigator.onLine) {
     await apiRequest("/field/checkin", {

@@ -42,7 +42,8 @@ import {
 } from "@/components/ui/sheet";
 
 import { toast } from "sonner";
-import { getFieldMe, type FieldMe, captureLocation, submitCheckin, submitEvaluation } from "@/lib/field.functions";
+import { getFieldMe, type FieldMe, type Coords, captureLocation, submitEvaluation } from "@/lib/field.functions";
+import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
 import {
   submitConsultation, getVisitStatus, justifyMissedVisit, getConsultorDashboard, listConsultations,
   type VisitStatus, type ConsultorDashboard, type ConsultationForm,
@@ -120,8 +121,9 @@ function ConsultorFormPage() {
 
   // Check-in state
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
-  const [gpsStatus, setGpsStatus] = useState<"idle" | "getting" | "active" | "error">("idle");
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [checkinSheetOpen, setCheckinSheetOpen] = useState(false);
+  const [checkinCoords, setCheckinCoords] = useState<Coords | null>(null);
+  const [checkinTaskId, setCheckinTaskId] = useState<string | undefined>(undefined);
 
   // Visit Form state
   const [farmId, setFarmId] = useState("");
@@ -306,41 +308,24 @@ function ConsultorFormPage() {
     }
   }
 
-  const handleNewCheckin = async (fId?: string, pId?: string, taskId?: string) => {
-    setGpsStatus("getting");
+  async function openCheckinFlow(taskId?: string) {
     const loc = await captureLocation();
     if (!loc) {
       toast.error("GPS não detectado");
-      setGpsStatus("error");
       return;
     }
+    setCheckinCoords(loc);
+    setCheckinTaskId(taskId);
+    setCheckinSheetOpen(true);
+  }
 
-    setCoords({ lat: loc.latitude, lng: loc.longitude });
-    setGpsStatus("active");
-
-    const companyId = me?.assignments.find((a) => a.farm.id === (fId || farmId))?.farm.companyId
-      || me?.companies?.[0]?.id || "";
-    try {
-      await submitCheckin({
-        companyId,
-        farmId: fId || farmId || undefined,
-        plotId: pId || plotId || undefined,
-        taskId,
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-        accuracyM: loc.accuracyM
-      });
-
-      const stamp = { farmId: fId || farmId || undefined, plotId: pId || plotId || undefined, at: Date.now() };
-      sessionStorage.setItem("vertex.field.checkin.v1", JSON.stringify(stamp));
-      setActiveCheckin(stamp);
-
-      const farmName = me?.assignments.find(a => a.farm.id === (fId || farmId))?.farm.name;
-      toast.success(`Check-in realizado em ${farmName || 'Fazenda'}`);
-    } catch (e) {
-      toast.error("Erro ao registrar check-in");
+  function onCheckinDone(stamp: { farmId?: string; plotId?: string; at: number }) {
+    setActiveCheckin(stamp);
+    if (selectedFarmId) {
+      setFarmId(selectedFarmId);
+      setMode("visit");
     }
-  };
+  }
 
   async function scheduleVisit() {
     const companyId = me?.assignments.find((a) => a.farm.id === selectedFarmId)?.farm.companyId
@@ -372,15 +357,16 @@ function ConsultorFormPage() {
 
   async function startVisitWithCheckin() {
     if (!selectedFarmId) return;
-    if (activeCheckin?.farmId !== selectedFarmId) {
-      const today = getLocalIsoDate();
-      const todaysTask = farmVisitTasks.find(
-        (t) => t.scheduledAt.slice(0, 10) === today && t.status !== "concluida" && t.status !== "cancelada",
-      );
-      await handleNewCheckin(selectedFarmId, undefined, todaysTask?.id);
+    if (activeCheckin?.farmId === selectedFarmId) {
+      setFarmId(selectedFarmId);
+      setMode("visit");
+      return;
     }
-    setFarmId(selectedFarmId);
-    setMode("visit");
+    const today = getLocalIsoDate();
+    const todaysTask = farmVisitTasks.find(
+      (t) => t.scheduledAt.slice(0, 10) === today && t.status !== "concluida" && t.status !== "cancelada",
+    );
+    await openCheckinFlow(todaysTask?.id);
   }
 
   function pickFarm(fId: string | null) {
@@ -1210,7 +1196,7 @@ function ConsultorFormPage() {
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 text-[10px] font-bold uppercase text-primary"
-                onClick={() => handleNewCheckin(activeCheckin.farmId)}
+                onClick={() => openCheckinFlow()}
               >
                 Trocar Talhão
               </Button>
@@ -1428,6 +1414,19 @@ function ConsultorFormPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {selectedFarmId && (
+        <CheckinSheet
+          open={checkinSheetOpen}
+          onOpenChange={setCheckinSheetOpen}
+          companyId={selectedFarm?.companyId || me.companies?.[0]?.id || ""}
+          farmId={selectedFarmId}
+          farmName={selectedFarm?.name}
+          taskId={checkinTaskId}
+          coords={checkinCoords}
+          onDone={onCheckinDone}
+        />
+      )}
 
       <Sheet open={!!selectedMember} onOpenChange={closeMember}>
         <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl border-border/60 bg-card">

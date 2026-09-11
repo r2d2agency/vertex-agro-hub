@@ -5,12 +5,12 @@ import {
   MapPin, MapPinOff, ShieldCheck, Crosshair,
 } from "lucide-react";
 import { hasAuthTokens, logout } from "@/lib/api";
-import { getFieldMe, type FieldMe, captureLocation, submitCheckin, type Coords } from "@/lib/field.functions";
+import { getFieldMe, type FieldMe, type Coords } from "@/lib/field.functions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { subscribeOutbox, flushOutbox } from "@/lib/offline/queue";
 import { FieldBottomNav, FieldDesktopNav } from "@/components/vertex/field/bottom-nav";
+import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import vertexLogo from "@/assets/vertex-logo.png";
 
 export const Route = createFileRoute("/campo")({
@@ -291,55 +291,12 @@ function CheckinGate({
 }) {
   const [farmId, setFarmId] = useState<string>(me.assignments?.[0]?.farm?.id ?? "");
   const [plotId, setPlotId] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [locationName, setLocationName] = useState<{ farm?: string; plot?: string } | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const farm = (me.assignments || []).find((a) => a.farm?.id === farmId)?.farm;
   const companyId = farm?.companyId ?? (me.companies && me.companies.length > 0 ? me.companies[0].id : (me.assignments && me.assignments.length > 0 ? me.assignments[0].farm?.companyId : undefined));
   const gpsReady = gps.status === "active";
-  const canSubmit = !!companyId && gpsReady && !loading;
-
-  async function handleCheckin() {
-    if (!companyId) {
-      toast.error("Fazenda sem empresa vinculada", { description: "Peça ao administrador para revisar seu vínculo com a fazenda." });
-      return;
-    }
-    setLoading(true);
-    try {
-      let coords: Coords | null =
-        gps.status === "active" ? gps.coords : await captureLocation(8000);
-      if (!coords) {
-        toast.error("Não foi possível obter GPS", { description: "Ative a localização e tente novamente." });
-        return;
-      }
-      const res = await submitCheckin({
-        companyId,
-        farmId: farmId || undefined,
-        plotId: plotId || undefined,
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        accuracyM: coords.accuracyM,
-      });
-
-      // Se o backend/checkin retornasse os nomes seria ideal, mas vamos usar o que temos no estado
-      const selectedFarm = (me.assignments || []).find(a => a.farm?.id === farmId)?.farm?.name;
-      // Nota: plotId nome teria que vir de uma lista de talhões que ainda não carregamos aqui.
-      // Para o MVP de UI, vamos setar o nome da localização detectada.
-      setLocationName({ farm: selectedFarm });
-
-      const stamp = { farmId: farmId || undefined, plotId: plotId || undefined, at: Date.now() };
-      sessionStorage.setItem(CHECKIN_KEY, JSON.stringify(stamp));
-      
-      toast.success(res.queued ? "Check-in salvo (offline)" : "Check-in registrado");
-      
-      // Delay pequeno para o usuário ver a mensagem de boas-vindas antes de sumir o gate
-      setTimeout(() => onDone(stamp), 800);
-    } catch (e: any) {
-      toast.error("Falha no check-in", { description: e?.message ?? "Tente novamente." });
-    } finally {
-      setLoading(false);
-    }
-  }
+  const canOpen = !!companyId && gpsReady;
 
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-5 text-center">
@@ -347,22 +304,10 @@ function CheckinGate({
         <ShieldCheck className="h-8 w-8" />
       </div>
       <div className="space-y-1">
-        {locationName ? (
-          <div className="animate-in fade-in zoom-in duration-500">
-            <h1 className="text-xl font-bold text-primary">Olá, {me.user?.fullName?.split(" ")[0]}!</h1>
-            <p className="max-w-xs text-sm font-medium text-foreground">
-              Você está na fazenda <span className="text-primary">{locationName.farm}</span>
-              {plotId && <span>, no talhão <span className="text-primary">{plotId}</span></span>}.
-            </p>
-          </div>
-        ) : (
-          <>
-            <h1 className="text-lg font-semibold text-foreground">Check-in obrigatório</h1>
-            <p className="max-w-xs text-sm text-muted-foreground">
-              Confirme sua localização para liberar registros de sangria, produção, ocorrências e agenda.
-            </p>
-          </>
-        )}
+        <h1 className="text-lg font-semibold text-foreground">Check-in obrigatório</h1>
+        <p className="max-w-xs text-sm text-muted-foreground">
+          Confirme sua localização e a foto da propriedade para liberar registros de sangria, produção, ocorrências e agenda.
+        </p>
       </div>
 
       {(me.assignments || []).length > 0 && (
@@ -410,13 +355,26 @@ function CheckinGate({
           : "Obtendo localização…"}
       </div>
 
-      <Button className="h-12 w-full max-w-xs rounded-xl text-base font-semibold" disabled={!canSubmit} onClick={handleCheckin}>
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fazer check-in"}
+      <Button className="h-12 w-full max-w-xs rounded-xl text-base font-semibold" disabled={!canOpen} onClick={() => setSheetOpen(true)}>
+        Fazer check-in
       </Button>
 
       <p className="max-w-xs text-[11px] text-muted-foreground/80">
         Sem check-in, apenas visualização básica está disponível. O check-in expira em 12h.
       </p>
+
+      {companyId && (
+        <CheckinSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          companyId={companyId}
+          farmId={farmId || undefined}
+          farmName={farm?.name}
+          plotId={plotId || undefined}
+          coords={gpsReady ? gps.coords : null}
+          onDone={onDone}
+        />
+      )}
     </div>
   );
 }

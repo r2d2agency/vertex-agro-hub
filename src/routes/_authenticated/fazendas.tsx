@@ -50,7 +50,7 @@ export const Route = createFileRoute("/_authenticated/fazendas")({
 const empty: FarmInput = {
   regionalId: "", name: "", code: "", city: "", state: "",
   totalAreaHa: null, latitude: null, longitude: null, owner: "", notes: "",
-  boundary: null, photoUrls: [],
+  boundary: null, photoUrls: [], checkinRadiusM: null,
 };
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -227,6 +227,7 @@ function FarmDialog({
       owner: initial.owner ?? "", notes: initial.notes ?? "",
       boundary: initial.boundary ?? null,
       photoUrls: initial.photoUrls ?? [],
+      checkinRadiusM: initial.checkinRadiusM ?? null,
     });
     else setValues(empty);
     setActiveTab("dados");
@@ -313,6 +314,19 @@ function FarmDialog({
                   </Field>
                   <Field label="Área total (ha)">
                     <Input type="number" step="0.01" value={values.totalAreaHa ?? ""} onChange={(e) => setValues((v) => ({ ...v, totalAreaHa: e.target.value ? Number(e.target.value) : null }))} />
+                  </Field>
+                  <Field label="Raio de check-in (m)">
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      placeholder="200 (padrão)"
+                      value={values.checkinRadiusM ?? ""}
+                      onChange={(e) => setValues((v) => ({ ...v, checkinRadiusM: e.target.value ? Number(e.target.value) : null }))}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Distância máxima do GPS até a coordenada da fazenda pra liberar o check-in no app de campo. Vazio usa o padrão (200m).
+                    </p>
                   </Field>
                   <div className="col-span-2">
                     <Field label="Observações">

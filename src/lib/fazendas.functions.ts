@@ -18,6 +18,7 @@ export type Farm = {
   notes?: string | null;
   boundary?: GeoBoundary | null;
   photoUrls?: string[];
+  checkinRadiusM?: number | null;
 };
 
 export type FarmInput = {
@@ -33,6 +34,7 @@ export type FarmInput = {
   notes?: string;
   boundary?: GeoBoundary | null;
   photoUrls?: string[];
+  checkinRadiusM?: number | null;
 };
 
 export function listFarms(companyId: string, regionalId?: string) {
@@ -78,5 +80,6 @@ function clean(v: FarmInput) {
     notes: v.notes?.trim() || undefined,
     boundary: v.boundary ?? undefined,
     photoUrls: v.photoUrls ?? undefined,
+    checkinRadiusM: v.checkinRadiusM ?? undefined,
   };
 }
