@@ -217,8 +217,11 @@ export function submitChecklist(input: {
   kind?: string; performedAt?: string; hourmeter?: number;
   overallStatus?: string; notes?: string;
   items: Array<{ label: string; status: "ok" | "nok" | "na"; notes?: string }>;
+  photoUrls?: string[];
 }) {
-  return submit("/machine-checklists", "POST", input, "Checklist de máquina");
+  const data = { ...input };
+  if (!data.photoUrls?.length) delete data.photoUrls;
+  return submit("/machine-checklists", "POST", data, "Checklist de máquina");
 }
 
 export function submitInventoryMovement(input: {

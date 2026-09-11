@@ -988,7 +988,7 @@ model Machine {
   monitorUserId     String?  @map("monitor_user_id") @db.Uuid
   acquisitionDate   DateTime? @map("acquisition_date") @db.Date
   supplier          String?
-  photoUrls         String[] @default([]) @map("photo_urls")
+  photoUrls         String[] @default([]) @map("photo_url")
   status            String   @default("disponivel")
   notes             String?
 
@@ -1032,7 +1032,7 @@ model Implement {
   year                Int?
   serial              String?
   responsibleUserId   String?  @map("responsible_user_id") @db.Uuid
-  photoUrls String[]  @map("photo_url")
+  photoUrls String[] @default([]) @map("photo_url")
   status              String   @default("disponivel")
   notes               String?
 
@@ -1069,7 +1069,7 @@ model Operator {
   cnhCategory            String?  @map("cnh_category")
   cnhExpiresAt           DateTime? @map("cnh_expires_at") @db.Date
   admissionDate          DateTime? @map("admission_date") @db.Date
-  photoUrls String[]  @map("photo_url")
+  photoUrls String[] @default([]) @map("photo_url")
   status                 String   @default("ativo")
   authorizedCategories   Json?    @map("authorized_categories")
   notes                  String?
@@ -1333,7 +1333,7 @@ model MaintenanceOrder {
   laborCost          Float?    @map("labor_cost")
   partsCost          Float?    @map("parts_cost")
   totalCost          Float?    @map("total_cost")
-  photoUrls String[]   @map("photo_url")
+  photoUrls String[] @default([]) @map("photo_url")
   notes              String?
 
   version      Int       @default(1)
@@ -1394,7 +1394,7 @@ model OperationLog {
   notes            String?
   latitude         Float?
   longitude        Float?
-  photoUrls String[]   @map("photo_url")
+  photoUrls String[] @default([]) @map("photo_url")
   status           String    @default("concluida")
 
   version      Int       @default(1)
@@ -1433,7 +1433,7 @@ model MachineChecklist {
   overallStatus  String   @default("ok") @map("overall_status")
   items          Json     @default("[]")
   notes          String?
-  photoUrls String[]  @map("photo_url")
+  photoUrls String[] @default([]) @map("photo_url")
 
   version      Int       @default(1)
   syncStatus   String    @default("synced") @map("sync_status")

@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Check, X, Minus } from "lucide-react";
+import { Loader2, Check, X, Minus, Camera } from "lucide-react";
 import { getFieldMe, type FieldMe, submitChecklist } from "@/lib/field.functions";
 import { listMachines, listOperators } from "@/lib/frota.functions";
+import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,17 @@ function ChecklistPage() {
     DEFAULT_ITEMS.map((label) => ({ label, status: "ok" }))
   );
   const [notes, setNotes] = useState("");
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  async function onPhoto(f: File | null) {
+    if (!f) return;
+    setUploadingPhoto(true);
+    try { const r = await uploadFile(f); setPhotoUrls((c) => [...c, r.url]); }
+    catch (e: any) { toast.error(e?.message ?? "Falha no upload da foto"); }
+    finally { setUploadingPhoto(false); }
+  }
 
   useEffect(() => { getFieldMe().then((m) => { setMe(m); if (m.assignments[0]) setFarmId(m.assignments[0].farm.id); }); }, []);
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
@@ -70,6 +81,7 @@ function ChecklistPage() {
       hourmeter: hm ? Number(hm) : undefined,
       overallStatus: overall, notes: notes || undefined,
       items,
+      photoUrls: photoUrls.length ? photoUrls : undefined,
     });
     setSaving(false);
     toast.success(res.queued ? "Salvo na fila" : "Checklist registrado");
@@ -150,6 +162,19 @@ function ChecklistPage() {
         </div>
 
         <F label="Observações gerais"><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></F>
+
+        <div>
+          <Label className="mb-2 block text-xs font-medium text-muted-foreground">Fotos (opcional)</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {photoUrls.map((u, i) => <img key={i} src={u} alt="" className="h-20 w-full rounded-xl object-cover" />)}
+            <label className="grid h-20 w-full cursor-pointer place-items-center rounded-xl border border-dashed border-border/60 bg-background/40 text-muted-foreground hover:border-primary hover:text-primary">
+              <Camera className="h-5 w-5" />
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0] ?? null)} />
+            </label>
+          </div>
+          {uploadingPhoto && <div className="mt-2 text-xs text-muted-foreground">Enviando foto...</div>}
+        </div>
+
         <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar checklist
         </Button>

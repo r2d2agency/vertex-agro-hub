@@ -97,7 +97,7 @@ export class CreateMaintenanceOrderDto {
   @IsOptional() @IsNumber() laborCost?: number;
   @IsOptional() @IsNumber() partsCost?: number;
   @IsOptional() @IsNumber() totalCost?: number;
-  @IsOptional() @IsString() photoUrl?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) photoUrls?: string[];
   @IsOptional() @IsString() notes?: string;
 }
 
@@ -130,7 +130,7 @@ export class CreateOperationLogDto {
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsNumber() latitude?: number;
   @IsOptional() @IsNumber() longitude?: number;
-  @IsOptional() @IsString() photoUrl?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) photoUrls?: string[];
   @IsOptional() @IsString() status?: string;
 }
 
@@ -147,5 +147,5 @@ export class CreateChecklistDto {
   @IsOptional() @IsString() overallStatus?: string;
   @IsArray() items!: Array<{ label: string; status: string; notes?: string }>;
   @IsOptional() @IsString() notes?: string;
-  @IsOptional() @IsString() photoUrl?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) photoUrls?: string[];
 }
