@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { HardHat, Search, Trash2, MapPin, Phone, UserPlus, ShieldAlert, ShieldCheck } from "lucide-react";
+import { HardHat, Search, Trash2, MapPin, Phone, UserPlus, ShieldAlert, ShieldCheck, ListTree } from "lucide-react";
 import { toast } from "sonner";
 import { PersonEditor } from "@/components/vertex/person-editor";
 import { PreRegistrationsCard } from "@/components/vertex/pre-registrations-card";
+import { TapperTablesDialog } from "@/components/vertex/tapper-tables-dialog";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ function SangradoresPage() {
   const [search, setSearch] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<TapperListItem | null>(null);
+  const [tablesTarget, setTablesTarget] = useState<{ key: string; name: string } | null>(null);
 
   const { data: tappers = [], isLoading: loadingList } = useQuery({
     queryKey: ["tappers", companyId],
@@ -152,9 +154,20 @@ function SangradoresPage() {
                             {assignment.farm?.name ?? "Sem fazenda"}{assignment.consultor ? ` · consultor: ${assignment.consultor.fullName || assignment.consultor.email}` : ""}
                           </p>
                         </div>
-                        <Button size="sm" variant="ghost" className="shrink-0" onClick={() => setEditingUserId(assignment.userId)}>
-                          Abrir no RH
-                        </Button>
+                        <div className="flex shrink-0 gap-1">
+                          <Button
+                            size="sm" variant="ghost"
+                            onClick={() => setTablesTarget({
+                              key: `rh:${assignment.userId}`,
+                              name: assignment.user?.fullName || assignment.user?.email || "Sangrador",
+                            })}
+                          >
+                            <ListTree className="mr-1 h-3.5 w-3.5" /> Tabelas
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingUserId(assignment.userId)}>
+                            Abrir no RH
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -227,6 +240,12 @@ function SangradoresPage() {
                       <p className="mt-2 text-[11px] text-muted-foreground">Última atividade: {date(tapper.stats.lastDate)}</p>
 
                       <div className="mt-3 flex gap-2">
+                        <Button
+                          size="sm" variant="outline"
+                          onClick={() => setTablesTarget({ key: tapper.id, name: tapper.fullName })}
+                        >
+                          <ListTree className="mr-1 h-3.5 w-3.5" /> Tabelas
+                        </Button>
                         {inRh ? (
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditingUserId(personId)}>
                             Abrir no RH
@@ -261,6 +280,16 @@ function SangradoresPage() {
           onOpenChange={(open) => !open && setEditingUserId(null)}
           userId={editingUserId}
           companyId={companyId}
+        />
+      )}
+
+      {companyId && tablesTarget && (
+        <TapperTablesDialog
+          open={!!tablesTarget}
+          onOpenChange={(open) => !open && setTablesTarget(null)}
+          companyId={companyId}
+          tapperKey={tablesTarget.key}
+          tapperName={tablesTarget.name}
         />
       )}
 

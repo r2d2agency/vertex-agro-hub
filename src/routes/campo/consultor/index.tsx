@@ -42,7 +42,11 @@ import {
 } from "@/components/ui/sheet";
 
 import { toast } from "sonner";
-import { getFieldMe, type FieldMe, type Coords, captureLocation, submitEvaluation } from "@/lib/field.functions";
+import {
+  getFieldMe, type FieldMe, type Coords, captureLocation, submitEvaluation,
+  listFieldTappers, listFieldTappingTables,
+} from "@/lib/field.functions";
+import { TapperTablesDialog } from "@/components/vertex/tapper-tables-dialog";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
 import { MiniCalendar } from "@/components/vertex/field/mini-calendar";
 import {
@@ -118,6 +122,8 @@ function ConsultorFormPage() {
   // Ficha do colaborador (Equipe)
   const [selectedMember, setSelectedMember] = useState<TeamAssignment | null>(null);
   const [memberLoading, setMemberLoading] = useState(false);
+  const [tablesTarget, setTablesTarget] = useState<{ companyId: string; key: string; name: string } | null>(null);
+  const [resolvingTables, setResolvingTables] = useState(false);
   const [memberEvaluations, setMemberEvaluations] = useState<PersonEvaluation[]>([]);
   const [memberActivity, setMemberActivity] = useState<Array<{ id: string; date: string; label: string }>>([]);
   const [showEvalForm, setShowEvalForm] = useState(false);
@@ -442,6 +448,27 @@ function ConsultorFormPage() {
   function openMember(m: TeamAssignment) {
     setSelectedMember(m);
     setShowEvalForm(false);
+  }
+
+  // Resolve o mesmo id "canônico" usado no seletor de sangrador do registro
+  // de sangria (Tapper.id real quando existe ficha legada com o mesmo nome,
+  // senão "rh:<userId>") — sem isso, um vínculo de tabela criado aqui podia
+  // não aparecer no app de campo.
+  async function openTablesDialog(m: TeamAssignment) {
+    if (!m.farm?.id) return;
+    setResolvingTables(true);
+    try {
+      const tappers = await listFieldTappers(m.companyId, m.farm.id);
+      const name = (m.user?.fullName ?? m.user?.email ?? "").trim().toLowerCase();
+      const match = tappers.find((t) => t.fullName.trim().toLowerCase() === name);
+      setTablesTarget({
+        companyId: m.companyId,
+        key: match?.id ?? `rh:${m.userId}`,
+        name: m.user?.fullName || m.user?.email || "Sangrador",
+      });
+    } finally {
+      setResolvingTables(false);
+    }
   }
 
   function closeMember(open: boolean) {
@@ -1658,7 +1685,18 @@ function ConsultorFormPage() {
                   </section>
 
                   {!showEvalForm ? (
-                    <Button className="w-full" onClick={() => setShowEvalForm(true)}>Nova avaliação</Button>
+                    <div className="flex gap-2">
+                      {selectedMember.role === "sangrador" && (
+                        <Button
+                          variant="outline" className="flex-1"
+                          disabled={resolvingTables}
+                          onClick={() => openTablesDialog(selectedMember)}
+                        >
+                          {resolvingTables ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Tabelas
+                        </Button>
+                      )}
+                      <Button className="flex-1" onClick={() => setShowEvalForm(true)}>Nova avaliação</Button>
+                    </div>
                   ) : (
                     <section className="space-y-3 rounded-2xl border border-border/60 bg-background p-3">
                       <div className="flex items-center justify-between gap-1">
@@ -1710,6 +1748,17 @@ function ConsultorFormPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      {tablesTarget && (
+        <TapperTablesDialog
+          open={!!tablesTarget}
+          onOpenChange={(open) => !open && setTablesTarget(null)}
+          companyId={tablesTarget.companyId}
+          tapperKey={tablesTarget.key}
+          tapperName={tablesTarget.name}
+          listTables={listFieldTappingTables}
+        />
+      )}
     </div>
   );
 }

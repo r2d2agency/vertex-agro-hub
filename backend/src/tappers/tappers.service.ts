@@ -534,6 +534,151 @@ export class TappersService {
 
     return updated;
   }
+
+  // ---------- Tabelas vinculadas ao sangrador ----------
+  // tapperKey é o mesmo id "unificado" usado no app de campo: o UUID da
+  // ficha legada (Tapper) ou "rh:<userId>" pra um vínculo só de RH.
+  private parseTapperKey(tapperKey: string): { tapperId?: string; userId?: string } {
+    if (tapperKey.startsWith('rh:')) {
+      const userId = tapperKey.slice(3);
+      if (!userId) throw new BadRequestException('tapperKey inválido');
+      return { userId };
+    }
+    return { tapperId: tapperKey };
+  }
+
+  // TapperTableLink não tem @relation formal com TappingTable (pra não
+  // precisar declarar o array de volta em TappingTable/Tapper), então o
+  // "include" vira um join manual aqui.
+  private async attachTables<T extends { tappingTableId: string }>(links: T[]) {
+    const tableIds = [...new Set(links.map((l) => l.tappingTableId))];
+    const tables = tableIds.length
+      ? await this.prisma.tappingTable.findMany({
+          where: { id: { in: tableIds } },
+          select: { id: true, name: true, notation: true, frequencyDays: true },
+        })
+      : [];
+    const byId = new Map(tables.map((t) => [t.id, t]));
+    return links.map((l) => ({ ...l, tappingTable: byId.get(l.tappingTableId) ?? null }));
+  }
+
+  private async resolveTapperFarmIds(companyId: string, key: { tapperId?: string; userId?: string }) {
+    if (key.tapperId) {
+      const stints = await this.prisma.tapperStint.findMany({
+        where: { tapperId: key.tapperId, companyId, endAt: null },
+        select: { farmId: true },
+      });
+      return stints.map((s) => s.farmId);
+    }
+    if (key.userId) {
+      const assignments = await this.prisma.farmAssignment.findMany({
+        where: {
+          userId: key.userId, companyId, role: 'sangrador',
+          OR: [{ endAt: null }, { endAt: { gte: new Date() } }],
+        },
+        select: { farmId: true },
+      });
+      return assignments.map((a) => a.farmId);
+    }
+    return [];
+  }
+
+  // Além de admin/gestor, um monitor ou consultor vinculado à mesma fazenda
+  // do sangrador também pode vincular/editar tabelas dele — é o mesmo
+  // colaborador que registra a sangria no app de campo.
+  private async ensureManagerOrFarmStaff(userId: string, companyId: string, key: { tapperId?: string; userId?: string }) {
+    if (await this.isManager(userId, companyId)) return;
+    const farmIds = await this.resolveTapperFarmIds(companyId, key);
+    const staffLink = farmIds.length
+      ? await this.prisma.farmAssignment.findFirst({
+          where: {
+            userId, companyId, farmId: { in: farmIds },
+            role: { in: ['monitor', 'consultor'] },
+            OR: [{ endAt: null }, { endAt: { gte: new Date() } }],
+          },
+        })
+      : null;
+    if (!staffLink) throw new ForbiddenException('Sem permissão para gerenciar tabelas deste sangrador');
+  }
+
+  async listTableLinks(userId: string, companyId: string, tapperKey: string) {
+    const key = this.parseTapperKey(tapperKey);
+    await this.ensureManagerOrFarmStaff(userId, companyId, key);
+    const links = await this.prisma.tapperTableLink.findMany({
+      where: { companyId, active: true, ...key },
+      orderBy: { createdAt: 'asc' },
+    });
+    return this.attachTables(links);
+  }
+
+  async createTableLink(userId: string, dto: { companyId: string; tapperKey: string; tappingTableId: string; treeCount?: number; notes?: string }) {
+    const key = this.parseTapperKey(dto.tapperKey);
+    await this.ensureManagerOrFarmStaff(userId, dto.companyId, key);
+    if (key.tapperId) {
+      const tapper = await this.prisma.tapper.findFirst({ where: { id: key.tapperId, companyId: dto.companyId, isDeleted: false } });
+      if (!tapper) throw new NotFoundException('Sangrador não encontrado');
+    }
+    const table = await this.prisma.tappingTable.findFirst({ where: { id: dto.tappingTableId, companyId: dto.companyId, isDeleted: false } });
+    if (!table) throw new NotFoundException('Tabela de sangria não encontrada');
+
+    const existing = await this.prisma.tapperTableLink.findFirst({
+      where: { companyId: dto.companyId, tappingTableId: dto.tappingTableId, ...key },
+    });
+    const saved = existing
+      ? await this.prisma.tapperTableLink.update({
+          where: { id: existing.id },
+          data: { active: true, treeCount: dto.treeCount ?? existing.treeCount, notes: dto.notes ?? existing.notes },
+        })
+      : await this.prisma.tapperTableLink.create({
+          data: {
+            companyId: dto.companyId,
+            tappingTableId: dto.tappingTableId,
+            treeCount: dto.treeCount,
+            notes: dto.notes,
+            createdById: userId,
+            ...key,
+          },
+        });
+    const [hydrated] = await this.attachTables([saved]);
+    return hydrated;
+  }
+
+  async updateTableLink(userId: string, linkId: string, dto: { companyId: string; treeCount?: number; active?: boolean; notes?: string }) {
+    const link = await this.prisma.tapperTableLink.findUnique({ where: { id: linkId } });
+    if (!link || link.companyId !== dto.companyId) throw new NotFoundException('Vínculo não encontrado');
+    await this.ensureManagerOrFarmStaff(userId, dto.companyId, { tapperId: link.tapperId ?? undefined, userId: link.userId ?? undefined });
+    const saved = await this.prisma.tapperTableLink.update({
+      where: { id: linkId },
+      data: {
+        treeCount: dto.treeCount === undefined ? undefined : dto.treeCount,
+        active: dto.active === undefined ? undefined : dto.active,
+        notes: dto.notes === undefined ? undefined : dto.notes,
+      },
+    });
+    const [hydrated] = await this.attachTables([saved]);
+    return hydrated;
+  }
+
+  async deleteTableLink(userId: string, linkId: string, companyId: string) {
+    const link = await this.prisma.tapperTableLink.findUnique({ where: { id: linkId } });
+    if (!link || link.companyId !== companyId) throw new NotFoundException('Vínculo não encontrado');
+    await this.ensureManagerOrFarmStaff(userId, companyId, { tapperId: link.tapperId ?? undefined, userId: link.userId ?? undefined });
+    await this.prisma.tapperTableLink.delete({ where: { id: linkId } });
+    return { ok: true };
+  }
+
+  // Usado pelo app de campo (field.service.ts) ao registrar sangria: tabelas
+  // disponíveis para um sangrador específico, já com a quantidade de árvores
+  // prevista pra ele naquela tabela.
+  async listTableLinksForField(userId: string, companyId: string, tapperKey: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const key = this.parseTapperKey(tapperKey);
+    const links = await this.prisma.tapperTableLink.findMany({
+      where: { companyId, active: true, ...key },
+      orderBy: { createdAt: 'asc' },
+    });
+    return this.attachTables(links);
+  }
 }
 
 function formatCpf(cpf: string) {

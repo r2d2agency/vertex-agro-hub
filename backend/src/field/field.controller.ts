@@ -4,9 +4,10 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FieldService } from './field.service';
+import { TappersService } from '../tappers/tappers.service';
 import {
   CreatePhotoDto, CreateStimulationDto, UpdatePhotoDto, UpdateStimulationDto,
-  CreateTappingRecordDto, CreateProductionDeliveryDto,
+  CreateProductionDeliveryDto,
 } from './dto';
 
 function need(v?: string) {
@@ -17,7 +18,7 @@ function need(v?: string) {
 @UseGuards(JwtAuthGuard)
 @Controller()
 export class FieldController {
-  constructor(private readonly svc: FieldService) {}
+  constructor(private readonly svc: FieldService, private readonly tappersSvc: TappersService) {}
 
   // ---------- App de campo ----------
   @Get('field/me')
@@ -31,6 +32,17 @@ export class FieldController {
   @Get('field/tapping-tables')
   listTappingTables(@Req() req: any, @Query('companyId') companyId?: string) {
     return this.svc.listTappingTablesForCompany(req.user.sub, need(companyId));
+  }
+
+  // Tabelas vinculadas a um sangrador específico (com a quantidade de
+  // árvores prevista pra ele em cada uma) — usado ao registrar sangria.
+  @Get('field/tapper-tables')
+  listTapperTables(
+    @Req() req: any,
+    @Query('companyId') companyId?: string,
+    @Query('tapperKey') tapperKey?: string,
+  ) {
+    return this.tappersSvc.listTableLinksForField(req.user.sub, need(companyId), need(tapperKey));
   }
 
   @Post('field/checkin')
@@ -101,10 +113,9 @@ export class FieldController {
     });
   }
 
-  @Post('tapping-records')
-  createTapping(@Req() req: any, @Body() dto: CreateTappingRecordDto) {
-    return this.svc.createTapping(req.user.sub, dto);
-  }
+  // POST tapping-records não é registrado aqui de propósito: o mesmo path já
+  // existe em OperationsController (registrado antes no app.module.ts), então
+  // uma rota aqui nunca seria alcançada — ficava como código morto.
 
   @Post('production-deliveries')
   createProduction(@Req() req: any, @Body() dto: CreateProductionDeliveryDto) {

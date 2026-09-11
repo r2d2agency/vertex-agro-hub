@@ -11,7 +11,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export const UPLOADS_DIR = process.env.UPLOADS_DIR || join(process.cwd(), 'uploads');
 mkdirSync(UPLOADS_DIR, { recursive: true });
 
-const ALLOWED = /\.(png|jpe?g|gif|webp|pdf|doc|docx|xls|xlsx|txt|csv|heic)$/i;
+const ALLOWED = /\.(png|jpe?g|gif|webp|pdf|doc|docx|xls|xlsx|txt|csv|heic|webm|mp3|m4a|ogg|oga|wav|aac)$/i;
 
 @UseGuards(JwtAuthGuard)
 @Controller('uploads')

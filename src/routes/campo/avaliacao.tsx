@@ -1,8 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeftRight, Loader2, Star } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, ListTree, Loader2, Star } from "lucide-react";
 import { toast } from "sonner";
-import { getFieldMe, submitEvaluation, submitOccurrence, type FieldMe } from "@/lib/field.functions";
+import {
+  getFieldMe, listFieldTappers, listFieldTappingTables, submitEvaluation, submitOccurrence,
+  type FieldMe, type FieldTapper,
+} from "@/lib/field.functions";
 import { OCC_SEVERITIES } from "@/lib/ocorrencias.functions";
 import { apiRequest } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -13,6 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { TapperTablesDialog } from "@/components/vertex/tapper-tables-dialog";
 import { getLocalIsoDate, getLocalIsoString } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/avaliacao")({ component: AvaliacaoPage });
@@ -59,6 +63,9 @@ function AvaliacaoPage() {
   const [alertDescription, setAlertDescription] = useState("");
   const [alertSaving, setAlertSaving] = useState(false);
 
+  const [canonicalTappers, setCanonicalTappers] = useState<FieldTapper[]>([]);
+  const [tablesTarget, setTablesTarget] = useState<{ key: string; name: string } | null>(null);
+
   useEffect(() => {
     getFieldMe().then((m) => {
       setMe(m);
@@ -76,6 +83,10 @@ function AvaliacaoPage() {
       .then((data) => setRawTeam((data ?? []).filter((m) => m.userId)))
       .catch(() => setRawTeam([]))
       .finally(() => setTeamLoading(false));
+    // Mesma lista (e mesma regra de merge Tapper/RH) usada no seletor de
+    // sangrador do registro de sangria — garante que o vínculo de tabela
+    // criado aqui seja enxergado lá.
+    listFieldTappers(farm.companyId, farm.id).then(setCanonicalTappers).catch(() => setCanonicalTappers([]));
   }, [farm?.id, me?.user.id]);
 
   const consultorMember = rawTeam.find((m) => m.role === "consultor");
@@ -83,6 +94,12 @@ function AvaliacaoPage() {
   // consultor nem ele mesmo — o backend aplica a mesma regra em people.service.ts.
   const team = rawTeam.filter((m) => m.userId !== me?.user.id && m.role !== "consultor");
   const swapTarget = team.find((m) => m.userId === swapTargetId);
+
+  function tapperKeyFor(m: TeamMember) {
+    const name = (m.user.fullName ?? m.user.email ?? "").trim().toLowerCase();
+    const match = canonicalTappers.find((t) => t.fullName.trim().toLowerCase() === name);
+    return match?.id ?? `rh:${m.userId}`;
+  }
 
   if (!me) {
     return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -211,12 +228,20 @@ function AvaliacaoPage() {
                             Avaliar
                           </Button>
                           {m.role === "sangrador" && (
-                            <Button
-                              type="button" variant="outline" size="sm" className="h-8 rounded-lg text-xs"
-                              onClick={() => { setSwapTargetId(m.userId); setSwapReason(""); }}
-                            >
-                              <ArrowLeftRight className="mr-1 h-3 w-3" /> Trocar
-                            </Button>
+                            <>
+                              <Button
+                                type="button" variant="outline" size="sm" className="h-8 rounded-lg text-xs"
+                                onClick={() => setTablesTarget({ key: tapperKeyFor(m), name })}
+                              >
+                                <ListTree className="mr-1 h-3 w-3" /> Tabelas
+                              </Button>
+                              <Button
+                                type="button" variant="outline" size="sm" className="h-8 rounded-lg text-xs"
+                                onClick={() => { setSwapTargetId(m.userId); setSwapReason(""); }}
+                              >
+                                <ArrowLeftRight className="mr-1 h-3 w-3" /> Trocar
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -352,6 +377,17 @@ function AvaliacaoPage() {
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar avaliação
         </Button>
       </FieldCard>
+
+      {farm && tablesTarget && (
+        <TapperTablesDialog
+          open={!!tablesTarget}
+          onOpenChange={(open) => !open && setTablesTarget(null)}
+          companyId={farm.companyId}
+          tapperKey={tablesTarget.key}
+          tapperName={tablesTarget.name}
+          listTables={listFieldTappingTables}
+        />
+      )}
     </div>
   );
 }

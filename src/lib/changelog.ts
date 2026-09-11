@@ -19,6 +19,30 @@ export const changelog: ChangelogRelease[] = [
     entries: [
       {
         type: "novidade",
+        title: "Sangria: foto e áudio opcionais no registro",
+        description:
+          "Ao registrar uma sangria, agora dá pra anexar foto (tirar na hora ou escolher da galeria) e gravar um áudio, ambos opcionais, direto na etapa de observações — fica tudo salvo junto com o registro.",
+      },
+      {
+        type: "novidade",
+        title: "Monitor e consultor podem vincular tabelas ao sangrador",
+        description:
+          "Além do RH, agora o monitor (na tela Equipe da fazenda) e o consultor (na ficha do colaborador) também podem vincular tabelas de sangria a cada sangrador da fazenda, com a quantidade de árvores prevista em cada uma — sem precisar passar pelo administrativo.",
+      },
+      {
+        type: "novidade",
+        title: "Registrar sangria: tabela do sangrador em vez de talhão",
+        description:
+          "Ao registrar uma sangria, agora é a tabela vinculada ao sangrador (não o talhão) que define quantas árvores ele tem que fazer — cada sangrador pode ter várias tabelas vinculadas, cada uma com sua própria quantidade. Depois de escolher a tabela, marque a tarefa executada (Tabela completa, Tabela adiantada e/ou Reposição — pode marcar mais de uma) e o período realizado. A etapa de qualidade/condição foi simplificada para um campo único de observações. A fazenda deixa de aparecer pra escolher quando o monitor só tem uma.",
+      },
+      {
+        type: "novidade",
+        title: "Cadastro: vincular tabelas de sangria ao sangrador",
+        description:
+          "Em Sangradores, cada sangrador (do RH ou da ficha legada) ganhou um botão \"Tabelas\" para vincular as tabelas de sangria que ele executa, com a quantidade de árvores prevista em cada uma — é essa vinculação que alimenta a lista de tabelas disponíveis no registro de sangria do app de campo.",
+      },
+      {
+        type: "novidade",
         title: "Monitor: tela de Equipe com consultor, troca de sangrador e alertas",
         description:
           "A tela \"Avaliar equipe\" do monitor virou \"Equipe da fazenda\": mostra o consultor responsável e todos os colaboradores vinculados, permite solicitar a troca de um sangrador (com motivo) e enviar um alerta direto ao consultor sobre qualquer problema — que passa a aparecer na aba Alertas do app do consultor.",

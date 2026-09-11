@@ -5,5 +5,6 @@ import { TappersService } from './tappers.service';
 @Module({
   controllers: [TappersController],
   providers: [TappersService],
+  exports: [TappersService],
 })
 export class TappersModule {}

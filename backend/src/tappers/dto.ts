@@ -87,3 +87,21 @@ export class ReviewTapperPreRegistrationDto {
   @IsOptional() @IsUUID() personId?: string;
   @IsOptional() @IsString() reviewNotes?: string;
 }
+
+// tapperKey identifica o sangrador tanto pela ficha legada (Tapper.id, um
+// UUID) quanto por um vínculo só de RH (FarmAssignment), nesse caso no
+// formato "rh:<userId>" — mesmo padrão já usado em field.service.ts.
+export class CreateTapperTableLinkDto {
+  @IsUUID() companyId!: string;
+  @IsString() @MinLength(3) tapperKey!: string;
+  @IsUUID() tappingTableId!: string;
+  @IsOptional() @IsInt() @Min(0) treeCount?: number;
+  @IsOptional() @IsString() notes?: string;
+}
+
+export class UpdateTapperTableLinkDto {
+  @IsUUID() companyId!: string;
+  @IsOptional() @IsInt() @Min(0) treeCount?: number;
+  @IsOptional() @IsBoolean() active?: boolean;
+  @IsOptional() @IsString() notes?: string;
+}

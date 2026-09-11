@@ -231,6 +231,52 @@ export function reviewTapperPreRegistration(
   });
 }
 
+// ===== Tabelas vinculadas ao sangrador =====
+// tapperKey é o id "unificado" do sangrador: o UUID da ficha legada (Tapper)
+// ou "rh:<userId>" pra um vínculo só de RH (sem ficha Tapper) — mesmo padrão
+// usado no app de campo.
+export type TapperTableLink = {
+  id: string;
+  companyId: string;
+  tapperId: string | null;
+  userId: string | null;
+  tappingTableId: string;
+  treeCount: number | null;
+  active: boolean;
+  notes: string | null;
+  tappingTable: { id: string; name: string; notation: string | null; frequencyDays: number | null } | null;
+};
+
+export function listTapperTableLinks(companyId: string, tapperKey: string) {
+  const qs = new URLSearchParams({ companyId, tapperKey });
+  return apiRequest<TapperTableLink[]>(`/tappers/table-links?${qs.toString()}`);
+}
+
+export function createTapperTableLink(input: {
+  companyId: string; tapperKey: string; tappingTableId: string; treeCount?: number; notes?: string;
+}) {
+  return apiRequest<TapperTableLink>(`/tappers/table-links`, {
+    method: "POST",
+    body: JSON.stringify(clean(input)),
+  });
+}
+
+export function updateTapperTableLink(
+  linkId: string,
+  input: { companyId: string; treeCount?: number; active?: boolean; notes?: string },
+) {
+  return apiRequest<TapperTableLink>(`/tappers/table-links/${linkId}`, {
+    method: "PATCH",
+    body: JSON.stringify(clean(input)),
+  });
+}
+
+export function deleteTapperTableLink(linkId: string, companyId: string) {
+  return apiRequest<{ ok: true }>(`/tappers/table-links/${linkId}?companyId=${encodeURIComponent(companyId)}`, {
+    method: "DELETE",
+  });
+}
+
 export function onlyDigits(v: string) {
   return (v ?? "").replace(/\D+/g, "");
 }

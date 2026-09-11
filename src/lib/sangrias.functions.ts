@@ -1,8 +1,11 @@
 import { apiRequest } from "@/lib/api";
 
+// Tarefa: o que o sangrador executou na tabela — não é single-select, ele
+// pode marcar mais de uma opção (ex.: tabela completa + reposição).
 export const TASK_EXTENTS = [
-  { value: "meia", label: "Meia (1/2)" },
-  { value: "inteira", label: "Inteira" },
+  { value: "X", label: "Tabela completa (X)" },
+  { value: "/", label: "Tabela adiantada (/)" },
+  { value: "1", label: "Reposição (1)" },
 ] as const;
 
 export const END_PERIODS = [
@@ -32,6 +35,8 @@ export type TappingRecord = {
   status?: string | null;
   quality?: string | null;
   tableCondition?: string | null;
+  photoUrls?: string[] | null;
+  audioUrl?: string | null;
 };
 
 export type TappingInput = {

@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsDateString,
   IsInt,
   IsNumber,
@@ -29,6 +30,8 @@ export class CreateTappingRecordDto {
   @IsOptional() @IsString() quality?: string;
   @IsOptional() @IsString() tableCondition?: string;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) photoUrls?: string[];
+  @IsOptional() @IsString() audioUrl?: string;
 }
 
 export class UpdateTappingRecordDto {
@@ -50,6 +53,8 @@ export class UpdateTappingRecordDto {
   @IsOptional() @IsString() quality?: string;
   @IsOptional() @IsString() tableCondition?: string;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) photoUrls?: string[];
+  @IsOptional() @IsString() audioUrl?: string;
 }
 
 export class CreateDeliveryDto {

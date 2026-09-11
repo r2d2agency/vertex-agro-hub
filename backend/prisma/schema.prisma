@@ -472,6 +472,8 @@ model TappingRecord {
   status         String?
   quality        String?
   tableCondition String? @map("table_condition")
+  photoUrls      String[] @default([]) @map("photo_urls")
+  audioUrl       String?  @map("audio_url")
 
   version      Int        @default(1)
   syncStatus   SyncStatus @default(synced) @map("sync_status")
@@ -1488,6 +1490,34 @@ model Tapper {
 
   @@index([companyId, isDeleted])
   @@map("tappers")
+}
+
+// Vincula um sangrador (ficha legada Tapper OU vínculo só de RH, via userId)
+// a uma tabela de sangria, com a quantidade de árvores previstas para ELE
+// naquela tabela — cada sangrador pode ter N tabelas, cada uma com sua
+// própria quantidade (diferente do talhão, que é compartilhado). Sem
+// @relation formal para não precisar mexer nos modelos Tapper/TappingTable;
+// a integridade referencial fica garantida via FK na migration.
+model TapperTableLink {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  tapperId       String?  @map("tapper_id") @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  tappingTableId String   @map("tapping_table_id") @db.Uuid
+  treeCount      Int?     @map("tree_count")
+  active         Boolean  @default(true)
+  notes          String?
+  createdById    String?  @map("created_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([companyId])
+  @@index([tapperId])
+  @@index([userId])
+  @@index([tappingTableId])
+  @@unique([tapperId, tappingTableId])
+  @@unique([userId, tappingTableId])
+  @@map("tapper_table_links")
 }
 
 model TapperPreRegistration {

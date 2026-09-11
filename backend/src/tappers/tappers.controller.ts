@@ -5,7 +5,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { TappersService } from './tappers.service';
 import {
-  CreateStintDto, CreateTapperDto, CreateTapperPreRegistrationDto, EndStintDto, ReviewTapperPreRegistrationDto, UpdateTapperDto, UpsertTapperDto,
+  CreateStintDto, CreateTapperDto, CreateTapperPreRegistrationDto, CreateTapperTableLinkDto,
+  EndStintDto, ReviewTapperPreRegistrationDto, UpdateTapperDto, UpdateTapperTableLinkDto, UpsertTapperDto,
 } from './dto';
 
 // Guard de classe: apenas autenticação. RolesGuard (admin/gestor) é aplicado
@@ -62,6 +63,43 @@ export class TappersController {
     @Body() dto: ReviewTapperPreRegistrationDto,
   ) {
     return this.svc.reviewPreRegistration(req.user.sub, id, dto);
+  }
+
+  // Tabelas vinculadas ao sangrador — precisa vir antes de ":id" pra não ser
+  // capturado por ele (o path "table-links" não é um UUID). Sem RolesGuard
+  // de rota: além de admin/gestor, um monitor ou consultor vinculado à
+  // mesma fazenda do sangrador também pode gerenciar — TappersService
+  // (ensureManagerOrFarmStaff) valida isso.
+  @Get('table-links')
+  listTableLinks(
+    @Req() req: any,
+    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('tapperKey') tapperKey: string,
+  ) {
+    return this.svc.listTableLinks(req.user.sub, companyId, tapperKey);
+  }
+
+  @Post('table-links')
+  createTableLink(@Req() req: any, @Body() dto: CreateTapperTableLinkDto) {
+    return this.svc.createTableLink(req.user.sub, dto);
+  }
+
+  @Patch('table-links/:linkId')
+  updateTableLink(
+    @Req() req: any,
+    @Param('linkId', ParseUUIDPipe) linkId: string,
+    @Body() dto: UpdateTapperTableLinkDto,
+  ) {
+    return this.svc.updateTableLink(req.user.sub, linkId, dto);
+  }
+
+  @Delete('table-links/:linkId')
+  deleteTableLink(
+    @Req() req: any,
+    @Param('linkId', ParseUUIDPipe) linkId: string,
+    @Query('companyId', ParseUUIDPipe) companyId: string,
+  ) {
+    return this.svc.deleteTableLink(req.user.sub, linkId, companyId);
   }
 
   @UseGuards(RolesGuard)

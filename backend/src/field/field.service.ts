@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
 import {
   CreatePhotoDto, CreateStimulationDto, UpdatePhotoDto, UpdateStimulationDto,
-  CreateTappingRecordDto, CreateProductionDeliveryDto,
+  CreateProductionDeliveryDto,
 } from './dto';
 
 const TIMEZONE = 'America/Sao_Paulo';
@@ -434,14 +434,6 @@ export class FieldService {
   }
 
   // ---------- Records Creation ----------
-  async createTapping(userId: string, dto: CreateTappingRecordDto) {
-    await this.access.ensureCompany(userId, dto.companyId);
-    const { date, ...rest } = dto;
-    return this.prisma.tappingRecord.create({
-      data: { ...rest, date: parseInputDate(date), createdById: userId, updatedById: userId },
-    });
-  }
-
   async createProduction(userId: string, dto: CreateProductionDeliveryDto) {
     await this.access.ensureCompany(userId, dto.companyId);
     const { deliveryDate, ...rest } = dto;

@@ -32,6 +32,9 @@ export type FieldMe = {
 
 export type FieldTapper = { id: string; fullName: string; nickname?: string | null };
 export type FieldTappingTable = { id: string; name: string; notation?: string | null; frequencyDays?: number | null };
+// Tabela vinculada a um sangrador específico, com a quantidade de árvores
+// prevista pra ele naquela tabela (em vez de vir do talhão).
+export type FieldTapperTable = FieldTappingTable & { linkId: string; treeCount: number | null };
 
 export type Coords = { latitude: number; longitude: number; accuracyM?: number };
 
@@ -43,6 +46,17 @@ export function listFieldTappers(companyId: string, farmId: string) {
 export function listFieldTappingTables(companyId: string) {
   const qs = new URLSearchParams({ companyId });
   return apiRequest<FieldTappingTable[]>(`/field/tapping-tables?${qs.toString()}`);
+}
+
+export async function listFieldTapperTables(companyId: string, tapperKey: string): Promise<FieldTapperTable[]> {
+  const qs = new URLSearchParams({ companyId, tapperKey });
+  const links = await apiRequest<Array<{
+    id: string; treeCount: number | null;
+    tappingTable: { id: string; name: string; notation: string | null; frequencyDays: number | null } | null;
+  }>>(`/field/tapper-tables?${qs.toString()}`);
+  return links
+    .filter((l) => l.tappingTable)
+    .map((l) => ({ ...(l.tappingTable as FieldTappingTable), linkId: l.id, treeCount: l.treeCount }));
 }
 
 export async function getFieldMe(): Promise<FieldMe> {
@@ -97,6 +111,7 @@ export function submitTapping(input: {
   treesExpected?: number | null; treesTapped?: number | null; liters?: number | null; drcPercent?: number | null;
   dryKg?: number | null; adherencePct?: number | null; notes?: string;
   status?: string; quality?: string; tableCondition?: string;
+  photoUrls?: string[]; audioUrl?: string | null;
 }) {
   const data = { ...input };
   if (data.tapperId === null) delete data.tapperId;
@@ -108,6 +123,8 @@ export function submitTapping(input: {
   if (data.drcPercent === null) delete data.drcPercent;
   if (data.dryKg === null) delete data.dryKg;
   if (data.adherencePct === null) delete data.adherencePct;
+  if (!data.photoUrls?.length) delete data.photoUrls;
+  if (data.audioUrl === null || data.audioUrl === undefined) delete data.audioUrl;
   return submit("/tapping-records", "POST", data, `Sangria — ${input.sangradorName}`);
 }
 
