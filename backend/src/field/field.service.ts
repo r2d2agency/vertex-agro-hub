@@ -103,14 +103,33 @@ export class FieldService {
   // ---------- Sangradores e tabelas (leitura, acessível a qualquer papel de campo) ----------
   async listTappersForFarm(userId: string, companyId: string, farmId: string) {
     await this.access.ensureCompany(userId, companyId);
-    return this.prisma.tapper.findMany({
-      where: {
-        companyId, isDeleted: false,
-        stints: { some: { farmId, endAt: null } },
-      },
-      select: { id: true, fullName: true, nickname: true },
-      orderBy: { fullName: 'asc' },
-    });
+
+    const [tappers, assignments] = await Promise.all([
+      this.prisma.tapper.findMany({
+        where: {
+          companyId, isDeleted: false,
+          stints: { some: { farmId, endAt: null } },
+        },
+        select: { id: true, fullName: true, nickname: true },
+      }),
+      // Sangradores vinculados só pelo Portal de RH (FarmAssignment) ainda não
+      // têm uma ficha Tapper/TapperStint correspondente — sem isso eles nunca
+      // apareciam aqui, mesmo com o vínculo de fazenda ativo no RH.
+      this.prisma.farmAssignment.findMany({
+        where: {
+          companyId, farmId, role: 'sangrador',
+          OR: [{ endAt: null }, { endAt: { gte: new Date() } }],
+        },
+        select: { userId: true, user: { select: { fullName: true, email: true } } },
+      }),
+    ]);
+
+    const existingNames = new Set(tappers.map((t) => t.fullName.trim().toLowerCase()));
+    const fromRh = assignments
+      .map((a) => ({ id: `rh:${a.userId}`, fullName: (a.user?.fullName || a.user?.email || '').trim(), nickname: null as string | null }))
+      .filter((p) => p.fullName && !existingNames.has(p.fullName.toLowerCase()));
+
+    return [...tappers, ...fromRh].sort((a, b) => a.fullName.localeCompare(b.fullName));
   }
 
   async listTappingTablesForCompany(userId: string, companyId: string) {

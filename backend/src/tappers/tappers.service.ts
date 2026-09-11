@@ -37,6 +37,17 @@ export class TappersService {
     }
   }
 
+  private async isManager(userId: string, companyId: string) {
+    const isGlobal = await this.prisma.userRole.findFirst({
+      where: { userId, role: 'admin_global' },
+    });
+    if (isGlobal) return true;
+    const isCompanyAdmin = await this.prisma.userRole.findFirst({
+      where: { userId, companyId, role: { in: ['admin_empresa', 'gestor'] } },
+    });
+    return !!isCompanyAdmin;
+  }
+
   private async ensureConsultorSubmission(userId: string, companyId: string, farmId: string) {
     const isGlobal = await this.prisma.userRole.findFirst({
       where: { userId, role: 'admin_global' },
@@ -354,11 +365,16 @@ export class TappersService {
     opts: { status?: string; role?: string } = {},
   ) {
     await this.access.ensureCompany(userId, companyId);
+    // Quem não é admin/gestor só vê os pré-cadastros que ele mesmo enviou —
+    // isso libera a rota pro consultor conferir o status do que já mandou
+    // (evitar reenviar), sem dar acesso à lista inteira da empresa.
+    const manager = await this.isManager(userId, companyId);
     return this.prisma.tapperPreRegistration.findMany({
       where: {
         companyId,
         ...(opts.status ? { status: opts.status } : {}),
         ...(opts.role ? { role: opts.role } : {}),
+        ...(manager ? {} : { requestedById: userId }),
       },
       orderBy: [{ createdAt: 'desc' }],
     });

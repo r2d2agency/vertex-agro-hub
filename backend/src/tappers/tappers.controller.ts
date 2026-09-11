@@ -9,9 +9,10 @@ import {
 } from './dto';
 
 // Guard de classe: apenas autenticação. RolesGuard (admin/gestor) é aplicado
-// por rota — `lookup` e `pre-registrations` (POST) também são usadas pelo
-// consultor no app de campo; TappersService.createPreRegistration já
-// restringe a criação a consultores da fazenda (ensureConsultorSubmission).
+// por rota — `lookup`, `pre-registrations` (GET e POST) também são usadas
+// pelo consultor no app de campo; TappersService já restringe: criação a
+// consultores da fazenda (ensureConsultorSubmission) e listagem a "só os
+// meus" pra quem não é admin/gestor (listPreRegistrations).
 @UseGuards(JwtAuthGuard)
 @Controller('tappers')
 export class TappersController {
@@ -38,7 +39,6 @@ export class TappersController {
     return this.svc.upsertByCpf(req.user.sub, dto);
   }
 
-  @UseGuards(RolesGuard)
   @Get('pre-registrations')
   listPreRegistrations(
     @Req() req: any,

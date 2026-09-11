@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api";
+import { apiRequest, setAuthTokens } from "@/lib/api";
 import { enqueueMutation, flushOutbox } from "@/lib/offline/queue";
 import { idbGet, idbPut } from "@/lib/offline/idb";
 
@@ -205,10 +205,16 @@ export function submitInventoryMovement(input: {
 }
 
 export async function changePassword(currentPassword: string, newPassword: string) {
-  return apiRequest('/auth/change-password', {
+  const res = await apiRequest<{ ok: true; access_token?: string; refresh_token?: string }>('/auth/change-password', {
     method: 'POST',
     body: JSON.stringify({ currentPassword, newPassword }),
   });
+  // Trocar a senha revoga a sessão anterior no backend; salva os tokens novos
+  // (já emitidos pelo endpoint) para a sessão atual continuar funcionando.
+  if (res.access_token && res.refresh_token) {
+    setAuthTokens({ access_token: res.access_token, refresh_token: res.refresh_token });
+  }
+  return res;
 }
 
 export function isOffline() {

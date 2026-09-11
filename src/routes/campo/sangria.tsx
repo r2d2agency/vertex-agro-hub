@@ -90,7 +90,10 @@ function SangriaPage() {
       tappingTableId: tappingTableId || undefined,
       date: getLocalIsoDate(),
       sangradorName: tapper.fullName,
-      tapperId: tapper.id,
+      // Sangradores vinculados só pelo RH (sem ficha Tapper legada) vêm com um
+      // id sintético "rh:<userId>" — não é uma linha real de Tapper, então
+      // não pode ser enviado como tapperId (chave estrangeira).
+      tapperId: tapper.id.startsWith("rh:") ? undefined : tapper.id,
       taskExtent: taskExtent || undefined,
       endPeriod: endPeriod || undefined,
       liters: liters ? Number(liters) : undefined,

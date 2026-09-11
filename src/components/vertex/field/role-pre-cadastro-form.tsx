@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Camera, Loader2 } from "lucide-react";
+import { Camera, Clock3, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getFieldMe, type FieldMe } from "@/lib/field.functions";
 import { uploadFile } from "@/lib/api";
@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
 import {
-  createTapperPreRegistration, TAPPER_CONTRACT_TYPES, maskCpf, onlyDigits,
-  type PreRegistrationRole,
+  createTapperPreRegistration, listTapperPreRegistrations, TAPPER_CONTRACT_TYPES, maskCpf, onlyDigits,
+  type PreRegistrationRole, type TapperPreRegistration,
 } from "@/lib/tappers.functions";
 
 type Form = {
@@ -23,6 +23,13 @@ type Form = {
 };
 
 const EMPTY_FORM: Form = { fullName: "", rg: "", phone: "", contractType: "", dailyRate: "" };
+
+const STATUS_LABEL: Record<string, string> = { pending: "Pendente", approved: "Aprovado", rejected: "Arquivado" };
+const STATUS_CLASS: Record<string, string> = {
+  pending: "bg-warning/15 text-warning",
+  approved: "bg-primary/15 text-primary",
+  rejected: "bg-muted text-muted-foreground",
+};
 
 export function RolePreCadastroForm({
   role,
@@ -44,6 +51,7 @@ export function RolePreCadastroForm({
   const [uploadingFront, setUploadingFront] = useState(false);
   const [uploadingBack, setUploadingBack] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [myPreRegistrations, setMyPreRegistrations] = useState<TapperPreRegistration[]>([]);
 
   useEffect(() => {
     getFieldMe().then((m) => {
@@ -53,6 +61,15 @@ export function RolePreCadastroForm({
   }, []);
 
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
+
+  // Pré-cadastros que este consultor já enviou pra esse papel — mostrado no
+  // topo pra ele não reenviar o mesmo CPF por engano.
+  useEffect(() => {
+    if (!farm?.companyId) return;
+    listTapperPreRegistrations(farm.companyId, { role, status: "" })
+      .then(setMyPreRegistrations)
+      .catch(() => setMyPreRegistrations([]));
+  }, [farm?.companyId, role]);
   const set = (k: keyof Form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   if (!me) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -116,6 +133,32 @@ export function RolePreCadastroForm({
         onBack={() => (step > 1 ? setStep(step - 1) : nav({ to: "/campo" }))}
       />
 
+      {step === 1 && myPreRegistrations.length > 0 && (
+        <FieldCard className="mb-4 space-y-2">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+            <Clock3 className="h-3.5 w-3.5" /> Pré-cadastros já enviados por você
+          </p>
+          <ul className="space-y-1.5">
+            {myPreRegistrations.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/40 p-2.5 text-xs">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{p.fullName}</p>
+                  <p className="truncate text-muted-foreground">
+                    CPF {maskCpf(p.cpf)}{p.farmName ? ` · ${p.farmName}` : ""}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase ${STATUS_CLASS[p.status] ?? "bg-muted text-muted-foreground"}`}>
+                  {STATUS_LABEL[p.status] ?? p.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px] text-muted-foreground">
+            Se o {personLabel} que você quer cadastrar já está pendente aqui, não é preciso enviar de novo — aguarde a validação do RH.
+          </p>
+        </FieldCard>
+      )}
+
       {step === 1 && (
         <FieldCard className="space-y-4">
           <F label="Fazenda">
@@ -167,7 +210,7 @@ export function RolePreCadastroForm({
               ) : (
                 <label className="grid h-24 w-full cursor-pointer place-items-center rounded-xl border border-dashed border-border/60 bg-background/40 text-muted-foreground hover:border-primary hover:text-primary">
                   {uploadingFront ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPhoto("frente", e.target.files?.[0] ?? null)} />
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto("frente", e.target.files?.[0] ?? null)} />
                 </label>
               )}
             </F>
@@ -177,7 +220,7 @@ export function RolePreCadastroForm({
               ) : (
                 <label className="grid h-24 w-full cursor-pointer place-items-center rounded-xl border border-dashed border-border/60 bg-background/40 text-muted-foreground hover:border-primary hover:text-primary">
                   {uploadingBack ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPhoto("verso", e.target.files?.[0] ?? null)} />
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto("verso", e.target.files?.[0] ?? null)} />
                 </label>
               )}
             </F>

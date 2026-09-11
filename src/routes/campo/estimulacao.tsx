@@ -79,7 +79,9 @@ function EstimulacaoPage() {
       date: getLocalIsoDate(),
       product,
       concentration: concentration || undefined,
-      tapperId: tapperId || undefined,
+      // Sangradores vinculados só pelo RH (sem ficha Tapper legada) vêm com um
+      // id sintético "rh:<userId>" — não pode ser enviado como tapperId (FK).
+      tapperId: tapperId && !tapperId.startsWith("rh:") ? tapperId : undefined,
       tappingTableId: tappingTableId || undefined,
       reason: reason.trim(),
       doseMlPerTree: dose ? Number(dose.replace(",", ".")) : undefined,

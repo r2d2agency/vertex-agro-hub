@@ -141,10 +141,13 @@ export class AuthService {
       where: { id: userId },
       data: { passwordHash, mustChangePassword: false },
     });
-    
-    // Invalida outros tokens
+
+    // Invalida as sessões antigas (com a senha anterior)...
     await this.prisma.refreshToken.deleteMany({ where: { userId, revokedAt: null } });
-    
-    return { ok: true };
+
+    // ...mas emite tokens novos na hora, senão a sessão atual morre assim que
+    // o access token (15min) expirar — o refresh token que ela usava acabou
+    // de ser apagado acima, então o próximo refresh falharia com 401.
+    return { ok: true, ...(await this.signTokens(userId, user.email!)) };
   }
 }
