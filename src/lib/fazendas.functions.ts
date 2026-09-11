@@ -42,6 +42,10 @@ export function listFarms(companyId: string, regionalId?: string) {
   return apiRequest<Farm[]>(`/farms?${qs.toString()}`);
 }
 
+export function getFarm(id: string) {
+  return apiRequest<Farm>(`/farms/${id}`);
+}
+
 export function createFarm(companyId: string, values: FarmInput) {
   return apiRequest<Farm>("/farms", {
     method: "POST",

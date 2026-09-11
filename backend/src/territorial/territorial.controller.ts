@@ -29,7 +29,12 @@ function requireCompanyId(companyId?: string) {
   return companyId;
 }
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+// Guard de classe: apenas autenticação + acesso à empresa (checado em cada
+// método do service via CompanyAccess.ensureCompany). Consultor/monitor
+// precisam LER regionais/fazendas/talhões pelo app de campo — por isso
+// RolesGuard (admin_empresa/gestor) só é aplicado nas mutações (criar,
+// editar, excluir), não nos GETs.
+@UseGuards(JwtAuthGuard)
 @Controller()
 export class TerritorialController {
   constructor(private readonly svc: TerritorialService) {}
@@ -39,10 +44,12 @@ export class TerritorialController {
   listRegionals(@Req() req: any, @Query('companyId') companyId?: string) {
     return this.svc.listRegionals(req.user.sub, requireCompanyId(companyId));
   }
+  @UseGuards(RolesGuard)
   @Post('regionals')
   createRegional(@Req() req: any, @Body() dto: CreateRegionalDto) {
     return this.svc.createRegional(req.user.sub, dto);
   }
+  @UseGuards(RolesGuard)
   @Patch('regionals/:id')
   updateRegional(
     @Req() req: any,
@@ -51,6 +58,7 @@ export class TerritorialController {
   ) {
     return this.svc.updateRegional(req.user.sub, id, dto);
   }
+  @UseGuards(RolesGuard)
   @Delete('regionals/:id')
   deleteRegional(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.deleteRegional(req.user.sub, id);
@@ -69,10 +77,12 @@ export class TerritorialController {
   getFarm(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.getFarm(req.user.sub, id);
   }
+  @UseGuards(RolesGuard)
   @Post('farms')
   createFarm(@Req() req: any, @Body() dto: CreateFarmDto) {
     return this.svc.createFarm(req.user.sub, dto);
   }
+  @UseGuards(RolesGuard)
   @Patch('farms/:id')
   updateFarm(
     @Req() req: any,
@@ -81,6 +91,7 @@ export class TerritorialController {
   ) {
     return this.svc.updateFarm(req.user.sub, id, dto);
   }
+  @UseGuards(RolesGuard)
   @Delete('farms/:id')
   deleteFarm(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.deleteFarm(req.user.sub, id);
@@ -95,10 +106,12 @@ export class TerritorialController {
   ) {
     return this.svc.listPlots(req.user.sub, requireCompanyId(companyId), farmId);
   }
+  @UseGuards(RolesGuard)
   @Post('plots')
   createPlot(@Req() req: any, @Body() dto: CreatePlotDto) {
     return this.svc.createPlot(req.user.sub, dto);
   }
+  @UseGuards(RolesGuard)
   @Patch('plots/:id')
   updatePlot(
     @Req() req: any,
@@ -107,6 +120,7 @@ export class TerritorialController {
   ) {
     return this.svc.updatePlot(req.user.sub, id, dto);
   }
+  @UseGuards(RolesGuard)
   @Delete('plots/:id')
   deletePlot(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.deletePlot(req.user.sub, id);

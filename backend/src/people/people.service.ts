@@ -572,6 +572,7 @@ export class PeopleService {
       include: {
         user: { select: { id: true, fullName: true, email: true, avatarUrl: true, active: true } },
         consultor: { select: { id: true, fullName: true, email: true } },
+        farm: { select: { id: true, name: true, code: true } },
       },
       orderBy: [{ endAt: 'asc' }, { role: 'asc' }, { startAt: 'desc' }],
     });

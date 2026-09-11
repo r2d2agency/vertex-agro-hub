@@ -24,6 +24,8 @@ import {
   ShieldCheck,
   AlertTriangle,
   History,
+  Star,
+  Map as MapIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,19 +42,29 @@ import {
 } from "@/components/ui/sheet";
 
 import { toast } from "sonner";
-import { getFieldMe, type FieldMe, captureLocation, submitCheckin } from "@/lib/field.functions";
+import { getFieldMe, type FieldMe, captureLocation, submitCheckin, submitEvaluation } from "@/lib/field.functions";
 import {
   submitConsultation, getVisitStatus, justifyMissedVisit, getConsultorDashboard, listConsultations,
   type VisitStatus, type ConsultorDashboard, type ConsultationForm,
 } from "@/lib/consultor.functions";
-import { listFarmTeam, type FarmAssignment as TeamAssignment } from "@/lib/people.functions";
+import {
+  listFarmTeam, listPersonEvaluations, type FarmAssignment as TeamAssignment, type PersonEvaluation,
+} from "@/lib/people.functions";
 import { listOccurrences, type Occurrence } from "@/lib/ocorrencias.functions";
 import { listTappingRecords, type TappingRecord } from "@/lib/sangrias.functions";
 import { listAlertEvents, type AlertEvent } from "@/lib/alertas.functions";
 import { listInsights, type AiInsight } from "@/lib/ai.functions";
 import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
 import { listTasks, createTask, TASK_CATEGORIES, type ScheduledTask } from "@/lib/agenda.functions";
-import { getLocalIsoDate } from "@/lib/date-utils";
+import { getLocalIsoDate, getLocalIsoString } from "@/lib/date-utils";
+
+const EVAL_CATEGORIES = [
+  { value: "sangria", label: "Sangria" },
+  { value: "produtividade", label: "Produtividade" },
+  { value: "conduta", label: "Conduta" },
+  { value: "seguranca", label: "Segurança" },
+  { value: "outros", label: "Outros" },
+];
 
 export const Route = createFileRoute("/campo/consultor/")({
   component: ConsultorFormPage,
@@ -88,6 +100,23 @@ function ConsultorFormPage() {
   const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([]);
   const [historyVisits, setHistoryVisits] = useState<ConsultationForm[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Agenda (aba própria — com ou sem fazenda selecionada)
+  const [agendaPeriod, setAgendaPeriod] = useState<"hoje" | "semana" | "mes">("semana");
+  const [allFarmsTasks, setAllFarmsTasks] = useState<ScheduledTask[]>([]);
+  const [allFarmsTasksLoading, setAllFarmsTasksLoading] = useState(false);
+
+  // Ficha do colaborador (Equipe)
+  const [selectedMember, setSelectedMember] = useState<TeamAssignment | null>(null);
+  const [memberLoading, setMemberLoading] = useState(false);
+  const [memberEvaluations, setMemberEvaluations] = useState<PersonEvaluation[]>([]);
+  const [memberActivity, setMemberActivity] = useState<Array<{ id: string; date: string; label: string }>>([]);
+  const [showEvalForm, setShowEvalForm] = useState(false);
+  const [evalRating, setEvalRating] = useState(4);
+  const [evalCategory, setEvalCategory] = useState("sangria");
+  const [evalTitle, setEvalTitle] = useState("");
+  const [evalNotes, setEvalNotes] = useState("");
+  const [evalSaving, setEvalSaving] = useState(false);
 
   // Check-in state
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
@@ -152,7 +181,7 @@ function ConsultorFormPage() {
     setTeamLoading(true);
     Promise.all(farms.map((a) => listFarmTeam(a.farm.id, companyId).catch(() => [] as TeamAssignment[])))
       .then((lists) => {
-        const merged = lists.flat().filter((m) => m.role === "monitor" || m.role === "sangrador");
+        const merged = lists.flat().filter((m) => m.role === "monitor" || m.role === "sangrador" || m.role === "operador");
         const byUser = new Map<string, TeamAssignment>();
         for (const m of merged) if (!byUser.has(m.userId)) byUser.set(m.userId, m);
         setTeam([...byUser.values()]);
@@ -201,6 +230,58 @@ function ConsultorFormPage() {
       })
       .finally(() => setHistoryLoading(false));
   }, [selectedFarmId, historyFrom, historyTo, me]);
+
+  const agendaRange = useMemo(() => {
+    const today = getLocalIsoDate();
+    if (agendaPeriod === "hoje") return { from: today, to: today };
+    const days = agendaPeriod === "semana" ? 7 : 30;
+    return { from: today, to: getLocalIsoDate(new Date(Date.now() + days * 86400000)) };
+  }, [agendaPeriod]);
+
+  // Agenda sem fazenda selecionada — junta as tarefas de todas as fazendas do consultor.
+  useEffect(() => {
+    const companyId = me?.companies?.[0]?.id;
+    const farms = me?.assignments ?? [];
+    if (tab !== "agenda" || selectedFarmId || !companyId || farms.length === 0) return;
+    setAllFarmsTasksLoading(true);
+    Promise.all(
+      farms.map((a) =>
+        listTasks(companyId, { farmId: a.farm.id, from: agendaRange.from, to: agendaRange.to }).catch(() => [] as ScheduledTask[]),
+      ),
+    )
+      .then((lists) => setAllFarmsTasks(lists.flat()))
+      .finally(() => setAllFarmsTasksLoading(false));
+  }, [tab, selectedFarmId, agendaRange.from, agendaRange.to, me]);
+
+  // Ficha do colaborador — avaliações + atividade recente (sangria/check-in), casada pelo nome.
+  useEffect(() => {
+    if (!selectedMember) return;
+    const companyId = selectedMember.companyId;
+    const since = getLocalIsoDate(new Date(Date.now() - 30 * 86400000));
+    const today = getLocalIsoDate();
+    const name = (selectedMember.user?.fullName ?? "").trim().toLowerCase();
+    setMemberLoading(true);
+    Promise.all([
+      listPersonEvaluations(selectedMember.userId, companyId).catch(() => [] as PersonEvaluation[]),
+      listTappingRecords(companyId, { farmId: selectedMember.farmId, from: since, to: today }).catch(() => [] as TappingRecord[]),
+      listOccurrences(companyId, { farmId: selectedMember.farmId, from: since, to: today }).catch(() => [] as Occurrence[]),
+    ])
+      .then(([evals, tapping, occurrences]) => {
+        setMemberEvaluations(evals);
+        const tappingActivity = name
+          ? tapping
+              .filter((r) => (r.sangradorName ?? "").trim().toLowerCase() === name)
+              .map((r) => ({ id: `tap-${r.id}`, date: r.date, label: `Sangria lançada${r.liters != null ? ` · ${r.liters} L` : ""}` }))
+          : [];
+        const checkinActivity = name
+          ? occurrences
+              .filter((o) => o.type === "checkin" && (o.responsible ?? "").trim().toLowerCase() === name)
+              .map((o) => ({ id: `chk-${o.id}`, date: o.date, label: "Check-in na fazenda" }))
+          : [];
+        setMemberActivity([...tappingActivity, ...checkinActivity].sort((a, b) => b.date.localeCompare(a.date)));
+      })
+      .finally(() => setMemberLoading(false));
+  }, [selectedMember]);
 
   const farmVisit = (fId?: string) => visitStatus?.farms.find((f) => f.farmId === fId);
   const overdueFarms = visitStatus?.farms.filter((f) => f.overdue) ?? [];
@@ -307,6 +388,46 @@ function ConsultorFormPage() {
     setFarmSwitcherOpen(false);
   }
 
+  function openMember(m: TeamAssignment) {
+    setSelectedMember(m);
+    setShowEvalForm(false);
+  }
+
+  function closeMember(open: boolean) {
+    if (!open) {
+      setSelectedMember(null);
+      setShowEvalForm(false);
+    }
+  }
+
+  async function saveEvaluation() {
+    if (!selectedMember) return;
+    setEvalSaving(true);
+    try {
+      const res = await submitEvaluation({
+        targetUserId: selectedMember.userId,
+        companyId: selectedMember.companyId,
+        ratedAt: getLocalIsoString(),
+        rating: evalRating,
+        category: evalCategory,
+        title: evalTitle.trim() || undefined,
+        notes: evalNotes.trim() || undefined,
+      });
+      toast.success(res.queued ? "Avaliação salva (offline)" : "Avaliação registrada");
+      setShowEvalForm(false);
+      setEvalTitle("");
+      setEvalNotes("");
+      setEvalRating(4);
+      setEvalCategory("sangria");
+      const evals = await listPersonEvaluations(selectedMember.userId, selectedMember.companyId).catch(() => [] as PersonEvaluation[]);
+      setMemberEvaluations(evals);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar avaliação");
+    } finally {
+      setEvalSaving(false);
+    }
+  }
+
   const stats = useMemo(() => {
     if (!me) return null;
     return {
@@ -369,7 +490,17 @@ function ConsultorFormPage() {
             <p className="text-[10px] text-muted-foreground">Fazenda selecionada</p>
           </div>
         </div>
-        <Button size="sm" variant="outline" onClick={() => setFarmSwitcherOpen(true)}>Trocar</Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            size="icon"
+            variant="ghost"
+            title="Ver ficha da fazenda"
+            onClick={() => navigate({ to: "/campo/fazenda/$id", params: { id: selectedFarm.id } })}
+          >
+            <MapIcon className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setFarmSwitcherOpen(true)}>Trocar</Button>
+        </div>
       </div>
     );
   };
@@ -488,7 +619,7 @@ function ConsultorFormPage() {
 
     const isCheckedInHere = activeCheckin?.farmId === selectedFarm.id;
     const v = farmVisit(selectedFarm.id);
-    const farmTeam = team.filter((m) => m.farm?.id === selectedFarm.id);
+    const farmTeam = team.filter((m) => m.farmId === selectedFarm.id);
     const tappingTotals = farmTappingToday.reduce(
       (acc, r) => { acc.liters += r.liters ?? 0; acc.dryKg += r.dryKg ?? 0; return acc; },
       { liters: 0, dryKg: 0 },
@@ -634,22 +765,92 @@ function ConsultorFormPage() {
   };
 
   const renderAgenda = () => {
+    const periodTabs = (
+      <div className="flex gap-2">
+        {([
+          { value: "hoje", label: "Hoje" },
+          { value: "semana", label: "Semana" },
+          { value: "mes", label: "Mês" },
+        ] as const).map((p) => (
+          <button
+            key={p.value}
+            onClick={() => setAgendaPeriod(p.value)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              agendaPeriod === p.value
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border/60 bg-background text-muted-foreground"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+    );
+
+    const taskItem = (t: ScheduledTask, farmName?: string | null) => (
+      <li key={t.id} className="rounded-xl border border-border/60 bg-background p-3 text-xs">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-semibold">{t.title}</span>
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase">
+            {t.status}
+          </span>
+        </div>
+        <div className="mt-1 flex items-center justify-between text-muted-foreground">
+          <span>
+            {TASK_CATEGORIES.find((c) => c.value === t.category)?.label ?? t.category}
+            {farmName ? ` · ${farmName}` : ""}
+          </span>
+          <span>
+            {new Date(t.scheduledAt).toLocaleString("pt-BR", {
+              day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+            })}
+          </span>
+        </div>
+      </li>
+    );
+
     if (!selectedFarmId || !selectedFarm) {
+      const sorted = [...allFarmsTasks].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
       return (
         <div className="space-y-6">
-          <h1 className="text-xl font-bold">Agenda</h1>
-          <p className="text-sm text-muted-foreground">Selecione uma fazenda para ver e agendar visitas e tarefas.</p>
-          <FarmPickerList />
+          <h1 className="text-xl font-bold">Agenda — todas as fazendas</h1>
+          {periodTabs}
+
+          <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+            <div className="flex items-center gap-2 font-semibold text-primary">
+              <CalendarClock className="h-4 w-4" />
+              <h2 className="text-sm">Tarefas e visitas agendadas</h2>
+            </div>
+            {allFarmsTasksLoading ? (
+              <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+            ) : sorted.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nenhuma tarefa agendada nesse período.</p>
+            ) : (
+              <ul className="space-y-2">
+                {sorted.map((t) => taskItem(t, me.assignments.find((a) => a.farm.id === t.farmId)?.farm.name))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              Selecione uma fazenda para agendar uma visita
+            </h2>
+            <FarmPickerList />
+          </section>
         </div>
       );
     }
 
-    const sortedTasks = [...farmTasks].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+    const sortedTasks = [...farmTasks]
+      .filter((t) => t.scheduledAt.slice(0, 10) >= agendaRange.from && t.scheduledAt.slice(0, 10) <= agendaRange.to)
+      .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
 
     return (
-      <div className="space-y-6 pb-24">
+      <div className="space-y-6 pb-10">
         <FarmSwitcherBar />
         <h1 className="text-xl font-bold">Agenda</h1>
+        {periodTabs}
 
         {farmDetailLoading ? (
           <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
@@ -661,28 +862,9 @@ function ConsultorFormPage() {
                 <h2 className="text-sm">Tarefas e visitas agendadas</h2>
               </div>
               {sortedTasks.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma tarefa agendada para esta fazenda.</p>
+                <p className="text-xs text-muted-foreground">Nenhuma tarefa agendada para esse período nesta fazenda.</p>
               ) : (
-                <ul className="space-y-2">
-                  {sortedTasks.map((t) => (
-                    <li key={t.id} className="rounded-xl border border-border/60 bg-background p-3 text-xs">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold">{t.title}</span>
-                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase">
-                          {t.status}
-                        </span>
-                      </div>
-                      <div className="mt-1 flex items-center justify-between text-muted-foreground">
-                        <span>{TASK_CATEGORIES.find((c) => c.value === t.category)?.label ?? t.category}</span>
-                        <span>
-                          {new Date(t.scheduledAt).toLocaleString("pt-BR", {
-                            day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <ul className="space-y-2">{sortedTasks.map((t) => taskItem(t))}</ul>
               )}
             </section>
 
@@ -889,24 +1071,52 @@ function ConsultorFormPage() {
 
   const renderEquipe = () => {
     const q = teamSearch.trim().toLowerCase();
-    const scopedTeam = selectedFarmId ? team.filter((m) => m.farm?.id === selectedFarmId) : team;
+    const scopedTeam = selectedFarmId ? team.filter((m) => m.farmId === selectedFarmId) : team;
     const filtered = scopedTeam.filter((m) => {
       if (!q) return true;
       return (m.user?.fullName ?? "").toLowerCase().includes(q) || (m.user?.email ?? "").toLowerCase().includes(q);
     });
     const monitors = filtered.filter((m) => m.role === "monitor");
     const sangradores = filtered.filter((m) => m.role === "sangrador");
+    const operadores = filtered.filter((m) => m.role === "operador");
 
     return (
       <div className="space-y-6 pb-24">
         <FarmSwitcherBar />
         <h1 className="text-xl font-bold">Equipe</h1>
 
+        <section className="space-y-2 rounded-2xl border border-border/60 bg-card p-4">
+          <p className="text-sm font-semibold">Cadastrar colaborador</p>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => navigate({ to: "/campo/sangrador" })}
+              className="flex flex-col items-center gap-1 rounded-xl border border-border/60 bg-background/40 p-3 text-center transition hover:border-primary/60 hover:bg-primary/5"
+            >
+              <span className="text-lg">🧑‍🌾</span>
+              <span className="text-[10px] font-medium">Sangrador</span>
+            </button>
+            <button
+              onClick={() => navigate({ to: "/campo/monitor-pre-cadastro" })}
+              className="flex flex-col items-center gap-1 rounded-xl border border-border/60 bg-background/40 p-3 text-center transition hover:border-primary/60 hover:bg-primary/5"
+            >
+              <span className="text-lg">🧑‍💼</span>
+              <span className="text-[10px] font-medium">Monitor</span>
+            </button>
+            <button
+              onClick={() => navigate({ to: "/campo/operador-pre-cadastro" })}
+              className="flex flex-col items-center gap-1 rounded-xl border border-border/60 bg-background/40 p-3 text-center transition hover:border-primary/60 hover:bg-primary/5"
+            >
+              <span className="text-lg">🚜</span>
+              <span className="text-[10px] font-medium">Operador</span>
+            </button>
+          </div>
+        </section>
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Buscar monitor ou sangrador..."
+            placeholder="Buscar colaborador..."
             className="w-full rounded-xl border border-border/60 bg-card py-3 pl-10 pr-4 text-sm"
             value={teamSearch}
             onChange={(e) => setTeamSearch(e.target.value)}
@@ -917,11 +1127,12 @@ function ConsultorFormPage() {
           <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
           <>
-            <TeamGroup title="Monitores" members={monitors} />
-            <TeamGroup title="Sangradores" members={sangradores} />
+            <TeamGroup title="Monitores" members={monitors} onSelect={openMember} />
+            <TeamGroup title="Sangradores" members={sangradores} onSelect={openMember} />
+            <TeamGroup title="Operadores" members={operadores} onSelect={openMember} />
             {scopedTeam.length === 0 && (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                {selectedFarmId ? "Nenhum monitor ou sangrador vinculado a esta fazenda." : "Nenhum monitor ou sangrador vinculado às suas fazendas."}
+                {selectedFarmId ? "Nenhum colaborador vinculado a esta fazenda." : "Nenhum colaborador vinculado às suas fazendas."}
               </p>
             )}
           </>
@@ -1177,14 +1388,6 @@ function ConsultorFormPage() {
         )}
       </div>
 
-      {mode === "tabs" && selectedFarmId && (
-        <button
-          onClick={startVisitWithCheckin}
-          className="fixed bottom-24 right-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center animate-bounce-slow"
-        >
-          <ClipboardCheck className="h-6 w-6" />
-        </button>
-      )}
 
       {/* Mobile Nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between border-t border-border bg-card/80 px-3 py-3 backdrop-blur-md">
@@ -1225,17 +1428,137 @@ function ConsultorFormPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <Sheet open={!!selectedMember} onOpenChange={closeMember}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl border-border/60 bg-card">
+          <SheetHeader>
+            <SheetTitle className="text-left">
+              {selectedMember?.user?.fullName || selectedMember?.user?.email || "Colaborador"}
+            </SheetTitle>
+          </SheetHeader>
+          {selectedMember && (
+            <div className="mt-4 space-y-4 pb-6">
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full bg-secondary px-2 py-1 font-medium capitalize">{selectedMember.role}</span>
+                <span className="rounded-full bg-secondary px-2 py-1 font-medium">{selectedMember.farm?.name ?? "Sem fazenda"}</span>
+                {selectedMember.user && (
+                  <span className={`rounded-full px-2 py-1 font-medium ${selectedMember.user.active ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
+                    {selectedMember.user.active ? "Ativo" : "Inativo"}
+                  </span>
+                )}
+              </div>
+
+              {memberLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+              ) : (
+                <>
+                  <section>
+                    <h3 className="mb-2 text-xs font-bold uppercase text-muted-foreground">Avaliações</h3>
+                    {memberEvaluations.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Nenhuma avaliação registrada ainda.</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {memberEvaluations.map((ev) => (
+                          <li key={ev.id} className="rounded-xl border border-border/60 bg-background p-2 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold">{ev.title || EVAL_CATEGORIES.find((c) => c.value === ev.category)?.label || "Avaliação"}</span>
+                              <span className="flex items-center gap-0.5 font-semibold text-primary">
+                                {ev.rating}/5 <Star className="h-3 w-3 fill-current" />
+                              </span>
+                            </div>
+                            <p className="mt-0.5 text-muted-foreground">
+                              {new Date(ev.ratedAt).toLocaleDateString("pt-BR")}
+                              {ev.notes ? ` · ${ev.notes}` : ""}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+
+                  <section>
+                    <h3 className="mb-2 text-xs font-bold uppercase text-muted-foreground">Atividade recente (30 dias)</h3>
+                    {memberActivity.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Sem atividade recente registrada.</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {memberActivity.map((a) => (
+                          <li key={a.id} className="text-xs">
+                            <span className="text-muted-foreground">{new Date(a.date).toLocaleDateString("pt-BR")}</span> — {a.label}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+
+                  {!showEvalForm ? (
+                    <Button className="w-full" onClick={() => setShowEvalForm(true)}>Nova avaliação</Button>
+                  ) : (
+                    <section className="space-y-3 rounded-2xl border border-border/60 bg-background p-3">
+                      <div className="flex items-center justify-between gap-1">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setEvalRating(n)}
+                            className={`grid h-10 w-10 place-items-center rounded-xl border transition ${
+                              n <= evalRating ? "border-primary bg-primary/15 text-primary" : "border-border/60 bg-background text-muted-foreground"
+                            }`}
+                          >
+                            <Star className={`h-4 w-4 ${n <= evalRating ? "fill-current" : ""}`} />
+                          </button>
+                        ))}
+                        <span className="ml-2 text-sm font-semibold">{evalRating}/5</span>
+                      </div>
+                      <select
+                        value={evalCategory}
+                        onChange={(e) => setEvalCategory(e.target.value)}
+                        className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm"
+                      >
+                        {EVAL_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      </select>
+                      <input
+                        placeholder="Título (opcional)"
+                        value={evalTitle}
+                        onChange={(e) => setEvalTitle(e.target.value)}
+                        className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm"
+                      />
+                      <Textarea
+                        placeholder="Observações..."
+                        rows={3}
+                        className="rounded-xl border-border/60 bg-background"
+                        value={evalNotes}
+                        onChange={(e) => setEvalNotes(e.target.value)}
+                      />
+                      <div className="flex gap-2">
+                        <Button variant="ghost" className="flex-1" onClick={() => setShowEvalForm(false)}>Cancelar</Button>
+                        <Button className="flex-1" onClick={saveEvaluation} disabled={evalSaving}>
+                          {evalSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar
+                        </Button>
+                      </div>
+                    </section>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
 
-function TeamGroup({ title, members }: { title: string; members: TeamAssignment[] }) {
+function TeamGroup({ title, members, onSelect }: { title: string; members: TeamAssignment[]; onSelect: (m: TeamAssignment) => void }) {
   if (members.length === 0) return null;
   return (
     <div className="space-y-4">
       <h2 className="text-xs font-bold uppercase text-muted-foreground tracking-wider">{title}</h2>
       {members.map((m) => (
-        <div key={m.id} className="rounded-2xl border border-border/60 bg-card p-4 flex items-center justify-between">
+        <button
+          key={m.id}
+          onClick={() => onSelect(m)}
+          className="flex w-full items-center justify-between rounded-2xl border border-border/60 bg-card p-4 text-left transition active:scale-[0.98]"
+        >
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
               {(m.user?.fullName ?? m.user?.email ?? "?").charAt(0).toUpperCase()}
@@ -1248,7 +1571,7 @@ function TeamGroup({ title, members }: { title: string; members: TeamAssignment[
           <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${m.user?.active ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
             {m.user?.active ? "Ativo" : "Inativo"}
           </div>
-        </div>
+        </button>
       ))}
     </div>
   );

@@ -6,9 +6,12 @@ import {
   CreateTaskDto, UpdateTaskDto,
 } from './dto';
 
-import { RolesGuard } from '../auth/guards/roles.guard';
-
-@UseGuards(JwtAuthGuard, RolesGuard)
+// Guard de classe: apenas autenticação + acesso à empresa (checado em cada
+// método do service via CompanyAccess.ensureCompany). Ocorrências e agenda
+// são usadas pelo app de campo (monitor/consultor/sangrador), não só pelo
+// admin — por isso NÃO leva RolesGuard aqui (esse guard exige
+// admin_empresa/gestor e bloquearia esses papéis de campo).
+@UseGuards(JwtAuthGuard)
 @Controller()
 export class ActivitiesController {
   constructor(private readonly svc: ActivitiesService) {}
