@@ -19,6 +19,18 @@ export const changelog: ChangelogRelease[] = [
     entries: [
       {
         type: "novidade",
+        title: "Atualização automática do app, sem depender do usuário",
+        description:
+          "O sistema agora verifica sozinho se existe uma versão mais nova publicada (ao reabrir o app, reconectar ou periodicamente) e atualiza automaticamente, limpando o cache antigo — não é mais preciso o usuário saber limpar cache. Também dá pra forçar a verificação manualmente em Mais > Sistema (app de campo) ou Configurações > Sistema (admin), onde a versão instalada agora aparece de verdade.",
+      },
+      {
+        type: "novidade",
+        title: "Banner para instalar o app no celular",
+        description:
+          "Quem acessa pelo celular (Android ou iPhone) e ainda não instalou o app agora vê um aviso na tela oferecendo instalar — com o botão direto no Android/Chrome, e o passo a passo (Compartilhar > Adicionar à Tela de Início) no iPhone.",
+      },
+      {
+        type: "novidade",
         title: "Estimulação agendada: consultor/admin planeja, monitor confirma",
         description:
           "Estimulação virou uma atividade agendada: o consultor (aba Agenda) ou o admin (Agenda Operacional) marca a data, o sangrador, a tabela, o produto, a concentração, a dose e o motivo. O monitor recebe o agendamento no app e só confirma a execução (com árvores estimuladas, foto e observações opcionais) — não registra mais uma estimulação livremente.",

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { AiProviderConfigCard } from "@/components/vertex/ai-provider-config";
 import { getSettings, updateSettings, type CompanySettings } from "@/lib/configuracoes.functions";
+import { APP_VERSION, checkForUpdate, applyUpdate } from "@/lib/app-update";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
@@ -102,6 +103,42 @@ function ConfigPage() {
       )}
 
       {companyId && <AiProviderConfigCard companyId={companyId} />}
+
+      <SystemVersionCard />
     </div>
+  );
+}
+
+function SystemVersionCard() {
+  const [checking, setChecking] = useState(false);
+
+  async function handleCheck() {
+    setChecking(true);
+    try {
+      const hasUpdate = await checkForUpdate();
+      if (hasUpdate) {
+        toast.info("Nova versão encontrada, atualizando...");
+        await applyUpdate();
+      } else {
+        toast.success("Você já está na versão mais recente");
+      }
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">Sistema</CardTitle></CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm">Versão atual (build)</p>
+          <p className="text-xs text-muted-foreground">{APP_VERSION}</p>
+        </div>
+        <Button variant="outline" onClick={handleCheck} disabled={checking}>
+          {checking ? "Verificando..." : "Verificar atualizações"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

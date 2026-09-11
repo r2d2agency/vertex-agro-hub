@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Eye, EyeOff, WifiOff } from "lucide-react";
 import vertexLogo from "@/assets/vertex-logo.png";
+import { APP_VERSION } from "@/lib/app-update";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -113,7 +114,7 @@ function AuthPage() {
           </button>
 
           <div className="mt-10 text-center text-[11px] text-muted-foreground/70">
-            <div>Versão 1.2.0</div>
+            <div>build {APP_VERSION.slice(0, 10)}</div>
             <div className="mt-1">Design by TNS R2D2</div>
           </div>
         </div>

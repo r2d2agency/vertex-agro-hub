@@ -11,10 +11,12 @@ import {
   ShieldCheck,
   Smartphone,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  DownloadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
 import { subscribeOutbox, flushOutbox } from "@/lib/offline/queue";
+import { APP_VERSION, checkForUpdate, applyUpdate } from "@/lib/app-update";
 
 export const Route = createFileRoute("/campo/mais")({ component: PreferenciasPage });
 
@@ -25,6 +27,7 @@ function PreferenciasPage() {
   const [failedCount, setFailedCount] = useState(0);
   const [running, setRunning] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   useEffect(() => {
     if (typeof navigator !== "undefined") setOnline(navigator.onLine);
@@ -61,6 +64,21 @@ function PreferenciasPage() {
     }
     setTheme(newTheme);
     toast.success(`Tema ${newTheme === 'dark' ? 'escuro' : 'claro'} ativado`);
+  };
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    try {
+      const hasUpdate = await checkForUpdate();
+      if (hasUpdate) {
+        toast.info("Nova versão encontrada, atualizando...");
+        await applyUpdate();
+      } else {
+        toast.success("Você já está na versão mais recente");
+      }
+    } finally {
+      setCheckingUpdate(false);
+    }
   };
 
   const handleManualSync = async () => {
@@ -199,12 +217,34 @@ function PreferenciasPage() {
         </div>
       </div>
 
+      <div className="space-y-2">
+        <h2 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Sistema</h2>
+        <button
+          onClick={handleCheckUpdate}
+          disabled={checkingUpdate}
+          className="flex w-full items-center justify-between rounded-2xl border border-border/60 bg-card p-4 text-left transition active:scale-[0.98]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-muted text-muted-foreground">
+              <DownloadCloud className={`h-5 w-5 ${checkingUpdate ? "animate-pulse text-primary" : ""}`} />
+            </div>
+            <div>
+              <div className="text-sm font-semibold">Verificar atualizações</div>
+              <div className="text-[11px] text-muted-foreground">
+                {checkingUpdate ? "Verificando..." : "O app atualiza sozinho, mas você pode forçar agora"}
+              </div>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </div>
+
       <div className="pt-4 flex flex-col items-center gap-4">
         <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/30 border border-border/40 text-[10px] text-muted-foreground">
           <Info className="h-3 w-3" />
-          Vertex Agro Field v1.2.0 · 2026
+          Vertex Agro Field · build {APP_VERSION.slice(0, 10)}
         </div>
-        
+
         <button
           onClick={() => navigate({ to: "/campo/sincronizacao" })}
           className="text-xs text-primary font-medium hover:underline underline-offset-4"

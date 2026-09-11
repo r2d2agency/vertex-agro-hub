@@ -13,6 +13,8 @@ import appCss from "../styles.css?url";
 import { registerServiceWorker } from "@/lib/offline/register-sw";
 import { installOfflineAutoFlush } from "@/lib/offline/network";
 import { Toaster } from "@/components/ui/sonner";
+import { AppUpdateWatcher } from "@/components/vertex/app-update-watcher";
+import { InstallPromptBanner } from "@/components/vertex/install-prompt-banner";
 
 function NotFoundComponent() {
   return (
@@ -141,6 +143,8 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster richColors position="top-center" />
+      <AppUpdateWatcher />
+      <InstallPromptBanner />
     </QueryClientProvider>
   );
 }
