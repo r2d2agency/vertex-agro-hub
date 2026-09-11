@@ -15,6 +15,17 @@ export type ChangelogRelease = {
 // novidade, adicione uma entrada no release do dia (ou crie um novo release).
 export const changelog: ChangelogRelease[] = [
   {
+    date: "2026-09-11",
+    entries: [
+      {
+        type: "novidade",
+        title: "Pré-cadastro de monitor e operador pelo consultor",
+        description:
+          "O app de campo já permitia ao consultor pré-cadastrar um sangrador (nome, CPF, fotos de RG/CPF e fazenda) e enviar para validação do RH. Agora o mesmo fluxo existe para monitor e operador, com pré-cadastros pendentes aparecendo nas telas Sangradores, Monitores e Operadores do administrativo para o RH aprovar (criando o cadastro-base) ou arquivar.",
+      },
+    ],
+  },
+  {
     date: "2026-09-09",
     entries: [
       {

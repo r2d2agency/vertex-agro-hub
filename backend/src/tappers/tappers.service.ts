@@ -9,6 +9,13 @@ const onlyDigits = (v: string) => (v ?? '').replace(/\D+/g, '');
 
 const d = (v?: string | null) => (v ? new Date(v) : null);
 
+const ROLE_LABELS: Record<string, string> = {
+  sangrador: 'sangrador',
+  monitor: 'monitor',
+  operador: 'operador',
+};
+const roleLabel = (role: string) => ROLE_LABELS[role] ?? role;
+
 @Injectable()
 export class TappersService {
   constructor(
@@ -344,13 +351,14 @@ export class TappersService {
   async listPreRegistrations(
     userId: string,
     companyId: string,
-    opts: { status?: string } = {},
+    opts: { status?: string; role?: string } = {},
   ) {
     await this.access.ensureCompany(userId, companyId);
     return this.prisma.tapperPreRegistration.findMany({
       where: {
         companyId,
         ...(opts.status ? { status: opts.status } : {}),
+        ...(opts.role ? { role: opts.role } : {}),
       },
       orderBy: [{ createdAt: 'desc' }],
     });
@@ -361,6 +369,7 @@ export class TappersService {
     dto: {
       companyId: string;
       farmId: string;
+      role?: string;
       fullName: string;
       cpf: string;
       rg?: string;
@@ -380,6 +389,8 @@ export class TappersService {
     await this.access.ensureCompany(userId, dto.companyId);
     await this.ensureConsultorSubmission(userId, dto.companyId, dto.farmId);
 
+    const role = dto.role ?? 'sangrador';
+
     const cpf = onlyDigits(dto.cpf);
     if (cpf.length !== 11) {
       throw new BadRequestException('Informe um CPF válido com 11 dígitos');
@@ -392,11 +403,11 @@ export class TappersService {
     if (!farm) throw new BadRequestException('Fazenda inválida');
 
     const existingPending = await this.prisma.tapperPreRegistration.findFirst({
-      where: { companyId: dto.companyId, cpf, status: 'pending' },
+      where: { companyId: dto.companyId, cpf, role, status: 'pending' },
       select: { id: true },
     });
     if (existingPending) {
-      throw new BadRequestException('Já existe um pré-cadastro pendente para este CPF');
+      throw new BadRequestException(`Já existe um pré-cadastro de ${roleLabel(role)} pendente para este CPF`);
     }
 
     const requester = await this.prisma.user.findUnique({
@@ -408,6 +419,7 @@ export class TappersService {
     const item = await this.prisma.tapperPreRegistration.create({
       data: {
         companyId: dto.companyId,
+        role,
         farmId: dto.farmId,
         farmName: farm.name,
         requestedById: userId,
@@ -433,10 +445,11 @@ export class TappersService {
       data: {
         companyId: dto.companyId,
         level: 'info',
-        title: 'Novo pré-cadastro provisório de sangrador',
+        title: `Novo pré-cadastro provisório de ${roleLabel(role)}`,
         message: `${item.fullName} foi enviado por ${requestedByName} para validação do RH.`,
         meta: {
           type: 'tapper_pre_registration',
+          role,
           preRegistrationId: item.id,
           farmId: item.farmId,
           farmName: item.farmName,
@@ -489,8 +502,8 @@ export class TappersService {
         companyId: dto.companyId,
         level: dto.status === 'approved' ? 'info' : 'warning',
         title: dto.status === 'approved'
-          ? 'Pré-cadastro de sangrador aprovado'
-          : 'Pré-cadastro de sangrador arquivado',
+          ? `Pré-cadastro de ${roleLabel(current.role)} aprovado`
+          : `Pré-cadastro de ${roleLabel(current.role)} arquivado`,
         message: `${updated.fullName} foi ${dto.status === 'approved' ? 'validado' : 'arquivado'} por ${reviewerName}.`,
         meta: {
           type: 'tapper_pre_registration_review',

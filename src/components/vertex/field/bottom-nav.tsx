@@ -17,6 +17,8 @@ const TABS: Item[] = [
 
 const OPERATIONS = [
   { to: "/campo/sangrador", label: "Pré-cadastrar sangrador", emoji: "🧑‍🌾", roles: ["consultor", "admin"] },
+  { to: "/campo/monitor-pre-cadastro", label: "Pré-cadastrar monitor", emoji: "🧑‍💼", roles: ["consultor", "admin"] },
+  { to: "/campo/operador-pre-cadastro", label: "Pré-cadastrar operador", emoji: "🚜", roles: ["consultor", "admin"] },
   { to: "/campo/consultor", label: "Visita técnica (Consultoria)", emoji: "📋", roles: ["consultor", "admin"] },
   { to: "/campo/sangria", label: "Registrar sangria", emoji: "💧", roles: ["monitor", "admin"] },
   { to: "/campo/producao", label: "Registrar produção", emoji: "📦", roles: ["monitor", "admin"] },

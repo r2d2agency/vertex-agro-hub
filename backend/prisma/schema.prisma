@@ -1487,6 +1487,7 @@ model Tapper {
 model TapperPreRegistration {
   id            String   @id @default(uuid()) @db.Uuid
   companyId     String   @map("company_id") @db.Uuid
+  role          String   @default("sangrador")
   farmId        String?  @map("farm_id") @db.Uuid
   farmName      String?  @map("farm_name")
   requestedById String?  @map("requested_by") @db.Uuid
@@ -1517,6 +1518,7 @@ model TapperPreRegistration {
 
   @@index([companyId, status, createdAt(sort: Desc)])
   @@index([companyId, cpf])
+  @@index([companyId, role, status])
   @@map("tapper_pre_registration")
 }
 

@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
+import { PersonEditor } from "@/components/vertex/person-editor";
+import { PreRegistrationsCard } from "@/components/vertex/pre-registrations-card";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +41,7 @@ function MonitoresPage() {
   const [farmFilter, setFarmFilter] = useState("");
   const [consultorFilter, setConsultorFilter] = useState("");
   const [selected, setSelected] = useState<Person | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   const { data: people = [], isLoading: loadingPeople } = useQuery({
     queryKey: ["people", companyId],
@@ -89,6 +92,13 @@ function MonitoresPage() {
 
       {companyId && (
         <>
+          <PreRegistrationsCard
+            companyId={companyId}
+            role="monitor"
+            roleLabel="monitor"
+            onApproved={(personId) => setEditingUserId(personId)}
+          />
+
           <div className="grid gap-3 md:grid-cols-3">
             <Input
               placeholder="Buscar monitor por nome ou email..."
@@ -159,6 +169,13 @@ function MonitoresPage() {
             consultants={consultants}
             assignments={monitorAssignments}
             onClose={() => setSelected(null)}
+          />
+
+          <PersonEditor
+            open={!!editingUserId}
+            onOpenChange={(open) => !open && setEditingUserId(null)}
+            userId={editingUserId}
+            companyId={companyId}
           />
         </>
       )}

@@ -44,8 +44,9 @@ export class TappersController {
     @Req() req: any,
     @Query('companyId', ParseUUIDPipe) companyId: string,
     @Query('status') status?: string,
+    @Query('role') role?: string,
   ) {
-    return this.svc.listPreRegistrations(req.user.sub, companyId, { status });
+    return this.svc.listPreRegistrations(req.user.sub, companyId, { status, role });
   }
 
   @Post('pre-registrations')

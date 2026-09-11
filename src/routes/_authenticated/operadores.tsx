@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Search, Tractor, UserCog, UserPlus, Wrench } from "lucide-react";
 import { PageHeader } from "@/components/vertex/page-header";
+import { PersonEditor } from "@/components/vertex/person-editor";
+import { PreRegistrationsCard } from "@/components/vertex/pre-registrations-card";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +32,7 @@ function OperatorsPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [selectedOperator, setSelectedOperator] = useState<Person | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   const { data: people = [], isLoading: loadingPeople } = useQuery({
     queryKey: ["people", companyId],
@@ -106,6 +109,13 @@ function OperatorsPage() {
 
       {companyId && (
         <>
+          <PreRegistrationsCard
+            companyId={companyId}
+            role="operador"
+            roleLabel="operador"
+            onApproved={(personId) => setEditingUserId(personId)}
+          />
+
           <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
             Operadores sao cadastrados na central de RH. Para aparecer aqui, a pessoa precisa estar vinculada a esta empresa com o papel `operador`.
           </div>
@@ -186,6 +196,15 @@ function OperatorsPage() {
           qc.invalidateQueries({ queryKey: ["implements", companyId] });
         }}
       />
+
+      {companyId && (
+        <PersonEditor
+          open={!!editingUserId}
+          onOpenChange={(open) => !open && setEditingUserId(null)}
+          userId={editingUserId}
+          companyId={companyId}
+        />
+      )}
     </div>
   );
 }

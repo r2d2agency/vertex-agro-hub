@@ -59,9 +59,12 @@ export class UpsertTapperDto extends CreateTapperDto {
   @IsOptional() @IsDateString() stintStartAt?: string;
 }
 
+export const PRE_REGISTRATION_ROLES = ['sangrador', 'monitor', 'operador'] as const;
+
 export class CreateTapperPreRegistrationDto {
   @IsUUID() companyId!: string;
   @IsUUID() farmId!: string;
+  @IsOptional() @IsIn(PRE_REGISTRATION_ROLES) role?: string;
   @IsString() @MinLength(2) fullName!: string;
   @IsString() @MinLength(11) cpf!: string;
   @IsOptional() @IsString() rg?: string;

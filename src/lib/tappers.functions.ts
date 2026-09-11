@@ -137,9 +137,12 @@ export type TapperLookup = {
   currentFarm: { id: string; name: string } | null;
 };
 
+export type PreRegistrationRole = "sangrador" | "monitor" | "operador";
+
 export type TapperPreRegistration = {
   id: string;
   companyId: string;
+  role: PreRegistrationRole;
   farmId: string | null;
   farmName: string | null;
   requestedById: string | null;
@@ -183,15 +186,20 @@ export function upsertTapperByCpf(input: TapperInput & {
   });
 }
 
-export function listTapperPreRegistrations(companyId: string, status = "pending") {
-  return apiRequest<TapperPreRegistration[]>(
-    `/tappers/pre-registrations?companyId=${encodeURIComponent(companyId)}&status=${encodeURIComponent(status)}`,
-  );
+export function listTapperPreRegistrations(
+  companyId: string,
+  opts: { status?: string; role?: PreRegistrationRole } = {},
+) {
+  const { status = "pending", role } = opts;
+  const params = new URLSearchParams({ companyId, status });
+  if (role) params.set("role", role);
+  return apiRequest<TapperPreRegistration[]>(`/tappers/pre-registrations?${params.toString()}`);
 }
 
 export function createTapperPreRegistration(input: {
   companyId: string;
   farmId: string;
+  role?: PreRegistrationRole;
   fullName: string;
   cpf: string;
   rg?: string | null;

@@ -80,8 +80,10 @@ import { Route as CampoEstimulacaoRouteImport } from './routes/campo/estimulacao
 import { Route as CampoHistoricoRouteImport } from './routes/campo/historico'
 import { Route as CampoInsumoRouteImport } from './routes/campo/insumo'
 import { Route as CampoMaisRouteImport } from './routes/campo/mais'
+import { Route as CampoMonitorPreCadastroRouteImport } from './routes/campo/monitor-pre-cadastro'
 import { Route as CampoOcorrenciaRouteImport } from './routes/campo/ocorrencia'
 import { Route as CampoOperacaoMaquinaRouteImport } from './routes/campo/operacao-maquina'
+import { Route as CampoOperadorPreCadastroRouteImport } from './routes/campo/operador-pre-cadastro'
 import { Route as CampoPerfilRouteImport } from './routes/campo/perfil'
 import { Route as CampoProducaoRouteImport } from './routes/campo/producao'
 import { Route as CampoSangradorRouteImport } from './routes/campo/sangrador'
@@ -464,6 +466,11 @@ const CampoMaisRoute = CampoMaisRouteImport.update({
   path: '/mais',
   getParentRoute: () => CampoRouteRoute,
 } as any)
+const CampoMonitorPreCadastroRoute = CampoMonitorPreCadastroRouteImport.update({
+  id: '/monitor-pre-cadastro',
+  path: '/monitor-pre-cadastro',
+  getParentRoute: () => CampoRouteRoute,
+} as any)
 const CampoOcorrenciaRoute = CampoOcorrenciaRouteImport.update({
   id: '/ocorrencia',
   path: '/ocorrencia',
@@ -474,6 +481,12 @@ const CampoOperacaoMaquinaRoute = CampoOperacaoMaquinaRouteImport.update({
   path: '/operacao-maquina',
   getParentRoute: () => CampoRouteRoute,
 } as any)
+const CampoOperadorPreCadastroRoute =
+  CampoOperadorPreCadastroRouteImport.update({
+    id: '/operador-pre-cadastro',
+    path: '/operador-pre-cadastro',
+    getParentRoute: () => CampoRouteRoute,
+  } as any)
 const CampoPerfilRoute = CampoPerfilRouteImport.update({
   id: '/perfil',
   path: '/perfil',
@@ -608,8 +621,10 @@ export interface FileRoutesByFullPath {
   '/campo/historico': typeof CampoHistoricoRoute
   '/campo/insumo': typeof CampoInsumoRoute
   '/campo/mais': typeof CampoMaisRoute
+  '/campo/monitor-pre-cadastro': typeof CampoMonitorPreCadastroRoute
   '/campo/ocorrencia': typeof CampoOcorrenciaRoute
   '/campo/operacao-maquina': typeof CampoOperacaoMaquinaRoute
+  '/campo/operador-pre-cadastro': typeof CampoOperadorPreCadastroRoute
   '/campo/perfil': typeof CampoPerfilRoute
   '/campo/producao': typeof CampoProducaoRoute
   '/campo/sangrador': typeof CampoSangradorRoute
@@ -692,8 +707,10 @@ export interface FileRoutesByTo {
   '/campo/historico': typeof CampoHistoricoRoute
   '/campo/insumo': typeof CampoInsumoRoute
   '/campo/mais': typeof CampoMaisRoute
+  '/campo/monitor-pre-cadastro': typeof CampoMonitorPreCadastroRoute
   '/campo/ocorrencia': typeof CampoOcorrenciaRoute
   '/campo/operacao-maquina': typeof CampoOperacaoMaquinaRoute
+  '/campo/operador-pre-cadastro': typeof CampoOperadorPreCadastroRoute
   '/campo/perfil': typeof CampoPerfilRoute
   '/campo/producao': typeof CampoProducaoRoute
   '/campo/sangrador': typeof CampoSangradorRoute
@@ -780,8 +797,10 @@ export interface FileRoutesById {
   '/campo/historico': typeof CampoHistoricoRoute
   '/campo/insumo': typeof CampoInsumoRoute
   '/campo/mais': typeof CampoMaisRoute
+  '/campo/monitor-pre-cadastro': typeof CampoMonitorPreCadastroRoute
   '/campo/ocorrencia': typeof CampoOcorrenciaRoute
   '/campo/operacao-maquina': typeof CampoOperacaoMaquinaRoute
+  '/campo/operador-pre-cadastro': typeof CampoOperadorPreCadastroRoute
   '/campo/perfil': typeof CampoPerfilRoute
   '/campo/producao': typeof CampoProducaoRoute
   '/campo/sangrador': typeof CampoSangradorRoute
@@ -868,8 +887,10 @@ export interface FileRouteTypes {
     | '/campo/historico'
     | '/campo/insumo'
     | '/campo/mais'
+    | '/campo/monitor-pre-cadastro'
     | '/campo/ocorrencia'
     | '/campo/operacao-maquina'
+    | '/campo/operador-pre-cadastro'
     | '/campo/perfil'
     | '/campo/producao'
     | '/campo/sangrador'
@@ -952,8 +973,10 @@ export interface FileRouteTypes {
     | '/campo/historico'
     | '/campo/insumo'
     | '/campo/mais'
+    | '/campo/monitor-pre-cadastro'
     | '/campo/ocorrencia'
     | '/campo/operacao-maquina'
+    | '/campo/operador-pre-cadastro'
     | '/campo/perfil'
     | '/campo/producao'
     | '/campo/sangrador'
@@ -1039,8 +1062,10 @@ export interface FileRouteTypes {
     | '/campo/historico'
     | '/campo/insumo'
     | '/campo/mais'
+    | '/campo/monitor-pre-cadastro'
     | '/campo/ocorrencia'
     | '/campo/operacao-maquina'
+    | '/campo/operador-pre-cadastro'
     | '/campo/perfil'
     | '/campo/producao'
     | '/campo/sangrador'
@@ -1566,6 +1591,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampoMaisRouteImport
       parentRoute: typeof CampoRouteRoute
     }
+    '/campo/monitor-pre-cadastro': {
+      id: '/campo/monitor-pre-cadastro'
+      path: '/monitor-pre-cadastro'
+      fullPath: '/campo/monitor-pre-cadastro'
+      preLoaderRoute: typeof CampoMonitorPreCadastroRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
     '/campo/ocorrencia': {
       id: '/campo/ocorrencia'
       path: '/ocorrencia'
@@ -1578,6 +1610,13 @@ declare module '@tanstack/react-router' {
       path: '/operacao-maquina'
       fullPath: '/campo/operacao-maquina'
       preLoaderRoute: typeof CampoOperacaoMaquinaRouteImport
+      parentRoute: typeof CampoRouteRoute
+    }
+    '/campo/operador-pre-cadastro': {
+      id: '/campo/operador-pre-cadastro'
+      path: '/operador-pre-cadastro'
+      fullPath: '/campo/operador-pre-cadastro'
+      preLoaderRoute: typeof CampoOperadorPreCadastroRouteImport
       parentRoute: typeof CampoRouteRoute
     }
     '/campo/perfil': {
@@ -1836,8 +1875,10 @@ interface CampoRouteRouteChildren {
   CampoHistoricoRoute: typeof CampoHistoricoRoute
   CampoInsumoRoute: typeof CampoInsumoRoute
   CampoMaisRoute: typeof CampoMaisRoute
+  CampoMonitorPreCadastroRoute: typeof CampoMonitorPreCadastroRoute
   CampoOcorrenciaRoute: typeof CampoOcorrenciaRoute
   CampoOperacaoMaquinaRoute: typeof CampoOperacaoMaquinaRoute
+  CampoOperadorPreCadastroRoute: typeof CampoOperadorPreCadastroRoute
   CampoPerfilRoute: typeof CampoPerfilRoute
   CampoProducaoRoute: typeof CampoProducaoRoute
   CampoSangradorRoute: typeof CampoSangradorRoute
@@ -1858,8 +1899,10 @@ const CampoRouteRouteChildren: CampoRouteRouteChildren = {
   CampoHistoricoRoute: CampoHistoricoRoute,
   CampoInsumoRoute: CampoInsumoRoute,
   CampoMaisRoute: CampoMaisRoute,
+  CampoMonitorPreCadastroRoute: CampoMonitorPreCadastroRoute,
   CampoOcorrenciaRoute: CampoOcorrenciaRoute,
   CampoOperacaoMaquinaRoute: CampoOperacaoMaquinaRoute,
+  CampoOperadorPreCadastroRoute: CampoOperadorPreCadastroRoute,
   CampoPerfilRoute: CampoPerfilRoute,
   CampoProducaoRoute: CampoProducaoRoute,
   CampoSangradorRoute: CampoSangradorRoute,
@@ -1887,3 +1930,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
