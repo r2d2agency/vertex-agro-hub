@@ -132,13 +132,14 @@ export function submitStimulation(input: {
   companyId: string; farmId?: string; plotId?: string;
   date: string; product: string; concentration?: string;
   tapperId?: string | null; tappingTableId?: string | null; reason?: string;
-  treesStimulated?: number | null; doseMlPerTree?: number | null; notes?: string;
+  treesStimulated?: number | null; doseMlPerTree?: number | null; sangradorPercent?: number | null; notes?: string;
 }) {
   const data = { ...input };
   if (data.tapperId === null) delete data.tapperId;
   if (data.tappingTableId === null) delete data.tappingTableId;
   if (data.treesStimulated === null) delete data.treesStimulated;
   if (data.doseMlPerTree === null) delete data.doseMlPerTree;
+  if (data.sangradorPercent === null) delete data.sangradorPercent;
   return submit("/stimulations", "POST", data, `Estimulação — ${input.product}`);
 }
 

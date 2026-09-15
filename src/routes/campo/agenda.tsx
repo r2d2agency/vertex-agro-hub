@@ -1,26 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Camera, CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
-import { getFieldMe, captureLocation, submitCheckin, submitStimulation, type FieldMe } from "@/lib/field.functions";
-import { listTasks, updateTask, type ScheduledTask, type StimulationTaskMeta } from "@/lib/agenda.functions";
+import {
+  getFieldMe, captureLocation, submitCheckin, submitStimulation, listFieldTapperTables,
+  type FieldMe, type FieldTapperTable,
+} from "@/lib/field.functions";
+import { listTasks, updateTask, categoryStyle, categoryLabel, type ScheduledTask, type StimulationTaskMeta } from "@/lib/agenda.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getLocalIsoDate } from "@/lib/date-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/campo/agenda")({ component: AgendaPage });
-
-const CAT_STYLE: Record<string, string> = {
-  sangria:     "bg-primary/15 text-primary",
-  estimulacao: "bg-chart-3/20 text-chart-3",
-  producao:    "bg-chart-2/20 text-chart-2",
-  ocorrencia:  "bg-destructive/15 text-destructive",
-  visita:      "bg-warning/20 text-warning",
-  outros:      "bg-muted text-muted-foreground",
-};
 
 type TabKey = "hoje" | "semana" | "proximos";
 
@@ -34,7 +27,9 @@ function AgendaPage() {
   // Confirmação de execução de estimulação agendada (monitor só confirma —
   // não escolhe os parâmetros, que vêm de t.meta definidos pelo consultor).
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [confirmTrees, setConfirmTrees] = useState("");
+  const [confirmTables, setConfirmTables] = useState<FieldTapperTable[]>([]);
+  const [confirmTableId, setConfirmTableId] = useState("");
+  const [confirmTablesLoading, setConfirmTablesLoading] = useState(false);
   const [confirmNotes, setConfirmNotes] = useState("");
   const [confirmPhotos, setConfirmPhotos] = useState<string[]>([]);
   const [confirmUploading, setConfirmUploading] = useState(false);
@@ -92,8 +87,18 @@ function AgendaPage() {
   }
 
   function openConfirm(t: ScheduledTask) {
+    const opening = confirmingId !== t.id;
     setConfirmingId((cur) => cur === t.id ? null : t.id);
-    setConfirmTrees(""); setConfirmNotes(""); setConfirmPhotos([]);
+    setConfirmTables([]); setConfirmTableId(""); setConfirmNotes(""); setConfirmPhotos([]);
+    if (!opening) return;
+    const meta = (t.meta ?? {}) as StimulationTaskMeta;
+    setConfirmTableId(meta.tappingTableId ?? "");
+    if (!meta.tapperId) return;
+    setConfirmTablesLoading(true);
+    listFieldTapperTables(t.companyId, meta.tapperId)
+      .then(setConfirmTables)
+      .catch(() => setConfirmTables([]))
+      .finally(() => setConfirmTablesLoading(false));
   }
 
   async function onConfirmPhoto(f: File | null) {
@@ -115,10 +120,10 @@ function AgendaPage() {
         product: meta.product,
         concentration: meta.concentration ?? undefined,
         tapperId: meta.tapperId ?? undefined,
-        tappingTableId: meta.tappingTableId ?? undefined,
+        tappingTableId: confirmTableId || meta.tappingTableId || undefined,
         reason: meta.reason ?? undefined,
         doseMlPerTree: meta.doseMlPerTree ?? undefined,
-        treesStimulated: confirmTrees ? Number(confirmTrees) : undefined,
+        sangradorPercent: meta.sangradorPercent ?? undefined,
         notes: [
           confirmNotes.trim() || undefined,
           confirmPhotos.length ? `Fotos: ${confirmPhotos.join(", ")}` : undefined,
@@ -177,8 +182,8 @@ function AgendaPage() {
             <li key={t.id} className="rounded-2xl border border-border/60 bg-card p-4">
               <div className="flex items-center gap-3">
                 <div className="text-sm font-bold text-foreground">{time}</div>
-                <div className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${CAT_STYLE[t.category] ?? CAT_STYLE.outros}`}>
-                  {t.category}
+                <div className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${categoryStyle(t.category)}`}>
+                  {categoryLabel(t.category)}
                 </div>
                 <div className="flex-1" />
                 {done ? (
@@ -195,8 +200,9 @@ function AgendaPage() {
               {isScheduledStim && !done && (
                 <div className="mt-2 rounded-lg bg-muted/40 p-2 text-[11px] text-muted-foreground">
                   <p>Produto: <span className="font-medium text-foreground">{meta.product}</span>{meta.concentration ? ` · ${meta.concentration}` : ""}</p>
-                  {meta.tappingTableName && <p>Tabela: <span className="font-medium text-foreground">{meta.tappingTableName}</span></p>}
+                  {meta.tappingTableName && <p>Tabela sugerida: <span className="font-medium text-foreground">{meta.tappingTableName}</span></p>}
                   {meta.doseMlPerTree != null && <p>Dose: {meta.doseMlPerTree} ml/árvore</p>}
+                  {meta.sangradorPercent != null && <p>% do sangrador: {meta.sangradorPercent}%</p>}
                   {meta.reason && <p>Motivo: {meta.reason}</p>}
                 </div>
               )}
@@ -233,8 +239,25 @@ function AgendaPage() {
               {confirmingId === t.id && (
                 <div className="mt-3 space-y-3 border-t border-border/40 pt-3">
                   <div>
-                    <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">Árvores estimuladas (opcional)</Label>
-                    <Input className="h-10 rounded-xl" inputMode="numeric" value={confirmTrees} onChange={(e) => setConfirmTrees(e.target.value)} />
+                    <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">Tabela estimulada</Label>
+                    {confirmTablesLoading ? (
+                      <div className="flex h-10 items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando tabelas...</div>
+                    ) : confirmTables.length ? (
+                      <select
+                        value={confirmTableId}
+                        onChange={(e) => setConfirmTableId(e.target.value)}
+                        className="h-10 w-full rounded-xl border border-border/60 bg-background px-2 text-sm"
+                      >
+                        <option value="">Selecione a tabela</option>
+                        {confirmTables.map((tb) => (
+                          <option key={tb.id} value={tb.id}>
+                            {tb.name}{tb.notation ? ` — ${tb.notation}` : ""}{tb.treeCount != null ? ` (${tb.treeCount} árvores)` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">Sangrador sem tabelas vinculadas.</p>
+                    )}
                   </div>
                   <div>
                     <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">Observações</Label>

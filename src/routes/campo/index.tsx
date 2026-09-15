@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, ChevronRight, AlertTriangle, RefreshCw, Wifi, WifiOff, ShieldCheck, PlusCircle } from "lucide-react";
 import { getFieldMe, type FieldMe, type Coords, captureLocation } from "@/lib/field.functions";
 import { toast } from "sonner";
-import { listTasks, type ScheduledTask } from "@/lib/agenda.functions";
+import { listTasks, categoryLabel, categoryStyle, categoryDot, type ScheduledTask } from "@/lib/agenda.functions";
 import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
 import { flushOutbox, subscribeOutbox } from "@/lib/offline/queue";
 import { getLocalIsoDate } from "@/lib/date-utils";
@@ -23,15 +23,6 @@ const HISTORY_KIND_STYLE: Record<string, string> = {
 };
 
 export const Route = createFileRoute("/campo/")({ component: FieldHome });
-
-const STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  sangria:      { label: "Sangria",      className: "bg-primary/15 text-primary" },
-  estimulacao:  { label: "Estimulação",  className: "bg-chart-3/20 text-chart-3" },
-  producao:     { label: "Produção",     className: "bg-chart-2/20 text-chart-2" },
-  ocorrencia:   { label: "Ocorrência",   className: "bg-destructive/15 text-destructive" },
-  visita:       { label: "Visita",       className: "bg-warning/20 text-warning" },
-  outros:       { label: "Tarefa",       className: "bg-muted text-muted-foreground" },
-};
 
 function FieldHome() {
   const [me, setMe] = useState<FieldMe | null>(null);
@@ -117,6 +108,14 @@ function FieldHome() {
   const nextTask = useMemo(() => {
     const now = Date.now();
     return tasks.find((t) => t.status !== "concluida" && new Date(t.scheduledAt).getTime() >= now - 60_000);
+  }, [tasks]);
+
+  // Solicitações do consultor/admin ainda não confirmadas pelo monitor —
+  // mostradas na tela inicial, coloridas por tipo, pra chamar atenção.
+  const pendingRequests = useMemo(() => {
+    return tasks
+      .filter((t) => t.status === "planejada" || t.status === "em_andamento")
+      .slice(0, 6);
   }, [tasks]);
 
   const [todayLabel, setTodayLabel] = useState("");
@@ -208,6 +207,46 @@ function FieldHome() {
         </div>
       </div>
 
+      {/* Solicitações agendadas (consultor/admin) — alerta colorido por tipo */}
+      {me.primaryRole === "monitor" && pendingRequests.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">Solicitações</h2>
+            <Link to="/campo/agenda" className="flex items-center gap-0.5 text-xs font-medium text-primary">
+              Ver agenda <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <ul className="space-y-2">
+            {pendingRequests.map((t) => {
+              const overdue = new Date(t.scheduledAt).getTime() < Date.now();
+              return (
+                <li key={t.id}>
+                  <Link
+                    to="/campo/agenda"
+                    className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-3 transition hover:bg-muted/50"
+                  >
+                    <span className={`h-9 w-1.5 shrink-0 rounded-full ${categoryDot(t.category)}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${categoryStyle(t.category)}`}>
+                          {categoryLabel(t.category)}
+                        </span>
+                        {overdue && <span className="text-[10px] font-medium text-destructive">Atrasada</span>}
+                      </div>
+                      <div className="truncate text-sm font-medium">{farmName(t.farmId) || t.title}</div>
+                      <div className="truncate text-[11px] text-muted-foreground">{t.title}</div>
+                    </div>
+                    <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
+                      {new Date(t.scheduledAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {/* Resumo do dia */}
       <section>
         <h2 className="mb-3 text-sm font-semibold text-foreground">Resumo do dia</h2>
@@ -228,8 +267,8 @@ function FieldHome() {
               <div className="rounded-lg bg-primary/15 px-3 py-1.5 text-sm font-semibold text-primary">
                 {new Date(nextTask.scheduledAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
               </div>
-              <div className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_LABELS[nextTask.category]?.className ?? STATUS_LABELS.outros.className}`}>
-                {STATUS_LABELS[nextTask.category]?.label ?? nextTask.category}
+              <div className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${categoryStyle(nextTask.category)}`}>
+                {categoryLabel(nextTask.category)}
               </div>
             </div>
             <div className="mt-3 font-semibold">{farmName(nextTask.farmId) || nextTask.title}</div>

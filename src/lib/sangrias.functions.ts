@@ -9,9 +9,9 @@ export const TASK_EXTENTS = [
 ] as const;
 
 export const END_PERIODS = [
-  { value: "periodo_1", label: "1º período" },
-  { value: "periodo_2", label: "2º período" },
-  { value: "periodo_3", label: "3º período" },
+  { value: "manha", label: "Manhã" },
+  { value: "tarde", label: "Tarde" },
+  { value: "noite", label: "Noite" },
 ] as const;
 
 export type TappingRecord = {

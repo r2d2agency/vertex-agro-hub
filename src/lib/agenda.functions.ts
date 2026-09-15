@@ -9,6 +9,41 @@ export const TASK_CATEGORIES = [
   { value: "outro", label: "Outro" },
 ] as const;
 
+// Cor por tipo de solicitação/tarefa — usada em todo lugar que mostra
+// tarefas agendadas (agenda do monitor, alertas na tela inicial, agenda do
+// consultor/admin) para o usuário reconhecer o tipo de longe.
+export const CATEGORY_STYLE: Record<string, string> = {
+  sangria: "bg-primary/15 text-primary",
+  estimulacao: "bg-chart-3/20 text-chart-3",
+  inspecao: "bg-chart-1/20 text-chart-1",
+  manutencao: "bg-chart-4/20 text-chart-4",
+  visita: "bg-warning/20 text-warning",
+  outro: "bg-muted text-muted-foreground",
+};
+
+export function categoryLabel(category: string) {
+  return TASK_CATEGORIES.find((c) => c.value === category)?.label ?? category;
+}
+
+export function categoryStyle(category: string) {
+  return CATEGORY_STYLE[category] ?? CATEGORY_STYLE.outro;
+}
+
+// Cor sólida (sem opacidade) para barras/pontos de destaque — o badge acima
+// usa bg com opacidade, que fica claro demais para esse uso.
+export const CATEGORY_DOT: Record<string, string> = {
+  sangria: "bg-primary",
+  estimulacao: "bg-chart-3",
+  inspecao: "bg-chart-1",
+  manutencao: "bg-chart-4",
+  visita: "bg-warning",
+  outro: "bg-muted-foreground",
+};
+
+export function categoryDot(category: string) {
+  return CATEGORY_DOT[category] ?? CATEGORY_DOT.outro;
+}
+
 export const TASK_PRIORITIES = [
   { value: "baixa", label: "Baixa" },
   { value: "media", label: "Média" },
@@ -52,6 +87,10 @@ export type StimulationTaskMeta = {
   concentration?: string | null;
   doseMlPerTree?: number | null;
   reason?: string | null;
+  // % do sangrador a ser estimulado (ex.: 50% da tarefa dele) — não confundir
+  // com o "% da tarefa" do pré-cadastro, que é a fração de plantas que ele
+  // sangra no dia a dia; aqui é quanto dessa fração recebe estimulação agora.
+  sangradorPercent?: number | null;
 };
 
 export type TaskInput = {

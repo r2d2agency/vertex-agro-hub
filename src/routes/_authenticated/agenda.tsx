@@ -285,6 +285,7 @@ function TaskDialog({
   const [stimProduct, setStimProduct] = useState(STIM_PRODUCTS[0]);
   const [stimConcentration, setStimConcentration] = useState("");
   const [stimDose, setStimDose] = useState("");
+  const [stimPercent, setStimPercent] = useState("");
   const [stimReason, setStimReason] = useState("");
 
   useEffect(() => {
@@ -309,11 +310,12 @@ function TaskDialog({
       setStimProduct(meta.product ?? STIM_PRODUCTS[0]);
       setStimConcentration(meta.concentration ?? "");
       setStimDose(meta.doseMlPerTree != null ? String(meta.doseMlPerTree) : "");
+      setStimPercent(meta.sangradorPercent != null ? String(meta.sangradorPercent) : "");
       setStimReason(meta.reason ?? "");
     } else {
       setValues({ ...empty, scheduledAt: nowIso() });
       setStimTapperId(""); setStimTableId(""); setStimProduct(STIM_PRODUCTS[0]);
-      setStimConcentration(""); setStimDose(""); setStimReason("");
+      setStimConcentration(""); setStimDose(""); setStimPercent(""); setStimReason("");
     }
   }, [open, initial]);
 
@@ -339,6 +341,7 @@ function TaskDialog({
         product: stimProduct,
         concentration: stimConcentration || undefined,
         doseMlPerTree: stimDose ? Number(stimDose.replace(",", ".")) : undefined,
+        sangradorPercent: stimPercent ? Number(stimPercent.replace(",", ".")) : undefined,
         reason: stimReason.trim() || undefined,
       } : undefined;
       const payload = { ...values, meta };
@@ -450,6 +453,10 @@ function TaskDialog({
                     <Input inputMode="decimal" value={stimDose} onChange={(e) => setStimDose(e.target.value)} />
                   </div>
                   <div>
+                    <Label>% do sangrador</Label>
+                    <Input inputMode="decimal" placeholder="não é % por tarefa" value={stimPercent} onChange={(e) => setStimPercent(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
                     <Label>Motivo</Label>
                     <Input value={stimReason} onChange={(e) => setStimReason(e.target.value)} />
                   </div>

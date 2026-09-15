@@ -119,6 +119,7 @@ function ConsultorFormPage() {
   const [stimProduct, setStimProduct] = useState(STIM_PRODUCTS[0]);
   const [stimConcentration, setStimConcentration] = useState("");
   const [stimDose, setStimDose] = useState("2,5");
+  const [stimPercent, setStimPercent] = useState("");
   const [stimReason, setStimReason] = useState("");
   const [stimScheduling, setStimScheduling] = useState(false);
 
@@ -464,6 +465,9 @@ function ConsultorFormPage() {
     if (!selectedFarmId || !companyId) { toast.error("Selecione uma fazenda"); return; }
     if (!stimDate || !stimTime) { toast.error("Escolha a data e o horário"); return; }
     if (!stimTapperId) { toast.error("Selecione o sangrador"); return; }
+    if (stimPercent && (Number(stimPercent.replace(",", ".")) < 0 || Number(stimPercent.replace(",", ".")) > 100)) {
+      toast.error("% do sangrador deve ser entre 0 e 100"); return;
+    }
     const tapper = stimTappers.find((t) => t.id === stimTapperId);
     const table = stimTables.find((t) => t.id === stimTableId);
 
@@ -485,11 +489,12 @@ function ConsultorFormPage() {
           product: stimProduct,
           concentration: stimConcentration || undefined,
           doseMlPerTree: stimDose ? Number(stimDose.replace(",", ".")) : undefined,
+          sangradorPercent: stimPercent ? Number(stimPercent.replace(",", ".")) : undefined,
           reason: stimReason.trim() || undefined,
         },
       });
       toast.success("Estimulação agendada");
-      setStimDate(""); setStimReason("");
+      setStimDate(""); setStimPercent(""); setStimReason("");
       const tasks = await listTasks(companyId, { farmId: selectedFarmId }).catch(() => [] as ScheduledTask[]);
       setFarmTasks(tasks);
     } catch (e) {
@@ -1214,13 +1219,24 @@ function ConsultorFormPage() {
                 value={stimDose}
                 onChange={(e) => setStimDose(e.target.value)}
               />
-              <input
-                type="text" placeholder="Motivo (opcional)"
-                className="flex-1 rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
-                value={stimReason}
-                onChange={(e) => setStimReason(e.target.value)}
-              />
+              <div className="relative w-28">
+                <input
+                  type="text" inputMode="decimal" placeholder="% do sangrador"
+                  className="w-full rounded-xl border border-border/60 bg-background px-2 py-2 pr-6 text-xs"
+                  value={stimPercent}
+                  onChange={(e) => setStimPercent(e.target.value)}
+                />
+                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">%</span>
+              </div>
             </div>
+            <p className="text-[10px] text-muted-foreground">% do sangrador a ser estimulado — não é % por tarefa.</p>
+
+            <input
+              type="text" placeholder="Motivo (opcional)"
+              className="w-full rounded-xl border border-border/60 bg-background px-2 py-2 text-xs"
+              value={stimReason}
+              onChange={(e) => setStimReason(e.target.value)}
+            />
 
             <Button size="sm" className="w-full" onClick={scheduleStimulation} disabled={stimScheduling}>
               {stimScheduling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

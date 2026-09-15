@@ -658,6 +658,7 @@ model Stimulation {
   reason          String?
   treesStimulated Int?     @map("trees_stimulated")
   doseMlPerTree   Float?   @map("dose_ml_per_tree")
+  sangradorPercent Float?  @map("sangrador_percent")
   areaHa          Float?   @map("area_ha")
   weather         String?
   notes           String?

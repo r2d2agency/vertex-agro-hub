@@ -15,6 +15,29 @@ export type ChangelogRelease = {
 // novidade, adicione uma entrada no release do dia (ou crie um novo release).
 export const changelog: ChangelogRelease[] = [
   {
+    date: "2026-09-15",
+    entries: [
+      {
+        type: "novidade",
+        title: "Alerta de solicitações na tela inicial do monitor",
+        description:
+          "Quando o consultor/admin agenda uma atividade para o monitor, ela agora aparece em destaque logo na tela inicial do app de campo, com uma cor própria pra cada tipo (sangria, estimulação, inspeção, manutenção, visita, outro) — não é mais preciso entrar na Agenda pra perceber que tem algo pendente.",
+      },
+      {
+        type: "melhoria",
+        title: "Estimulação agendada: % do sangrador e escolha da tabela na confirmação",
+        description:
+          "O consultor/admin agora informa o % do sangrador que recebe a estimulação (não confundir com o % da tarefa do pré-cadastro). Na confirmação da execução, o monitor escolhe a tabela realmente estimulada entre as tabelas vinculadas ao sangrador, em vez de informar a quantidade de árvores.",
+      },
+      {
+        type: "melhoria",
+        title: "Período da sangria simplificado para Manhã/Tarde/Noite",
+        description:
+          "O campo de período em que a sangria foi realizada trocou \"1º/2º/3º período\" por Manhã, Tarde e Noite.",
+      },
+    ],
+  },
+  {
     date: "2026-09-11",
     entries: [
       {
