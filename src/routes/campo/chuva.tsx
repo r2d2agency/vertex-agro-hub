@@ -14,6 +14,12 @@ import { getLocalDatetimeInputValue } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/chuva")({ component: ChuvaPage });
 
+function severityFromMm(mm: number) {
+  if (mm >= 50) return "alta";
+  if (mm >= 15) return "media";
+  return "baixa";
+}
+
 function ChuvaPage() {
   const nav = useNavigate();
   const [me, setMe] = useState<FieldMe | null>(null);
@@ -23,10 +29,8 @@ function ChuvaPage() {
     setIni(getLocalDatetimeInputValue());
   }, []);
   const [fim, setFim] = useState<string>("");
-  const [intensidade, setIntensidade] = useState("forte");
-  const [interrompeu, setInterrompeu] = useState("sim");
-  const [areas, setAreas] = useState("");
-  const [perda, setPerda] = useState("");
+  const [mmChuva, setMmChuva] = useState("");
+  const [affectedPlotIds, setAffectedPlotIds] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -34,6 +38,17 @@ function ChuvaPage() {
 
   useEffect(() => { getFieldMe().then((m) => { setMe(m); if (m.assignments[0]) setFarmId(m.assignments[0].farm.id); }); }, []);
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
+  const plots = farm?.plots ?? [];
+
+  useEffect(() => { setAffectedPlotIds([]); }, [farmId]);
+
+  function togglePlot(id: string) {
+    setAffectedPlotIds((cur) => cur.includes(id) ? cur.filter((v) => v !== id) : [...cur, id]);
+  }
+
+  function toggleAllPlots() {
+    setAffectedPlotIds((cur) => cur.length === plots.length ? [] : plots.map((p) => p.id));
+  }
 
   async function onFile(f: File | null) {
     if (!f) return;
@@ -45,18 +60,18 @@ function ChuvaPage() {
   async function save() {
     if (!farm) return;
     setSaving(true);
+    const mm = Number(mmChuva.replace(",", ".")) || 0;
+    const areaNames = plots.filter((p) => affectedPlotIds.includes(p.id)).map((p) => p.name);
     const res = await submitOccurrence({
       companyId: farm.companyId, farmId: farm.id,
       date: ini.slice(0, 10),
-      type: "clima", severity: interrompeu === "sim" ? "media" : "baixa", status: "aberta",
-      title: `Chuva ${intensidade}`,
+      type: "clima", severity: severityFromMm(mm), status: "aberta",
+      title: `Chuva ${mmChuva ? `${mmChuva} mm` : ""}`.trim(),
       description: [
         `Início: ${ini}`,
         fim && `Fim: ${fim}`,
-        `Intensidade: ${intensidade}`,
-        `Interrompeu atividade: ${interrompeu}`,
-        areas && `Áreas afetadas: ${areas}`,
-        perda && `Produção não realizada: ${perda} kg`,
+        mmChuva && `Milímetros de chuva: ${mmChuva} mm`,
+        areaNames.length && `Áreas afetadas: ${areaNames.join(", ")}`,
         notes,
         photo && `Foto: ${photo}`,
       ].filter(Boolean).join("\n"),
@@ -80,29 +95,40 @@ function ChuvaPage() {
         </F>
         <F label="Início aproximado"><Input type="datetime-local" className="h-11 rounded-xl" value={ini} onChange={(e) => setIni(e.target.value)} /></F>
         <F label="Fim aproximado"><Input type="datetime-local" className="h-11 rounded-xl" value={fim} onChange={(e) => setFim(e.target.value)} /></F>
-        <F label="Intensidade">
-          <Select value={intensidade} onValueChange={setIntensidade}>
-            <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="fraca">Fraca</SelectItem>
-              <SelectItem value="moderada">Moderada</SelectItem>
-              <SelectItem value="forte">Forte</SelectItem>
-              <SelectItem value="temporal">Temporal</SelectItem>
-            </SelectContent>
-          </Select>
-        </F>
-        <F label="Atividade interrompida?">
-          <Select value={interrompeu} onValueChange={setInterrompeu}>
-            <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="sim">Sim</SelectItem>
-              <SelectItem value="parcial">Parcial</SelectItem>
-              <SelectItem value="nao">Não</SelectItem>
-            </SelectContent>
-          </Select>
-        </F>
-        <F label="Áreas afetadas"><Input className="h-11 rounded-xl" value={areas} onChange={(e) => setAreas(e.target.value)} placeholder="Ex.: Talhão A1, A2 e B1" /></F>
-        <F label="Produção estimada não realizada (kg)"><Input inputMode="decimal" className="h-11 rounded-xl" value={perda} onChange={(e) => setPerda(e.target.value)} /></F>
+        <F label="Milímetros de chuva"><Input inputMode="decimal" className="h-11 rounded-xl" value={mmChuva} onChange={(e) => setMmChuva(e.target.value)} placeholder="Ex.: 25" /></F>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium text-muted-foreground">Áreas afetadas</Label>
+            {plots.length > 0 && (
+              <button type="button" onClick={toggleAllPlots} className="text-[11px] font-medium text-primary">
+                {affectedPlotIds.length === plots.length ? "Desmarcar todos" : "Marcar todos"}
+              </button>
+            )}
+          </div>
+          {plots.length === 0 ? (
+            <p className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
+              Nenhum talhão cadastrado nesta fazenda.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {plots.map((p) => {
+                const active = affectedPlotIds.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => togglePlot(p.id)}
+                    className={`h-11 rounded-xl border px-3 text-left text-xs font-semibold transition ${
+                      active ? "border-primary bg-primary/15 text-primary" : "border-border/60 bg-background/40 text-muted-foreground"
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
         <F label="Observações"><Textarea rows={3} className="rounded-xl" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Chuva forte com vento." /></F>
         <div>
           <Label className="mb-2 block text-xs font-medium text-muted-foreground">Foto (opcional)</Label>

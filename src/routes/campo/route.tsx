@@ -295,7 +295,6 @@ function CheckinGate({
   onDone: (v: { farmId?: string; at: number }) => void;
 }) {
   const [farmId, setFarmId] = useState<string>(me.assignments?.[0]?.farm?.id ?? "");
-  const [plotId, setPlotId] = useState<string>("");
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const farm = (me.assignments || []).find((a) => a.farm?.id === farmId)?.farm;
@@ -312,7 +311,7 @@ function CheckinGate({
       <div className="space-y-1">
         <h1 className="text-lg font-semibold text-foreground">Check-in obrigatório</h1>
         <p className="max-w-xs text-sm text-muted-foreground">
-          Confirme sua localização e a foto da propriedade para liberar registros de sangria, produção, ocorrências e agenda.
+          Confirme sua localização para liberar registros de sangria, produção, ocorrências e agenda.
         </p>
       </div>
 
@@ -329,17 +328,6 @@ function CheckinGate({
                 <option key={a.id} value={a.farm.id}>{a.farm.name}</option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Talhão (Opcional)</label>
-            <input
-              type="text"
-              value={plotId}
-              onChange={(e) => setPlotId(e.target.value)}
-              placeholder="Ex: Talhão A1"
-              className="w-full rounded-xl border border-border/60 bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50"
-            />
           </div>
         </div>
       )}
@@ -385,7 +373,6 @@ function CheckinGate({
           farmLat={farm?.latitude}
           farmLng={farm?.longitude}
           checkinRadiusM={farm?.checkinRadiusM}
-          plotId={plotId || undefined}
           coords={gpsReady ? gps.coords : null}
           requireGeolocation={requireGeolocation}
           onDone={onDone}

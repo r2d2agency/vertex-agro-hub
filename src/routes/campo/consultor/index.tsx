@@ -45,7 +45,7 @@ import { toast } from "sonner";
 import {
   getFieldMe, type FieldMe, type Coords, captureLocation, submitEvaluation,
   listFieldTappers, listFieldTappingTables, listFieldTapperTables,
-  type FieldTapper, type FieldTapperTable,
+  type FieldTapper, type FieldTapperTable, type FieldTappingTable,
 } from "@/lib/field.functions";
 import { TapperTablesDialog } from "@/components/vertex/tapper-tables-dialog";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
@@ -97,6 +97,7 @@ function ConsultorFormPage() {
   const [farmDetailLoading, setFarmDetailLoading] = useState(false);
   const [farmCheckinsToday, setFarmCheckinsToday] = useState<Occurrence[]>([]);
   const [farmTappingToday, setFarmTappingToday] = useState<TappingRecord[]>([]);
+  const [farmTappingTables, setFarmTappingTables] = useState<FieldTappingTable[]>([]);
   const [farmAlerts, setFarmAlerts] = useState<AlertEvent[]>([]);
   const [farmOpenOccurrences, setFarmOpenOccurrences] = useState<Occurrence[]>([]);
   const [farmInsights, setFarmInsights] = useState<AiInsight[]>([]);
@@ -239,10 +240,12 @@ function ConsultorFormPage() {
       listInsights(companyId).catch(() => [] as AiInsight[]),
       listTasks(companyId, { farmId: selectedFarmId }).catch(() => [] as ScheduledTask[]),
       listOccurrences(companyId, { farmId: selectedFarmId, status: "aberta" }).catch(() => [] as Occurrence[]),
+      listFieldTappingTables(companyId).catch(() => [] as FieldTappingTable[]),
     ])
-      .then(([occurrences, tapping, alerts, insights, tasks, openOccurrences]) => {
+      .then(([occurrences, tapping, alerts, insights, tasks, openOccurrences, tappingTables]) => {
         setFarmCheckinsToday(occurrences.filter((o) => o.type === "checkin"));
         setFarmTappingToday(tapping);
+        setFarmTappingTables(tappingTables);
         setFarmAlerts(alerts);
         setFarmInsights(insights.filter((i) => i.farmId === selectedFarmId));
         setFarmTasks(tasks);
@@ -778,10 +781,6 @@ function ConsultorFormPage() {
     const isCheckedInHere = activeCheckin?.farmId === selectedFarm.id;
     const v = farmVisit(selectedFarm.id);
     const farmTeam = team.filter((m) => m.farmId === selectedFarm.id);
-    const tappingTotals = farmTappingToday.reduce(
-      (acc, r) => { acc.liters += r.liters ?? 0; acc.dryKg += r.dryKg ?? 0; return acc; },
-      { liters: 0, dryKg: 0 },
-    );
 
     return (
       <div className="space-y-6 pb-24">
@@ -846,26 +845,21 @@ function ConsultorFormPage() {
               {farmTappingToday.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Nenhuma sangria lançada hoje ainda.</p>
               ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-3 text-center">
-                    <div className="rounded-xl bg-secondary/40 p-2">
-                      <div className="text-[10px] uppercase text-muted-foreground">Litros</div>
-                      <div className="text-lg font-bold">{tappingTotals.liters.toLocaleString("pt-BR")}</div>
-                    </div>
-                    <div className="rounded-xl bg-secondary/40 p-2">
-                      <div className="text-[10px] uppercase text-muted-foreground">Kg seco</div>
-                      <div className="text-lg font-bold">{tappingTotals.dryKg.toLocaleString("pt-BR")}</div>
-                    </div>
-                  </div>
-                  <ul className="space-y-1">
-                    {farmTappingToday.map((r) => (
-                      <li key={r.id} className="flex justify-between text-xs text-muted-foreground">
-                        <span>{r.sangradorName}</span>
-                        <span>{r.liters ?? "—"} L</span>
+                <ul className="space-y-1.5">
+                  {farmTappingToday.map((r) => {
+                    const table = farmTappingTables.find((t) => t.id === r.tappingTableId);
+                    const tableLabel = table?.notation || table?.name || "Sem tabela";
+                    const complete = (r.taskExtent ?? "").split(",").includes("X");
+                    return (
+                      <li key={r.id} className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-foreground">{r.sangradorName}</span>
+                        <span className={complete ? "text-muted-foreground" : "font-medium text-warning"}>
+                          {tableLabel}{!complete ? " incompleta" : ""}
+                        </span>
                       </li>
-                    ))}
-                  </ul>
-                </>
+                    );
+                  })}
+                </ul>
               )}
             </section>
 

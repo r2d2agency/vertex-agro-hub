@@ -67,7 +67,12 @@ function SangriaPage() {
     if (!farm || !tapperId) return;
     setTablesLoading(true);
     listFieldTapperTables(farm.companyId, tapperId)
-      .then(setTables)
+      .then((ts) => {
+        setTables(ts);
+        // Já traz a tabela prevista do sangrador pré-selecionada, sem
+        // precisar de mais um clique — a maioria só tem uma tabela mesmo.
+        if (ts.length > 0) setTappingTableId(ts[0].id);
+      })
       .catch(() => setTables([]))
       .finally(() => setTablesLoading(false));
   }, [farm, tapperId]);
