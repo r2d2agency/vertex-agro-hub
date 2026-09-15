@@ -164,8 +164,7 @@ export class FieldService {
 
     // Admin pode desligar a exigência de geolocalização (útil pra testar o
     // app fora do local real, sem travar GPS obrigatório nem o raio da
-    // fazenda). A foto continua obrigatória em modo strict — é uma
-    // exigência separada da geolocalização.
+    // fazenda).
     const settings = await this.prisma.companySettings.findUnique({
       where: { companyId: dto.companyId },
       select: { requireGeolocation: true },
@@ -175,9 +174,6 @@ export class FieldService {
     if (dto.strict) {
       if (requireGeolocation && (dto.latitude == null || dto.longitude == null)) {
         throw new BadRequestException('Localização (GPS) é obrigatória para o check-in');
-      }
-      if (!dto.photoUrl) {
-        throw new BadRequestException('Foto da propriedade é obrigatória para o check-in');
       }
     }
 
