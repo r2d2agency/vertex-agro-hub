@@ -21,6 +21,7 @@ export function CheckinSheet({
   plotId,
   taskId,
   coords,
+  requireGeolocation = true,
   onDone,
 }: {
   open: boolean;
@@ -34,6 +35,9 @@ export function CheckinSheet({
   plotId?: string;
   taskId?: string;
   coords: Coords | null;
+  // Admin desligou a exigência de geolocalização em Configurações (modo de
+  // teste) — pula GPS obrigatório e o raio da fazenda, sem mexer na foto.
+  requireGeolocation?: boolean;
   onDone: (stamp: { farmId?: string; plotId?: string; at: number }) => void;
 }) {
   const [photoUrl, setPhotoUrl] = useState("");
@@ -45,7 +49,7 @@ export function CheckinSheet({
     if (!coords || farmLat == null || farmLng == null) return null;
     return distanceMeters(coords.latitude, coords.longitude, farmLat, farmLng);
   }, [coords, farmLat, farmLng]);
-  const outOfRange = distance != null && distance > radius;
+  const outOfRange = requireGeolocation && distance != null && distance > radius;
 
   async function onPick(f: File | null) {
     if (!f) return;
@@ -61,7 +65,7 @@ export function CheckinSheet({
   }
 
   async function confirm() {
-    if (!coords) { toast.error("GPS não detectado"); return; }
+    if (requireGeolocation && !coords) { toast.error("GPS não detectado"); return; }
     if (outOfRange) {
       toast.error(`Você está a ${Math.round(distance!)}m da fazenda. Aproxime-se para fazer o check-in.`);
       return;
@@ -74,9 +78,9 @@ export function CheckinSheet({
         farmId,
         plotId,
         taskId,
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        accuracyM: coords.accuracyM,
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+        accuracyM: coords?.accuracyM,
         photoUrl,
         strict: true,
       });
@@ -100,6 +104,12 @@ export function CheckinSheet({
           <SheetTitle className="text-left">Check-in{farmName ? ` — ${farmName}` : ""}</SheetTitle>
         </SheetHeader>
         <div className="mt-4 space-y-4 pb-6">
+          {!requireGeolocation && (
+            <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs font-medium text-warning">
+              Validação de geolocalização desligada em Configurações — GPS e raio da fazenda não são exigidos agora.
+            </div>
+          )}
+
           <div
             className={`flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
               !coords
@@ -115,7 +125,7 @@ export function CheckinSheet({
               : `GPS ativo${coords.accuracyM ? ` · ${Math.round(coords.accuracyM)}m` : ""}`}
           </div>
 
-          {coords && distance != null && (
+          {requireGeolocation && coords && distance != null && (
             outOfRange ? (
               <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                 Você está a <strong>{Math.round(distance)}m</strong> da fazenda{farmName ? ` ${farmName}` : ""}.
@@ -150,14 +160,16 @@ export function CheckinSheet({
           <Button
             className="h-12 w-full rounded-xl text-base font-semibold"
             onClick={confirm}
-            disabled={saving || uploading || !coords || !photoUrl || outOfRange}
+            disabled={saving || uploading || (requireGeolocation && !coords) || !photoUrl || outOfRange}
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Confirmar check-in
           </Button>
 
-          <p className="text-center text-[11px] text-muted-foreground">
-            Você precisa estar dentro do raio de check-in da fazenda para confirmar.
-          </p>
+          {requireGeolocation && (
+            <p className="text-center text-[11px] text-muted-foreground">
+              Você precisa estar dentro do raio de check-in da fazenda para confirmar.
+            </p>
+          )}
         </div>
       </SheetContent>
     </Sheet>

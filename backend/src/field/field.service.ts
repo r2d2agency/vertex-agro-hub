@@ -62,6 +62,11 @@ export class FieldService {
       select: { id: true, name: true, legalName: true },
       orderBy: { name: 'asc' },
     });
+    const settingsByCompany = await this.prisma.companySettings.findMany({
+      where: { companyId: { in: companyIds } },
+      select: { companyId: true, requireGeolocation: true },
+    });
+    const requireGeolocationByCompany = new Map(settingsByCompany.map((s) => [s.companyId, s.requireGeolocation]));
     const assignments = await this.prisma.farmAssignment.findMany({
       where: { userId, OR: [{ endAt: null }, { endAt: { gte: getNow() } }] },
       include: {
@@ -92,7 +97,10 @@ export class FieldService {
       roles: roleNames,
       primaryRole,
       isAdmin,
-      companies,
+      companies: companies.map((c) => ({
+        ...c,
+        requireGeolocation: requireGeolocationByCompany.get(c.id) ?? true,
+      })),
       assignments: assignments.map((a) => ({
         id: a.id, role: a.role, startAt: a.startAt, endAt: a.endAt,
         farm: a.farm,
@@ -154,8 +162,18 @@ export class FieldService {
     if (!dto?.companyId) throw new NotFoundException('companyId obrigatório');
     await this.access.ensureCompany(userId, dto.companyId);
 
+    // Admin pode desligar a exigência de geolocalização (útil pra testar o
+    // app fora do local real, sem travar GPS obrigatório nem o raio da
+    // fazenda). A foto continua obrigatória em modo strict — é uma
+    // exigência separada da geolocalização.
+    const settings = await this.prisma.companySettings.findUnique({
+      where: { companyId: dto.companyId },
+      select: { requireGeolocation: true },
+    });
+    const requireGeolocation = settings?.requireGeolocation ?? true;
+
     if (dto.strict) {
-      if (dto.latitude == null || dto.longitude == null) {
+      if (requireGeolocation && (dto.latitude == null || dto.longitude == null)) {
         throw new BadRequestException('Localização (GPS) é obrigatória para o check-in');
       }
       if (!dto.photoUrl) {
@@ -170,7 +188,7 @@ export class FieldService {
         select: { name: true, latitude: true, longitude: true, checkinRadiusM: true },
       });
       if (!farm) throw new BadRequestException('Fazenda inválida');
-      if (dto.strict && farm.latitude != null && farm.longitude != null && dto.latitude != null && dto.longitude != null) {
+      if (requireGeolocation && dto.strict && farm.latitude != null && farm.longitude != null && dto.latitude != null && dto.longitude != null) {
         const radius = farm.checkinRadiusM ?? DEFAULT_CHECKIN_RADIUS_M;
         const distance = distanceMeters(dto.latitude, dto.longitude, farm.latitude, farm.longitude);
         if (distance > radius) {

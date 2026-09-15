@@ -9,7 +9,7 @@ export type FieldMe = {
   roles: string[];
   primaryRole: string;
   isAdmin: boolean;
-  companies: Array<{ id: string; name: string; legalName?: string | null }>;
+  companies: Array<{ id: string; name: string; legalName?: string | null; requireGeolocation?: boolean }>;
   assignments: Array<{
     id: string;
     role: string;

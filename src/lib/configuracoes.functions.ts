@@ -7,6 +7,7 @@ export type CompanySettings = {
   unitVolume: string;
   currency: string;
   photoRetentionDays: number;
+  requireGeolocation: boolean;
   extra?: any;
   updatedAt: string;
 };

@@ -889,6 +889,10 @@ model CompanySettings {
   unitVolume         String   @default("L")  @map("unit_volume")
   currency           String   @default("BRL")
   photoRetentionDays Int      @default(365) @map("photo_retention_days")
+  // Desliga a exigência de geolocalização (GPS obrigatório + raio da fazenda)
+  // no check-in/confirmação de execução do app de campo — útil pra testar o
+  // app fora do local real sem travar. true = comportamento normal.
+  requireGeolocation Boolean  @default(true) @map("require_geolocation")
   extra              Json?
   updatedAt          DateTime @updatedAt @map("updated_at")
 

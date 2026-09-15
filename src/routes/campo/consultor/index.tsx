@@ -375,8 +375,10 @@ function ConsultorFormPage() {
   }
 
   async function openCheckinFlow(taskId?: string) {
+    const companyId = selectedFarm?.companyId || me?.companies?.[0]?.id;
+    const requireGeo = me?.companies?.find((c) => c.id === companyId)?.requireGeolocation ?? true;
     const loc = await captureLocation();
-    if (!loc) {
+    if (!loc && requireGeo) {
       toast.error("GPS não detectado");
       return;
     }
@@ -1792,6 +1794,7 @@ function ConsultorFormPage() {
           checkinRadiusM={selectedFarm?.checkinRadiusM}
           taskId={checkinTaskId}
           coords={checkinCoords}
+          requireGeolocation={me.companies?.find((c) => c.id === (selectedFarm?.companyId || me.companies?.[0]?.id))?.requireGeolocation ?? true}
           onDone={onCheckinDone}
         />
       )}

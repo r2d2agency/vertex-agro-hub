@@ -49,8 +49,9 @@ function FieldHome() {
   }, []);
 
   async function openCheckinSheet() {
+    const requireGeo = me?.companies?.[0]?.requireGeolocation ?? true;
     const loc = await captureLocation();
-    if (!loc) {
+    if (!loc && requireGeo) {
       toast.error("GPS não detectado");
       return;
     }
@@ -375,6 +376,7 @@ function FieldHome() {
         checkinRadiusM={(me.assignments || []).find((a) => a.farm.id === activeCheckin?.farmId)?.farm.checkinRadiusM}
         plotId={activeCheckin?.plotId}
         coords={checkinCoords}
+        requireGeolocation={me.companies?.[0]?.requireGeolocation ?? true}
         onDone={(stamp) => setActiveCheckin(stamp)}
       />
     </div>

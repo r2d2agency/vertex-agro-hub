@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { AiProviderConfigCard } from "@/components/vertex/ai-provider-config";
 import { getSettings, updateSettings, type CompanySettings } from "@/lib/configuracoes.functions";
@@ -41,6 +42,32 @@ function ConfigPage() {
       <PageHeader title="Configurações" description="Preferências operacionais e de retenção da empresa." />
       <CompanyPicker companies={companies} companyId={companyId} onChange={setCompanyId} />
       {!isLoading && companies.length === 0 && <NoCompanyCard />}
+
+      {companyId && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Check-in / GPS</CardTitle></CardHeader>
+          <CardContent>
+            <div className={`flex items-center justify-between gap-4 rounded-xl border p-4 ${form.requireGeolocation === false ? "border-warning/40 bg-warning/10" : "border-border/60"}`}>
+              <div>
+                <p className="text-sm font-medium">Exigir geolocalização no check-in</p>
+                <p className="text-xs text-muted-foreground">
+                  Quando desligado, o app de campo não exige mais GPS nem checa se o usuário está dentro do raio da fazenda pra fazer check-in ou confirmar tarefas — útil pra testar o app fora do local real. A foto continua sendo pedida normalmente.
+                </p>
+                {form.requireGeolocation === false && (
+                  <p className="mt-1 text-xs font-medium text-warning">Desligado — lembre de reativar depois dos testes.</p>
+                )}
+              </div>
+              <Switch
+                checked={form.requireGeolocation ?? true}
+                onCheckedChange={(v) => setForm({ ...form, requireGeolocation: v })}
+              />
+            </div>
+            <div className="mt-4">
+              <Button onClick={() => save.mutate()} disabled={save.isPending}>Salvar</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {companyId && (
         <Card>
