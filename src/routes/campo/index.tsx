@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, ChevronRight, AlertTriangle, RefreshCw, Wifi, WifiOff, ShieldCheck, PlusCircle } from "lucide-react";
-import { getFieldMe, type FieldMe, type Coords, captureLocation } from "@/lib/field.functions";
+import { Loader2, ChevronRight, AlertTriangle, ShieldCheck, PlusCircle } from "lucide-react";
+import { getFieldMe, type FieldMe, type Coords, captureLocation, listFieldTappers, type FieldTapper } from "@/lib/field.functions";
 import { toast } from "sonner";
-import { listTasks, categoryLabel, categoryStyle, categoryDot, type ScheduledTask } from "@/lib/agenda.functions";
+import { listTasks, categoryLabel, categoryStyle, type ScheduledTask } from "@/lib/agenda.functions";
 import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
-import { flushOutbox, subscribeOutbox } from "@/lib/offline/queue";
+import { listTappingRecords, type TappingRecord } from "@/lib/sangrias.functions";
 import { getLocalIsoDate } from "@/lib/date-utils";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
 
@@ -22,20 +22,27 @@ const HISTORY_KIND_STYLE: Record<string, string> = {
   fotografia: "bg-muted text-muted-foreground",
 };
 
+// Atalhos que antes só apareciam no menu do "+" — trazidos pra tela inicial
+// pra economizar um clique nas operações mais usadas do monitor.
+const QUICK_ACTIONS: Array<{ to: string; label: string; emoji: string; roles?: string[] }> = [
+  { to: "/campo/sangria", label: "Registrar sangria", emoji: "💧", roles: ["monitor", "admin"] },
+  { to: "/campo/chuva", label: "Informar chuva", emoji: "🌧️" },
+  { to: "/campo/abastecimento", label: "Abastecimento", emoji: "⛽" },
+  { to: "/campo/operacao-maquina", label: "Operação de máquina", emoji: "🚜" },
+];
+
 export const Route = createFileRoute("/campo/")({ component: FieldHome });
 
 function FieldHome() {
   const [me, setMe] = useState<FieldMe | null>(null);
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [online, setOnline] = useState(true);
-  const [pending, setPending] = useState(0);
-  const [lastSync, setLastSync] = useState<string>("—");
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
   const [checkinSheetOpen, setCheckinSheetOpen] = useState(false);
   const [checkinCoords, setCheckinCoords] = useState<Coords | null>(null);
   const [todayActivity, setTodayActivity] = useState<HistoryEvent[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(true);
+  const [sangriaStats, setSangriaStats] = useState({ possible: 0, done: 0, late: 0, ahead: 0 });
 
   useEffect(() => {
     const CHECKIN_KEY = "vertex.field.checkin.v1";
@@ -84,15 +91,41 @@ function FieldHome() {
     })();
   }, []);
 
+  // Resumo do dia: sangrias possíveis (total de sangradores ativos nas
+  // fazendas do usuário), concluídas (tabela completa), adiantadas (tabela
+  // adiantada) e atrasadas (o restante que ainda não fechou o dia).
   useEffect(() => {
-    if (typeof navigator !== "undefined") setOnline(navigator.onLine);
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
-    const un = subscribeOutbox((s) => { setPending(s.pending); if (!s.running && s.pending === 0) setLastSync(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })); });
-    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); un(); };
-  }, []);
+    const farms = me?.assignments ?? [];
+    if (farms.length === 0) return;
+    const today = getLocalIsoDate();
+    (async () => {
+      try {
+        const [tapperLists, recordLists] = await Promise.all([
+          Promise.all(farms.map((a) => listFieldTappers(a.farm.companyId, a.farm.id).catch(() => [] as FieldTapper[]))),
+          Promise.all(farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from: today, to: today }).catch(() => [] as TappingRecord[]))),
+        ]);
+        const tappers = new Map<string, FieldTapper>();
+        tapperLists.flat().forEach((t) => tappers.set(t.id, t));
+        const records = recordLists.flat();
+
+        const extentsByTapper = new Map<string, string[]>();
+        for (const r of records) {
+          const keys = [r.tapperId, r.sangradorName.trim().toLowerCase()].filter(Boolean) as string[];
+          const extents = (r.taskExtent ?? "").split(",").filter(Boolean);
+          for (const key of keys) extentsByTapper.set(key, [...(extentsByTapper.get(key) ?? []), ...extents]);
+        }
+
+        let ahead = 0, done = 0, late = 0;
+        for (const t of tappers.values()) {
+          const extents = extentsByTapper.get(t.id) ?? extentsByTapper.get(t.fullName.trim().toLowerCase()) ?? [];
+          if (extents.includes("/")) ahead++;
+          else if (extents.includes("X")) done++;
+          else late++;
+        }
+        setSangriaStats({ possible: tappers.size, done, ahead, late });
+      } catch { /* mantém os valores zerados */ }
+    })();
+  }, [me]);
 
   const stats = useMemo(() => {
     const today = getLocalIsoDate();
@@ -109,14 +142,6 @@ function FieldHome() {
   const nextTask = useMemo(() => {
     const now = Date.now();
     return tasks.find((t) => t.status !== "concluida" && new Date(t.scheduledAt).getTime() >= now - 60_000);
-  }, [tasks]);
-
-  // Solicitações do consultor/admin ainda não confirmadas pelo monitor —
-  // mostradas na tela inicial, coloridas por tipo, pra chamar atenção.
-  const pendingRequests = useMemo(() => {
-    return tasks
-      .filter((t) => t.status === "planejada" || t.status === "em_andamento")
-      .slice(0, 6);
   }, [tasks]);
 
   const [todayLabel, setTodayLabel] = useState("");
@@ -156,99 +181,31 @@ function FieldHome() {
         </div>
       </header>
 
-      {/* Status cards & Offline Warning */}
-      <div className="space-y-3">
-        {pending > 0 && (
-          <div className="flex items-center gap-3 rounded-2xl border border-warning/30 bg-warning/10 p-4 text-warning animate-in slide-in-from-top-2 duration-300">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-warning/20">
-              <RefreshCw className="h-5 w-5 animate-pulse" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold">Sincronização pendente</div>
-              <div className="text-[11px] opacity-90 truncate">
-                {pending} registro(s) salvos no dispositivo aguardando internet.
-              </div>
-            </div>
-            <button
-              onClick={() => flushOutbox()}
-              className="rounded-lg bg-warning/20 px-3 py-1.5 text-xs font-bold active:scale-95 transition-transform"
-            >
-              Enviar
-            </button>
-          </div>
-        )}
-
+      {/* Acessos rápidos */}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Acessos rápidos</h2>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-border/60 bg-card p-4">
-            <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-              {online ? <Wifi className="h-3.5 w-3.5 text-primary" /> : <WifiOff className="h-3.5 w-3.5 text-warning" />}
-              Conexão
-            </div>
-            <div className={`text-lg font-semibold ${online ? "text-primary" : "text-warning"}`}>{online ? "Online" : "Offline"}</div>
-          </div>
-          <Link
-            to="/campo/mais"
-            className="rounded-2xl border border-border/60 bg-card p-4 text-left transition hover:border-primary/50"
-          >
-            <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-              <RefreshCw className="h-3.5 w-3.5" />
-              Sincronização
-            </div>
-            <div className="text-lg font-semibold text-foreground">
-              {pending > 0 ? `${pending} pend.` : `Hoje, ${lastSync}`}
-            </div>
-          </Link>
-        </div>
-      </div>
-
-      {/* Solicitações agendadas (consultor/admin) — alerta colorido por tipo */}
-      {me.primaryRole === "monitor" && pendingRequests.length > 0 && (
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Solicitações</h2>
-            <Link to="/campo/agenda" className="flex items-center gap-0.5 text-xs font-medium text-primary">
-              Ver agenda <ChevronRight className="h-3.5 w-3.5" />
+          {QUICK_ACTIONS.filter((qa) => !qa.roles || qa.roles.includes(me.primaryRole)).map((qa) => (
+            <Link
+              key={qa.to}
+              to={qa.to as any}
+              className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 transition hover:border-primary/50 hover:bg-primary/5"
+            >
+              <span className="text-2xl">{qa.emoji}</span>
+              <span className="text-sm font-medium">{qa.label}</span>
             </Link>
-          </div>
-          <ul className="space-y-2">
-            {pendingRequests.map((t) => {
-              const overdue = new Date(t.scheduledAt).getTime() < Date.now();
-              return (
-                <li key={t.id}>
-                  <Link
-                    to="/campo/agenda"
-                    className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-3 transition hover:bg-muted/50"
-                  >
-                    <span className={`h-9 w-1.5 shrink-0 rounded-full ${categoryDot(t.category)}`} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${categoryStyle(t.category)}`}>
-                          {categoryLabel(t.category)}
-                        </span>
-                        {overdue && <span className="text-[10px] font-medium text-destructive">Atrasada</span>}
-                      </div>
-                      <div className="truncate text-sm font-medium">{farmName(t.farmId) || t.title}</div>
-                      <div className="truncate text-[11px] text-muted-foreground">{t.title}</div>
-                    </div>
-                    <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
-                      {new Date(t.scheduledAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
+          ))}
+        </div>
+      </section>
 
-      {/* Resumo do dia */}
+      {/* Resumo do dia — sangrias de todos os sangradores das fazendas do usuário */}
       <section>
         <h2 className="mb-3 text-sm font-semibold text-foreground">Resumo do dia</h2>
         <div className="grid grid-cols-4 gap-2">
-          <SummaryCell value={stats.total} label="Programadas" tone="muted" />
-          <SummaryCell value={stats.done} label="Concluídas" tone="primary" />
-          <SummaryCell value={stats.pending} label="Pendentes" tone="warning" />
-          <SummaryCell value={stats.overdue} label="Atrasadas" tone="destructive" />
+          <SummaryCell value={sangriaStats.possible} label="Possíveis" tone="muted" />
+          <SummaryCell value={sangriaStats.done} label="Concluídas" tone="primary" />
+          <SummaryCell value={sangriaStats.late} label="Atrasadas" tone="destructive" />
+          <SummaryCell value={sangriaStats.ahead} label="Adiantadas" tone="warning" />
         </div>
       </section>
 
