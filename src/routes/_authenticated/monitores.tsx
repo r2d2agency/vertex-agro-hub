@@ -133,7 +133,7 @@ function MonitoresPage() {
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {monitors.map((monitor) => {
                 const activeAssignments = monitorAssignments.filter((assignment) => assignment.userId === monitor.id);
-                const farmsLabel = activeAssignments.map((assignment) => assignment.farm?.name).filter(Boolean);
+                const farmsLabel = activeAssignments.map((assignment) => formatFarmLabel(assignment.farm)).filter(Boolean);
                 const consultantsLabel = activeAssignments.map((assignment) => assignment.consultor?.fullName || assignment.consultor?.email).filter(Boolean);
                 return (
                   <Card key={monitor.id} className="transition-colors hover:border-primary/40">
@@ -181,6 +181,11 @@ function MonitoresPage() {
       )}
     </div>
   );
+}
+
+function formatFarmLabel(farm: { name: string; code: string | null } | null) {
+  if (!farm) return "";
+  return farm.code ? `${farm.code} · ${farm.name}` : farm.name;
 }
 
 function MonitorDialog({

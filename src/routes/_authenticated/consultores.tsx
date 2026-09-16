@@ -114,7 +114,7 @@ function ConsultoresPage() {
                         {farmsManaged.slice(0, 3).map((item) => (
                           <p key={item.id} className="truncate">
                             <MapPin className="mr-1 inline h-3 w-3" />
-                            {item.farm?.name ?? "Fazenda sem nome"}
+                            {formatFarmLabel(item.farm) || "Fazenda sem nome"}
                           </p>
                         ))}
                         {farmsManaged.length === 0 && <p>Nenhuma fazenda administrada.</p>}
@@ -142,6 +142,11 @@ function ConsultoresPage() {
       )}
     </div>
   );
+}
+
+function formatFarmLabel(farm: { name: string; code: string | null } | null) {
+  if (!farm) return "";
+  return farm.code ? `${farm.code} · ${farm.name}` : farm.name;
 }
 
 function ConsultantDialog({

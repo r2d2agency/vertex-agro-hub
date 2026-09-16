@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, ReactNode } from "react";
-import { Plus, Pencil, Trash2, TreeDeciduous, Camera, ImageIcon, Upload, UserRound, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState, ReactNode } from "react";
+import { Plus, Pencil, Trash2, TreeDeciduous, Camera, ImageIcon, Upload, UserRound, ChevronRight, Eye, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileDropzone } from "@/components/vertex/file-dropzone";
@@ -74,6 +74,7 @@ function FazendasPage() {
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<Farm | null>(null);
   const [detail, setDetail] = useState<Farm | null>(null);
+  const [search, setSearch] = useState("");
 
   const { data = [], isLoading: loadingList } = useQuery({
     queryKey: ["farms", companyId],
@@ -86,6 +87,13 @@ function FazendasPage() {
     queryFn: () => listRegionals(companyId!),
     enabled: !!companyId,
   });
+
+  const filteredFarms = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    if (!query) return data;
+    return data.filter((farm) => [farm.code, farm.name, farm.city, farm.state]
+      .some((value) => (value ?? "").toLocaleLowerCase().includes(query)));
+  }, [data, search]);
 
   const del = useMutation({
     mutationFn: (id: string) => deleteFarm(id),
@@ -114,13 +122,22 @@ function FazendasPage() {
       ) : (
         <>
           <CompanyPicker companies={companies} companyId={companyId} onChange={setCompanyId} />
+          <div className="relative my-4 max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Buscar por número ou nome da propriedade..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
           {loadingList ? (
             <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Carregando...</CardContent></Card>
-          ) : data.length === 0 ? (
-            <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Nenhuma fazenda cadastrada.</CardContent></Card>
+          ) : filteredFarms.length === 0 ? (
+            <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">{search.trim() ? "Nenhuma fazenda encontrada para essa busca." : "Nenhuma fazenda cadastrada."}</CardContent></Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {data.map((f) => (
+              {filteredFarms.map((f) => (
                 <Card
                   key={f.id}
                   className="cursor-pointer transition-colors hover:border-primary/60 hover:shadow-sm"
@@ -153,7 +170,8 @@ function FazendasPage() {
                         <FarmPlotsPreview companyId={companyId!} farmId={f.id} />
                       </div>
                       <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(f)}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setDetail(f)}><Eye className="h-4 w-4" /> Ver prontuário</Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar dados" onClick={() => setEditing(f)}><Pencil className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setToDelete(f)}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>

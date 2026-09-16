@@ -76,7 +76,7 @@ function SangradoresPage() {
     const map = new Map<string, string[]>();
     for (const a of rhSangradores) {
       if (!a.farm?.name) continue;
-      map.set(a.userId, [...(map.get(a.userId) ?? []), a.farm.name]);
+      map.set(a.userId, [...(map.get(a.userId) ?? []), formatFarmLabel(a.farm)]);
     }
     return map;
   }, [rhSangradores]);
@@ -163,7 +163,7 @@ function SangradoresPage() {
                         <div className="min-w-0">
                           <p className="truncate font-medium">{assignment.user?.fullName || assignment.user?.email || "Sem nome"}</p>
                           <p className="truncate text-xs text-muted-foreground">
-                            {assignment.farm?.name ?? "Sem fazenda"}{assignment.consultor ? ` · consultor: ${assignment.consultor.fullName || assignment.consultor.email}` : ""}
+                            {formatFarmLabel(assignment.farm) || "Sem fazenda"}{assignment.consultor ? ` · consultor: ${assignment.consultor.fullName || assignment.consultor.email}` : ""}
                           </p>
                         </div>
                         <div className="flex shrink-0 gap-1">
@@ -214,7 +214,7 @@ function SangradoresPage() {
                 const current = tapper.stints.find((s) => !s.endAt);
                 const inRh = !!personId;
                 const rhFarms = personId ? rhFarmsByUserId.get(personId) : undefined;
-                const farmLabel = current?.farm?.name
+                const farmLabel = formatFarmLabel(current?.farm)
                   ?? (rhFarms?.length ? `${rhFarms.join(", ")} (RH)` : null)
                   ?? "Sem fazenda vinculada";
                 return (
@@ -327,6 +327,11 @@ function SangradoresPage() {
       </AlertDialog>
     </div>
   );
+}
+
+function formatFarmLabel(farm: { name: string; code: string | null } | null | undefined) {
+  if (!farm) return "";
+  return farm.code ? `${farm.code} · ${farm.name}` : farm.name;
 }
 
 function buildPeopleMatch(people: Person[]) {
