@@ -69,6 +69,18 @@ function SangradoresPage() {
 
   const peopleMatch = useMemo(() => buildPeopleMatch(people), [people]);
 
+  // Fallback pra ficha operacional (Tapper/stints) não bater com o vínculo
+  // feito pelo Portal de RH — mesma pessoa, duas fontes de fazenda. Sem isso
+  // o card mostra "Sem fazenda vinculada" mesmo com a fazenda certa no RH.
+  const rhFarmsByUserId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const a of rhSangradores) {
+      if (!a.farm?.name) continue;
+      map.set(a.userId, [...(map.get(a.userId) ?? []), a.farm.name]);
+    }
+    return map;
+  }, [rhSangradores]);
+
   const list = useMemo(() => {
     const q = search.trim().toLowerCase();
     const filtered = !q
@@ -201,6 +213,10 @@ function SangradoresPage() {
               {list.map(({ tapper, personId }) => {
                 const current = tapper.stints.find((s) => !s.endAt);
                 const inRh = !!personId;
+                const rhFarms = personId ? rhFarmsByUserId.get(personId) : undefined;
+                const farmLabel = current?.farm?.name
+                  ?? (rhFarms?.length ? `${rhFarms.join(", ")} (RH)` : null)
+                  ?? "Sem fazenda vinculada";
                 return (
                   <Card key={tapper.id}>
                     <CardContent className="p-4">
@@ -228,7 +244,7 @@ function SangradoresPage() {
                       </div>
 
                       <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                        <p className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {current?.farm?.name ?? "Sem fazenda vinculada"}</p>
+                        <p className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {farmLabel}</p>
                         <p className="flex items-center gap-1"><Phone className="h-3 w-3" /> {tapper.phone ?? "—"}</p>
                       </div>
 
