@@ -44,6 +44,8 @@ const apiProxyTargets = [...new Set([...configuredTargets, ...deriveInternalTarg
 const apiProxyTarget = apiProxyTargets[0] || "";
 const deadTargets = new Map();
 const DEAD_TTL_MS = 30_000;
+const API_PROXY_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS || 10_000);
+const API_IMPORT_TIMEOUT_MS = Number(process.env.API_IMPORT_TIMEOUT_MS || 120_000);
 const fetchHandler = typeof serverEntry === "function" ? serverEntry : serverEntry.fetch.bind(serverEntry);
 
 
@@ -156,7 +158,13 @@ async function proxyApiRequest(request, response, pathname) {
   for (const target of ordered) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      // O commit processa e persiste varias linhas. Ele precisa de uma janela
+      // maior que as consultas comuns para o proxy nao devolver 502 enquanto
+      // o backend ainda trabalha.
+      const timeoutMs = pathname.startsWith("/api/farms/import/")
+        ? API_IMPORT_TIMEOUT_MS
+        : API_PROXY_TIMEOUT_MS;
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       const proxyResponse = await fetch(new URL(suffix, target), {
         method: request.method,
