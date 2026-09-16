@@ -24,6 +24,7 @@ import {
   UpdateRegionalDto,
   UpdateOwnerDto,
   CreateOwnerDocumentDto,
+  CreateFarmDocumentDto,
 } from './dto';
 
 function requireCompanyId(companyId?: string) {
@@ -97,6 +98,25 @@ export class TerritorialController {
   @Delete('farms/:id')
   deleteFarm(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.deleteFarm(req.user.sub, id);
+  }
+  @Get('farms/:id/documents')
+  listFarmDocuments(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Query('companyId') companyId?: string) {
+    return this.svc.listFarmDocuments(req.user.sub, id, requireCompanyId(companyId));
+  }
+  @UseGuards(RolesGuard)
+  @Post('farms/:id/documents')
+  createFarmDocument(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateFarmDocumentDto) {
+    return this.svc.createFarmDocument(req.user.sub, id, dto);
+  }
+  @UseGuards(RolesGuard)
+  @Delete('farms/:id/documents/:documentId')
+  deleteFarmDocument(
+    @Req() req: any,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @Query('companyId') companyId?: string,
+  ) {
+    return this.svc.deleteFarmDocument(req.user.sub, id, documentId, requireCompanyId(companyId));
   }
 
   // Plots

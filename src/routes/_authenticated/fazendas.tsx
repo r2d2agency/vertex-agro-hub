@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, ReactNode } from "react";
-import { Plus, Pencil, Trash2, TreeDeciduous, Camera, ImageIcon, Upload, UserRound, ChevronRight, Eye, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, TreeDeciduous, Camera, ImageIcon, Upload, UserRound, ChevronRight, Eye, Search, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileDropzone } from "@/components/vertex/file-dropzone";
@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import {
-  createFarm, deleteFarm, listFarms, updateFarm, type Farm, type FarmInput, type FarmOwnerRef,
+  createFarm, deleteFarm, listFarms, updateFarm, listFarmDocuments, createFarmDocument, deleteFarmDocument,
+  type Farm, type FarmInput, type FarmOwnerRef,
 } from "@/lib/fazendas.functions";
 import { listRegionals } from "@/lib/regionais.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
@@ -155,23 +156,12 @@ function FazendasPage() {
                           {f.regional && <p>Regional: {f.regional.name}</p>}
                           {(f.city || f.state) && <p>{f.city}{f.state ? ` / ${f.state}` : ""}</p>}
                           {f.totalAreaHa != null && <p>{f.totalAreaHa} ha</p>}
-                          {f.owners && f.owners.length > 0 ? (
-                            <p>
-                              Proprietário{f.owners.length > 1 ? "s" : ""}:{" "}
-                              {f.owners.map((o) => `${o.name}${o.regime ? ` (${REGIME_LABEL[o.regime] ?? o.regime})` : ""}`).join(", ")}
-                            </p>
-                          ) : f.owner ? (
-                            <p>Proprietário: {f.owner}</p>
-                          ) : null}
-                          {f.buyers && f.buyers.length > 0 && (
-                            <p>Comprador{f.buyers.length > 1 ? "es" : ""}: {f.buyers.map((b) => b.name).join(", ")}</p>
-                          )}
                         </div>
                         <FarmPlotsPreview companyId={companyId!} farmId={f.id} />
                       </div>
                       <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setDetail(f)}><Eye className="h-4 w-4" /> Ver prontuário</Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar dados" onClick={() => setEditing(f)}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditing(f)}><Pencil className="h-4 w-4" /> Administrativo</Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setToDelete(f)}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
@@ -251,6 +241,19 @@ function FarmDialog({
   const [cep, setCep] = useState<string>("");
   const [activeTab, setActiveTab] = useState("dados");
   const [selectedOwner, setSelectedOwner] = useState<FarmOwnerRef | null>(null);
+  const [documentKind, setDocumentKind] = useState("Contrato");
+  const [documentName, setDocumentName] = useState("");
+  const [documentNumber, setDocumentNumber] = useState("");
+  const [documentFileUrl, setDocumentFileUrl] = useState("");
+  const [documentIssuedAt, setDocumentIssuedAt] = useState("");
+  const [documentExpiresAt, setDocumentExpiresAt] = useState("");
+  const [documentNotes, setDocumentNotes] = useState("");
+
+  const documents = useQuery({
+    queryKey: ["farm-documents", initial?.id, companyId],
+    queryFn: () => listFarmDocuments(initial!.id, companyId!),
+    enabled: open && !!initial && !!companyId,
+  });
 
 
   useEffect(() => {
@@ -288,6 +291,30 @@ function FarmDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const addDocument = useMutation({
+    mutationFn: () => createFarmDocument(initial!.id, {
+      companyId: companyId!,
+      kind: documentKind,
+      name: documentName.trim() || documentKind,
+      number: documentNumber.trim() || null,
+      fileUrl: documentFileUrl || null,
+      issuedAt: documentIssuedAt || null,
+      expiresAt: documentExpiresAt || null,
+      notes: documentNotes.trim() || null,
+    }),
+    onSuccess: () => {
+      toast.success("Documento da fazenda adicionado");
+      setDocumentName(""); setDocumentNumber(""); setDocumentFileUrl(""); setDocumentIssuedAt(""); setDocumentExpiresAt(""); setDocumentNotes("");
+      documents.refetch();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const removeDocument = useMutation({
+    mutationFn: (documentId: string) => deleteFarmDocument(initial!.id, documentId, companyId!),
+    onSuccess: () => { toast.success("Documento removido"); documents.refetch(); },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -305,6 +332,9 @@ function FarmDialog({
                 <TabsTrigger value="fotos" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-12 flex gap-2">
                   Fotos <Badge variant="secondary" className="h-5 px-1.5">{values.photoUrls?.length || 0}</Badge>
                 </TabsTrigger>
+                {initial && <TabsTrigger value="documentos" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-12 flex gap-2">
+                  Documentos <Badge variant="secondary" className="h-5 px-1.5">{documents.data?.length ?? 0}</Badge>
+                </TabsTrigger>}
               </TabsList>
             </div>
 
@@ -481,6 +511,69 @@ function FarmDialog({
                   </div>
                 </Field>
               </TabsContent>
+
+              {initial && <TabsContent value="documentos" className="mt-0 space-y-4">
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <p className="mb-3 text-sm font-semibold">Adicionar documento da fazenda</p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field label="Tipo">
+                      <Select value={documentKind} onValueChange={setDocumentKind}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {["Contrato", "Escritura", "CAR", "CCIR", "ITR", "Licença", "Seguro", "Outro"].map((kind) => <SelectItem key={kind} value={kind}>{kind}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label="Nome / descrição">
+                      <Input value={documentName} onChange={(e) => setDocumentName(e.target.value)} placeholder="Ex.: Contrato de arrendamento 2026" />
+                    </Field>
+                    <Field label="Número">
+                      <Input value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} />
+                    </Field>
+                    <Field label="Arquivo">
+                      <FileDropzone value={documentFileUrl} onClear={() => setDocumentFileUrl("")} onUploaded={(url, meta) => { setDocumentFileUrl(url); if (!documentName) setDocumentName(meta.originalName); }} label="Arraste o documento ou clique para selecionar" />
+                    </Field>
+                    <Field label="Data de emissão">
+                      <Input type="date" value={documentIssuedAt} onChange={(e) => setDocumentIssuedAt(e.target.value)} />
+                    </Field>
+                    <Field label="Data de vencimento">
+                      <Input type="date" value={documentExpiresAt} onChange={(e) => setDocumentExpiresAt(e.target.value)} />
+                    </Field>
+                    <div className="md:col-span-2">
+                      <Field label="Observações">
+                        <Textarea rows={2} value={documentNotes} onChange={(e) => setDocumentNotes(e.target.value)} placeholder="Informações importantes sobre este documento" />
+                      </Field>
+                    </div>
+                    <div className="flex justify-end md:col-span-2">
+                      <Button type="button" onClick={() => addDocument.mutate()} disabled={addDocument.isPending || (!documentName.trim() && !documentFileUrl)}>
+                        <Plus className="mr-2 h-4 w-4" /> Adicionar documento
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {documents.isLoading ? <p className="py-6 text-center text-sm text-muted-foreground">Carregando documentos...</p> : documents.data?.length ? (
+                  <div className="grid gap-2">
+                    {documents.data.map((document) => {
+                      const expiresAt = document.expiresAt ? new Date(document.expiresAt) : null;
+                      const daysToExpire = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / 86400000) : null;
+                      const expiryClass = daysToExpire != null && daysToExpire < 0 ? "text-destructive" : daysToExpire != null && daysToExpire <= 30 ? "text-warning" : "text-muted-foreground";
+                      return (
+                        <div key={document.id} className="flex items-center gap-3 rounded-md border p-3">
+                          <FileText className="h-5 w-5 shrink-0 text-primary" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{document.name}</p>
+                            <p className="text-xs text-muted-foreground">{document.kind}{document.number ? ` · Nº ${document.number}` : ""}</p>
+                            {expiresAt && <p className={`text-xs ${expiryClass}`}>{daysToExpire != null && daysToExpire < 0 ? "Vencido em" : "Vence em"} {expiresAt.toLocaleDateString("pt-BR")}</p>}
+                          </div>
+                          {document.fileUrl && <a href={document.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Abrir <ExternalLink className="h-3 w-3" /></a>}
+                          <Button type="button" variant="ghost" size="icon" aria-label={`Remover ${document.name}`} className="text-destructive" onClick={() => removeDocument.mutate(document.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">Nenhum documento cadastrado para esta fazenda.</div>}
+              </TabsContent>}
             </div>
           </Tabs>
 

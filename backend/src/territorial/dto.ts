@@ -71,6 +71,17 @@ export class CreateOwnerDocumentDto {
   @IsOptional() @IsString() notes?: string;
 }
 
+export class CreateFarmDocumentDto {
+  @IsUUID() companyId!: string;
+  @IsString() @MinLength(1) @MaxLength(60) kind!: string;
+  @IsString() @MinLength(1) @MaxLength(200) name!: string;
+  @IsOptional() @IsString() @MaxLength(100) number?: string;
+  @IsOptional() @IsString() fileUrl?: string;
+  @IsOptional() @IsDateString() issuedAt?: string;
+  @IsOptional() @IsDateString() expiresAt?: string;
+  @IsOptional() @IsString() notes?: string;
+}
+
 export class CreatePlotDto {
   @IsUUID() companyId!: string;
   @IsUUID() farmId!: string;

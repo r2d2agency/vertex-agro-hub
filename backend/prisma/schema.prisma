@@ -212,6 +212,7 @@ model Company {
   people    UserCompany[]
   regionals Regional[]
   farms     Farm[]
+  farmDocuments FarmDocument[]
   owners    Owner[]
   ownerDocuments OwnerDocument[]
   buyers    Buyer[]
@@ -314,11 +315,34 @@ model Farm {
   assignments FarmAssignment[]
   buyers   FarmBuyer[]
   owners   FarmOwner[]
+  documents FarmDocument[]
 
   @@unique([companyId, code])
   @@index([companyId, isDeleted])
   @@index([regionalId])
   @@map("farms")
+}
+
+model FarmDocument {
+  id         String   @id @default(uuid()) @db.Uuid
+  farmId     String   @map("farm_id") @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  kind       String
+  name       String
+  number     String?
+  fileUrl    String?  @map("file_url")
+  issuedAt   DateTime? @map("issued_at") @db.Date
+  expiresAt  DateTime? @map("expires_at") @db.Date
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  farm    Farm    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@index([companyId])
+  @@map("farm_documents")
 }
 
 // Cadastro reutilizável de proprietário/CNPJ — uma MESMA fazenda pode ter

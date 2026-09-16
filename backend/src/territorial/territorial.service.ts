@@ -10,6 +10,7 @@ import {
   UpdateRegionalDto,
   UpdateOwnerDto,
   CreateOwnerDocumentDto,
+  CreateFarmDocumentDto,
 } from './dto';
 import { computeGeo } from './geo.util';
 
@@ -168,6 +169,42 @@ export class TerritorialService {
       // fazenda nova não poderia reaproveitar o código de uma excluída.
       data: { isDeleted: true, deletedAt: new Date(), code: null, updatedById: userId, version: { increment: 1 } },
     });
+  }
+
+  private async ensureFarm(userId: string, farmId: string, companyId: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const farm = await this.prisma.farm.findFirst({ where: { id: farmId, companyId, isDeleted: false } });
+    if (!farm) throw new NotFoundException('Fazenda não encontrada');
+    return farm;
+  }
+
+  async listFarmDocuments(userId: string, farmId: string, companyId: string) {
+    await this.ensureFarm(userId, farmId, companyId);
+    return this.prisma.farmDocument.findMany({ where: { farmId, companyId }, orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }] });
+  }
+
+  async createFarmDocument(userId: string, farmId: string, dto: CreateFarmDocumentDto) {
+    await this.ensureFarm(userId, farmId, dto.companyId);
+    return this.prisma.farmDocument.create({
+      data: {
+        farmId,
+        companyId: dto.companyId,
+        kind: dto.kind,
+        name: dto.name,
+        number: dto.number ?? null,
+        fileUrl: dto.fileUrl ?? null,
+        issuedAt: dto.issuedAt ? new Date(dto.issuedAt) : null,
+        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+        notes: dto.notes ?? null,
+      },
+    });
+  }
+
+  async deleteFarmDocument(userId: string, farmId: string, documentId: string, companyId: string) {
+    await this.ensureFarm(userId, farmId, companyId);
+    const deleted = await this.prisma.farmDocument.deleteMany({ where: { id: documentId, farmId, companyId } });
+    if (!deleted.count) throw new NotFoundException('Documento não encontrado');
+    return { ok: true };
   }
 
   // ---------- Plots ----------

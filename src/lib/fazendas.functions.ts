@@ -35,6 +35,7 @@ export type OwnerDocument = {
   notes?: string | null;
   createdAt: string;
 };
+export type FarmDocument = Omit<OwnerDocument, "ownerId"> & { farmId: string };
 
 export type Farm = {
   id: string;
@@ -100,6 +101,18 @@ export function updateFarm(id: string, values: FarmInput) {
 
 export function deleteFarm(id: string) {
   return apiRequest<{ ok: true }>(`/farms/${id}`, { method: "DELETE" });
+}
+
+export function listFarmDocuments(farmId: string, companyId: string) {
+  return apiRequest<FarmDocument[]>(`/farms/${farmId}/documents?companyId=${encodeURIComponent(companyId)}`);
+}
+
+export function createFarmDocument(farmId: string, data: Omit<FarmDocument, "id" | "farmId" | "createdAt">) {
+  return apiRequest<FarmDocument>(`/farms/${farmId}/documents`, { method: "POST", body: JSON.stringify(data) });
+}
+
+export function deleteFarmDocument(farmId: string, documentId: string, companyId: string) {
+  return apiRequest<{ ok: true }>(`/farms/${farmId}/documents/${documentId}?companyId=${encodeURIComponent(companyId)}`, { method: "DELETE" });
 }
 
 export function getOwner(id: string, companyId: string) {
