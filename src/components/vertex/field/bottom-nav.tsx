@@ -21,17 +21,19 @@ const TABS: Item[] = [
 
 // Sangria, chuva, abastecimento e operação de máquina viraram acessos
 // rápidos direto na tela inicial — não precisam mais duplicar aqui.
+// Ordem por frequência de uso do monitor: operacional do dia a dia primeiro,
+// pré-cadastro (raro/onboarding) depois, itens só de admin/consultor por último.
 export const OPERATIONS = [
-  { to: "/campo/sangrador", label: "Pré-cadastrar sangrador", emoji: "🧑‍🌾", roles: ["consultor", "monitor", "admin"] },
-  { to: "/campo/monitor-pre-cadastro", label: "Pré-cadastrar monitor", emoji: "🧑‍💼", roles: ["consultor", "admin"] },
-  { to: "/campo/operador-pre-cadastro", label: "Pré-cadastrar operador", emoji: "🚜", roles: ["consultor", "monitor", "admin"] },
-  { to: "/campo/consultor", label: "Visita técnica (Consultoria)", emoji: "📋", roles: ["consultor", "admin"] },
-  { to: "/campo/producao", label: "Registrar produção", emoji: "📦", roles: ["admin"] },
-  { to: "/campo/estimulacao", label: "Registrar estimulação", emoji: "🧪", roles: ["admin"] },
   { to: "/campo/ocorrencia", label: "Registrar ocorrência", emoji: "⚠️" },
   { to: "/campo/checklist", label: "Checklist de máquina", emoji: "🧾" },
   { to: "/campo/insumo", label: "Consumo de insumo", emoji: "🧴" },
-  { to: "/campo/avaliacao", label: "Equipe / Avaliar", emoji: "⭐", roles: ["monitor", "consultor", "admin"] },
+  { to: "/campo/avaliacao", label: "Avaliar equipe", emoji: "⭐", roles: ["monitor", "consultor", "admin"] },
+  { to: "/campo/sangrador", label: "Pré-cadastrar sangrador", emoji: "🧑‍🌾", roles: ["consultor", "monitor", "admin"] },
+  { to: "/campo/operador-pre-cadastro", label: "Pré-cadastrar operador", emoji: "🚜", roles: ["consultor", "monitor", "admin"] },
+  { to: "/campo/monitor-pre-cadastro", label: "Pré-cadastrar monitor", emoji: "🧑‍💼", roles: ["consultor", "admin"] },
+  { to: "/campo/consultor", label: "Visita técnica (Consultoria)", emoji: "📋", roles: ["consultor", "admin"] },
+  { to: "/campo/producao", label: "Registrar produção", emoji: "📦", roles: ["admin"] },
+  { to: "/campo/estimulacao", label: "Registrar estimulação", emoji: "🧪", roles: ["admin"] },
 ];
 
 export function FieldBottomNav({ role }: { role: string }) {

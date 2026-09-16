@@ -86,7 +86,7 @@ function FarmDetailPage() {
   return (
     <div className="space-y-6 pb-10">
       <header className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => nav({ to: "/campo/consultor" })}>
+        <Button variant="ghost" size="icon" onClick={() => nav({ to: me?.primaryRole === "consultor" ? "/campo/consultor" : "/campo" })}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <h1 className="truncate text-lg font-bold">{name}</h1>

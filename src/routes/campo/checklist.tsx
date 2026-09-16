@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { ChipToggle } from "@/components/vertex/field/chip-toggle";
 import { getLocalIsoString } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/checklist")({ component: ChecklistPage });
@@ -125,17 +126,15 @@ function ChecklistPage() {
           </F>
           <F label="Horímetro"><Input className="h-11 rounded-xl" inputMode="decimal" value={hm} onChange={(e) => setHm(e.target.value)} /></F>
         </div>
-        <F label="Tipo">
-          <Select value={kind} onValueChange={setKind}>
-            <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="diario">Diário</SelectItem>
-              <SelectItem value="semanal">Semanal</SelectItem>
-              <SelectItem value="pre_uso">Pré-uso</SelectItem>
-              <SelectItem value="pos_uso">Pós-uso</SelectItem>
-            </SelectContent>
-          </Select>
-        </F>
+        <div>
+          <Label className="mb-2 block text-xs font-medium text-muted-foreground">Tipo</Label>
+          <div className="grid grid-cols-4 gap-2">
+            <ChipToggle active={kind === "diario"} label="Diário" onClick={() => setKind("diario")} />
+            <ChipToggle active={kind === "semanal"} label="Semanal" onClick={() => setKind("semanal")} />
+            <ChipToggle active={kind === "pre_uso"} label="Pré-uso" onClick={() => setKind("pre_uso")} />
+            <ChipToggle active={kind === "pos_uso"} label="Pós-uso" onClick={() => setKind("pos_uso")} />
+          </div>
+        </div>
 
         <div className="space-y-2 pt-2">
           <div className="flex items-center justify-between">

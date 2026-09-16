@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { ChipToggle } from "@/components/vertex/field/chip-toggle";
 import {
   createTapperPreRegistration, listTapperPreRegistrations, TAPPER_CONTRACT_TYPES, maskCpf, onlyDigits,
   type PreRegistrationRole, type TapperPreRegistration,
@@ -49,7 +50,6 @@ export function RolePreCadastroForm({
   const nav = useNavigate();
   const [me, setMe] = useState<FieldMe | null>(null);
   const [farmId, setFarmId] = useState("");
-  const [step, setStep] = useState(1);
   const [cpf, setCpf] = useState("");
   const [form, setForm] = useState<Form>(EMPTY_FORM);
   const [docFrontUrl, setDocFrontUrl] = useState("");
@@ -103,16 +103,11 @@ export function RolePreCadastroForm({
     }
   }
 
-  function goToConfirm() {
+  async function save() {
     if (!farm) { toast.error("Selecione a fazenda"); return; }
     if (onlyDigits(cpf).length !== 11) { toast.error("Digite os 11 dígitos do CPF"); return; }
     if (!form.fullName || form.fullName.trim().length < 2) { toast.error("Informe o nome completo"); return; }
     if (!docFrontUrl || !docBackUrl) { toast.error(`Envie a foto da frente e do verso do documento (RG ou CNH) do ${personLabel}`); return; }
-    setStep(2);
-  }
-
-  async function save() {
-    if (!farm) return;
     setSaving(true);
     try {
       await createTapperPreRegistration({
@@ -144,12 +139,12 @@ export function RolePreCadastroForm({
     <div>
       <StepHeader
         title={title}
-        step={step}
-        steps={["Dados", "Enviar"]}
-        onBack={() => (step > 1 ? setStep(step - 1) : nav({ to: "/campo" }))}
+        step={1}
+        steps={["Dados"]}
+        onBack={() => nav({ to: "/campo" })}
       />
 
-      {step === 1 && myPreRegistrations.length > 0 && (
+      {myPreRegistrations.length > 0 && (
         <FieldCard className="mb-4 space-y-2">
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
             <Clock3 className="h-3.5 w-3.5" /> Pré-cadastros já enviados por você
@@ -175,8 +170,7 @@ export function RolePreCadastroForm({
         </FieldCard>
       )}
 
-      {step === 1 && (
-        <FieldCard className="space-y-4">
+      <FieldCard className="space-y-4">
           <F label="Fazenda">
             <Select value={farmId} onValueChange={setFarmId}>
               <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
@@ -204,19 +198,17 @@ export function RolePreCadastroForm({
             <F label="WhatsApp"><Input className="h-11 rounded-xl" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} /></F>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <F label="Tipo de contratação">
-              <Select value={form.contractType} onValueChange={(v) => set("contractType", v)}>
-                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {TAPPER_CONTRACT_TYPES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </F>
-            <F label="Salário / Diária (R$)">
-              <Input className="h-11 rounded-xl" inputMode="decimal" value={form.dailyRate} onChange={(e) => set("dailyRate", e.target.value)} />
-            </F>
+          <div>
+            <Label className="mb-2 block text-xs font-medium text-muted-foreground">Tipo de contratação</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {TAPPER_CONTRACT_TYPES.map((c) => (
+                <ChipToggle key={c} active={form.contractType === c} label={c} onClick={() => set("contractType", c)} />
+              ))}
+            </div>
           </div>
+          <F label="Salário / Diária (R$)">
+            <Input className="h-11 rounded-xl" inputMode="decimal" value={form.dailyRate} onChange={(e) => set("dailyRate", e.target.value)} />
+          </F>
 
           {role === "sangrador" && (
             <>
@@ -263,40 +255,13 @@ export function RolePreCadastroForm({
             </F>
           </div>
 
-          <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={goToConfirm}>
-            Continuar
-          </Button>
-        </FieldCard>
-      )}
-
-      {step === 2 && (
-        <FieldCard className="space-y-4">
-          <h3 className="text-sm font-semibold">Confirmar envio ao RH</h3>
-          <dl className="divide-y divide-border/60 rounded-xl border border-border/60 bg-background/40 text-sm">
-            <Row label="Nome" value={form.fullName || "—"} />
-            <Row label="CPF" value={maskCpf(cpf)} />
-            <Row label="RG" value={form.rg || "—"} />
-            <Row label="WhatsApp" value={form.phone || "—"} />
-            <Row label="Contratação" value={form.contractType || "—"} />
-            <Row label="Salário / Diária" value={form.dailyRate ? `R$ ${form.dailyRate}` : "—"} />
-            {role === "sangrador" && (
-              <>
-                <Row label="Sistema de sangria" value={tables.find((t) => t.id === form.tappingTableId)?.name ?? "—"} />
-                <Row label="Número de plantas" value={form.treesAssigned || "—"} />
-                <Row label="% da tarefa" value={form.taskPercent ? `${form.taskPercent}%` : "—"} />
-              </>
-            )}
-            <Row label="Fazenda" value={farm?.name ?? "—"} />
-            <Row label="Documento" value={docFrontUrl && docBackUrl ? "Frente e verso anexados" : "Pendente"} />
-          </dl>
           <p className="text-xs text-muted-foreground">
-            Ao confirmar, o consultor envia um cadastro provisório para o RH. O restante do cadastro é feito pelo administrativo.
+            Ao enviar, o consultor manda um cadastro provisório para o RH. O restante do cadastro é feito pelo administrativo.
           </p>
           <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Enviar pré-cadastro
           </Button>
-        </FieldCard>
-      )}
+      </FieldCard>
     </div>
   );
 }
@@ -306,15 +271,6 @@ function F({ label, children }: { label: string; children: React.ReactNode }) {
     <div className="space-y-1.5">
       <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
       {children}
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between px-3 py-2.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value}</span>
     </div>
   );
 }

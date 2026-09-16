@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { getFieldMe, type FieldMe, submitOperationLog, captureLocation } from "@/lib/field.functions";
 import { listMachines, listImplements, listOperators, listOperationTypes } from "@/lib/frota.functions";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ function OperacaoMaquinaPage() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [pendingLogId, setPendingLogId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -141,42 +142,58 @@ function OperacaoMaquinaPage() {
             <SelectContent>{machines.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}{m.plate ? ` · ${m.plate}` : ""}</SelectItem>)}</SelectContent>
           </Select>
         </F>
-        <F label="Implemento (opcional)">
-          <Select value={implementId || "none"} onValueChange={(v) => setImplementId(v === "none" ? "" : v)}>
-            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Nenhum" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Nenhum</SelectItem>
-              {implements_.map((i) => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </F>
-        <F label="Operador">
-          <Select value={operatorId || "none"} onValueChange={(v) => setOperatorId(v === "none" ? "" : v)}>
-            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">—</SelectItem>
-              {operators.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </F>
-        <F label="Tipo de operação">
-          <Select value={typeId || "none"} onValueChange={(v) => setTypeId(v === "none" ? "" : v)}>
-            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">—</SelectItem>
-              {types.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </F>
-        <div className="grid grid-cols-2 gap-3">
-          <F label="Horímetro inicial"><Input className="h-11 rounded-xl" inputMode="decimal" value={hmStart} onChange={(e) => setHmStart(e.target.value)} disabled={isFinishing} /></F>
-          <F label="Horímetro final"><Input className="h-11 rounded-xl" inputMode="decimal" value={hmEnd} onChange={(e) => setHmEnd(e.target.value)} /></F>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
+        <F label="Horímetro inicial"><Input className="h-11 rounded-xl" inputMode="decimal" value={hmStart} onChange={(e) => setHmStart(e.target.value)} disabled={isFinishing} /></F>
+
+        {isFinishing && (
+          <div className="grid grid-cols-2 gap-3">
+            <F label="Horímetro final"><Input className="h-11 rounded-xl" inputMode="decimal" value={hmEnd} onChange={(e) => setHmEnd(e.target.value)} /></F>
+            <F label="Combustível (L)"><Input className="h-11 rounded-xl" inputMode="decimal" value={fuel} onChange={(e) => setFuel(e.target.value)} /></F>
+          </div>
+        )}
+        {isFinishing && (
           <F label="Área trabalhada (ha)"><Input className="h-11 rounded-xl" inputMode="decimal" value={area} onChange={(e) => setArea(e.target.value)} /></F>
-          <F label="Combustível (L)"><Input className="h-11 rounded-xl" inputMode="decimal" value={fuel} onChange={(e) => setFuel(e.target.value)} /></F>
-        </div>
-        <F label="Observações"><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></F>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setShowMore((v) => !v)}
+          className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-background/40 px-3 py-2.5 text-sm font-medium text-muted-foreground"
+        >
+          Mais detalhes (opcional)
+          <ChevronDown className={`h-4 w-4 transition-transform ${showMore ? "rotate-180" : ""}`} />
+        </button>
+        {showMore && (
+          <div className="space-y-4">
+            <F label="Implemento">
+              <Select value={implementId || "none"} onValueChange={(v) => setImplementId(v === "none" ? "" : v)}>
+                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {implements_.map((i) => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </F>
+            <F label="Operador">
+              <Select value={operatorId || "none"} onValueChange={(v) => setOperatorId(v === "none" ? "" : v)}>
+                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  {operators.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </F>
+            <F label="Tipo de operação">
+              <Select value={typeId || "none"} onValueChange={(v) => setTypeId(v === "none" ? "" : v)}>
+                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  {types.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </F>
+            <F label="Observações"><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></F>
+          </div>
+        )}
         <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
           {isFinishing ? "Finalizar Operação" : "Iniciar Operação"}

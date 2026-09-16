@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { ChipToggle } from "@/components/vertex/field/chip-toggle";
 import { getLocalIsoDate } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/estimulacao")({ component: EstimulacaoPage });
@@ -32,7 +33,6 @@ function EstimulacaoPage() {
   const [product, setProduct] = useState(PRODUCTS[0]);
   const [concentration, setConcentration] = useState("");
   const [dose, setDose] = useState("2,5");
-  const [previstas, setPrevistas] = useState("");
   const [realizadas, setRealizadas] = useState("");
   const [reason, setReason] = useState("");
   const [next, setNext] = useState("");
@@ -72,7 +72,6 @@ function EstimulacaoPage() {
 
   async function save() {
     if (!farm) return;
-    if (!reason.trim()) { toast.error("Informe o motivo pelo qual não houve sangria neste período"); return; }
     setSaving(true);
     const res = await submitStimulation({
       companyId: farm.companyId, farmId: farm.id, plotId: plotId || undefined,
@@ -83,11 +82,11 @@ function EstimulacaoPage() {
       // id sintético "rh:<userId>" — não pode ser enviado como tapperId (FK).
       tapperId: tapperId && !tapperId.startsWith("rh:") ? tapperId : undefined,
       tappingTableId: tappingTableId || undefined,
-      reason: reason.trim(),
+      reason: reason.trim() || undefined,
       doseMlPerTree: dose ? Number(dose.replace(",", ".")) : undefined,
       treesStimulated: realizadas ? Number(realizadas) : undefined,
       notes: [
-        `Árvores: ${realizadas || "—"} / ${previstas || "—"}`,
+        realizadas && `Árvores realizadas: ${realizadas}`,
         next && `Próxima aplicação: ${next}`,
         photos.length && `Fotos: ${photos.join(", ")}`,
       ].filter(Boolean).join("\n"),
@@ -101,7 +100,7 @@ function EstimulacaoPage() {
 
   return (
     <div>
-      <StepHeader title="Registrar estimulação" step={1} steps={["Dados", "Salvar"]} />
+      <StepHeader title="Registrar estimulação" step={1} steps={["Dados"]} />
       <FieldCard className="space-y-4">
         <F label="Fazenda">
           <Select value={farmId} onValueChange={setFarmId}>
@@ -131,12 +130,14 @@ function EstimulacaoPage() {
             </Select>
           </F>
         )}
-        <F label="Produto">
-          <Select value={product} onValueChange={setProduct}>
-            <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent>{PRODUCTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-          </Select>
-        </F>
+        <div>
+          <Label className="mb-2 block text-xs font-medium text-muted-foreground">Produto</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {PRODUCTS.map((p) => (
+              <ChipToggle key={p} active={product === p} label={p} onClick={() => setProduct(p)} />
+            ))}
+          </div>
+        </div>
         <F label="Concentração">
           <Select value={concentration} onValueChange={setConcentration}>
             <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
@@ -144,12 +145,9 @@ function EstimulacaoPage() {
           </Select>
         </F>
         <F label="Dosagem"><div className="flex items-center gap-2"><Input className="h-11 rounded-xl" inputMode="decimal" value={dose} onChange={(e) => setDose(e.target.value)} /><span className="text-xs text-muted-foreground">ml/árvore</span></div></F>
-        <div className="grid grid-cols-2 gap-3">
-          <F label="Árvores previstas"><Input className="h-11 rounded-xl" inputMode="numeric" value={previstas} onChange={(e) => setPrevistas(e.target.value)} /></F>
-          <F label="Realizadas"><Input className="h-11 rounded-xl" inputMode="numeric" value={realizadas} onChange={(e) => setRealizadas(e.target.value)} /></F>
-        </div>
-        <F label="Motivo (por que não houve sangria neste período)">
-          <Textarea className="rounded-xl" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: painel em repouso, estimulação preventiva..." required />
+        <F label="Árvores realizadas"><Input className="h-11 rounded-xl" inputMode="numeric" value={realizadas} onChange={(e) => setRealizadas(e.target.value)} /></F>
+        <F label="Motivo (opcional)">
+          <Textarea className="rounded-xl" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: painel em repouso, estimulação preventiva..." />
         </F>
         <F label="Próxima estimulação"><Input type="date" className="h-11 rounded-xl" value={next} onChange={(e) => setNext(e.target.value)} /></F>
         <div>

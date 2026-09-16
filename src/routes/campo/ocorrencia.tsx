@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { OCC_SEVERITIES, OCC_TYPES } from "@/lib/ocorrencias.functions";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { ChipToggle } from "@/components/vertex/field/chip-toggle";
 import { getLocalIsoDate } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/ocorrencia")({ component: OcorrenciaPage });
@@ -64,11 +65,11 @@ function OcorrenciaPage() {
     nav({ to: "/campo" });
   }
 
-  const sevDot: Record<string, string> = { baixa: "bg-primary", media: "bg-warning", alta: "bg-destructive", critica: "bg-destructive" };
+  const sevTone: Record<string, "primary" | "warning" | "destructive"> = { baixa: "primary", media: "warning", alta: "destructive", critica: "destructive" };
 
   return (
     <div>
-      <StepHeader title="Registrar ocorrência" step={1} steps={["Detalhes", "Salvar"]} />
+      <StepHeader title="Registrar ocorrência" step={1} steps={["Detalhes"]} />
       <FieldCard className="space-y-4">
         <Field label="Fazenda">
           <Select value={farmId} onValueChange={setFarmId}>
@@ -82,15 +83,20 @@ function OcorrenciaPage() {
             <SelectContent>{OCC_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
           </Select>
         </Field>
-        <Field label="Prioridade">
-          <Select value={severity} onValueChange={setSeverity}>
-            <SelectTrigger className="h-11 rounded-xl">
-              <span className={`mr-2 inline-block h-2 w-2 rounded-full ${sevDot[severity] ?? "bg-muted"}`} />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>{OCC_SEVERITIES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-          </Select>
-        </Field>
+        <div>
+          <Label className="mb-2 block text-xs font-medium text-muted-foreground">Prioridade</Label>
+          <div className="grid grid-cols-4 gap-2">
+            {OCC_SEVERITIES.map((t) => (
+              <ChipToggle
+                key={t.value}
+                active={severity === t.value}
+                label={t.label}
+                tone={sevTone[t.value] ?? "primary"}
+                onClick={() => setSeverity(t.value)}
+              />
+            ))}
+          </div>
+        </div>
         <Field label="Título">
           <Input className="h-11 rounded-xl" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Ponte caída no acesso ao A1" />
         </Field>

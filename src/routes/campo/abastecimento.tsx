@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { KindPill } from "@/components/vertex/field/kind-pill";
 import { getLocalIsoString } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/abastecimento")({ component: AbastecimentoPage });
@@ -85,27 +86,29 @@ function AbastecimentoPage() {
           </Select>
         </F>
         <F label="Tanque *">
-          <Select value={tankId} onValueChange={setTankId}>
-            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione o tanque" /></SelectTrigger>
-            <SelectContent>{tanks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} · {t.fuelType} ({t.currentLevel}L)</SelectItem>)}</SelectContent>
-          </Select>
+          {tanks.length === 1 ? (
+            <div className="flex h-11 items-center rounded-xl border border-border/60 bg-background/40 px-3 text-sm font-medium">
+              {tanks[0].name} · {tanks[0].fuelType}
+            </div>
+          ) : (
+            <Select value={tankId} onValueChange={setTankId}>
+              <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione o tanque" /></SelectTrigger>
+              <SelectContent>{tanks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} · {t.fuelType} ({t.currentLevel}L)</SelectItem>)}</SelectContent>
+            </Select>
+          )}
           {tank && <p className="mt-1 text-[11px] text-muted-foreground">Saldo atual: {tank.currentLevel} L</p>}
         </F>
-        <div className="grid grid-cols-2 gap-3">
-          <F label="Tipo">
-            <Select value={kind} onValueChange={(v) => setKind(v as any)}>
-              <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="saida">Saída (uso)</SelectItem>
-                <SelectItem value="entrada">Entrada (compra)</SelectItem>
-                <SelectItem value="ajuste">Ajuste de saldo</SelectItem>
-              </SelectContent>
-            </Select>
-          </F>
-          <F label={kind === "ajuste" ? "Novo saldo (L) *" : "Litros *"}>
-            <Input className="h-11 rounded-xl" inputMode="decimal" value={liters} onChange={(e) => setLiters(e.target.value)} />
-          </F>
+        <div>
+          <Label className="mb-2 block text-xs font-medium text-muted-foreground">Tipo</Label>
+          <div className="grid grid-cols-3 gap-2">
+            <KindPill active={kind === "saida"} label="Saída" tone="primary" onClick={() => setKind("saida")} />
+            <KindPill active={kind === "entrada"} label="Entrada" tone="chart-2" onClick={() => setKind("entrada")} />
+            <KindPill active={kind === "ajuste"} label="Ajuste" tone="warning" onClick={() => setKind("ajuste")} />
+          </div>
         </div>
+        <F label={kind === "ajuste" ? "Novo saldo (L) *" : "Litros *"}>
+          <Input className="h-11 rounded-xl" inputMode="decimal" value={liters} onChange={(e) => setLiters(e.target.value)} />
+        </F>
         {kind === "saida" && (
           <>
             <F label="Máquina abastecida">

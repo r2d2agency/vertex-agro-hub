@@ -10,6 +10,7 @@ import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getLocalIsoDate } from "@/lib/date-utils";
 import { toast } from "sonner";
 
@@ -243,18 +244,16 @@ function AgendaPage() {
                     {confirmTablesLoading ? (
                       <div className="flex h-10 items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando tabelas...</div>
                     ) : confirmTables.length ? (
-                      <select
-                        value={confirmTableId}
-                        onChange={(e) => setConfirmTableId(e.target.value)}
-                        className="h-10 w-full rounded-xl border border-border/60 bg-background px-2 text-sm"
-                      >
-                        <option value="">Selecione a tabela</option>
-                        {confirmTables.map((tb) => (
-                          <option key={tb.id} value={tb.id}>
-                            {tb.name}{tb.notation ? ` — ${tb.notation}` : ""}{tb.treeCount != null ? ` (${tb.treeCount} árvores)` : ""}
-                          </option>
-                        ))}
-                      </select>
+                      <Select value={confirmTableId} onValueChange={setConfirmTableId}>
+                        <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Selecione a tabela" /></SelectTrigger>
+                        <SelectContent>
+                          {confirmTables.map((tb) => (
+                            <SelectItem key={tb.id} value={tb.id}>
+                              {tb.name}{tb.notation ? ` — ${tb.notation}` : ""}{tb.treeCount != null ? ` (${tb.treeCount} árvores)` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
                       <p className="rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">Sangrador sem tabelas vinculadas.</p>
                     )}

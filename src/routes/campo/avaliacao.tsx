@@ -17,6 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
+import { ChipToggle } from "@/components/vertex/field/chip-toggle";
 import { TapperTablesDialog } from "@/components/vertex/tapper-tables-dialog";
 import { getLocalIsoDate, getLocalIsoString } from "@/lib/date-utils";
 
@@ -39,6 +40,10 @@ const CATEGORIES = [
 
 const ROLE_LABEL: Record<string, string> = {
   consultor: "Consultor", monitor: "Monitor", sangrador: "Sangrador", operador: "Operador",
+};
+
+const SEVERITY_TONE: Record<string, "primary" | "warning" | "destructive"> = {
+  baixa: "primary", media: "warning", alta: "destructive", critica: "destructive",
 };
 
 function AvaliacaoPage() {
@@ -383,14 +388,20 @@ function AvaliacaoPage() {
         </button>
         {alertOpen && (
           <div className="space-y-3">
-            <Field label="Prioridade">
-              <Select value={alertSeverity} onValueChange={setAlertSeverity}>
-                <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {OCC_SEVERITIES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
+            <div>
+              <Label className="mb-2 block text-xs font-medium text-muted-foreground">Prioridade</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {OCC_SEVERITIES.map((s) => (
+                  <ChipToggle
+                    key={s.value}
+                    active={alertSeverity === s.value}
+                    label={s.label}
+                    tone={SEVERITY_TONE[s.value] ?? "primary"}
+                    onClick={() => setAlertSeverity(s.value)}
+                  />
+                ))}
+              </div>
+            </div>
             <Field label="Título">
               <Input
                 className="h-11 rounded-xl" value={alertTitle} onChange={(e) => setAlertTitle(e.target.value)}
@@ -412,33 +423,26 @@ function AvaliacaoPage() {
 
       <FieldCard className="space-y-4">
         <p className="text-sm font-semibold text-foreground">Avaliar colaborador</p>
-        <Field label="Colaborador">
-          {team.length === 0 ? (
-            <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
-              Nenhum colaborador vinculado a esta fazenda.
-            </div>
-          ) : (
-            <Select value={targetUserId} onValueChange={setTargetUserId}>
-              <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                {team.map((m) => (
-                  <SelectItem key={m.id} value={m.userId}>
-                    {(m.user.fullName ?? m.user.email)} · {ROLE_LABEL[m.role] ?? m.role}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </Field>
+        {targetUserId ? (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
+            Avaliando: <span className="font-semibold text-foreground">
+              {team.find((m) => m.userId === targetUserId)?.user.fullName ?? team.find((m) => m.userId === targetUserId)?.user.email ?? "—"}
+            </span>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
+            Toque em "Avaliar" num colaborador da lista acima pra começar.
+          </div>
+        )}
 
-        <Field label="Categoria">
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </Field>
+        <div>
+          <Label className="mb-2 block text-xs font-medium text-muted-foreground">Categoria</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {CATEGORIES.map((c) => (
+              <ChipToggle key={c.value} active={category === c.value} label={c.label} onClick={() => setCategory(c.value)} />
+            ))}
+          </div>
+        </div>
 
         <div>
           <Label className="mb-2 block text-xs font-medium text-muted-foreground">Nota</Label>
