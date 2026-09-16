@@ -14,7 +14,21 @@ import {
 } from "@/lib/tappers.functions";
 import { listTappingTables } from "@/lib/tabelas.functions";
 
-type SelectableTable = { id: string; name: string; notation?: string | null; active?: boolean };
+type SelectableTable = {
+  id: string; name: string; notation?: string | null; frequencyDays?: number | null;
+  restDays?: number | null; workDaysCycle?: number | null; cutType?: string | null; stimulation?: string | null; active?: boolean;
+};
+
+type TableOverrides = {
+  treeCount: string; frequencyDays: string; restDays: string; workDaysCycle: string;
+  cutType: string; stimulation: string; notes: string;
+};
+
+const emptyOverrides: TableOverrides = { treeCount: "", frequencyDays: "", restDays: "", workDaysCycle: "", cutType: "", stimulation: "", notes: "" };
+
+function overrideNumber(value: string) {
+  return value.trim() ? Number(value) : undefined;
+}
 
 export function TapperTablesDialog({
   open, onOpenChange, companyId, tapperKey, tapperName,
@@ -31,8 +45,8 @@ export function TapperTablesDialog({
 }) {
   const qc = useQueryClient();
   const [newTableId, setNewTableId] = useState("");
-  const [newTreeCount, setNewTreeCount] = useState("");
-  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [newOverrides, setNewOverrides] = useState<TableOverrides>(emptyOverrides);
+  const [edits, setEdits] = useState<Record<string, TableOverrides>>({});
 
   const linksQuery = useQuery({
     queryKey: ["tapper-table-links", companyId, tapperKey],
@@ -47,7 +61,7 @@ export function TapperTablesDialog({
   });
 
   useEffect(() => {
-    if (!open) { setNewTableId(""); setNewTreeCount(""); setEdits({}); }
+    if (!open) { setNewTableId(""); setNewOverrides(emptyOverrides); setEdits({}); }
   }, [open]);
 
   const links = linksQuery.data ?? [];
@@ -59,18 +73,29 @@ export function TapperTablesDialog({
   const addMutation = useMutation({
     mutationFn: () => createTapperTableLink({
       companyId, tapperKey, tappingTableId: newTableId,
-      treeCount: newTreeCount ? Number(newTreeCount) : undefined,
+      treeCount: overrideNumber(newOverrides.treeCount), frequencyDays: overrideNumber(newOverrides.frequencyDays),
+      restDays: overrideNumber(newOverrides.restDays), workDaysCycle: overrideNumber(newOverrides.workDaysCycle),
+      cutType: newOverrides.cutType.trim() || undefined, stimulation: newOverrides.stimulation.trim() || undefined,
+      notes: newOverrides.notes.trim() || undefined,
     }),
     onSuccess: () => {
       toast.success("Tabela vinculada");
-      setNewTableId(""); setNewTreeCount("");
+      setNewTableId(""); setNewOverrides(emptyOverrides);
       qc.invalidateQueries({ queryKey: ["tapper-table-links", companyId, tapperKey] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const saveMutation = useMutation({
-    mutationFn: (linkId: string) => updateTapperTableLink(linkId, { companyId, treeCount: Number(edits[linkId] || 0) }),
+    mutationFn: (linkId: string) => {
+      const edit = edits[linkId] ?? emptyOverrides;
+      return updateTapperTableLink(linkId, {
+        companyId, treeCount: overrideNumber(edit.treeCount), frequencyDays: overrideNumber(edit.frequencyDays),
+        restDays: overrideNumber(edit.restDays), workDaysCycle: overrideNumber(edit.workDaysCycle),
+        cutType: edit.cutType.trim() || undefined, stimulation: edit.stimulation.trim() || undefined,
+        notes: edit.notes.trim() || undefined,
+      });
+    },
     onSuccess: () => {
       toast.success("Quantidade atualizada");
       qc.invalidateQueries({ queryKey: ["tapper-table-links", companyId, tapperKey] });
@@ -118,20 +143,15 @@ export function TapperTablesDialog({
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
-                <div className="flex min-w-0 gap-2">
-                  <Input
-                    type="number" min={0} className="h-9 min-w-0 flex-1"
-                    value={edits[l.id] ?? (l.treeCount ?? "")}
-                    onChange={(e) => setEdits((c) => ({ ...c, [l.id]: e.target.value }))}
-                    placeholder="Árvores"
-                  />
-                  <Button
-                    size="sm" variant="outline" className="shrink-0"
-                    disabled={saveMutation.isPending}
-                    onClick={() => saveMutation.mutate(l.id)}
-                  >
-                    Salvar
-                  </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <OverrideInput label="Árvores" type="number" value={edits[l.id]?.treeCount ?? String(l.treeCount ?? "")} onChange={(value) => setEdits((c) => ({ ...c, [l.id]: { ...defaultEdit(l), ...(c[l.id] ?? {}), treeCount: value } }))} />
+                  <OverrideInput label="Frequência (dias)" type="number" value={edits[l.id]?.frequencyDays ?? String(l.frequencyDays ?? l.tappingTable?.frequencyDays ?? "")} onChange={(value) => setEdits((c) => ({ ...c, [l.id]: { ...defaultEdit(l), ...(c[l.id] ?? {}), frequencyDays: value } }))} />
+                  <OverrideInput label="Descanso (dias)" type="number" value={edits[l.id]?.restDays ?? String(l.restDays ?? l.tappingTable?.restDays ?? "")} onChange={(value) => setEdits((c) => ({ ...c, [l.id]: { ...defaultEdit(l), ...(c[l.id] ?? {}), restDays: value } }))} />
+                  <OverrideInput label="Ciclo de trabalho" type="number" value={edits[l.id]?.workDaysCycle ?? String(l.workDaysCycle ?? l.tappingTable?.workDaysCycle ?? "")} onChange={(value) => setEdits((c) => ({ ...c, [l.id]: { ...defaultEdit(l), ...(c[l.id] ?? {}), workDaysCycle: value } }))} />
+                  <OverrideInput label="Tipo de corte" value={edits[l.id]?.cutType ?? l.cutType ?? l.tappingTable?.cutType ?? ""} onChange={(value) => setEdits((c) => ({ ...c, [l.id]: { ...defaultEdit(l), ...(c[l.id] ?? {}), cutType: value } }))} />
+                  <OverrideInput label="Estimulação" value={edits[l.id]?.stimulation ?? l.stimulation ?? l.tappingTable?.stimulation ?? ""} onChange={(value) => setEdits((c) => ({ ...c, [l.id]: { ...defaultEdit(l), ...(c[l.id] ?? {}), stimulation: value } }))} />
+                  <div className="col-span-2"><OverrideInput label="Observações personalizadas" value={edits[l.id]?.notes ?? l.notes ?? ""} onChange={(value) => setEdits((c) => ({ ...c, [l.id]: { ...defaultEdit(l), ...(c[l.id] ?? {}), notes: value } }))} /></div>
+                  <Button size="sm" variant="outline" className="col-span-2" disabled={saveMutation.isPending} onClick={() => saveMutation.mutate(l.id)}>Salvar personalização</Button>
                 </div>
               </li>
             ))}
@@ -140,7 +160,18 @@ export function TapperTablesDialog({
 
         <div className="space-y-2 border-t pt-3">
           <Label className="text-xs font-medium text-muted-foreground">Vincular nova tabela</Label>
-          <Select value={newTableId} onValueChange={setNewTableId}>
+          <Select value={newTableId} onValueChange={(value) => {
+            setNewTableId(value);
+            const table = (tablesQuery.data ?? []).find((item) => item.id === value);
+            if (table) setNewOverrides((current) => ({
+              ...current,
+              frequencyDays: current.frequencyDays || String(table.frequencyDays ?? ""),
+              restDays: current.restDays || String(table.restDays ?? ""),
+              workDaysCycle: current.workDaysCycle || String(table.workDaysCycle ?? ""),
+              cutType: current.cutType || table.cutType || "",
+              stimulation: current.stimulation || table.stimulation || "",
+            }));
+          }}>
             <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Tabela" /></SelectTrigger>
             <SelectContent>
               {availableTables.map((t) => (
@@ -148,14 +179,15 @@ export function TapperTablesDialog({
               ))}
             </SelectContent>
           </Select>
-          <div className="flex min-w-0 gap-2">
-            <Input
-              type="number" min={0} className="h-10 min-w-0 flex-1" placeholder="Árvores"
-              value={newTreeCount} onChange={(e) => setNewTreeCount(e.target.value)}
-            />
-            <Button className="shrink-0" disabled={!newTableId || addMutation.isPending} onClick={() => addMutation.mutate()}>
-              Adicionar
-            </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <OverrideInput label="Árvores" type="number" value={newOverrides.treeCount} onChange={(value) => setNewOverrides((c) => ({ ...c, treeCount: value }))} />
+            <OverrideInput label="Frequência (dias)" type="number" value={newOverrides.frequencyDays} onChange={(value) => setNewOverrides((c) => ({ ...c, frequencyDays: value }))} />
+            <OverrideInput label="Descanso (dias)" type="number" value={newOverrides.restDays} onChange={(value) => setNewOverrides((c) => ({ ...c, restDays: value }))} />
+            <OverrideInput label="Ciclo de trabalho" type="number" value={newOverrides.workDaysCycle} onChange={(value) => setNewOverrides((c) => ({ ...c, workDaysCycle: value }))} />
+            <OverrideInput label="Tipo de corte" value={newOverrides.cutType} onChange={(value) => setNewOverrides((c) => ({ ...c, cutType: value }))} />
+            <OverrideInput label="Estimulação" value={newOverrides.stimulation} onChange={(value) => setNewOverrides((c) => ({ ...c, stimulation: value }))} />
+            <div className="col-span-2"><OverrideInput label="Observações personalizadas" value={newOverrides.notes} onChange={(value) => setNewOverrides((c) => ({ ...c, notes: value }))} /></div>
+            <Button className="col-span-2" disabled={!newTableId || addMutation.isPending} onClick={() => addMutation.mutate()}>Adicionar tabela personalizada</Button>
           </div>
           {availableTables.length === 0 && !tablesQuery.isLoading && (
             <p className="text-xs text-muted-foreground">
@@ -166,4 +198,16 @@ export function TapperTablesDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function defaultEdit(link: any): TableOverrides {
+  return {
+    treeCount: String(link.treeCount ?? ""), frequencyDays: String(link.frequencyDays ?? link.tappingTable?.frequencyDays ?? ""),
+    restDays: String(link.restDays ?? link.tappingTable?.restDays ?? ""), workDaysCycle: String(link.workDaysCycle ?? link.tappingTable?.workDaysCycle ?? ""),
+    cutType: link.cutType ?? link.tappingTable?.cutType ?? "", stimulation: link.stimulation ?? link.tappingTable?.stimulation ?? "", notes: link.notes ?? "",
+  };
+}
+
+function OverrideInput({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: "text" | "number" }) {
+  return <label className="space-y-1"><span className="text-[10px] font-medium text-muted-foreground">{label}</span><Input type={type} min={type === "number" ? 0 : undefined} className="h-9" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
 }

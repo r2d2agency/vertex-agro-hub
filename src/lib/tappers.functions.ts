@@ -244,9 +244,14 @@ export type TapperTableLink = {
   userId: string | null;
   tappingTableId: string;
   treeCount: number | null;
+  frequencyDays: number | null;
+  restDays: number | null;
+  workDaysCycle: number | null;
+  cutType: string | null;
+  stimulation: string | null;
   active: boolean;
   notes: string | null;
-  tappingTable: { id: string; name: string; notation: string | null; frequencyDays: number | null } | null;
+  tappingTable: { id: string; name: string; notation: string | null; frequencyDays: number | null; restDays: number | null; workDaysCycle: number | null; cutType: string | null; stimulation: string | null } | null;
 };
 
 export function listTapperTableLinks(companyId: string, tapperKey: string) {
@@ -255,7 +260,7 @@ export function listTapperTableLinks(companyId: string, tapperKey: string) {
 }
 
 export function createTapperTableLink(input: {
-  companyId: string; tapperKey: string; tappingTableId: string; treeCount?: number; notes?: string;
+  companyId: string; tapperKey: string; tappingTableId: string; treeCount?: number; frequencyDays?: number; restDays?: number; workDaysCycle?: number; cutType?: string; stimulation?: string; notes?: string;
 }) {
   return apiRequest<TapperTableLink>(`/tappers/table-links`, {
     method: "POST",
@@ -265,7 +270,7 @@ export function createTapperTableLink(input: {
 
 export function updateTapperTableLink(
   linkId: string,
-  input: { companyId: string; treeCount?: number; active?: boolean; notes?: string },
+  input: { companyId: string; treeCount?: number; frequencyDays?: number; restDays?: number; workDaysCycle?: number; cutType?: string; stimulation?: string; active?: boolean; notes?: string },
 ) {
   return apiRequest<TapperTableLink>(`/tappers/table-links/${linkId}`, {
     method: "PATCH",

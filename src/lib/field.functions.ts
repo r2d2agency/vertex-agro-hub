@@ -31,7 +31,7 @@ export type FieldMe = {
 };
 
 export type FieldTapper = { id: string; fullName: string; nickname?: string | null };
-export type FieldTappingTable = { id: string; name: string; notation?: string | null; frequencyDays?: number | null };
+export type FieldTappingTable = { id: string; name: string; notation?: string | null; frequencyDays?: number | null; restDays?: number | null; workDaysCycle?: number | null; cutType?: string | null; stimulation?: string | null };
 // Tabela vinculada a um sangrador específico, com a quantidade de árvores
 // prevista pra ele naquela tabela (em vez de vir do talhão).
 export type FieldTapperTable = FieldTappingTable & { linkId: string; treeCount: number | null };
@@ -52,7 +52,7 @@ export async function listFieldTapperTables(companyId: string, tapperKey: string
   const qs = new URLSearchParams({ companyId, tapperKey });
   const links = await apiRequest<Array<{
     id: string; treeCount: number | null;
-    tappingTable: { id: string; name: string; notation: string | null; frequencyDays: number | null } | null;
+    tappingTable: { id: string; name: string; notation: string | null; frequencyDays: number | null; restDays: number | null; workDaysCycle: number | null; cutType: string | null; stimulation: string | null } | null;
   }>>(`/field/tapper-tables?${qs.toString()}`);
   return links
     .filter((l) => l.tappingTable)

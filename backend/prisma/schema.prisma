@@ -1669,6 +1669,11 @@ model TapperTableLink {
   userId         String?  @map("user_id") @db.Uuid
   tappingTableId String   @map("tapping_table_id") @db.Uuid
   treeCount      Int?     @map("tree_count")
+  frequencyDays  Int?     @map("frequency_days")
+  restDays       Int?     @map("rest_days")
+  workDaysCycle  Int?     @map("work_days_cycle")
+  cutType        String?  @map("cut_type")
+  stimulation    String?
   active         Boolean  @default(true)
   notes          String?
   createdById    String?  @map("created_by") @db.Uuid

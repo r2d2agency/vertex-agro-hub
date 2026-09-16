@@ -573,11 +573,24 @@ export class TappersService {
     const tables = tableIds.length
       ? await this.prisma.tappingTable.findMany({
           where: { id: { in: tableIds } },
-          select: { id: true, name: true, notation: true, frequencyDays: true },
+          select: { id: true, name: true, notation: true, frequencyDays: true, restDays: true, workDaysCycle: true, cutType: true, stimulation: true },
         })
       : [];
     const byId = new Map(tables.map((t) => [t.id, t]));
-    return links.map((l) => ({ ...l, tappingTable: byId.get(l.tappingTableId) ?? null }));
+    return links.map((l) => {
+      const table = byId.get(l.tappingTableId) ?? null;
+      return {
+        ...l,
+        tappingTable: table ? {
+          ...table,
+          frequencyDays: l.frequencyDays ?? table.frequencyDays,
+          restDays: l.restDays ?? table.restDays,
+          workDaysCycle: l.workDaysCycle ?? table.workDaysCycle,
+          cutType: l.cutType ?? table.cutType,
+          stimulation: l.stimulation ?? table.stimulation,
+        } : null,
+      };
+    });
   }
 
   // Mesma pessoa pode existir como ficha legada (Tapper) e como vínculo só de
@@ -687,7 +700,7 @@ export class TappersService {
     return this.attachTables(links);
   }
 
-  async createTableLink(userId: string, dto: { companyId: string; tapperKey: string; tappingTableId: string; treeCount?: number; notes?: string }) {
+  async createTableLink(userId: string, dto: { companyId: string; tapperKey: string; tappingTableId: string; treeCount?: number; frequencyDays?: number; restDays?: number; workDaysCycle?: number; cutType?: string; stimulation?: string; notes?: string }) {
     const key = this.parseTapperKey(dto.tapperKey);
     await this.ensureManagerOrFarmStaff(userId, dto.companyId, key);
     if (key.tapperId) {
@@ -703,13 +716,18 @@ export class TappersService {
     const saved = existing
       ? await this.prisma.tapperTableLink.update({
           where: { id: existing.id },
-          data: { active: true, treeCount: dto.treeCount ?? existing.treeCount, notes: dto.notes ?? existing.notes },
+          data: { active: true, treeCount: dto.treeCount ?? existing.treeCount, frequencyDays: dto.frequencyDays ?? existing.frequencyDays, restDays: dto.restDays ?? existing.restDays, workDaysCycle: dto.workDaysCycle ?? existing.workDaysCycle, cutType: dto.cutType ?? existing.cutType, stimulation: dto.stimulation ?? existing.stimulation, notes: dto.notes ?? existing.notes },
         })
       : await this.prisma.tapperTableLink.create({
           data: {
             companyId: dto.companyId,
             tappingTableId: dto.tappingTableId,
             treeCount: dto.treeCount,
+            frequencyDays: dto.frequencyDays,
+            restDays: dto.restDays,
+            workDaysCycle: dto.workDaysCycle,
+            cutType: dto.cutType,
+            stimulation: dto.stimulation,
             notes: dto.notes,
             createdById: userId,
             ...key,
@@ -719,7 +737,7 @@ export class TappersService {
     return hydrated;
   }
 
-  async updateTableLink(userId: string, linkId: string, dto: { companyId: string; treeCount?: number; active?: boolean; notes?: string }) {
+  async updateTableLink(userId: string, linkId: string, dto: { companyId: string; treeCount?: number; frequencyDays?: number; restDays?: number; workDaysCycle?: number; cutType?: string; stimulation?: string; active?: boolean; notes?: string }) {
     const link = await this.prisma.tapperTableLink.findUnique({ where: { id: linkId } });
     if (!link || link.companyId !== dto.companyId) throw new NotFoundException('Vínculo não encontrado');
     await this.ensureManagerOrFarmStaff(userId, dto.companyId, { tapperId: link.tapperId ?? undefined, userId: link.userId ?? undefined });
@@ -727,6 +745,11 @@ export class TappersService {
       where: { id: linkId },
       data: {
         treeCount: dto.treeCount === undefined ? undefined : dto.treeCount,
+        frequencyDays: dto.frequencyDays === undefined ? undefined : dto.frequencyDays,
+        restDays: dto.restDays === undefined ? undefined : dto.restDays,
+        workDaysCycle: dto.workDaysCycle === undefined ? undefined : dto.workDaysCycle,
+        cutType: dto.cutType === undefined ? undefined : dto.cutType,
+        stimulation: dto.stimulation === undefined ? undefined : dto.stimulation,
         active: dto.active === undefined ? undefined : dto.active,
         notes: dto.notes === undefined ? undefined : dto.notes,
       },

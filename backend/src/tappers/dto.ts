@@ -97,12 +97,22 @@ export class CreateTapperTableLinkDto {
   @IsString() @MinLength(3) tapperKey!: string;
   @IsUUID() tappingTableId!: string;
   @IsOptional() @IsInt() @Min(0) treeCount?: number;
+  @IsOptional() @IsInt() @Min(0) frequencyDays?: number;
+  @IsOptional() @IsInt() @Min(0) restDays?: number;
+  @IsOptional() @IsInt() @Min(0) workDaysCycle?: number;
+  @IsOptional() @IsString() cutType?: string;
+  @IsOptional() @IsString() stimulation?: string;
   @IsOptional() @IsString() notes?: string;
 }
 
 export class UpdateTapperTableLinkDto {
   @IsUUID() companyId!: string;
   @IsOptional() @IsInt() @Min(0) treeCount?: number;
+  @IsOptional() @IsInt() @Min(0) frequencyDays?: number;
+  @IsOptional() @IsInt() @Min(0) restDays?: number;
+  @IsOptional() @IsInt() @Min(0) workDaysCycle?: number;
+  @IsOptional() @IsString() cutType?: string;
+  @IsOptional() @IsString() stimulation?: string;
   @IsOptional() @IsBoolean() active?: boolean;
   @IsOptional() @IsString() notes?: string;
 }
