@@ -31,25 +31,25 @@ export const Route = createFileRoute("/_authenticated/fazendas-importar")({
   component: FazendasImportarPage,
 });
 
-const FIELDS: { key: keyof ImportFarmRow; label: string; required?: boolean }[] = [
-  { key: "supplierCode", label: "Código do Fornecedor" },
-  { key: "farmName", label: "Nome da Propriedade", required: true },
-  { key: "ownerLegalName", label: "Razão Social" },
-  { key: "ownerCode", label: "Código do Proprietário" },
-  { key: "ownerAlternateCode", label: "Código Alternativo" },
-  { key: "regimeRaw", label: "Proprietário/Parceiro" },
-  { key: "cpf", label: "CPF" },
-  { key: "cnpjCpf", label: "CNPJ/CPF" },
-  { key: "stateRegistration", label: "Inscrição Estadual" },
-  { key: "coordinates", label: "Coordenadas Geográficas" },
-  { key: "city", label: "Município" },
-  { key: "state", label: "Estado" },
-  { key: "buyer1Code", label: "Código do Comprador" },
-  { key: "buyer1Name", label: "Nome do Comprador 1" },
-  { key: "buyer2Code", label: "Código do Comprador 2" },
-  { key: "buyer2Name", label: "Nome do Comprador 2" },
-  { key: "monitor1Name", label: "Monitor 1" },
-  { key: "monitor2Name", label: "Monitor 2" },
+const FIELDS: { key: keyof ImportFarmRow; label: string; required?: boolean; aliases?: string[] }[] = [
+  { key: "supplierCode", label: "Código da Propriedade (Fornecedor)", required: true, aliases: ["codigo do fornecedor", "codigo da propriedade", "codigo da fazenda", "fornecedor"] },
+  { key: "farmName", label: "Nome da Propriedade", required: true, aliases: ["nome da propriedade", "nome da fazenda", "propriedade"] },
+  { key: "ownerLegalName", label: "Razão Social", aliases: ["razao social"] },
+  { key: "ownerCode", label: "Código do Proprietário", aliases: ["codigo do proprietario"] },
+  { key: "ownerAlternateCode", label: "Código Alternativo", aliases: ["codigo alternativo"] },
+  { key: "regimeRaw", label: "Proprietário/Parceiro", aliases: ["proprietario/parceiro", "proprietario parceiro"] },
+  { key: "cpf", label: "CPF", aliases: ["cpf"] },
+  { key: "cnpjCpf", label: "CNPJ/CPF", aliases: ["cnpj/cpf", "cnpj cpf", "cnpj"] },
+  { key: "stateRegistration", label: "Inscrição Estadual", aliases: ["inscricao estadual", "inscr estadual", "inscri estadual", "ie"] },
+  { key: "coordinates", label: "Coordenadas Geográficas", aliases: ["coordenadas geograficas", "coordenadas"] },
+  { key: "city", label: "Município", aliases: ["municipio", "cidade"] },
+  { key: "state", label: "Estado", aliases: ["estado", "uf"] },
+  { key: "buyer1Code", label: "Código do Comprador", aliases: ["codigo do comprador", "codigo do comprador 1"] },
+  { key: "buyer1Name", label: "Nome do Comprador 1", aliases: ["nome do comprador 1", "comprador 1"] },
+  { key: "buyer2Code", label: "Código do Comprador 2", aliases: ["codigo do comprador 2", "codndo do comprador 2"] },
+  { key: "buyer2Name", label: "Nome do Comprador 2", aliases: ["nome do comprador 2", "comprador 2"] },
+  { key: "monitor1Name", label: "Monitor 1", aliases: ["monitor 1"] },
+  { key: "monitor2Name", label: "Monitor 2", aliases: ["monitor 2"] },
 ];
 
 function normalize(v: string) {
@@ -110,7 +110,11 @@ function FazendasImportarPage() {
     setRawRows(parsedRows);
     const auto: Record<string, string> = {};
     for (const f of FIELDS) {
-      const match = h.find((col) => normalize(col).includes(normalize(f.label)));
+      const candidates = [f.label, ...(f.aliases ?? [])].map(normalize);
+      const match = h.find((col) => {
+        const nc = normalize(col);
+        return candidates.some((c) => nc.includes(c) || c.includes(nc));
+      });
       if (match) auto[f.key] = match;
     }
     setMapping(auto);

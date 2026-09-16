@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
-import express from 'express';
+import express, { json, urlencoded } from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
@@ -69,7 +69,12 @@ function idempotencyMiddleware(request: Request, response: Response, next: NextF
 
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // bodyParser:false porque o limite padrão do Express (100kb) estoura em
+  // payloads maiores, como a importação em massa de fazendas (planilha
+  // inteira num POST só) — "PayloadTooLargeError: request entity too large".
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.use(json({ limit: '15mb' }));
+  app.use(urlencoded({ limit: '15mb', extended: true }));
   const uploadsStatic = express.static(UPLOADS_DIR, { maxAge: '7d', fallthrough: false });
 
   const prisma = app.get(PrismaService);
