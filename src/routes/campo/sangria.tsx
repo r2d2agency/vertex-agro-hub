@@ -21,9 +21,7 @@ export const Route = createFileRoute("/campo/sangria")({ component: SangriaPage 
 function SangriaPage() {
   const nav = useNavigate();
   const [me, setMe] = useState<FieldMe | null>(null);
-  const [step, setStep] = useState(1);
 
-  // step 1 — info
   const [farmId, setFarmId] = useState("");
   const [tapperId, setTapperId] = useState("");
   const [tappers, setTappers] = useState<FieldTapper[]>([]);
@@ -33,7 +31,6 @@ function SangriaPage() {
   const [taskExtents, setTaskExtents] = useState<string[]>([]);
   const [endPeriod, setEndPeriod] = useState("");
 
-  // step 2 — observações
   const [notes, setNotes] = useState("");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -118,131 +115,119 @@ function SangriaPage() {
 
   return (
     <div>
-      <StepHeader title="Registrar sangria" step={step} steps={["Informações", "Observações", "Concluir"]} onBack={() => step > 1 ? setStep(step - 1) : nav({ to: "/campo" })} />
+      <StepHeader title="Registrar sangria" step={1} steps={["Sangria"]} onBack={() => nav({ to: "/campo" })} />
 
-      {step === 1 && (
-        <FieldCard className="space-y-4">
-          {me.assignments.length > 1 ? (
-            <Field label="Fazenda">
-              <Select value={farmId} onValueChange={setFarmId}>
-                <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-                <SelectContent>{me.assignments.map((a) => <SelectItem key={a.farm.id} value={a.farm.id}>{a.farm.name}</SelectItem>)}</SelectContent>
+      <FieldCard className="space-y-4">
+        {me.assignments.length > 1 ? (
+          <Field label="Fazenda">
+            <Select value={farmId} onValueChange={setFarmId}>
+              <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
+              <SelectContent>{me.assignments.map((a) => <SelectItem key={a.farm.id} value={a.farm.id}>{a.farm.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
+        ) : (
+          <Field label="Fazenda">
+            <div className="flex h-11 items-center rounded-xl border border-border/60 bg-background/40 px-3 text-sm font-medium">
+              {farm?.name ?? "—"}
+            </div>
+          </Field>
+        )}
+        <Field label="Sangrador (Quem realizou a sangria)">
+          <Select value={tapperId} onValueChange={setTapperId}>
+            <SelectTrigger className="h-11 rounded-xl border-primary/50 bg-primary/5"><SelectValue placeholder={tappers.length ? "Selecione o sangrador" : "Nenhum sangrador vinculado a esta fazenda"} /></SelectTrigger>
+            <SelectContent>{tappers.map((t) => <SelectItem key={t.id} value={t.id}>{t.fullName}</SelectItem>)}</SelectContent>
+          </Select>
+        </Field>
+        {tapperId && (
+          <Field label="Tabela">
+            {tablesLoading ? (
+              <div className="flex h-11 items-center gap-2 rounded-xl border border-border/60 bg-background/40 px-3 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando tabelas...
+              </div>
+            ) : tables.length === 0 ? (
+              <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
+                Nenhuma tabela vinculada a este sangrador. Vincule em Sangradores &gt; Tabelas, no admin.
+              </div>
+            ) : (
+              <Select value={tappingTableId} onValueChange={setTappingTableId}>
+                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione a tabela" /></SelectTrigger>
+                <SelectContent>{tables.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>)}</SelectContent>
               </Select>
-            </Field>
-          ) : (
-            <Field label="Fazenda">
-              <div className="flex h-11 items-center rounded-xl border border-border/60 bg-background/40 px-3 text-sm font-medium">
-                {farm?.name ?? "—"}
-              </div>
-            </Field>
-          )}
-          <Field label="Sangrador (Quem realizou a sangria)">
-            <Select value={tapperId} onValueChange={setTapperId}>
-              <SelectTrigger className="h-11 rounded-xl border-primary/50 bg-primary/5"><SelectValue placeholder={tappers.length ? "Selecione o sangrador" : "Nenhum sangrador vinculado a esta fazenda"} /></SelectTrigger>
-              <SelectContent>{tappers.map((t) => <SelectItem key={t.id} value={t.id}>{t.fullName}</SelectItem>)}</SelectContent>
-            </Select>
-            <p className="text-[10px] text-muted-foreground italic px-1">
-              O monitor é responsável por registrar a atividade da sua equipe de sangradores.
-            </p>
+            )}
           </Field>
-          {tapperId && (
-            <Field label="Tabela">
-              {tablesLoading ? (
-                <div className="flex h-11 items-center gap-2 rounded-xl border border-border/60 bg-background/40 px-3 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Carregando tabelas...
-                </div>
-              ) : tables.length === 0 ? (
-                <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
-                  Nenhuma tabela vinculada a este sangrador. Vincule em Sangradores &gt; Tabelas, no admin.
-                </div>
-              ) : (
-                <Select value={tappingTableId} onValueChange={setTappingTableId}>
-                  <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione a tabela" /></SelectTrigger>
-                  <SelectContent>{tables.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>)}</SelectContent>
-                </Select>
-              )}
-            </Field>
-          )}
-          {table && (
-            <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
-              <Trees className="h-4 w-4 text-primary" />
-              <span className="text-muted-foreground">Árvores previstas nesta tabela:</span>
-              <span className="font-semibold text-foreground">{table.treeCount ?? "—"}</span>
-            </div>
-          )}
-          {tappingTableId && (
-            <div>
-              <Label className="mb-2 block text-xs font-medium text-muted-foreground">Tarefa</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {TASK_EXTENTS.map((t) => {
-                  const active = taskExtents.includes(t.value);
-                  return (
-                    <button
-                      key={t.value}
-                      type="button"
-                      onClick={() => toggleTask(t.value)}
-                      className={`h-11 rounded-xl border text-xs font-semibold transition ${
-                        active ? "border-primary bg-primary/15 text-primary" : "border-border/60 bg-background/40 text-muted-foreground"
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-1 px-1 text-[10px] text-muted-foreground italic">Pode marcar mais de uma opção (ex.: tabela completa + reposição).</p>
-            </div>
-          )}
-          <Field label="Período realizado">
-            <Select value={endPeriod} onValueChange={setEndPeriod}>
-              <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{END_PERIODS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-            </Select>
-          </Field>
-          <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={() => setStep(2)}>Continuar</Button>
-        </FieldCard>
-      )}
-
-      {step === 2 && (
-        <FieldCard className="space-y-4">
-          <Field label="Observações">
-            <Textarea rows={5} className="rounded-xl" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Como foi a sangria, qual período foi realizado, alguma ocorrência..." />
-          </Field>
+        )}
+        {table && (
+          <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
+            <Trees className="h-4 w-4 text-primary" />
+            <span className="text-muted-foreground">Árvores previstas nesta tabela:</span>
+            <span className="font-semibold text-foreground">{table.treeCount ?? "—"}</span>
+          </div>
+        )}
+        {tappingTableId && (
           <div>
-            <Label className="mb-2 block text-xs font-medium text-muted-foreground">Fotos (opcional)</Label>
+            <Label className="mb-2 block text-xs font-medium text-muted-foreground">Tarefa</Label>
             <div className="grid grid-cols-3 gap-2">
-              {photoUrls.map((u, i) => <img key={i} src={u} alt="" className="h-20 w-full rounded-xl object-cover" />)}
-              <label className="grid h-20 w-full cursor-pointer place-items-center rounded-xl border border-dashed border-border/60 bg-background/40 text-muted-foreground hover:border-primary hover:text-primary">
-                <Camera className="h-5 w-5" />
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0] ?? null)} />
-              </label>
+              {TASK_EXTENTS.map((t) => {
+                const active = taskExtents.includes(t.value);
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => toggleTask(t.value)}
+                    className={`h-11 rounded-xl border text-xs font-semibold transition ${
+                      active ? "border-primary bg-primary/15 text-primary" : "border-border/60 bg-background/40 text-muted-foreground"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
             </div>
-            {uploadingPhoto && <div className="mt-2 text-xs text-muted-foreground">Enviando foto...</div>}
+            <p className="mt-1 px-1 text-[10px] text-muted-foreground italic">Pode marcar mais de uma opção (ex.: tabela completa + reposição).</p>
           </div>
-          <div>
-            <Label className="mb-2 block text-xs font-medium text-muted-foreground">Áudio (opcional)</Label>
-            <AudioRecorder value={audioUrl} onChange={setAudioUrl} />
+        )}
+        <div>
+          <Label className="mb-2 block text-xs font-medium text-muted-foreground">Período realizado</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {END_PERIODS.map((p) => {
+              const active = endPeriod === p.value;
+              return (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => setEndPeriod((cur) => (cur === p.value ? "" : p.value))}
+                  className={`h-11 rounded-xl border text-xs font-semibold transition ${
+                    active ? "border-primary bg-primary/15 text-primary" : "border-border/60 bg-background/40 text-muted-foreground"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
           </div>
-          <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={() => setStep(3)}>Continuar</Button>
-        </FieldCard>
-      )}
-
-      {step === 3 && (
-        <FieldCard className="space-y-4">
-          <h3 className="text-sm font-semibold">Confirmar registro</h3>
-          <dl className="divide-y divide-border/60 rounded-xl border border-border/60 bg-background/40 text-sm">
-            <Row label="Fazenda" value={farm?.name ?? "—"} />
-            <Row label="Sangrador" value={tapper?.fullName ?? "—"} />
-            <Row label="Tabela" value={table?.name ?? "—"} />
-            <Row label="Tarefa" value={taskExtents.length ? taskExtents.map((v) => TASK_EXTENTS.find((t) => t.value === v)?.label ?? v).join(", ") : "—"} />
-            <Row label="Período realizado" value={END_PERIODS.find((p) => p.value === endPeriod)?.label ?? "—"} />
-            <Row label="Árvores previstas na tabela" value={table?.treeCount != null ? String(table.treeCount) : "—"} />
-          </dl>
-          <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar sangria
-          </Button>
-        </FieldCard>
-      )}
+        </div>
+        <Field label="Observações (opcional)">
+          <Textarea rows={3} className="rounded-xl" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Como foi a sangria, alguma ocorrência..." />
+        </Field>
+        <div>
+          <Label className="mb-2 block text-xs font-medium text-muted-foreground">Fotos (opcional)</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {photoUrls.map((u, i) => <img key={i} src={u} alt="" className="h-20 w-full rounded-xl object-cover" />)}
+            <label className="grid h-20 w-full cursor-pointer place-items-center rounded-xl border border-dashed border-border/60 bg-background/40 text-muted-foreground hover:border-primary hover:text-primary">
+              <Camera className="h-5 w-5" />
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0] ?? null)} />
+            </label>
+          </div>
+          {uploadingPhoto && <div className="mt-2 text-xs text-muted-foreground">Enviando foto...</div>}
+        </div>
+        <div>
+          <Label className="mb-2 block text-xs font-medium text-muted-foreground">Áudio (opcional)</Label>
+          <AudioRecorder value={audioUrl} onChange={setAudioUrl} />
+        </div>
+        <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar sangria
+        </Button>
+      </FieldCard>
     </div>
   );
 }
@@ -252,15 +237,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="space-y-1.5">
       <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
       {children}
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between px-3 py-2.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium capitalize">{value}</span>
     </div>
   );
 }
