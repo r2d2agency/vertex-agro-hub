@@ -581,6 +581,63 @@ export class TappersService {
     return links.map((l) => ({ ...l, tappingTable: byId.get(l.tappingTableId) ?? null }));
   }
 
+  // Mesma pessoa pode existir como ficha legada (Tapper) e como vínculo só de
+  // RH (User/FarmAssignment), e uma tabela pode ter sido vinculada usando
+  // qualquer uma das duas chaves — sem isso, o app de campo podia buscar por
+  // um lado (tapperId) enquanto o admin tinha vinculado a tabela pelo outro
+  // (rh:userId), e o sangrador aparecia "sem tabela vinculada" mesmo com o
+  // vínculo certinho no admin. Resolve a chave "irmã" por CPF (preferencial)
+  // ou por nome único, do mesmo jeito que a tela de Sangradores casa as duas
+  // fichas no admin.
+  private async resolveSiblingKey(
+    companyId: string,
+    key: { tapperId?: string; userId?: string },
+  ): Promise<{ tapperId?: string; userId?: string } | null> {
+    if (key.tapperId) {
+      const tapper = await this.prisma.tapper.findUnique({
+        where: { id: key.tapperId },
+        select: { cpf: true, fullName: true },
+      });
+      if (!tapper) return null;
+      const assignments = await this.prisma.farmAssignment.findMany({
+        where: { companyId, role: 'sangrador' },
+        select: { userId: true, user: { select: { cpf: true, fullName: true } } },
+        distinct: ['userId'],
+      });
+      const cpf = onlyDigits(tapper.cpf ?? '');
+      if (cpf) {
+        const match = assignments.find((a) => onlyDigits(a.user?.cpf ?? '') === cpf);
+        if (match) return { userId: match.userId };
+      }
+      const name = tapper.fullName.trim().toLowerCase();
+      if (name) {
+        const matches = assignments.filter((a) => (a.user?.fullName ?? '').trim().toLowerCase() === name);
+        if (matches.length === 1) return { userId: matches[0].userId };
+      }
+      return null;
+    }
+    if (key.userId) {
+      const user = await this.prisma.user.findUnique({ where: { id: key.userId }, select: { cpf: true, fullName: true } });
+      if (!user) return null;
+      const tappers = await this.prisma.tapper.findMany({
+        where: { companyId, isDeleted: false },
+        select: { id: true, cpf: true, fullName: true },
+      });
+      const cpf = onlyDigits(user.cpf ?? '');
+      if (cpf) {
+        const match = tappers.find((t) => onlyDigits(t.cpf ?? '') === cpf);
+        if (match) return { tapperId: match.id };
+      }
+      const name = (user.fullName ?? '').trim().toLowerCase();
+      if (name) {
+        const matches = tappers.filter((t) => t.fullName.trim().toLowerCase() === name);
+        if (matches.length === 1) return { tapperId: matches[0].id };
+      }
+      return null;
+    }
+    return null;
+  }
+
   private async resolveTapperFarmIds(companyId: string, key: { tapperId?: string; userId?: string }) {
     if (key.tapperId) {
       const stints = await this.prisma.tapperStint.findMany({
@@ -623,8 +680,9 @@ export class TappersService {
   async listTableLinks(userId: string, companyId: string, tapperKey: string) {
     const key = this.parseTapperKey(tapperKey);
     await this.ensureManagerOrFarmStaff(userId, companyId, key);
+    const sibling = await this.resolveSiblingKey(companyId, key);
     const links = await this.prisma.tapperTableLink.findMany({
-      where: { companyId, active: true, ...key },
+      where: { companyId, active: true, OR: sibling ? [key, sibling] : [key] },
       orderBy: { createdAt: 'asc' },
     });
     return this.attachTables(links);
@@ -692,8 +750,9 @@ export class TappersService {
   async listTableLinksForField(userId: string, companyId: string, tapperKey: string) {
     await this.access.ensureCompany(userId, companyId);
     const key = this.parseTapperKey(tapperKey);
+    const sibling = await this.resolveSiblingKey(companyId, key);
     const links = await this.prisma.tapperTableLink.findMany({
-      where: { companyId, active: true, ...key },
+      where: { companyId, active: true, OR: sibling ? [key, sibling] : [key] },
       orderBy: { createdAt: 'asc' },
     });
     return this.attachTables(links);
