@@ -95,14 +95,24 @@ export class TerritorialService {
   private farmInclude() {
     return {
       regional: { select: { id: true, name: true } },
-      ownerRef: { select: { id: true, name: true, code: true, alternateCode: true } },
+      owners: { select: { regime: true, owner: { select: { id: true, name: true, code: true, alternateCode: true } } } },
       buyers: { select: { slot: true, buyer: { select: { id: true, name: true, code: true } } }, orderBy: { slot: 'asc' as const } },
     };
   }
 
-  private withBuyers<T extends { buyers: { slot: number; buyer: { id: string; name: string; code: string } }[] }>(farm: T) {
-    const { buyers, ...rest } = farm;
-    return { ...rest, buyers: buyers.map((b) => ({ ...b.buyer, slot: b.slot })) };
+  // Owner e Buyer são N:N (uma fazenda pode ter vários proprietários/CNPJs e
+  // vários compradores) — achata pra um array simples no formato que o
+  // frontend consome, em vez do shape aninhado do join do Prisma.
+  private withRelations<T extends {
+    buyers: { slot: number; buyer: { id: string; name: string; code: string } }[];
+    owners: { regime: string | null; owner: { id: string; name: string; code: string | null; alternateCode: string | null } }[];
+  }>(farm: T) {
+    const { buyers, owners, ...rest } = farm;
+    return {
+      ...rest,
+      buyers: buyers.map((b) => ({ ...b.buyer, slot: b.slot })),
+      owners: owners.map((o) => ({ ...o.owner, regime: o.regime })),
+    };
   }
 
   async listFarms(userId: string, companyId: string, regionalId?: string) {
@@ -112,14 +122,14 @@ export class TerritorialService {
       orderBy: { name: 'asc' },
       include: this.farmInclude(),
     });
-    return farms.map((f) => this.withBuyers(f));
+    return farms.map((f) => this.withRelations(f));
   }
 
   async getFarm(userId: string, id: string) {
     const f = await this.prisma.farm.findUnique({ where: { id }, include: this.farmInclude() });
     if (!f || f.isDeleted) throw new NotFoundException();
     await this.access.ensureCompany(userId, f.companyId);
-    return this.withBuyers(f);
+    return this.withRelations(f);
   }
 
   async createFarm(userId: string, dto: CreateFarmDto) {

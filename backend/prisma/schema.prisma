@@ -287,9 +287,7 @@ model Farm {
   totalAreaHa  Float?   @map("total_area_ha")
   latitude     Float?
   longitude    Float?
-  owner        String?   // legado: texto livre, mantido como fallback de exibição pras fazendas sem ownerId
-  ownerId      String?   @map("owner_id") @db.Uuid
-  regime       FarmRegime?
+  owner        String?   // legado: texto livre, mantido como fallback de exibição
   notes        String?
   boundary     Json?
   centroidLat  Float?   @map("centroid_lat")
@@ -311,22 +309,27 @@ model Farm {
 
   company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   regional Regional? @relation(fields: [regionalId], references: [id], onDelete: SetNull)
-  ownerRef Owner?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   plots    Plot[]
   assignments FarmAssignment[]
   buyers   FarmBuyer[]
+  owners   FarmOwner[]
 
   @@unique([companyId, code])
   @@index([companyId, isDeleted])
   @@index([regionalId])
-  @@index([ownerId])
   @@map("farms")
 }
 
-// Cadastro reutilizável de proprietário — várias fazendas podem apontar pro
-// mesmo Owner via alternateCode (código alternativo), que é a chave usada
-// pra futuramente consolidar o portfólio inteiro de um dono. code (código do
-// proprietário) é só um fallback de identidade quando não há alternateCode.
+// Cadastro reutilizável de proprietário/CNPJ — uma MESMA fazenda pode ter
+// vários proprietários/parceiros vinculados (ex.: mais de um CNPJ na mesma
+// propriedade), e um mesmo Owner pode aparecer em várias fazendas. Por isso
+// o vínculo é uma tabela de junção (FarmOwner), igual à de comprador — nunca
+// uma FK direta em Farm. alternateCode identifica o Owner (o CNPJ) de forma
+// única na empresa; code (código do proprietário) é só um fallback quando
+// não há alternateCode. A fazenda em si (Farm.code, "código do Fornecedor")
+// continua sendo a âncora estável do sistema — é a ela que consultor,
+// monitor, sangrador etc. se vinculam, independente de quantos/quais
+// proprietários estejam ligados no momento.
 model Owner {
   id                String   @id @default(uuid()) @db.Uuid
   companyId         String   @map("company_id") @db.Uuid
@@ -344,13 +347,35 @@ model Owner {
   isDeleted         Boolean  @default(false) @map("is_deleted")
   deletedAt         DateTime? @map("deleted_at")
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  farms   Farm[]
+  company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  farms   FarmOwner[]
 
   @@unique([companyId, alternateCode])
   @@index([companyId, code])
   @@index([companyId, isDeleted])
   @@map("owners")
+}
+
+// Fazenda <-> Proprietário (N:N) — regime (própria/arrendada) é uma
+// característica DESSE vínculo específico, não da fazenda como um todo: a
+// mesma propriedade pode ter um dono "próprio" e um "parceiro" arrendado ao
+// mesmo tempo, cada CNPJ com seu próprio regime.
+model FarmOwner {
+  id        String      @id @default(uuid()) @db.Uuid
+  farmId    String      @map("farm_id") @db.Uuid
+  ownerId   String      @map("owner_id") @db.Uuid
+  companyId String      @map("company_id") @db.Uuid
+  regime    FarmRegime?
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  farm  Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  owner Owner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, ownerId])
+  @@index([farmId])
+  @@index([ownerId])
+  @@map("farm_owners")
 }
 
 // Cadastro reutilizável de comprador — mesma lógica do Owner, ligado à

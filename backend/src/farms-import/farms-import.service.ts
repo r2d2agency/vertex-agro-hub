@@ -356,7 +356,10 @@ export class FarmsImportService {
         if (buyerId) buyerIds.push({ buyerId, slot: b.slot });
       }
 
-      // Farm (upsert by companyId+code quando há Código do Fornecedor)
+      // Farm (upsert by companyId+code quando há Código do Fornecedor) — a
+      // fazenda é a âncora estável do sistema, identificada só pelo próprio
+      // código; proprietário(s) e comprador(es) são vínculos à parte que só
+      // se ACUMULAM, nunca sobrescrevem o que outra linha/importação já ligou.
       const existingFarm = plan.supplierCode
         ? await tx.farm.findFirst({ where: { companyId, code: plan.supplierCode } })
         : null;
@@ -367,17 +370,29 @@ export class FarmsImportService {
         state: plan.state ?? undefined,
         latitude: plan.latitude ?? undefined,
         longitude: plan.longitude ?? undefined,
-        ownerId: ownerId ?? undefined,
-        regime: plan.regime ?? undefined,
       };
       const farm = existingFarm
         ? await tx.farm.update({ where: { id: existingFarm.id }, data: { ...farmData, updatedById: userId, version: { increment: 1 } } })
         : await tx.farm.create({ data: { ...farmData, companyId, createdById: userId, updatedById: userId } });
 
-      // FarmBuyer: refaz do zero (cardinalidade pequena, mais simples que mesclar)
-      await tx.farmBuyer.deleteMany({ where: { farmId: farm.id } });
-      if (buyerIds.length) {
-        await tx.farmBuyer.createMany({ data: buyerIds.map((b) => ({ farmId: farm.id, buyerId: b.buyerId, companyId, slot: b.slot })) });
+      // FarmOwner: uma propriedade pode ter vários proprietários/CNPJs (ex.:
+      // co-titularidade, parceiro arrendatário) — cada linha da planilha só
+      // ADICIONA/atualiza o vínculo dela, nunca remove os das outras linhas.
+      if (ownerId) {
+        await tx.farmOwner.upsert({
+          where: { farmId_ownerId: { farmId: farm.id, ownerId } },
+          create: { farmId: farm.id, ownerId, companyId, regime: plan.regime ?? undefined },
+          update: plan.regime ? { regime: plan.regime } : {},
+        });
+      }
+
+      // FarmBuyer: mesma lógica — só adiciona/atualiza o slot desta linha.
+      for (const b of buyerIds) {
+        await tx.farmBuyer.upsert({
+          where: { farmId_buyerId: { farmId: farm.id, buyerId: b.buyerId } },
+          create: { farmId: farm.id, buyerId: b.buyerId, companyId, slot: b.slot },
+          update: { slot: b.slot },
+        });
       }
 
       return { farmId: farm.id, wasCreated: !existingFarm };

@@ -63,9 +63,24 @@ ALTER TABLE "farm_buyers" ADD CONSTRAINT "farm_buyers_farm_id_fkey"
 ALTER TABLE "farm_buyers" ADD CONSTRAINT "farm_buyers_buyer_id_fkey"
   FOREIGN KEY ("buyer_id") REFERENCES "buyers"("id") ON DELETE CASCADE;
 
--- Farm -> Owner + regime
-ALTER TABLE "farms" ADD COLUMN "owner_id" UUID;
-ALTER TABLE "farms" ADD COLUMN "regime" "FarmRegime";
-CREATE INDEX "farms_owner_id_idx" ON "farms"("owner_id");
-ALTER TABLE "farms" ADD CONSTRAINT "farms_owner_id_fkey"
-  FOREIGN KEY ("owner_id") REFERENCES "owners"("id") ON DELETE SET NULL;
+-- Farm <-> Owner (N:N — uma fazenda pode ter vários proprietários/CNPJs, e
+-- um mesmo proprietário pode estar em várias fazendas). regime (própria/
+-- arrendada) é do vínculo, não da fazenda: a mesma propriedade pode ter um
+-- dono "próprio" e um "parceiro" arrendado ao mesmo tempo.
+CREATE TABLE "farm_owners" (
+  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+  "farm_id" UUID NOT NULL,
+  "owner_id" UUID NOT NULL,
+  "company_id" UUID NOT NULL,
+  "regime" "FarmRegime",
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "farm_owners_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX "farm_owners_farm_id_owner_id_key" ON "farm_owners"("farm_id", "owner_id");
+CREATE INDEX "farm_owners_farm_id_idx" ON "farm_owners"("farm_id");
+CREATE INDEX "farm_owners_owner_id_idx" ON "farm_owners"("owner_id");
+ALTER TABLE "farm_owners" ADD CONSTRAINT "farm_owners_farm_id_fkey"
+  FOREIGN KEY ("farm_id") REFERENCES "farms"("id") ON DELETE CASCADE;
+ALTER TABLE "farm_owners" ADD CONSTRAINT "farm_owners_owner_id_fkey"
+  FOREIGN KEY ("owner_id") REFERENCES "owners"("id") ON DELETE CASCADE;

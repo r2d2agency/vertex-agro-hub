@@ -24,9 +24,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import {
-  createFarm, deleteFarm, listFarms, updateFarm, type Farm, type FarmInput, type FarmRegime,
+  createFarm, deleteFarm, listFarms, updateFarm, type Farm, type FarmInput,
 } from "@/lib/fazendas.functions";
-import { OwnerBuyerCombobox } from "@/components/vertex/owner-buyer-combobox";
 import { listRegionals } from "@/lib/regionais.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
 import { toBoundary, boundaryCentroid, type GeoBoundary } from "@/lib/geo";
@@ -50,9 +49,11 @@ export const Route = createFileRoute("/_authenticated/fazendas")({
 
 const empty: FarmInput = {
   regionalId: "", name: "", code: "", city: "", state: "",
-  totalAreaHa: null, latitude: null, longitude: null, owner: "", ownerId: null, regime: null, notes: "",
+  totalAreaHa: null, latitude: null, longitude: null, owner: "", notes: "",
   boundary: null, photoUrls: [], checkinRadiusM: null,
 };
+
+const REGIME_LABEL: Record<string, string> = { propria: "própria", arrendada: "arrendada" };
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -136,11 +137,16 @@ function FazendasPage() {
                           {f.regional && <p>Regional: {f.regional.name}</p>}
                           {(f.city || f.state) && <p>{f.city}{f.state ? ` / ${f.state}` : ""}</p>}
                           {f.totalAreaHa != null && <p>{f.totalAreaHa} ha</p>}
-                          {(f.ownerRef?.name || f.owner) && (
+                          {f.owners && f.owners.length > 0 ? (
                             <p>
-                              Proprietário: {f.ownerRef?.name ?? f.owner}
-                              {f.regime && ` (${f.regime === "propria" ? "própria" : "arrendada"})`}
+                              Proprietário{f.owners.length > 1 ? "s" : ""}:{" "}
+                              {f.owners.map((o) => `${o.name}${o.regime ? ` (${REGIME_LABEL[o.regime] ?? o.regime})` : ""}`).join(", ")}
                             </p>
+                          ) : f.owner ? (
+                            <p>Proprietário: {f.owner}</p>
+                          ) : null}
+                          {f.buyers && f.buyers.length > 0 && (
+                            <p>Comprador{f.buyers.length > 1 ? "es" : ""}: {f.buyers.map((b) => b.name).join(", ")}</p>
                           )}
                         </div>
                         <FarmPlotsPreview companyId={companyId!} farmId={f.id} />
@@ -223,21 +229,19 @@ function FarmDialog({
   onSaved: () => void;
 }) {
   const [values, setValues] = useState<FarmInput>(empty);
-  const [ownerDisplay, setOwnerDisplay] = useState<{ id: string; name: string } | null>(null);
   const [cep, setCep] = useState<string>("");
   const [activeTab, setActiveTab] = useState("dados");
 
 
   useEffect(() => {
     if (!open) return;
-    setOwnerDisplay(initial?.ownerRef ? { id: initial.ownerRef.id, name: initial.ownerRef.name } : null);
     if (initial) setValues({
       regionalId: initial.regionalId ?? "",
       name: initial.name, code: initial.code ?? "",
       city: initial.city ?? "", state: initial.state ?? "",
       totalAreaHa: initial.totalAreaHa ?? null,
       latitude: initial.latitude ?? null, longitude: initial.longitude ?? null,
-      owner: initial.owner ?? "", ownerId: initial.ownerId ?? null, regime: initial.regime ?? null,
+      owner: initial.owner ?? "",
       notes: initial.notes ?? "",
       boundary: initial.boundary ?? null,
       photoUrls: initial.photoUrls ?? [],
@@ -323,31 +327,23 @@ function FarmDialog({
                       <UfSelect value={values.state ?? ""} onChange={(v) => setValues((s) => ({ ...s, state: v }))} />
                     </Field>
                   </div>
-                  <Field label="Proprietário">
-                    <OwnerBuyerCombobox
-                      kind="owner"
-                      companyId={companyId ?? ""}
-                      value={ownerDisplay}
-                      onChange={(item) => {
-                        setOwnerDisplay(item ? { id: item.id, name: item.name } : null);
-                        setValues((v) => ({ ...v, ownerId: item?.id ?? null }));
-                      }}
-                      placeholder={values.owner ? `${values.owner} (legado, não migrado)` : "Buscar proprietário..."}
-                    />
+                  <Field label="Proprietário / Responsável">
+                    <Input value={values.owner} onChange={(e) => setValues((v) => ({ ...v, owner: e.target.value }))} />
                   </Field>
-                  <Field label="Regime da fazenda">
-                    <Select
-                      value={values.regime ?? "__none"}
-                      onValueChange={(v) => setValues((s) => ({ ...s, regime: v === "__none" ? null : (v as FarmRegime) }))}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Não informado" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none">Não informado</SelectItem>
-                        <SelectItem value="propria">Própria</SelectItem>
-                        <SelectItem value="arrendada">Arrendada</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
+                  {(initial?.owners?.length || initial?.buyers?.length) ? (
+                    <div className="col-span-2 rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+                      <p className="mb-1 font-semibold uppercase tracking-wider">Vínculos da importação (somente leitura)</p>
+                      {!!initial?.owners?.length && (
+                        <p>
+                          Proprietário{initial.owners.length > 1 ? "s" : ""}/CNPJ:{" "}
+                          {initial.owners.map((o) => `${o.name}${o.regime ? ` (${REGIME_LABEL[o.regime] ?? o.regime})` : ""}`).join(", ")}
+                        </p>
+                      )}
+                      {!!initial?.buyers?.length && (
+                        <p>Comprador{initial.buyers.length > 1 ? "es" : ""}: {initial.buyers.map((b) => b.name).join(", ")}</p>
+                      )}
+                    </div>
+                  ) : null}
                   <Field label="Área total (ha)">
                     <Input type="number" step="0.01" value={values.totalAreaHa ?? ""} onChange={(e) => setValues((v) => ({ ...v, totalAreaHa: e.target.value ? Number(e.target.value) : null }))} />
                   </Field>
