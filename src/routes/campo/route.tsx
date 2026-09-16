@@ -296,12 +296,20 @@ function CheckinGate({
 }) {
   const [farmId, setFarmId] = useState<string>(me.assignments?.[0]?.farm?.id ?? "");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const isMonitor = me.primaryRole === "monitor";
 
   const farm = (me.assignments || []).find((a) => a.farm?.id === farmId)?.farm;
   const companyId = farm?.companyId ?? (me.companies && me.companies.length > 0 ? me.companies[0].id : (me.assignments && me.assignments.length > 0 ? me.assignments[0].farm?.companyId : undefined));
   const gpsReady = gps.status === "active";
   const requireGeolocation = me.companies?.find((c) => c.id === companyId)?.requireGeolocation ?? true;
-  const canOpen = !!companyId && (gpsReady || !requireGeolocation);
+  const canOpen = !!companyId && !!farmId && (isMonitor || gpsReady || !requireGeolocation);
+
+  function startMonitor() {
+    if (!farmId) return;
+    const stamp = { farmId, at: Date.now() };
+    sessionStorage.setItem(CHECKIN_KEY, JSON.stringify(stamp));
+    onDone(stamp);
+  }
 
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-5 text-center">
@@ -309,9 +317,9 @@ function CheckinGate({
         <ShieldCheck className="h-8 w-8" />
       </div>
       <div className="space-y-1">
-        <h1 className="text-lg font-semibold text-foreground">Check-in obrigatório</h1>
+        <h1 className="text-lg font-semibold text-foreground">{isMonitor ? "Escolha a propriedade" : "Check-in obrigatório"}</h1>
         <p className="max-w-xs text-sm text-muted-foreground">
-          Confirme sua localização para liberar registros de sangria, produção, ocorrências e agenda.
+          {isMonitor ? "Selecione a propriedade onde você vai trabalhar para começar." : "Confirme sua localização para liberar registros de sangria, produção, ocorrências e agenda."}
         </p>
       </div>
 
@@ -332,7 +340,7 @@ function CheckinGate({
         </div>
       )}
 
-      <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
+      {!isMonitor && <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
         gpsReady
           ? "border-primary/40 bg-primary/10 text-primary"
           : gps.status === "denied" || gps.status === "unsupported"
@@ -347,23 +355,23 @@ function CheckinGate({
           : gps.status === "unsupported"
           ? "Dispositivo sem GPS"
           : "Obtendo localização…"}
-      </div>
+      </div>}
 
-      {!requireGeolocation && (
+      {!isMonitor && !requireGeolocation && (
         <p className="max-w-xs text-[11px] font-medium text-warning">
           Validação de geolocalização desligada em Configurações — não é preciso esperar o GPS.
         </p>
       )}
 
-      <Button className="h-12 w-full max-w-xs rounded-xl text-base font-semibold" disabled={!canOpen} onClick={() => setSheetOpen(true)}>
-        Fazer check-in
+      <Button className="h-12 w-full max-w-xs rounded-xl text-base font-semibold" disabled={!canOpen} onClick={() => isMonitor ? startMonitor() : setSheetOpen(true)}>
+        {isMonitor ? "Começar nesta propriedade" : "Fazer check-in"}
       </Button>
 
       <p className="max-w-xs text-[11px] text-muted-foreground/80">
-        Sem check-in, apenas visualização básica está disponível. O check-in expira em 12h.
+        {isMonitor ? "Você poderá trocar de propriedade pelo botão no topo." : "Sem check-in, apenas visualização básica está disponível. O check-in expira em 12h."}
       </p>
 
-      {companyId && (
+      {companyId && !isMonitor && (
         <CheckinSheet
           open={sheetOpen}
           onOpenChange={setSheetOpen}

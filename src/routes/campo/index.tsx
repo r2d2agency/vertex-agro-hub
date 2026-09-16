@@ -1,26 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, ChevronRight, AlertTriangle, ShieldCheck, PlusCircle } from "lucide-react";
+import { Loader2, ChevronRight, AlertTriangle, ShieldCheck, PlusCircle, Search, UserRound } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { getFieldMe, type FieldMe, type Coords, captureLocation, listFieldTappers, type FieldTapper } from "@/lib/field.functions";
 import { toast } from "sonner";
 import { listTasks, categoryLabel, categoryStyle, type ScheduledTask } from "@/lib/agenda.functions";
-import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
 import { listTappingRecords, type TappingRecord } from "@/lib/sangrias.functions";
 import { getLocalIsoDate } from "@/lib/date-utils";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
-
-const HISTORY_KIND_LABEL: Record<string, string> = {
-  sangria: "Sangria", producao: "Produção", estimulacao: "Estimulação",
-  ocorrencia: "Ocorrência", agenda: "Agenda", fotografia: "Foto",
-};
-const HISTORY_KIND_STYLE: Record<string, string> = {
-  sangria: "bg-primary/15 text-primary",
-  producao: "bg-chart-2/20 text-chart-2",
-  estimulacao: "bg-chart-3/20 text-chart-3",
-  ocorrencia: "bg-destructive/15 text-destructive",
-  agenda: "bg-warning/20 text-warning",
-  fotografia: "bg-muted text-muted-foreground",
-};
 
 // Atalhos que antes só apareciam no menu do "+" — trazidos pra tela inicial
 // pra economizar um clique nas operações mais usadas do monitor.
@@ -31,6 +19,23 @@ const QUICK_ACTIONS: Array<{ to: string; label: string; emoji: string; roles?: s
   { to: "/campo/operacao-maquina", label: "Operação de máquina", emoji: "🚜" },
 ];
 
+type DailySangriaCategory = "possible" | "done" | "late" | "ahead";
+type DailyTapper = FieldTapper & { farmId: string; companyId: string; records: TappingRecord[] };
+type DailySangriaSummary = Record<DailySangriaCategory, DailyTapper[]>;
+
+const CATEGORY_LABEL: Record<DailySangriaCategory, string> = {
+  possible: "Sangradores previstos",
+  done: "Sangrias concluídas",
+  late: "Sangrias atrasadas",
+  ahead: "Sangrias antecipadas",
+};
+
+const PERIOD_OPTIONS = [
+  { value: "hoje", label: "Hoje", days: 1 },
+  { value: "semana", label: "Últimos 7 dias", days: 7 },
+  { value: "mes", label: "Últimos 30 dias", days: 30 },
+] as const;
+
 export const Route = createFileRoute("/campo/")({ component: FieldHome });
 
 function FieldHome() {
@@ -40,9 +45,9 @@ function FieldHome() {
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
   const [checkinSheetOpen, setCheckinSheetOpen] = useState(false);
   const [checkinCoords, setCheckinCoords] = useState<Coords | null>(null);
-  const [todayActivity, setTodayActivity] = useState<HistoryEvent[]>([]);
-  const [loadingActivity, setLoadingActivity] = useState(true);
-  const [sangriaStats, setSangriaStats] = useState({ possible: 0, done: 0, late: 0, ahead: 0 });
+  const [dailySangria, setDailySangria] = useState<DailySangriaSummary>({ possible: [], done: [], late: [], ahead: [] });
+  const [sangriaDetail, setSangriaDetail] = useState<DailySangriaCategory | null>(null);
+  const [selectedTapper, setSelectedTapper] = useState<DailyTapper | null>(null);
 
   useEffect(() => {
     const CHECKIN_KEY = "vertex.field.checkin.v1";
@@ -80,14 +85,7 @@ function FieldHome() {
         }
         setTasks(all.sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt)));
 
-        const cidsForHistory = m.isAdmin ? (m.companies || []).map((c) => c.id) : Array.from(new Set((m.assignments || []).map((a) => a.farm.companyId)));
-        const activity: HistoryEvent[] = [];
-        for (const cid of cidsForHistory) {
-          try { activity.push(...(await listHistory(cid, { from: today, to: today, limit: 50 }))); } catch { /* ignore */ }
-        }
-        activity.sort((a, b) => (a.date < b.date ? 1 : -1));
-        setTodayActivity(activity);
-      } finally { setLoading(false); setLoadingActivity(false); }
+      } finally { setLoading(false); }
     })();
   }, []);
 
@@ -104,25 +102,21 @@ function FieldHome() {
           Promise.all(farms.map((a) => listFieldTappers(a.farm.companyId, a.farm.id).catch(() => [] as FieldTapper[]))),
           Promise.all(farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from: today, to: today }).catch(() => [] as TappingRecord[]))),
         ]);
-        const tappers = new Map<string, FieldTapper>();
-        tapperLists.flat().forEach((t) => tappers.set(t.id, t));
+        const tappers = farms.flatMap((assignment, index) =>
+          (tapperLists[index] ?? []).map((t) => ({ ...t, farmId: assignment.farm.id, companyId: assignment.farm.companyId })),
+        );
         const records = recordLists.flat();
-
-        const extentsByTapper = new Map<string, string[]>();
-        for (const r of records) {
-          const keys = [r.tapperId, r.sangradorName.trim().toLowerCase()].filter(Boolean) as string[];
-          const extents = (r.taskExtent ?? "").split(",").filter(Boolean);
-          for (const key of keys) extentsByTapper.set(key, [...(extentsByTapper.get(key) ?? []), ...extents]);
+        const summary: DailySangriaSummary = { possible: [], done: [], late: [], ahead: [] };
+        for (const t of tappers) {
+          const own = records.filter((r) => (r.tapperId && r.tapperId === t.id) || r.sangradorName.trim().toLowerCase() === t.fullName.trim().toLowerCase());
+          const extents = own.flatMap((r) => (r.taskExtent ?? "").split(",").filter(Boolean));
+          const item: DailyTapper = { ...t, records: own };
+          summary.possible.push(item);
+          if (extents.includes("/")) summary.ahead.push(item);
+          else if (extents.includes("X")) summary.done.push(item);
+          else summary.late.push(item);
         }
-
-        let ahead = 0, done = 0, late = 0;
-        for (const t of tappers.values()) {
-          const extents = extentsByTapper.get(t.id) ?? extentsByTapper.get(t.fullName.trim().toLowerCase()) ?? [];
-          if (extents.includes("/")) ahead++;
-          else if (extents.includes("X")) done++;
-          else late++;
-        }
-        setSangriaStats({ possible: tappers.size, done, ahead, late });
+        setDailySangria(summary);
       } catch { /* mantém os valores zerados */ }
     })();
   }, [me]);
@@ -165,11 +159,11 @@ function FieldHome() {
               </span>
             </div>
           ) : (
-            <p className="text-[10px] text-warning mt-0.5">Aguardando Check-in</p>
+            <p className="text-[10px] text-warning mt-0.5">{me.primaryRole === "monitor" ? "Escolha uma propriedade" : "Aguardando Check-in"}</p>
           )}
         </div>
         <div className="flex items-center gap-2">
-          {activeCheckin && (
+          {activeCheckin && me.primaryRole !== "monitor" && (
             <button
               onClick={openCheckinSheet}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 transition-transform"
@@ -200,19 +194,19 @@ function FieldHome() {
 
       {/* Resumo do dia — sangrias de todos os sangradores das fazendas do usuário */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-foreground">Resumo do dia</h2>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Resumo de sangrias diárias</h2>
         <div className="grid grid-cols-4 gap-2">
-          <SummaryCell value={sangriaStats.possible} label="Possíveis" tone="muted" />
-          <SummaryCell value={sangriaStats.done} label="Concluídas" tone="primary" />
-          <SummaryCell value={sangriaStats.late} label="Atrasadas" tone="destructive" />
-          <SummaryCell value={sangriaStats.ahead} label="Adiantadas" tone="warning" />
+          <SummaryCell value={dailySangria.possible.length} label="Possíveis" tone="muted" onClick={() => setSangriaDetail("possible")} />
+          <SummaryCell value={dailySangria.done.length} label="Concluídas" tone="primary" onClick={() => setSangriaDetail("done")} />
+          <SummaryCell value={dailySangria.late.length} label="Atrasadas" tone="destructive" onClick={() => setSangriaDetail("late")} />
+          <SummaryCell value={dailySangria.ahead.length} label="Antecipadas" tone="warning" onClick={() => setSangriaDetail("ahead")} />
         </div>
       </section>
 
       {/* Próxima atividade */}
       {nextTask && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Próxima atividade</h2>
+          <h2 className="mb-3 text-sm font-semibold text-foreground">Recomendações técnicas</h2>
           <div className="rounded-2xl border border-border/60 bg-card p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-primary/15 px-3 py-1.5 text-sm font-semibold text-primary">
@@ -240,40 +234,6 @@ function FieldHome() {
           </div>
         </section>
       )}
-
-      {/* O que eu fiz hoje */}
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">O que eu fiz hoje</h2>
-          <Link to="/campo/historico" className="flex items-center gap-0.5 text-xs font-medium text-primary">
-            Ver tudo <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-        {loadingActivity ? (
-          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-        ) : todayActivity.length === 0 ? (
-          <p className="rounded-2xl border border-border/60 bg-card p-4 text-center text-xs text-muted-foreground">
-            Nenhum registro hoje ainda.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {todayActivity.slice(0, 5).map((e) => (
-              <li key={e.id} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-3">
-                <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${HISTORY_KIND_STYLE[e.kind] ?? "bg-muted text-muted-foreground"}`}>
-                  {HISTORY_KIND_LABEL[e.kind] ?? e.kind}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{e.title}</div>
-                  {e.subtitle && <div className="truncate text-[11px] text-muted-foreground">{e.subtitle}</div>}
-                </div>
-                <span className="shrink-0 text-[11px] text-muted-foreground">
-                  {new Date(e.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
 
       {/* Alertas */}
       {stats.overdue > 0 && (
@@ -329,20 +289,115 @@ function FieldHome() {
         requireGeolocation={me.companies?.[0]?.requireGeolocation ?? true}
         onDone={(stamp) => setActiveCheckin(stamp)}
       />
+      <DailySangriaDialog
+        category={sangriaDetail}
+        summary={dailySangria}
+        onClose={() => setSangriaDetail(null)}
+        onSelectTapper={(tapper) => { setSangriaDetail(null); setSelectedTapper(tapper); }}
+      />
+      <TapperStatsDialog tapper={selectedTapper} onClose={() => setSelectedTapper(null)} />
     </div>
   );
 }
 
-function SummaryCell({ value, label, tone }: { value: number; label: string; tone: "muted" | "primary" | "warning" | "destructive" }) {
+function SummaryCell({ value, label, tone, onClick }: { value: number; label: string; tone: "muted" | "primary" | "warning" | "destructive"; onClick: () => void }) {
   const cls =
     tone === "primary" ? "text-primary" :
     tone === "warning" ? "text-warning" :
     tone === "destructive" ? "text-destructive" :
     "text-foreground";
   return (
-    <div className="rounded-2xl border border-border/60 bg-card px-2 py-3 text-center">
+    <button type="button" onClick={onClick} className="rounded-2xl border border-border/60 bg-card px-2 py-3 text-center transition hover:border-primary/60 hover:bg-primary/5">
       <div className={`text-2xl font-bold ${cls}`}>{value}</div>
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-    </div>
+    </button>
   );
+}
+
+function DailySangriaDialog({
+  category, summary, onClose, onSelectTapper,
+}: {
+  category: DailySangriaCategory | null;
+  summary: DailySangriaSummary;
+  onClose: () => void;
+  onSelectTapper: (tapper: DailyTapper) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const list = category ? summary[category] : [];
+  const filtered = list.filter((tapper) => tapper.fullName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+
+  useEffect(() => { setSearch(""); }, [category]);
+
+  return (
+    <Dialog open={!!category} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+        <DialogHeader><DialogTitle>{category ? CATEGORY_LABEL[category] : "Sangrias"}</DialogTitle></DialogHeader>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Pesquisar por sangrador..." value={search} onChange={(event) => setSearch(event.target.value)} />
+        </div>
+        {filtered.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhum sangrador encontrado.</p> : (
+          <div className="space-y-2">
+            {filtered.map((tapper) => (
+              <button key={`${tapper.id}:${tapper.farmId}`} type="button" onClick={() => onSelectTapper(tapper)} className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card p-3 text-left transition hover:border-primary/60 hover:bg-primary/5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><UserRound className="h-4 w-4" /></span>
+                <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{tapper.fullName}</span><span className="block truncate text-[11px] text-muted-foreground">{tapper.records.length} registro(s) hoje</span></span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TapperStatsDialog({ tapper, onClose }: { tapper: DailyTapper | null; onClose: () => void }) {
+  const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("mes");
+  const [records, setRecords] = useState<TappingRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!tapper) return;
+    const option = PERIOD_OPTIONS.find((item) => item.value === period)!;
+    const to = getLocalIsoDate();
+    const from = getLocalIsoDate(new Date(Date.now() - (option.days - 1) * 86400000));
+    setLoading(true);
+    listTappingRecords(tapper.companyId, { farmId: tapper.farmId, from, to })
+      .then((items) => setRecords(items.filter((record) => (record.tapperId && record.tapperId === tapper.id) || record.sangradorName.trim().toLowerCase() === tapper.fullName.trim().toLowerCase())))
+      .catch(() => setRecords([]))
+      .finally(() => setLoading(false));
+  }, [tapper, period]);
+
+  const stats = useMemo(() => ({
+    records: records.length,
+    days: new Set(records.map((record) => record.date.slice(0, 10))).size,
+    trees: records.reduce((sum, record) => sum + (record.treesTapped ?? 0), 0),
+    liters: records.reduce((sum, record) => sum + (record.liters ?? 0), 0),
+    ahead: records.filter((record) => (record.taskExtent ?? "").split(",").includes("/")).length,
+  }), [records]);
+
+  return (
+    <Dialog open={!!tapper} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>{tapper?.fullName ?? "Sangrador"}</DialogTitle></DialogHeader>
+        <div className="grid grid-cols-3 gap-2">
+          {PERIOD_OPTIONS.map((option) => <button key={option.value} type="button" onClick={() => setPeriod(option.value)} className={`rounded-lg border px-2 py-2 text-xs font-medium ${period === option.value ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>{option.label}</button>)}
+        </div>
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div> : (
+          <div className="grid grid-cols-2 gap-2">
+            <StatCell label="Sangrias" value={stats.records} />
+            <StatCell label="Dias trabalhados" value={stats.days} />
+            <StatCell label="Árvores sangradas" value={stats.trees.toLocaleString("pt-BR")} />
+            <StatCell label="Litros" value={stats.liters.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} />
+            <StatCell label="Antecipadas" value={stats.ahead} />
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StatCell({ label, value }: { label: string; value: number | string }) {
+  return <div className="rounded-xl border border-border/60 bg-card p-3"><div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div><div className="mt-1 text-lg font-bold">{value}</div></div>;
 }

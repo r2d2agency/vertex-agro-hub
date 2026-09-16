@@ -15,7 +15,7 @@ const TABS: Item[] = [
   { to: "/campo", label: "Início", icon: Home },
   { to: "/campo/agenda", label: "Agenda", icon: CalendarDays },
   { to: "__fab__", label: "Operação", icon: Plus },
-  { to: "/campo/historico", label: "Histórico", icon: History },
+  { to: "/campo/historico", label: "Histórico diário", icon: History },
   { to: "/campo/mais", label: "Mais", icon: MoreHorizontal },
 ];
 

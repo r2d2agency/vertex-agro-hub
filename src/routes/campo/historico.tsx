@@ -145,7 +145,7 @@ function HistoricoPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-center text-base font-semibold">Histórico</h1>
+      <h1 className="text-center text-base font-semibold">Histórico diário</h1>
 
       <div className="flex gap-2">
         <button
