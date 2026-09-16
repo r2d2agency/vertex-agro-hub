@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
+import { IsDateString, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateRegionalDto {
   @IsUUID() companyId!: string;
@@ -48,6 +48,27 @@ export class UpdateFarmDto {
   @IsOptional() @IsObject() boundary?: Record<string, unknown> | null;
   @IsOptional() @IsString({ each: true }) photoUrls?: string[];
   @IsOptional() @IsInt() @Min(0) checkinRadiusM?: number | null;
+}
+
+export class UpdateOwnerDto {
+  @IsOptional() @IsString() @MaxLength(200) name?: string;
+  @IsOptional() @IsString() @MaxLength(80) code?: string | null;
+  @IsOptional() @IsString() @MaxLength(80) alternateCode?: string | null;
+  @IsOptional() @IsString() @MaxLength(20) cpf?: string | null;
+  @IsOptional() @IsString() @MaxLength(20) cnpjCpf?: string | null;
+  @IsOptional() @IsString() @MaxLength(40) stateRegistration?: string | null;
+  @IsOptional() @IsString() notes?: string | null;
+}
+
+export class CreateOwnerDocumentDto {
+  @IsUUID() companyId!: string;
+  @IsString() @MinLength(1) @MaxLength(60) kind!: string;
+  @IsString() @MinLength(1) @MaxLength(200) name!: string;
+  @IsOptional() @IsString() @MaxLength(100) number?: string;
+  @IsOptional() @IsString() fileUrl?: string;
+  @IsOptional() @IsDateString() issuedAt?: string;
+  @IsOptional() @IsDateString() expiresAt?: string;
+  @IsOptional() @IsString() notes?: string;
 }
 
 export class CreatePlotDto {

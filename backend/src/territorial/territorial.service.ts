@@ -8,6 +8,8 @@ import {
   UpdateFarmDto,
   UpdatePlotDto,
   UpdateRegionalDto,
+  UpdateOwnerDto,
+  CreateOwnerDocumentDto,
 } from './dto';
 import { computeGeo } from './geo.util';
 
@@ -264,6 +266,54 @@ export class TerritorialService {
       orderBy: { name: 'asc' },
       take: 20,
     });
+  }
+
+  private async ensureOwner(userId: string, ownerId: string, companyId: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const owner = await this.prisma.owner.findFirst({ where: { id: ownerId, companyId, isDeleted: false } });
+    if (!owner) throw new NotFoundException('Proprietário não encontrado');
+    return owner;
+  }
+
+  async getOwner(userId: string, ownerId: string, companyId: string) {
+    return this.ensureOwner(userId, ownerId, companyId);
+  }
+
+  async updateOwner(userId: string, ownerId: string, companyId: string, dto: UpdateOwnerDto) {
+    await this.ensureOwner(userId, ownerId, companyId);
+    return this.prisma.owner.update({
+      where: { id: ownerId },
+      data: { ...dto, updatedById: userId },
+    });
+  }
+
+  async listOwnerDocuments(userId: string, ownerId: string, companyId: string) {
+    await this.ensureOwner(userId, ownerId, companyId);
+    return this.prisma.ownerDocument.findMany({ where: { ownerId, companyId }, orderBy: { createdAt: 'desc' } });
+  }
+
+  async createOwnerDocument(userId: string, ownerId: string, dto: CreateOwnerDocumentDto) {
+    await this.ensureOwner(userId, ownerId, dto.companyId);
+    return this.prisma.ownerDocument.create({
+      data: {
+        ownerId,
+        companyId: dto.companyId,
+        kind: dto.kind,
+        name: dto.name,
+        number: dto.number ?? null,
+        fileUrl: dto.fileUrl ?? null,
+        issuedAt: dto.issuedAt ? new Date(dto.issuedAt) : null,
+        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+        notes: dto.notes ?? null,
+      },
+    });
+  }
+
+  async deleteOwnerDocument(userId: string, ownerId: string, documentId: string, companyId: string) {
+    await this.ensureOwner(userId, ownerId, companyId);
+    const deleted = await this.prisma.ownerDocument.deleteMany({ where: { id: documentId, ownerId, companyId } });
+    if (!deleted.count) throw new NotFoundException('Documento não encontrado');
+    return { ok: true };
   }
 
   async listBuyers(userId: string, companyId: string, q?: string) {

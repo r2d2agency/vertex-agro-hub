@@ -213,6 +213,7 @@ model Company {
   regionals Regional[]
   farms     Farm[]
   owners    Owner[]
+  ownerDocuments OwnerDocument[]
   buyers    Buyer[]
   plots     Plot[]
   clones    Clone[]
@@ -349,11 +350,34 @@ model Owner {
 
   company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   farms   FarmOwner[]
+  documents OwnerDocument[]
 
   @@unique([companyId, alternateCode])
   @@index([companyId, code])
   @@index([companyId, isDeleted])
   @@map("owners")
+}
+
+model OwnerDocument {
+  id         String    @id @default(uuid()) @db.Uuid
+  ownerId    String    @map("owner_id") @db.Uuid
+  companyId  String    @map("company_id") @db.Uuid
+  kind       String
+  name       String
+  number     String?
+  fileUrl    String?   @map("file_url")
+  issuedAt   DateTime? @map("issued_at") @db.Date
+  expiresAt  DateTime? @map("expires_at") @db.Date
+  notes      String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  owner   Owner   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([companyId])
+  @@map("owner_documents")
 }
 
 // Fazenda <-> Proprietário (N:N) — regime (própria/arrendada) é uma

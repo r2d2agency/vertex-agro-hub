@@ -8,10 +8,33 @@ export type FarmRegime = "propria" | "arrendada";
 // vários CNPJs/proprietários — ex.: co-titularidade ou parceiro arrendatário
 // — e vários compradores). Só são escritos pela importação em massa; o
 // formulário manual de fazenda os mostra em modo leitura.
-export type OwnerRef = { id: string; name: string; code?: string | null; alternateCode?: string | null };
+export type OwnerRef = {
+  id: string;
+  name: string;
+  code?: string | null;
+  alternateCode?: string | null;
+  cpf?: string | null;
+  cnpjCpf?: string | null;
+  stateRegistration?: string | null;
+  notes?: string | null;
+};
 export type FarmOwnerRef = OwnerRef & { regime?: FarmRegime | null };
 export type BuyerRef = { id: string; name: string; code: string };
 export type FarmBuyerRef = BuyerRef & { slot: number };
+
+export type OwnerDocument = {
+  id: string;
+  ownerId: string;
+  companyId: string;
+  kind: string;
+  name: string;
+  number?: string | null;
+  fileUrl?: string | null;
+  issuedAt?: string | null;
+  expiresAt?: string | null;
+  notes?: string | null;
+  createdAt: string;
+};
 
 export type Farm = {
   id: string;
@@ -77,6 +100,34 @@ export function updateFarm(id: string, values: FarmInput) {
 
 export function deleteFarm(id: string) {
   return apiRequest<{ ok: true }>(`/farms/${id}`, { method: "DELETE" });
+}
+
+export function getOwner(id: string, companyId: string) {
+  return apiRequest<OwnerRef>(`/owners/${id}?companyId=${encodeURIComponent(companyId)}`);
+}
+
+export function updateOwner(id: string, companyId: string, values: Omit<OwnerRef, "id">) {
+  return apiRequest<OwnerRef>(`/owners/${id}?companyId=${encodeURIComponent(companyId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(values),
+  });
+}
+
+export function listOwnerDocuments(ownerId: string, companyId: string) {
+  return apiRequest<OwnerDocument[]>(`/owners/${ownerId}/documents?companyId=${encodeURIComponent(companyId)}`);
+}
+
+export function createOwnerDocument(ownerId: string, data: Omit<OwnerDocument, "id" | "ownerId" | "createdAt">) {
+  return apiRequest<OwnerDocument>(`/owners/${ownerId}/documents`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteOwnerDocument(ownerId: string, documentId: string, companyId: string) {
+  return apiRequest<{ ok: true }>(`/owners/${ownerId}/documents/${documentId}?companyId=${encodeURIComponent(companyId)}`, {
+    method: "DELETE",
+  });
 }
 
 function clean(v: FarmInput) {

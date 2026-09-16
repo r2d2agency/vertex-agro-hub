@@ -22,6 +22,8 @@ import {
   UpdateFarmDto,
   UpdatePlotDto,
   UpdateRegionalDto,
+  UpdateOwnerDto,
+  CreateOwnerDocumentDto,
 } from './dto';
 
 function requireCompanyId(companyId?: string) {
@@ -131,6 +133,34 @@ export class TerritorialController {
   @Get('owners')
   listOwners(@Req() req: any, @Query('companyId') companyId?: string, @Query('q') q?: string) {
     return this.svc.listOwners(req.user.sub, requireCompanyId(companyId), q);
+  }
+  @Get('owners/:id')
+  getOwner(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Query('companyId') companyId?: string) {
+    return this.svc.getOwner(req.user.sub, id, requireCompanyId(companyId));
+  }
+  @UseGuards(RolesGuard)
+  @Patch('owners/:id')
+  updateOwner(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Query('companyId') companyId: string, @Body() dto: UpdateOwnerDto) {
+    return this.svc.updateOwner(req.user.sub, id, requireCompanyId(companyId), dto);
+  }
+  @Get('owners/:id/documents')
+  listOwnerDocuments(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Query('companyId') companyId?: string) {
+    return this.svc.listOwnerDocuments(req.user.sub, id, requireCompanyId(companyId));
+  }
+  @UseGuards(RolesGuard)
+  @Post('owners/:id/documents')
+  createOwnerDocument(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateOwnerDocumentDto) {
+    return this.svc.createOwnerDocument(req.user.sub, id, dto);
+  }
+  @UseGuards(RolesGuard)
+  @Delete('owners/:id/documents/:documentId')
+  deleteOwnerDocument(
+    @Req() req: any,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @Query('companyId') companyId?: string,
+  ) {
+    return this.svc.deleteOwnerDocument(req.user.sub, id, documentId, requireCompanyId(companyId));
   }
   @Get('buyers')
   listBuyers(@Req() req: any, @Query('companyId') companyId?: string, @Query('q') q?: string) {

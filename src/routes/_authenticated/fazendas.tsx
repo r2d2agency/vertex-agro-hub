@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, ReactNode } from "react";
-import { Plus, Pencil, Trash2, TreeDeciduous, Camera, ImageIcon, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, TreeDeciduous, Camera, ImageIcon, Upload, UserRound, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileDropzone } from "@/components/vertex/file-dropzone";
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import {
-  createFarm, deleteFarm, listFarms, updateFarm, type Farm, type FarmInput,
+  createFarm, deleteFarm, listFarms, updateFarm, type Farm, type FarmInput, type FarmOwnerRef,
 } from "@/lib/fazendas.functions";
 import { listRegionals } from "@/lib/regionais.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
@@ -34,6 +34,7 @@ import { UfSelect } from "@/components/vertex/uf-select";
 import { MapPin } from "lucide-react";
 import { geocodeAddress } from "@/lib/via-cep";
 import { FarmDetailDialog } from "@/components/vertex/farm-detail-dialog";
+import { OwnerProfileDialog } from "@/components/vertex/owner-profile-dialog";
 import { listPlots } from "@/lib/talhoes.functions";
 
 export const Route = createFileRoute("/_authenticated/fazendas")({
@@ -231,10 +232,14 @@ function FarmDialog({
   const [values, setValues] = useState<FarmInput>(empty);
   const [cep, setCep] = useState<string>("");
   const [activeTab, setActiveTab] = useState("dados");
+  const [selectedOwner, setSelectedOwner] = useState<FarmOwnerRef | null>(null);
 
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSelectedOwner(null);
+      return;
+    }
     if (initial) setValues({
       regionalId: initial.regionalId ?? "",
       name: initial.name, code: initial.code ?? "",
@@ -266,7 +271,8 @@ function FarmDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{initial ? "Editar fazenda" : "Nova fazenda"}</DialogTitle></DialogHeader>
         <form
@@ -332,15 +338,32 @@ function FarmDialog({
                   </Field>
                   {(initial?.owners?.length || initial?.buyers?.length) ? (
                     <div className="col-span-2 rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
-                      <p className="mb-1 font-semibold uppercase tracking-wider">Vínculos da importação (somente leitura)</p>
+                      <p className="mb-2 font-semibold uppercase tracking-wider">Vínculos da importação</p>
                       {!!initial?.owners?.length && (
-                        <p>
-                          Proprietário{initial.owners.length > 1 ? "s" : ""}/CNPJ:{" "}
-                          {initial.owners.map((o) => `${o.name}${o.regime ? ` (${REGIME_LABEL[o.regime] ?? o.regime})` : ""}`).join(", ")}
-                        </p>
+                        <div className="space-y-1.5">
+                          <p className="font-medium">Proprietários/CNPJ</p>
+                          <div className="grid gap-1 sm:grid-cols-2">
+                            {initial.owners.map((owner) => (
+                              <button
+                                key={owner.id}
+                                type="button"
+                                onClick={() => setSelectedOwner(owner)}
+                                className="flex min-w-0 items-center justify-between gap-2 rounded-md border bg-background px-2.5 py-2 text-left text-foreground transition-colors hover:border-primary/60 hover:bg-primary/5"
+                              >
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <UserRound className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                  <span className="min-w-0 truncate">{owner.name}</span>
+                                  {owner.regime && <span className="shrink-0 text-[10px] text-muted-foreground">({REGIME_LABEL[owner.regime] ?? owner.regime})</span>}
+                                </span>
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                              </button>
+                            ))}
+                          </div>
+                          <p className="pt-1 text-[11px]">Clique em um nome para consultar ou completar cadastro, documentos e contratos.</p>
+                        </div>
                       )}
                       {!!initial?.buyers?.length && (
-                        <p>Comprador{initial.buyers.length > 1 ? "es" : ""}: {initial.buyers.map((b) => b.name).join(", ")}</p>
+                        <p className="mt-3">Comprador{initial.buyers.length > 1 ? "es" : ""}: {initial.buyers.map((b) => b.name).join(", ")}</p>
                       )}
                     </div>
                   ) : null}
@@ -454,6 +477,8 @@ function FarmDialog({
           </div>
         </form>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+      {companyId && <OwnerProfileDialog owner={selectedOwner} companyId={companyId} onOpenChange={(isOpen) => !isOpen && setSelectedOwner(null)} />}
+    </>
   );
 }
