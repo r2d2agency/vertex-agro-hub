@@ -1,4 +1,6 @@
-import { IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
+import { IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
+
+const FARM_REGIMES = ['propria', 'arrendada'] as const;
 
 export class CreateRegionalDto {
   @IsUUID() companyId!: string;
@@ -28,6 +30,8 @@ export class CreateFarmDto {
   @IsOptional() @IsNumber() latitude?: number;
   @IsOptional() @IsNumber() longitude?: number;
   @IsOptional() @IsString() @MaxLength(200) owner?: string;
+  @IsOptional() @IsUUID() ownerId?: string | null;
+  @IsOptional() @IsIn(FARM_REGIMES) regime?: (typeof FARM_REGIMES)[number] | null;
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsObject() boundary?: Record<string, unknown>;
   @IsOptional() @IsString({ each: true }) photoUrls?: string[];
@@ -44,6 +48,8 @@ export class UpdateFarmDto {
   @IsOptional() @IsNumber() latitude?: number;
   @IsOptional() @IsNumber() longitude?: number;
   @IsOptional() @IsString() @MaxLength(200) owner?: string;
+  @IsOptional() @IsUUID() ownerId?: string | null;
+  @IsOptional() @IsIn(FARM_REGIMES) regime?: (typeof FARM_REGIMES)[number] | null;
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsObject() boundary?: Record<string, unknown> | null;
   @IsOptional() @IsString({ each: true }) photoUrls?: string[];

@@ -92,20 +92,34 @@ export class TerritorialService {
   }
 
   // ---------- Farms ----------
+  private farmInclude() {
+    return {
+      regional: { select: { id: true, name: true } },
+      ownerRef: { select: { id: true, name: true, code: true, alternateCode: true } },
+      buyers: { select: { slot: true, buyer: { select: { id: true, name: true, code: true } } }, orderBy: { slot: 'asc' as const } },
+    };
+  }
+
+  private withBuyers<T extends { buyers: { slot: number; buyer: { id: string; name: string; code: string } }[] }>(farm: T) {
+    const { buyers, ...rest } = farm;
+    return { ...rest, buyers: buyers.map((b) => ({ ...b.buyer, slot: b.slot })) };
+  }
+
   async listFarms(userId: string, companyId: string, regionalId?: string) {
     await this.access.ensureCompany(userId, companyId);
-    return this.prisma.farm.findMany({
+    const farms = await this.prisma.farm.findMany({
       where: { companyId, isDeleted: false, ...(regionalId ? { regionalId } : {}) },
       orderBy: { name: 'asc' },
-      include: { regional: { select: { id: true, name: true } } },
+      include: this.farmInclude(),
     });
+    return farms.map((f) => this.withBuyers(f));
   }
 
   async getFarm(userId: string, id: string) {
-    const f = await this.prisma.farm.findUnique({ where: { id }, include: { regional: true } });
+    const f = await this.prisma.farm.findUnique({ where: { id }, include: this.farmInclude() });
     if (!f || f.isDeleted) throw new NotFoundException();
     await this.access.ensureCompany(userId, f.companyId);
-    return f;
+    return this.withBuyers(f);
   }
 
   async createFarm(userId: string, dto: CreateFarmDto) {
@@ -138,7 +152,9 @@ export class TerritorialService {
 
     return this.prisma.farm.update({
       where: { id },
-      data: { isDeleted: true, deletedAt: new Date(), updatedById: userId, version: { increment: 1 } },
+      // Libera o "code" (chave única por empresa) pra reuso — sem isso uma
+      // fazenda nova não poderia reaproveitar o código de uma excluída.
+      data: { isDeleted: true, deletedAt: new Date(), code: null, updatedById: userId, version: { increment: 1 } },
     });
   }
 
@@ -221,6 +237,35 @@ export class TerritorialService {
     return this.prisma.plot.update({
       where: { id },
       data: { isDeleted: true, deletedAt: new Date(), updatedById: userId, version: { increment: 1 } },
+    });
+  }
+
+  // ---------- Proprietários e compradores (leitura — CRUD completo fica pra
+  // uma tela de portfólio futura; hoje só são criados/atualizados via
+  // importação de fazendas) ----------
+  async listOwners(userId: string, companyId: string, q?: string) {
+    await this.access.ensureCompany(userId, companyId);
+    return this.prisma.owner.findMany({
+      where: {
+        companyId, isDeleted: false,
+        ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { code: { contains: q, mode: 'insensitive' } }, { alternateCode: { contains: q, mode: 'insensitive' } }] } : {}),
+      },
+      select: { id: true, name: true, code: true, alternateCode: true },
+      orderBy: { name: 'asc' },
+      take: 20,
+    });
+  }
+
+  async listBuyers(userId: string, companyId: string, q?: string) {
+    await this.access.ensureCompany(userId, companyId);
+    return this.prisma.buyer.findMany({
+      where: {
+        companyId, isDeleted: false,
+        ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { code: { contains: q, mode: 'insensitive' } }] } : {}),
+      },
+      select: { id: true, name: true, code: true },
+      orderBy: { name: 'asc' },
+      take: 20,
     });
   }
 }

@@ -19,6 +19,7 @@ import { AiModule } from "./ai/ai.module";
 import { FleetModule } from "./fleet/fleet.module";
 import { TappersModule } from "./tappers/tappers.module";
 import { ConsultationsModule } from "./consultations/consultations.module";
+import { FarmsImportModule } from "./farms-import/farms-import.module";
 
 import { HealthController } from "./health.controller";
 
@@ -43,6 +44,7 @@ import { HealthController } from "./health.controller";
     GovernanceModule,
     AiModule,
     FleetModule,
+    FarmsImportModule,
   ],
 
   controllers: [HealthController],

@@ -1,11 +1,10 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
+import { onlyDigits } from '../common/text.util';
 import {
   CreateStintDto, CreateTapperDto, EndStintDto, UpdateTapperDto, UpsertTapperDto,
 } from './dto';
-
-const onlyDigits = (v: string) => (v ?? '').replace(/\D+/g, '');
 
 const d = (v?: string | null) => (v ? new Date(v) : null);
 

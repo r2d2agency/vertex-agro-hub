@@ -125,4 +125,15 @@ export class TerritorialController {
   deletePlot(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.deletePlot(req.user.sub, id);
   }
+
+  // Proprietários e compradores (autocomplete usado pelo formulário de
+  // fazenda e pela importação em massa)
+  @Get('owners')
+  listOwners(@Req() req: any, @Query('companyId') companyId?: string, @Query('q') q?: string) {
+    return this.svc.listOwners(req.user.sub, requireCompanyId(companyId), q);
+  }
+  @Get('buyers')
+  listBuyers(@Req() req: any, @Query('companyId') companyId?: string, @Query('q') q?: string) {
+    return this.svc.listBuyers(req.user.sub, requireCompanyId(companyId), q);
+  }
 }

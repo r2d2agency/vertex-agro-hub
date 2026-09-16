@@ -40,6 +40,7 @@ import { Route as AuthenticatedEquipesRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedEstimulacoesRouteImport } from './routes/_authenticated/estimulacoes'
 import { Route as AuthenticatedEstoqueRouteImport } from './routes/_authenticated/estoque'
 import { Route as AuthenticatedFazendasRouteImport } from './routes/_authenticated/fazendas'
+import { Route as AuthenticatedFazendasImportarRouteImport } from './routes/_authenticated/fazendas-importar'
 import { Route as AuthenticatedFotografiasRouteImport } from './routes/_authenticated/fotografias'
 import { Route as AuthenticatedFrotaRouteImport } from './routes/_authenticated/frota'
 import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
@@ -260,6 +261,12 @@ const AuthenticatedFazendasRoute = AuthenticatedFazendasRouteImport.update({
   path: '/fazendas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFazendasImportarRoute =
+  AuthenticatedFazendasImportarRouteImport.update({
+    id: '/fazendas-importar',
+    path: '/fazendas-importar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFotografiasRoute =
   AuthenticatedFotografiasRouteImport.update({
     id: '/fotografias',
@@ -588,6 +595,7 @@ export interface FileRoutesByFullPath {
   '/estimulacoes': typeof AuthenticatedEstimulacoesRoute
   '/estoque': typeof AuthenticatedEstoqueRoute
   '/fazendas': typeof AuthenticatedFazendasRoute
+  '/fazendas-importar': typeof AuthenticatedFazendasImportarRoute
   '/fotografias': typeof AuthenticatedFotografiasRoute
   '/frota': typeof AuthenticatedFrotaRoute
   '/historico': typeof AuthenticatedHistoricoRoute
@@ -675,6 +683,7 @@ export interface FileRoutesByTo {
   '/estimulacoes': typeof AuthenticatedEstimulacoesRoute
   '/estoque': typeof AuthenticatedEstoqueRoute
   '/fazendas': typeof AuthenticatedFazendasRoute
+  '/fazendas-importar': typeof AuthenticatedFazendasImportarRoute
   '/fotografias': typeof AuthenticatedFotografiasRoute
   '/frota': typeof AuthenticatedFrotaRoute
   '/historico': typeof AuthenticatedHistoricoRoute
@@ -766,6 +775,7 @@ export interface FileRoutesById {
   '/_authenticated/estimulacoes': typeof AuthenticatedEstimulacoesRoute
   '/_authenticated/estoque': typeof AuthenticatedEstoqueRoute
   '/_authenticated/fazendas': typeof AuthenticatedFazendasRoute
+  '/_authenticated/fazendas-importar': typeof AuthenticatedFazendasImportarRoute
   '/_authenticated/fotografias': typeof AuthenticatedFotografiasRoute
   '/_authenticated/frota': typeof AuthenticatedFrotaRoute
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
@@ -857,6 +867,7 @@ export interface FileRouteTypes {
     | '/estimulacoes'
     | '/estoque'
     | '/fazendas'
+    | '/fazendas-importar'
     | '/fotografias'
     | '/frota'
     | '/historico'
@@ -944,6 +955,7 @@ export interface FileRouteTypes {
     | '/estimulacoes'
     | '/estoque'
     | '/fazendas'
+    | '/fazendas-importar'
     | '/fotografias'
     | '/frota'
     | '/historico'
@@ -1034,6 +1046,7 @@ export interface FileRouteTypes {
     | '/_authenticated/estimulacoes'
     | '/_authenticated/estoque'
     | '/_authenticated/fazendas'
+    | '/_authenticated/fazendas-importar'
     | '/_authenticated/fotografias'
     | '/_authenticated/frota'
     | '/_authenticated/historico'
@@ -1322,6 +1335,13 @@ declare module '@tanstack/react-router' {
       path: '/fazendas'
       fullPath: '/fazendas'
       preLoaderRoute: typeof AuthenticatedFazendasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/fazendas-importar': {
+      id: '/_authenticated/fazendas-importar'
+      path: '/fazendas-importar'
+      fullPath: '/fazendas-importar'
+      preLoaderRoute: typeof AuthenticatedFazendasImportarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/fotografias': {
@@ -1793,6 +1813,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEstimulacoesRoute: typeof AuthenticatedEstimulacoesRoute
   AuthenticatedEstoqueRoute: typeof AuthenticatedEstoqueRoute
   AuthenticatedFazendasRoute: typeof AuthenticatedFazendasRoute
+  AuthenticatedFazendasImportarRoute: typeof AuthenticatedFazendasImportarRoute
   AuthenticatedFotografiasRoute: typeof AuthenticatedFotografiasRoute
   AuthenticatedFrotaRoute: typeof AuthenticatedFrotaRoute
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
@@ -1849,6 +1870,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEstimulacoesRoute: AuthenticatedEstimulacoesRoute,
   AuthenticatedEstoqueRoute: AuthenticatedEstoqueRoute,
   AuthenticatedFazendasRoute: AuthenticatedFazendasRoute,
+  AuthenticatedFazendasImportarRoute: AuthenticatedFazendasImportarRoute,
   AuthenticatedFotografiasRoute: AuthenticatedFotografiasRoute,
   AuthenticatedFrotaRoute: AuthenticatedFrotaRoute,
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,

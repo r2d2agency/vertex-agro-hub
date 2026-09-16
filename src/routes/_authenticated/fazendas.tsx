@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, ReactNode } from "react";
-import { Plus, Pencil, Trash2, TreeDeciduous, Camera, ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, TreeDeciduous, Camera, ImageIcon, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileDropzone } from "@/components/vertex/file-dropzone";
@@ -24,8 +24,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import {
-  createFarm, deleteFarm, listFarms, updateFarm, type Farm, type FarmInput,
+  createFarm, deleteFarm, listFarms, updateFarm, type Farm, type FarmInput, type FarmRegime,
 } from "@/lib/fazendas.functions";
+import { OwnerBuyerCombobox } from "@/components/vertex/owner-buyer-combobox";
 import { listRegionals } from "@/lib/regionais.functions";
 import { MapEditorClient } from "@/components/vertex/map-editor-client";
 import { toBoundary, boundaryCentroid, type GeoBoundary } from "@/lib/geo";
@@ -49,7 +50,7 @@ export const Route = createFileRoute("/_authenticated/fazendas")({
 
 const empty: FarmInput = {
   regionalId: "", name: "", code: "", city: "", state: "",
-  totalAreaHa: null, latitude: null, longitude: null, owner: "", notes: "",
+  totalAreaHa: null, latitude: null, longitude: null, owner: "", ownerId: null, regime: null, notes: "",
   boundary: null, photoUrls: [], checkinRadiusM: null,
 };
 
@@ -98,7 +99,12 @@ function FazendasPage() {
       <PageHeader
         title="Fazendas"
         description="Cadastre fazendas com localização, área e responsáveis."
-        actions={companyId ? <Button onClick={() => setCreating(true)}><Plus className="mr-2 h-4 w-4" /> Nova fazenda</Button> : null}
+        actions={companyId ? (
+          <div className="flex gap-2">
+            <Link to="/fazendas-importar"><Button variant="outline"><Upload className="mr-2 h-4 w-4" /> Importar planilha</Button></Link>
+            <Button onClick={() => setCreating(true)}><Plus className="mr-2 h-4 w-4" /> Nova fazenda</Button>
+          </div>
+        ) : null}
       />
 
       {!isLoading && companies.length === 0 ? (
@@ -130,7 +136,12 @@ function FazendasPage() {
                           {f.regional && <p>Regional: {f.regional.name}</p>}
                           {(f.city || f.state) && <p>{f.city}{f.state ? ` / ${f.state}` : ""}</p>}
                           {f.totalAreaHa != null && <p>{f.totalAreaHa} ha</p>}
-                          {f.owner && <p>Proprietário: {f.owner}</p>}
+                          {(f.ownerRef?.name || f.owner) && (
+                            <p>
+                              Proprietário: {f.ownerRef?.name ?? f.owner}
+                              {f.regime && ` (${f.regime === "propria" ? "própria" : "arrendada"})`}
+                            </p>
+                          )}
                         </div>
                         <FarmPlotsPreview companyId={companyId!} farmId={f.id} />
                       </div>
@@ -212,19 +223,22 @@ function FarmDialog({
   onSaved: () => void;
 }) {
   const [values, setValues] = useState<FarmInput>(empty);
+  const [ownerDisplay, setOwnerDisplay] = useState<{ id: string; name: string } | null>(null);
   const [cep, setCep] = useState<string>("");
   const [activeTab, setActiveTab] = useState("dados");
 
 
   useEffect(() => {
     if (!open) return;
+    setOwnerDisplay(initial?.ownerRef ? { id: initial.ownerRef.id, name: initial.ownerRef.name } : null);
     if (initial) setValues({
       regionalId: initial.regionalId ?? "",
       name: initial.name, code: initial.code ?? "",
       city: initial.city ?? "", state: initial.state ?? "",
       totalAreaHa: initial.totalAreaHa ?? null,
       latitude: initial.latitude ?? null, longitude: initial.longitude ?? null,
-      owner: initial.owner ?? "", notes: initial.notes ?? "",
+      owner: initial.owner ?? "", ownerId: initial.ownerId ?? null, regime: initial.regime ?? null,
+      notes: initial.notes ?? "",
       boundary: initial.boundary ?? null,
       photoUrls: initial.photoUrls ?? [],
       checkinRadiusM: initial.checkinRadiusM ?? null,
@@ -309,8 +323,30 @@ function FarmDialog({
                       <UfSelect value={values.state ?? ""} onChange={(v) => setValues((s) => ({ ...s, state: v }))} />
                     </Field>
                   </div>
-                  <Field label="Proprietário / Responsável">
-                    <Input value={values.owner} onChange={(e) => setValues((v) => ({ ...v, owner: e.target.value }))} />
+                  <Field label="Proprietário">
+                    <OwnerBuyerCombobox
+                      kind="owner"
+                      companyId={companyId ?? ""}
+                      value={ownerDisplay}
+                      onChange={(item) => {
+                        setOwnerDisplay(item ? { id: item.id, name: item.name } : null);
+                        setValues((v) => ({ ...v, ownerId: item?.id ?? null }));
+                      }}
+                      placeholder={values.owner ? `${values.owner} (legado, não migrado)` : "Buscar proprietário..."}
+                    />
+                  </Field>
+                  <Field label="Regime da fazenda">
+                    <Select
+                      value={values.regime ?? "__none"}
+                      onValueChange={(v) => setValues((s) => ({ ...s, regime: v === "__none" ? null : (v as FarmRegime) }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Não informado" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">Não informado</SelectItem>
+                        <SelectItem value="propria">Própria</SelectItem>
+                        <SelectItem value="arrendada">Arrendada</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </Field>
                   <Field label="Área total (ha)">
                     <Input type="number" step="0.01" value={values.totalAreaHa ?? ""} onChange={(e) => setValues((v) => ({ ...v, totalAreaHa: e.target.value ? Number(e.target.value) : null }))} />

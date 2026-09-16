@@ -301,6 +301,19 @@ export class PeopleService {
     };
   }
 
+  // Criação mínima de pessoa (só nome, sem CPF/e-mail) usada pela importação
+  // de fazendas pra pré-cadastrar um monitor citado na planilha só pelo nome
+  // — depois completado no RH. `invite()` não serve aqui porque exige CPF ou
+  // e-mail pra garantir cadastro único (linha ~255), e a planilha não traz
+  // nenhum dos dois pro monitor.
+  async createNameOnlyMonitor(userId: string, companyId: string, fullName: string) {
+    await this.ensureManager(userId, companyId);
+    const user = await this.prisma.user.create({ data: { fullName } });
+    await this.ensureCompanyLink(user.id, companyId, userId);
+    await this.assignCompanyRole(user.id, companyId, 'monitor');
+    return user;
+  }
+
   async upsertAccess(userId: string, targetUserId: string, dto: UpsertPersonAccessDto) {
     await this.ensureManager(userId, dto.companyId);
     await this.ensureMember(targetUserId, dto.companyId);

@@ -30,6 +30,11 @@ enum SyncStatus {
   conflict
 }
 
+enum FarmRegime {
+  propria
+  arrendada
+}
+
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   email        String?  @unique
@@ -207,6 +212,8 @@ model Company {
   people    UserCompany[]
   regionals Regional[]
   farms     Farm[]
+  owners    Owner[]
+  buyers    Buyer[]
   plots     Plot[]
   clones    Clone[]
   tappingTables TappingTable[]
@@ -280,7 +287,9 @@ model Farm {
   totalAreaHa  Float?   @map("total_area_ha")
   latitude     Float?
   longitude    Float?
-  owner        String?
+  owner        String?   // legado: texto livre, mantido como fallback de exibição pras fazendas sem ownerId
+  ownerId      String?   @map("owner_id") @db.Uuid
+  regime       FarmRegime?
   notes        String?
   boundary     Json?
   centroidLat  Float?   @map("centroid_lat")
@@ -302,12 +311,86 @@ model Farm {
 
   company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   regional Regional? @relation(fields: [regionalId], references: [id], onDelete: SetNull)
+  ownerRef Owner?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   plots    Plot[]
   assignments FarmAssignment[]
+  buyers   FarmBuyer[]
 
+  @@unique([companyId, code])
   @@index([companyId, isDeleted])
   @@index([regionalId])
+  @@index([ownerId])
   @@map("farms")
+}
+
+// Cadastro reutilizável de proprietário — várias fazendas podem apontar pro
+// mesmo Owner via alternateCode (código alternativo), que é a chave usada
+// pra futuramente consolidar o portfólio inteiro de um dono. code (código do
+// proprietário) é só um fallback de identidade quando não há alternateCode.
+model Owner {
+  id                String   @id @default(uuid()) @db.Uuid
+  companyId         String   @map("company_id") @db.Uuid
+  code              String?
+  alternateCode     String?  @map("alternate_code")
+  name              String
+  cpf               String?
+  cnpjCpf           String?  @map("cnpj_cpf")
+  stateRegistration String?  @map("state_registration")
+  notes             String?
+  createdById       String?  @map("created_by") @db.Uuid
+  updatedById       String?  @map("updated_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  isDeleted         Boolean  @default(false) @map("is_deleted")
+  deletedAt         DateTime? @map("deleted_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  farms   Farm[]
+
+  @@unique([companyId, alternateCode])
+  @@index([companyId, code])
+  @@index([companyId, isDeleted])
+  @@map("owners")
+}
+
+// Cadastro reutilizável de comprador — mesma lógica do Owner, ligado à
+// fazenda via FarmBuyer (até 2 "slots", espelhando comprador 1/2 da planilha).
+model Buyer {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  code        String
+  name        String
+  createdById String?  @map("created_by") @db.Uuid
+  updatedById String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  deletedAt   DateTime? @map("deleted_at")
+
+  company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  farms   FarmBuyer[]
+
+  @@unique([companyId, code])
+  @@index([companyId, isDeleted])
+  @@map("buyers")
+}
+
+model FarmBuyer {
+  id        String   @id @default(uuid()) @db.Uuid
+  farmId    String   @map("farm_id") @db.Uuid
+  buyerId   String   @map("buyer_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  slot      Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  farm  Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  buyer Buyer @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, buyerId])
+  @@index([farmId])
+  @@index([buyerId])
+  @@map("farm_buyers")
 }
 
 model FarmAssignment {
