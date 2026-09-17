@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
+import { TappersService } from '../tappers/tappers.service';
+import { computeLinkStamp, nextTableInRotation } from '../tappers/rotation.util';
 import {
   CreateDeliveryDto,
   CreateTappingRecordDto,
@@ -13,6 +15,7 @@ export class OperationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: CompanyAccess,
+    private readonly tappers: TappersService,
   ) {}
 
   // ---------- Tapping Records ----------
@@ -45,13 +48,123 @@ export class OperationsService {
   async createTappingRecord(userId: string, dto: CreateTappingRecordDto) {
     await this.access.ensureCompany(userId, dto.companyId);
     const { date, ...rest } = dto;
-    return this.prisma.tappingRecord.create({
+
+    // Rotação: identifica a tabela esperada pra este sangrador hoje e detecta
+    // divergência. Só se o registro tem tabela E sangrador identificável —
+    // registro sem tabela não avança a sequência nem alerta.
+    let expectedTableId: string | null = null;
+    let divergent = false;
+    let rotationKey: { tapperId?: string; userId?: string } | null = null;
+    if (dto.tappingTableId && (dto.tapperId || dto.sangradorName)) {
+      try {
+        const tapperKey = dto.tapperId
+          ? { tapperId: dto.tapperId }
+          : await this.resolveTapperKeyByName(dto.companyId, dto.sangradorName);
+        if (tapperKey) {
+          const { rotation, links } = await this.loadRotationState(dto.companyId, tapperKey);
+          const next = rotation ? nextTableInRotation(rotation, links) : { needsReset: true as const, reason: 'missing_last' as const };
+          if ('tableId' in next) {
+            expectedTableId = next.tableId;
+            divergent = next.tableId !== dto.tappingTableId;
+          }
+          rotationKey = tapperKey;
+        }
+      } catch {
+        // Rotação é uma sugestão — falha ao calcular não pode bloquear o
+        // registro de sangria.
+      }
+    }
+
+    const record = await this.prisma.tappingRecord.create({
       data: {
         ...rest,
+        expectedTableId,
+        divergent,
         date: new Date(date),
         createdById: userId,
         updatedById: userId,
       } as any,
+    });
+
+    // Avança a rotação a partir do que foi de fato registrado (mesmo que
+    // divergente) — a sequência de amanhã parte da tabela real de hoje.
+    if (rotationKey) {
+      await this.advanceRotation(dto.companyId, rotationKey, dto.tappingTableId!, record.id).catch(() => undefined);
+      if (divergent) {
+        await this.createDivergenceAlert(dto.companyId, record, expectedTableId!, dto).catch(() => undefined);
+      }
+    }
+
+    return record;
+  }
+
+  private async resolveTapperKeyByName(companyId: string, sangradorName: string): Promise<{ userId: string } | null> {
+    const name = (sangradorName ?? '').trim().toLowerCase();
+    if (!name) return null;
+    const assignment = await this.prisma.farmAssignment.findFirst({
+      where: {
+        companyId,
+        role: 'sangrador',
+        user: { fullName: { equals: sangradorName.trim(), mode: 'insensitive' } },
+      },
+      select: { userId: true },
+    });
+    return assignment ? { userId: assignment.userId } : null;
+  }
+
+  private async loadRotationState(companyId: string, key: { tapperId?: string; userId?: string }) {
+    const sibling = await (this.tappers as any).resolveSiblingKey(companyId, key);
+    const links = await this.prisma.tapperTableLink.findMany({
+      where: { companyId, active: true, OR: sibling ? [key, sibling] : [key] },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+    });
+    const rotation = await this.prisma.tapperRotation.findFirst({
+      where: { companyId, OR: sibling ? [key, sibling] : [key] },
+    });
+    const linkStamp = computeLinkStamp(links);
+    return { links, rotation, linkStamp };
+  }
+
+  private async advanceRotation(companyId: string, key: { tapperId?: string; userId?: string }, tableId: string, recordId: string) {
+    const sibling = await (this.tappers as any).resolveSiblingKey(companyId, key);
+    // Pode existir rotação na chave irmã (admin cadastrou pelo outro lado) —
+    // atualiza a que existir.
+    const rotation = await this.prisma.tapperRotation.findFirst({
+      where: { companyId, OR: sibling ? [key, sibling] : [key] },
+    });
+    if (!rotation) return;
+    await this.prisma.tapperRotation.update({
+      where: { id: rotation.id },
+      data: { lastTableId: tableId, lastRecordId: recordId },
+    });
+  }
+
+  private async createDivergenceAlert(
+    companyId: string,
+    record: { id: string; farmId?: string | null; sangradorName: string; date: Date },
+    expectedTableId: string,
+    dto: { tappingTableId?: string; farmId?: string },
+  ) {
+    const [expected, actual] = await Promise.all([
+      this.prisma.tappingTable.findUnique({ where: { id: expectedTableId }, select: { name: true } }),
+      dto.tappingTableId
+        ? this.prisma.tappingTable.findUnique({ where: { id: dto.tappingTableId }, select: { name: true } })
+        : Promise.resolve(null),
+    ]);
+    await this.prisma.alertEvent.create({
+      data: {
+        companyId,
+        farmId: dto.farmId ?? record.farmId ?? undefined,
+        level: 'warning',
+        title: 'Sangrador na tabela divergente do dia',
+        message: `${record.sangradorName}: esperada ${expected?.name ?? '—'}, registrada ${actual?.name ?? '—'}.`,
+        meta: {
+          kind: 'tapper_table_divergence',
+          tappingRecordId: record.id,
+          expectedTableId,
+          actualTableId: dto.tappingTableId ?? null,
+        },
+      },
     });
   }
 

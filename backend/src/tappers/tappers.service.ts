@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
 import { onlyDigits } from '../common/text.util';
+import { computeLinkStamp, nextTableInRotation } from './rotation.util';
 import {
   CreateStintDto, CreateTapperDto, EndStintDto, UpdateTapperDto, UpsertTapperDto,
 } from './dto';
@@ -702,7 +703,7 @@ export class TappersService {
     const sibling = await this.resolveSiblingKey(companyId, key);
     const links = await this.prisma.tapperTableLink.findMany({
       where: { companyId, active: true, OR: sibling ? [key, sibling] : [key] },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
     return this.attachTables(links);
   }
@@ -744,13 +745,14 @@ export class TappersService {
     return hydrated;
   }
 
-  async updateTableLink(userId: string, linkId: string, dto: { companyId: string; treeCount?: number; frequencyDays?: number; restDays?: number; workDaysCycle?: number; cutType?: string; stimulation?: string; active?: boolean; notes?: string }) {
+  async updateTableLink(userId: string, linkId: string, dto: { companyId: string; position?: number; treeCount?: number; frequencyDays?: number; restDays?: number; workDaysCycle?: number; cutType?: string; stimulation?: string; active?: boolean; notes?: string }) {
     const link = await this.prisma.tapperTableLink.findUnique({ where: { id: linkId } });
     if (!link || link.companyId !== dto.companyId) throw new NotFoundException('Vínculo não encontrado');
     await this.ensureManagerOrFarmStaff(userId, dto.companyId, { tapperId: link.tapperId ?? undefined, userId: link.userId ?? undefined });
     const saved = await this.prisma.tapperTableLink.update({
       where: { id: linkId },
       data: {
+        position: dto.position === undefined ? undefined : dto.position,
         treeCount: dto.treeCount === undefined ? undefined : dto.treeCount,
         frequencyDays: dto.frequencyDays === undefined ? undefined : dto.frequencyDays,
         restDays: dto.restDays === undefined ? undefined : dto.restDays,
@@ -776,14 +778,65 @@ export class TappersService {
   // Usado pelo app de campo (field.service.ts) ao registrar sangria: tabelas
   // disponíveis para um sangrador específico, já com a quantidade de árvores
   // prevista pra ele naquela tabela.
-  async listTableLinksForField(userId: string, companyId: string, tapperKey: string) {
-    await this.access.ensureCompany(userId, companyId);
-    const key = this.parseTapperKey(tapperKey);
+  private async orderedRotationLinks(companyId: string, key: { tapperId?: string; userId?: string }) {
     const sibling = await this.resolveSiblingKey(companyId, key);
     const links = await this.prisma.tapperTableLink.findMany({
       where: { companyId, active: true, OR: sibling ? [key, sibling] : [key] },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
+    return { links, sibling };
+  }
+
+  async getRotation(userId: string, companyId: string, tapperKey: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const key = this.parseTapperKey(tapperKey);
+    const { links } = await this.orderedRotationLinks(companyId, key);
+    const rotation = await this.prisma.tapperRotation.findFirst({
+      where: { companyId, ...key },
+    });
+    const stamp = computeLinkStamp(links);
+    const next = rotation ? nextTableInRotation(rotation, links) : { needsReset: true as const, reason: 'missing_last' as const };
+    const hydrated = await this.attachTables(links);
+    return {
+      rotation,
+      linkStamp: stamp,
+      needsReset: 'needsReset' in next,
+      suggestedTableId: 'tableId' in next ? next.tableId : null,
+      orderedLinks: hydrated,
+    };
+  }
+
+  async upsertRotation(userId: string, dto: { companyId: string; tapperKey: string; anchorTableId: string; anchorDate: string }) {
+    const key = this.parseTapperKey(dto.tapperKey);
+    await this.ensureManagerOrFarmStaff(userId, dto.companyId, key);
+    const { links } = await this.orderedRotationLinks(dto.companyId, key);
+    if (!links.some((l) => l.tappingTableId === dto.anchorTableId)) {
+      throw new NotFoundException('A tabela inicial não está vinculada a este sangrador');
+    }
+    const data = {
+      companyId: dto.companyId,
+      ...key,
+      anchorTableId: dto.anchorTableId,
+      anchorDate: new Date(dto.anchorDate),
+      lastTableId: dto.anchorTableId,
+      lastRecordId: null,
+      linkStamp: computeLinkStamp(links),
+      createdById: userId,
+    };
+    const where = key.tapperId ? { tapperId: key.tapperId } : { userId: key.userId };
+    return this.prisma.tapperRotation.upsert({
+      where,
+      create: data,
+      update: { ...data, createdById: userId },
+    });
+  }
+
+  // Usado pelo app de campo ao registrar sangria: tabelas disponíveis para
+  // um sangrador, ordenadas para exibir a rotação.
+  async listTableLinksForField(userId: string, companyId: string, tapperKey: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const key = this.parseTapperKey(tapperKey);
+    const { links } = await this.orderedRotationLinks(companyId, key);
     return this.attachTables(links);
   }
 }

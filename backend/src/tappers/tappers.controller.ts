@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards,
+  Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -7,6 +7,7 @@ import { TappersService } from './tappers.service';
 import {
   CreateStintDto, CreateTapperDto, CreateTapperPreRegistrationDto, CreateTapperTableLinkDto,
   EndStintDto, ReviewTapperPreRegistrationDto, UpdateTapperDto, UpdateTapperTableLinkDto, UpsertTapperDto,
+  UpsertTapperRotationDto,
 } from './dto';
 
 // Guard de classe: apenas autenticação. RolesGuard (admin/gestor) é aplicado
@@ -100,6 +101,23 @@ export class TappersController {
     @Query('companyId', ParseUUIDPipe) companyId: string,
   ) {
     return this.svc.deleteTableLink(req.user.sub, linkId, companyId);
+  }
+
+  // Rotação de tabelas do sangrador: sugestão da próxima tabela + estado do
+  // ponto de partida. Mesma autorização de table-links (monitor/consultor da
+  // fazenda ou admin), sem RolesGuard de rota.
+  @Get('rotation')
+  getRotation(
+    @Req() req: any,
+    @Query('companyId', ParseUUIDPipe) companyId: string,
+    @Query('tapperKey') tapperKey: string,
+  ) {
+    return this.svc.getRotation(req.user.sub, companyId, tapperKey);
+  }
+
+  @Put('rotation')
+  upsertRotation(@Req() req: any, @Body() dto: UpsertTapperRotationDto) {
+    return this.svc.upsertRotation(req.user.sub, dto);
   }
 
   @UseGuards(RolesGuard)

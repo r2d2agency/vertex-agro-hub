@@ -243,6 +243,7 @@ export type TapperTableLink = {
   tapperId: string | null;
   userId: string | null;
   tappingTableId: string;
+  position: number;
   treeCount: number | null;
   frequencyDays: number | null;
   restDays: number | null;
@@ -259,6 +260,34 @@ export function listTapperTableLinks(companyId: string, tapperKey: string) {
   return apiRequest<TapperTableLink[]>(`/tappers/table-links?${qs.toString()}`);
 }
 
+export type TapperRotationState = {
+  rotation: {
+    id: string;
+    anchorTableId: string;
+    anchorDate: string;
+    lastTableId: string;
+    lastRecordId: string | null;
+    linkStamp: string | null;
+  } | null;
+  needsReset: boolean;
+  suggestedTableId: string | null;
+  orderedLinks: TapperTableLink[];
+};
+
+export function getTapperRotation(companyId: string, tapperKey: string) {
+  const qs = new URLSearchParams({ companyId, tapperKey });
+  return apiRequest<TapperRotationState>(`/tappers/rotation?${qs.toString()}`);
+}
+
+export function upsertTapperRotation(input: {
+  companyId: string; tapperKey: string; anchorTableId: string; anchorDate: string;
+}) {
+  return apiRequest<TapperRotationState["rotation"]>(`/tappers/rotation`, {
+    method: "PUT",
+    body: JSON.stringify(clean(input)),
+  });
+}
+
 export function createTapperTableLink(input: {
   companyId: string; tapperKey: string; tappingTableId: string; treeCount?: number; frequencyDays?: number; restDays?: number; workDaysCycle?: number; cutType?: string; stimulation?: string; notes?: string;
 }) {
@@ -270,7 +299,7 @@ export function createTapperTableLink(input: {
 
 export function updateTapperTableLink(
   linkId: string,
-  input: { companyId: string; treeCount?: number; frequencyDays?: number; restDays?: number; workDaysCycle?: number; cutType?: string; stimulation?: string; active?: boolean; notes?: string },
+  input: { companyId: string; position?: number; treeCount?: number; frequencyDays?: number; restDays?: number; workDaysCycle?: number; cutType?: string; stimulation?: string; active?: boolean; notes?: string },
 ) {
   return apiRequest<TapperTableLink>(`/tappers/table-links/${linkId}`, {
     method: "PATCH",

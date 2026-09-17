@@ -616,6 +616,8 @@ model TappingRecord {
   date           DateTime @db.Date
   sangradorName  String   @map("sangrador_name")
   tapperId       String?  @map("tapper_id") @db.Uuid
+  expectedTableId String? @map("expected_table_id") @db.Uuid
+  divergent      Boolean  @default(false)
   taskExtent     String?  @map("task_extent")
   endPeriod      String?  @map("end_period")
   treesExpected  Int?     @map("trees_expected")
@@ -1668,6 +1670,7 @@ model TapperTableLink {
   tapperId       String?  @map("tapper_id") @db.Uuid
   userId         String?  @map("user_id") @db.Uuid
   tappingTableId String   @map("tapping_table_id") @db.Uuid
+  position       Int      @default(0)
   treeCount      Int?     @map("tree_count")
   frequencyDays  Int?     @map("frequency_days")
   restDays       Int?     @map("rest_days")
@@ -1686,7 +1689,35 @@ model TapperTableLink {
   @@index([tappingTableId])
   @@unique([tapperId, tappingTableId])
   @@unique([userId, tappingTableId])
+  @@index([tapperId, position])
+  @@index([userId, position])
   @@map("tapper_table_links")
+}
+
+// Rotação sequencial de tabelas de um sangrador: um "ponto de partida"
+// (âncora) definido no admin/app e a última posição registrada. A próxima
+// tabela sugerida é a seguinte na lista ordenada de TapperTableLink
+// (position asc), a partir de lastTableId — cíclica. A sequência só avança
+// quando há registro de sangria (createTappingRecord atualiza
+// lastTableId/lastRecordId), nunca pelo calendário.
+model TapperRotation {
+  id            String   @id @default(uuid()) @db.Uuid
+  companyId     String   @map("company_id") @db.Uuid
+  tapperId      String?  @map("tapper_id") @db.Uuid
+  userId        String?  @map("user_id") @db.Uuid
+  anchorTableId String   @map("anchor_table_id") @db.Uuid
+  anchorDate    DateTime @map("anchor_date") @db.Date
+  lastTableId   String   @map("last_table_id") @db.Uuid
+  lastRecordId  String?  @map("last_record_id") @db.Uuid
+  linkStamp     String?  @map("link_stamp")
+  createdById   String?  @map("created_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([tapperId])
+  @@unique([userId])
+  @@index([companyId])
+  @@map("tapper_rotations")
 }
 
 model TapperPreRegistration {

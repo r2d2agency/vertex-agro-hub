@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, Loader2, Trees } from "lucide-react";
+import { Camera, Loader2, Repeat, Trees } from "lucide-react";
 import {
   getFieldMe, submitTapping, listFieldTappers, listFieldTapperTables,
   type FieldMe, type FieldTapper, type FieldTapperTable,
 } from "@/lib/field.functions";
+import { getTapperRotation, type TapperRotationState } from "@/lib/tappers.functions";
 import { TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ function SangriaPage() {
   const [tables, setTables] = useState<FieldTapperTable[]>([]);
   const [tablesLoading, setTablesLoading] = useState(false);
   const [tappingTableId, setTappingTableId] = useState("");
+  const [rotation, setRotation] = useState<TapperRotationState | null>(null);
   const [taskExtents, setTaskExtents] = useState<string[]>([]);
   const [endPeriod, setEndPeriod] = useState("");
 
@@ -58,17 +60,22 @@ function SangriaPage() {
 
   // A tabela (não o talhão) é que define quantas árvores o sangrador tem que
   // fazer — cada sangrador pode ter várias tabelas vinculadas, cada uma com
-  // sua própria quantidade.
+  // sua própria quantidade. Quando o sangrador tem rotação configurada, a
+  // pré-seleção vem da sequência (próxima tabela do ciclo), não da lista.
   useEffect(() => {
-    setTappingTableId(""); setTables([]);
+    setTappingTableId(""); setTables([]); setRotation(null);
     if (!farm || !tapperId) return;
     setTablesLoading(true);
-    listFieldTapperTables(farm.companyId, tapperId)
-      .then((ts) => {
+    Promise.all([
+      listFieldTapperTables(farm.companyId, tapperId),
+      getTapperRotation(farm.companyId, tapperId).catch(() => null),
+    ])
+      .then(([ts, rot]) => {
         setTables(ts);
-        // Já traz a tabela prevista do sangrador pré-selecionada, sem
-        // precisar de mais um clique — a maioria só tem uma tabela mesmo.
-        if (ts.length > 0) setTappingTableId(ts[0].id);
+        setRotation(rot);
+        const suggested = rot && !rot.needsReset && rot.suggestedTableId;
+        if (suggested) setTappingTableId(suggested);
+        else if (ts.length === 1) setTappingTableId(ts[0].id);
       })
       .catch(() => setTables([]))
       .finally(() => setTablesLoading(false));
@@ -138,6 +145,20 @@ function SangriaPage() {
             <SelectContent>{tappers.map((t) => <SelectItem key={t.id} value={t.id}>{t.fullName}</SelectItem>)}</SelectContent>
           </Select>
         </Field>
+        {tapperId && rotation && !rotation.needsReset && rotation.suggestedTableId && (
+          <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
+            <Repeat className="h-4 w-4 text-primary" />
+            <span className="text-muted-foreground">Sequência de hoje:</span>
+            <span className="font-semibold text-foreground">
+              {tables.find((t) => t.id === rotation.suggestedTableId)?.name ?? "Tabela"}
+            </span>
+          </div>
+        )}
+        {tapperId && rotation?.needsReset && (
+          <div className="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+            Sequência de tabelas desatualizada para este sangrador. Defina o ponto de partida em Sangradores &gt; Tabelas.
+          </div>
+        )}
         {tapperId && (
           <Field label="Tabela">
             {tablesLoading ? (
