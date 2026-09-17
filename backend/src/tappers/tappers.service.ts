@@ -568,7 +568,14 @@ export class TappersService {
   // TapperTableLink não tem @relation formal com TappingTable (pra não
   // precisar declarar o array de volta em TappingTable/Tapper), então o
   // "include" vira um join manual aqui.
-  private async attachTables<T extends { tappingTableId: string }>(links: T[]) {
+  private async attachTables<T extends {
+    tappingTableId: string;
+    frequencyDays?: number | null;
+    restDays?: number | null;
+    workDaysCycle?: number | null;
+    cutType?: string | null;
+    stimulation?: string | null;
+  }>(links: T[]) {
     const tableIds = [...new Set(links.map((l) => l.tappingTableId))];
     const tables = tableIds.length
       ? await this.prisma.tappingTable.findMany({
