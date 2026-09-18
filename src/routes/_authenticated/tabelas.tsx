@@ -275,7 +275,7 @@ function TemplateManager({
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [editing, setEditing] = useState<TappingTableTemplate | null>(null);
-  const { data = [] } = useQuery({
+  const { data: templates = [] } = useQuery({
     queryKey: ["tapping-table-templates", companyId],
     queryFn: () => listTappingTableTemplates(companyId),
     enabled: open,
@@ -345,7 +345,7 @@ function TemplateManager({
             {editing ? "Atualizar" : "Criar modelo"}
           </Button>
           <div className="space-y-1 border-t pt-3">
-            {data.map((template) => (
+            {templates.map((template) => (
               <div key={template.id} className="flex items-center justify-between text-sm">
                 <span>
                   {template.name} ({template.tableIds.length})

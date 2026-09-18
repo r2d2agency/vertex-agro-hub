@@ -46,7 +46,7 @@ import {
   Wrench,
   Truck,
   Fuel,
-  Package,
+  Package as PackageIcon,
   Activity as ActivityIcon,
   Rocket,
 } from "lucide-react";
@@ -131,7 +131,7 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Implementos", url: "/implementos", icon: Wrench },
       { title: "Operações", url: "/operacoes", icon: ClipboardList },
       { title: "Abastecimento", url: "/abastecimento", icon: Fuel },
-      { title: "Estoque", url: "/estoque", icon: Package },
+      { title: "Estoque", url: "/estoque", icon: PackageIcon },
       { title: "Manutenção", url: "/manutencao", icon: Wrench },
       { title: "Apontamentos", url: "/apontamentos", icon: ActivityIcon },
       { title: "Checklists", url: "/checklists", icon: ClipboardCheck },
