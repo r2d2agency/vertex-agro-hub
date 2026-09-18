@@ -348,7 +348,7 @@ function TemplateManager({
             {templates.map((template) => (
               <div key={template.id} className="flex items-center justify-between text-sm">
                 <span>
-                  {template.name} ({template.tableIds.length})
+                  {template.name} ({Array.isArray(template.tableIds) ? template.tableIds.length : 0})
                 </span>
                 <span className="flex gap-1">
                   <Button
@@ -357,7 +357,7 @@ function TemplateManager({
                     onClick={() => {
                       setEditing(template);
                       setName(template.name);
-                      setSelected(template.tableIds);
+                      setSelected(Array.isArray(template.tableIds) ? template.tableIds : []);
                     }}
                   >
                     Editar
