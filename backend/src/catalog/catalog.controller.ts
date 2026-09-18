@@ -19,7 +19,7 @@ import {
   CreateCloneDto,
   CreateTappingTableDto,
   UpdateCloneDto,
-  UpdateTappingTableDto,
+  UpdateTappingTableDto, CreateTappingTableTemplateDto, UpdateTappingTableTemplateDto,
 } from './dto';
 
 function requireCompanyId(companyId?: string) {
@@ -71,4 +71,9 @@ export class CatalogController {
   deleteTable(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.deleteTable(req.user.sub, id);
   }
+
+  @Get('tapping-table-templates') listTemplates(@Req() req: any, @Query('companyId') companyId?: string) { return this.svc.listTemplates(req.user.sub, requireCompanyId(companyId)); }
+  @Post('tapping-table-templates') createTemplate(@Req() req: any, @Body() dto: CreateTappingTableTemplateDto) { return this.svc.createTemplate(req.user.sub, dto); }
+  @Patch('tapping-table-templates/:id') updateTemplate(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTappingTableTemplateDto) { return this.svc.updateTemplate(req.user.sub, id, dto); }
+  @Delete('tapping-table-templates/:id') deleteTemplate(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) { return this.svc.deleteTemplate(req.user.sub, id); }
 }

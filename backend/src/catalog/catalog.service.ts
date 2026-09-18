@@ -6,7 +6,7 @@ import {
   CreateCloneDto,
   CreateTappingTableDto,
   UpdateCloneDto,
-  UpdateTappingTableDto,
+  UpdateTappingTableDto, CreateTappingTableTemplateDto, UpdateTappingTableTemplateDto,
 } from './dto';
 
 @Injectable()
@@ -98,6 +98,11 @@ export class CatalogService {
       data: { ...dto, updatedById: userId, version: { increment: 1 } },
     });
   }
+
+  async listTemplates(userId: string, companyId: string) { await this.access.ensureCompany(userId, companyId); return this.prisma.tappingTableTemplate.findMany({ where: { companyId, isDeleted: false }, include: { items: { orderBy: { position: 'asc' } } }, orderBy: { name: 'asc' } }); }
+  async createTemplate(userId: string, dto: CreateTappingTableTemplateDto) { await this.access.ensureCompany(userId, dto.companyId); const tables = await this.prisma.tappingTable.count({ where: { companyId: dto.companyId, id: { in: dto.tableIds }, isDeleted: false } }); if (tables !== dto.tableIds.length) throw new NotFoundException('Tabela inválida'); return this.prisma.tappingTableTemplate.create({ data: { companyId: dto.companyId, name: dto.name, description: dto.description, active: dto.active ?? true, createdById: userId, updatedById: userId, items: { create: dto.tableIds.map((tappingTableId, position) => ({ tappingTableId, position })) } }, include: { items: true } }); }
+  async updateTemplate(userId: string, id: string, dto: UpdateTappingTableTemplateDto) { const t = await this.prisma.tappingTableTemplate.findUnique({ where: { id } }); if (!t) throw new NotFoundException(); await this.access.ensureCompany(userId, t.companyId); if (dto.tableIds) { const n = await this.prisma.tappingTable.count({ where: { companyId: t.companyId, id: { in: dto.tableIds }, isDeleted: false } }); if (n !== dto.tableIds.length) throw new NotFoundException('Tabela inválida'); } return this.prisma.$transaction(async tx => { if (dto.tableIds) await tx.tappingTableTemplateItem.deleteMany({ where: { templateId: id } }); return tx.tappingTableTemplate.update({ where: { id }, data: { name: dto.name, description: dto.description, active: dto.active, updatedById: userId, items: dto.tableIds ? { create: dto.tableIds.map((tappingTableId, position) => ({ tappingTableId, position })) } : undefined }, include: { items: true } }); }); }
+  async deleteTemplate(userId: string, id: string) { const t = await this.prisma.tappingTableTemplate.findUnique({ where: { id } }); if (!t) throw new NotFoundException(); await this.access.ensureCompany(userId, t.companyId); return this.prisma.tappingTableTemplate.update({ where: { id }, data: { active: false, isDeleted: true, deletedAt: new Date(), updatedById: userId } }); }
 
   async deleteTable(userId: string, id: string) {
     const current = await this.prisma.tappingTable.findUnique({ where: { id } });

@@ -112,6 +112,7 @@ export function submitTapping(input: {
   dryKg?: number | null; adherencePct?: number | null; notes?: string;
   status?: string; quality?: string; tableCondition?: string;
   photoUrls?: string[]; audioUrl?: string | null;
+  expectedTableId?: string; divergent?: boolean;
 }) {
   const data = { ...input };
   if (data.tapperId === null) delete data.tapperId;

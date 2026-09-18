@@ -37,6 +37,21 @@ export class CreateTappingTableDto {
   @IsOptional() @IsBoolean() active?: boolean;
 }
 
+export class CreateTappingTableTemplateDto {
+  @IsUUID() companyId!: string;
+  @IsString() @MaxLength(200) name!: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsBoolean() active?: boolean;
+  @IsUUID('4', { each: true }) tableIds!: string[];
+}
+
+export class UpdateTappingTableTemplateDto {
+  @IsOptional() @IsString() @MaxLength(200) name?: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsBoolean() active?: boolean;
+  @IsOptional() @IsUUID('4', { each: true }) tableIds?: string[];
+}
+
 export class UpdateTappingTableDto {
   @IsOptional() @IsString() @MaxLength(200) name?: string;
   @IsOptional() @IsString() @MaxLength(50) code?: string;

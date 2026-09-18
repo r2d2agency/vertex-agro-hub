@@ -20,6 +20,8 @@ export type TappingRecord = {
   farmId?: string | null;
   plotId?: string | null;
   tappingTableId?: string | null;
+  expectedTableId?: string | null;
+  divergent?: boolean;
   date: string;
   sangradorName: string;
   tapperId?: string | null;

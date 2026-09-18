@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Table as TableIcon } from "lucide-react";
+import { listTappingTableTemplates, createTappingTableTemplate, updateTappingTableTemplate, deleteTappingTableTemplate, type TappingTableTemplate } from "@/lib/templates.functions";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ function TabelasPage() {
   const [editing, setEditing] = useState<TappingTable | null>(null);
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<TappingTable | null>(null);
+  const [templateOpen, setTemplateOpen] = useState(false);
 
   const { data = [], isLoading: loadingList } = useQuery({
     queryKey: ["tapping-tables", companyId],
@@ -70,9 +72,9 @@ function TabelasPage() {
         description="Sistemas de sangria (D/2, D/3, D/4), frequência e estimulação."
         actions={
           companyId ? (
-            <Button onClick={() => setCreating(true)}>
+            <div className="flex gap-2"><Button variant="outline" onClick={() => setTemplateOpen(true)}>Modelos</Button><Button onClick={() => setCreating(true)}>
               <Plus className="mr-2 h-4 w-4" /> Nova tabela
-            </Button>
+            </Button></div>
           ) : null
         }
       />
@@ -129,6 +131,8 @@ function TabelasPage() {
         </>
       )}
 
+      {companyId && <TemplateManager companyId={companyId} tables={data} open={templateOpen} onOpenChange={setTemplateOpen} />}
+
       <TableDialog
         open={creating || !!editing}
         onOpenChange={(o) => { if (!o) { setCreating(false); setEditing(null); } }}
@@ -151,6 +155,15 @@ function TabelasPage() {
       </AlertDialog>
     </div>
   );
+}
+
+function TemplateManager({ companyId, tables, open, onOpenChange }: { companyId: string; tables: TappingTable[]; open: boolean; onOpenChange: (v: boolean) => void }) {
+  const qc = useQueryClient(); const [name, setName] = useState(""); const [selected, setSelected] = useState<string[]>([]); const [editing, setEditing] = useState<TappingTableTemplate | null>(null);
+  const { data = [] } = useQuery({ queryKey: ["tapping-table-templates", companyId], queryFn: () => listTappingTableTemplates(companyId), enabled: open });
+  const save = useMutation({ mutationFn: () => editing ? updateTappingTableTemplate(editing.id, { name, tableIds: selected }) : createTappingTableTemplate({ companyId, name, tableIds: selected }), onSuccess: () => { toast.success("Modelo salvo"); setName(""); setSelected([]); setEditing(null); qc.invalidateQueries({ queryKey: ["tapping-table-templates", companyId] }); }, onError: (e: Error) => toast.error(e.message) });
+  const remove = useMutation({ mutationFn: (id: string) => deleteTappingTableTemplate(id, companyId), onSuccess: () => qc.invalidateQueries({ queryKey: ["tapping-table-templates", companyId] }) });
+  const toggle = (id: string) => setSelected((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id]);
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Modelos de tabelas</DialogTitle></DialogHeader><div className="space-y-3"><Input placeholder="Nome do modelo" value={name} onChange={(e) => setName(e.target.value)} /><div className="max-h-48 space-y-1 overflow-y-auto">{tables.map((t) => <label key={t.id} className="flex items-center gap-2 rounded border p-2 text-sm"><input type="checkbox" checked={selected.includes(t.id)} onChange={() => toggle(t.id)} />{t.name}</label>)}</div><Button disabled={!name.trim() || !selected.length || save.isPending} onClick={() => save.mutate()}>{editing ? "Atualizar" : "Criar modelo"}</Button><div className="border-t pt-3 space-y-1">{data.map((t) => <div key={t.id} className="flex items-center justify-between text-sm"><span>{t.name} ({t.tableIds.length})</span><span className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => { setEditing(t); setName(t.name); setSelected(t.tableIds); }}>Editar</Button><Button size="sm" variant="ghost" onClick={() => remove.mutate(t.id)}>Excluir</Button></span></div>)}</div></div></DialogContent></Dialog>;
 }
 
 function TableDialog({

@@ -708,6 +708,13 @@ export class TappersService {
     return this.attachTables(links);
   }
 
+  async applyTemplate(userId: string, dto: { companyId: string; tapperKey: string; templateId: string }) {
+    const key = this.parseTapperKey(dto.tapperKey); await this.ensureManagerOrFarmStaff(userId, dto.companyId, key);
+    const sibling = await this.resolveSiblingKey(dto.companyId, key);
+    const template = await this.prisma.tappingTableTemplate.findFirst({ where: { id: dto.templateId, companyId: dto.companyId, active: true }, include: { items: { orderBy: { position: 'asc' } } } }); if (!template) throw new NotFoundException('Template não encontrado');
+    return this.prisma.$transaction(async tx => { const existing = await tx.tapperTableLink.findMany({ where: { companyId: dto.companyId, OR: sibling ? [key, sibling] : [key] } }); const out = [] as any[]; for (const item of template.items) { const old = existing.find(x => x.tappingTableId === item.tappingTableId); const table = await tx.tappingTable.findFirst({ where: { id: item.tappingTableId, companyId: dto.companyId, active: true, isDeleted: false } }); if (!table) continue; const data = { active: true, position: item.position, treeCount: old?.treeCount, notes: old?.notes, frequencyDays: old?.frequencyDays ?? table.frequencyDays, restDays: old?.restDays ?? table.restDays, workDaysCycle: old?.workDaysCycle ?? table.workDaysCycle, cutType: old?.cutType ?? table.cutType, stimulation: old?.stimulation ?? table.stimulation }; out.push(old ? await tx.tapperTableLink.update({ where: { id: old.id }, data }) : await tx.tapperTableLink.create({ data: { companyId: dto.companyId, tappingTableId: item.tappingTableId, createdById: userId, ...key, ...data } })); } return out; });
+  }
+
   async createTableLink(userId: string, dto: { companyId: string; tapperKey: string; tappingTableId: string; treeCount?: number; frequencyDays?: number; restDays?: number; workDaysCycle?: number; cutType?: string; stimulation?: string; notes?: string }) {
     const key = this.parseTapperKey(dto.tapperKey);
     await this.ensureManagerOrFarmStaff(userId, dto.companyId, key);

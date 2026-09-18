@@ -39,6 +39,11 @@ function SangriaPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [confirmDivergence, setConfirmDivergence] = useState(false);
+
+  const expectedTable = rotation?.suggestedTableId ? tables.find((t) => t.id === rotation.suggestedTableId) : undefined;
+  const selectedTable = tables.find((t) => t.id === tappingTableId);
+  const isDivergent = Boolean(rotation?.suggestedTableId && tappingTableId && rotation.suggestedTableId !== tappingTableId);
 
   useEffect(() => {
     getFieldMe().then((m) => {
@@ -98,10 +103,16 @@ function SangriaPage() {
 
   async function save() {
     if (!farm || !tapper) { toast.error("Preencha fazenda e sangrador"); return; }
+    if (isDivergent && !confirmDivergence) {
+      toast.warning(`A tabela selecionada (${selectedTable?.name ?? "—"}) é diferente da tabela do dia (${expectedTable?.name ?? "—"}). Confirme para continuar.`);
+      return;
+    }
     setSaving(true);
     const res = await submitTapping({
       companyId: farm.companyId, farmId: farm.id,
       tappingTableId: tappingTableId || undefined,
+      expectedTableId: rotation?.suggestedTableId || undefined,
+      divergent: isDivergent || undefined,
       date: getLocalIsoDate(),
       sangradorName: tapper.fullName,
       // Sangradores vinculados só pelo RH (sem ficha Tapper legada) vêm com um
@@ -245,7 +256,17 @@ function SangriaPage() {
           <Label className="mb-2 block text-xs font-medium text-muted-foreground">Áudio (opcional)</Label>
           <AudioRecorder value={audioUrl} onChange={setAudioUrl} />
         </div>
-        <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving}>
+        {isDivergent && (
+          <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning">
+            <p className="font-semibold">Tabela divergente da sequência</p>
+            <p className="mt-1 text-xs">O sistema sugeriu <strong>{expectedTable?.name ?? "—"}</strong>, mas você selecionou <strong>{selectedTable?.name ?? "—"}</strong>. Ao confirmar, essa divergência ficará registrada e a sequência seguirá a partir da tabela realizada.</p>
+            <label className="mt-2 flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={confirmDivergence} onChange={(e) => setConfirmDivergence(e.target.checked)} />
+              Confirmo registrar a tabela divergente
+            </label>
+          </div>
+        )}
+        <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving || (isDivergent && !confirmDivergence)}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar sangria
         </Button>
       </FieldCard>

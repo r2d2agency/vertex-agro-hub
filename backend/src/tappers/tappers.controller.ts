@@ -7,7 +7,7 @@ import { TappersService } from './tappers.service';
 import {
   CreateStintDto, CreateTapperDto, CreateTapperPreRegistrationDto, CreateTapperTableLinkDto,
   EndStintDto, ReviewTapperPreRegistrationDto, UpdateTapperDto, UpdateTapperTableLinkDto, UpsertTapperDto,
-  UpsertTapperRotationDto,
+  UpsertTapperRotationDto, ApplyTappingTableTemplateDto,
 } from './dto';
 
 // Guard de classe: apenas autenticação. RolesGuard (admin/gestor) é aplicado
@@ -79,6 +79,9 @@ export class TappersController {
   ) {
     return this.svc.listTableLinks(req.user.sub, companyId, tapperKey);
   }
+
+  @Post('table-links/apply-template')
+  applyTemplate(@Req() req: any, @Body() dto: ApplyTappingTableTemplateDto) { return this.svc.applyTemplate(req.user.sub, dto); }
 
   @Post('table-links')
   createTableLink(@Req() req: any, @Body() dto: CreateTapperTableLinkDto) {

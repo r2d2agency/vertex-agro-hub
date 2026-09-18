@@ -6,6 +6,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { applyTappingTableTemplate, listTappingTableTemplates } from "@/lib/templates.functions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -61,6 +63,9 @@ export function TapperTablesDialog({
     queryFn: () => getTapperRotation(companyId, tapperKey),
     enabled: open && !!companyId && !!tapperKey,
   });
+
+  const templatesQuery = useQuery({ queryKey: ["tapping-table-templates", companyId], queryFn: () => listTappingTableTemplates(companyId), enabled: open && !!companyId });
+  const templateMutation = useMutation({ mutationFn: (templateId: string) => applyTappingTableTemplate({ companyId, tapperKey, templateId }), onSuccess: () => { toast.success("Modelo aplicado"); qc.invalidateQueries({ queryKey: ["tapper-table-links", companyId, tapperKey] }); qc.invalidateQueries({ queryKey: ["tapper-rotation", companyId, tapperKey] }); }, onError: (e: Error) => toast.error(e.message) });
 
   const tablesQuery = useQuery({
     queryKey: ["tapping-tables-for-link", companyId],
@@ -153,6 +158,12 @@ export function TapperTablesDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {templatesQuery.data && templatesQuery.data.length > 0 && (
+          <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+            <Label className="text-xs">Aplicar modelo de tabelas</Label>
+            <div className="flex flex-wrap gap-2">{templatesQuery.data.filter((t) => t.active).map((t) => <Button key={t.id} size="sm" variant="outline" disabled={templateMutation.isPending} onClick={() => templateMutation.mutate(t.id)}>{t.name}</Button>)}</div>
+          </div>
+        )}
         {rotationQuery.data && (
           <div className={`rounded-lg border p-3 text-xs ${rotationQuery.data.needsReset ? "border-warning/50 bg-warning/10" : "border-primary/30 bg-primary/5"}`}>
             {rotationQuery.data.needsReset ? (
@@ -199,10 +210,10 @@ export function TapperTablesDialog({
             {links.map((l) => (
               <li key={l.id} className="space-y-2 rounded-lg border p-2">
                 <div className="flex min-w-0 items-center justify-between gap-2">
-                  <p className="min-w-0 truncate text-sm font-medium">
+                  <div className="flex items-center gap-2"><Switch checked={l.active !== false} onCheckedChange={(active) => updateTapperTableLink(l.id, { companyId, active }).then(() => { qc.invalidateQueries({ queryKey: ["tapper-table-links", companyId, tapperKey] }); qc.invalidateQueries({ queryKey: ["tapper-rotation", companyId, tapperKey] }); }).catch((e: Error) => toast.error(e.message))} aria-label="Ativar tabela" /><p className={`min-w-0 truncate text-sm font-medium ${l.active === false ? "text-muted-foreground line-through" : ""}`}>
                     {l.position + 1}. {l.tappingTable?.name ?? "Tabela removida"}
                     {l.tappingTable?.notation ? ` — ${l.tappingTable.notation}` : ""}
-                  </p>
+                  </p></div>
                   <div className="flex shrink-0 items-center gap-1">
                     <Button size="icon" variant="ghost" className="h-8 w-8" disabled={l.position === 0 || positionMutation.isPending} onClick={() => positionMutation.mutate({ link: l, position: l.position - 1 })} aria-label="Subir tabela"><ArrowUp className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" className="h-8 w-8" disabled={l.position === links.length - 1 || positionMutation.isPending} onClick={() => positionMutation.mutate({ link: l, position: l.position + 1 })} aria-label="Descer tabela"><ArrowDown className="h-4 w-4" /></Button>

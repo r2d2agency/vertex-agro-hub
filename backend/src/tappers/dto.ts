@@ -119,6 +119,12 @@ export class UpdateTapperTableLinkDto {
 }
 
 // Ponto de partida (ou reinício) da rotação de tabelas de um sangrador.
+export class ApplyTappingTableTemplateDto {
+  @IsUUID() companyId!: string;
+  @IsString() @MinLength(3) tapperKey!: string;
+  @IsUUID() templateId!: string;
+}
+
 export class UpsertTapperRotationDto {
   @IsUUID() companyId!: string;
   @IsString() @MinLength(3) tapperKey!: string;
