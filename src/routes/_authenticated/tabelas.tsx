@@ -2,7 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Table as TableIcon } from "lucide-react";
-import { listTappingTableTemplates, createTappingTableTemplate, updateTappingTableTemplate, deleteTappingTableTemplate, type TappingTableTemplate } from "@/lib/templates.functions";
+import {
+  listTappingTableTemplates,
+  createTappingTableTemplate,
+  updateTappingTableTemplate,
+  deleteTappingTableTemplate,
+  type TappingTableTemplate,
+} from "@/lib/templates.functions";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
@@ -13,16 +19,34 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import {
-  createTappingTable, deleteTappingTable, listTappingTables, updateTappingTable,
-  type TappingTable, type TappingTableInput,
+  CompanyPicker,
+  NoCompanyCard,
+  useSelectedCompany,
+} from "@/components/vertex/company-picker";
+import {
+  createTappingTable,
+  deleteTappingTable,
+  listTappingTables,
+  updateTappingTable,
+  type TappingTable,
+  type TappingTableInput,
 } from "@/lib/tabelas.functions";
 
 export const Route = createFileRoute("/_authenticated/tabelas")({
@@ -37,9 +61,16 @@ export const Route = createFileRoute("/_authenticated/tabelas")({
 });
 
 const empty: TappingTableInput = {
-  name: "", code: "", notation: "", cutType: "",
-  frequencyDays: null, restDays: null, workDaysCycle: null,
-  stimulation: "", description: "", active: true,
+  name: "",
+  code: "",
+  notation: "",
+  cutType: "",
+  frequencyDays: null,
+  restDays: null,
+  workDaysCycle: null,
+  stimulation: "",
+  description: "",
+  active: true,
 };
 
 function TabelasPage() {
@@ -72,9 +103,14 @@ function TabelasPage() {
         description="Sistemas de sangria (D/2, D/3, D/4), frequência e estimulação."
         actions={
           companyId ? (
-            <div className="flex gap-2"><Button variant="outline" onClick={() => setTemplateOpen(true)}>Modelos</Button><Button onClick={() => setCreating(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Nova tabela
-            </Button></div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setTemplateOpen(true)}>
+                Modelos
+              </Button>
+              <Button onClick={() => setCreating(true)}>
+                <Plus className="mr-2 h-4 w-4" /> Nova tabela
+              </Button>
+            </div>
           ) : null
         }
       />
@@ -86,9 +122,17 @@ function TabelasPage() {
           <CompanyPicker companies={companies} companyId={companyId} onChange={setCompanyId} />
 
           {loadingList ? (
-            <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Carregando...</CardContent></Card>
+            <Card>
+              <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                Carregando...
+              </CardContent>
+            </Card>
           ) : data.length === 0 ? (
-            <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Nenhuma tabela de sangria cadastrada.</CardContent></Card>
+            <Card>
+              <CardContent className="p-10 text-center text-sm text-muted-foreground">
+                Nenhuma tabela de sangria cadastrada.
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {data.map((t) => (
@@ -99,26 +143,64 @@ function TabelasPage() {
                         <div className="flex items-center gap-2">
                           <TableIcon className="h-4 w-4 text-primary" />
                           <p className="truncate font-semibold">{t.name}</p>
-                          {!t.active && <Badge variant="secondary" className="text-xs">Inativa</Badge>}
+                          {!t.active && (
+                            <Badge variant="secondary" className="text-xs">
+                              Inativa
+                            </Badge>
+                          )}
                         </div>
-                        {t.code && <p className="mt-1 font-mono text-xs text-muted-foreground">{t.code}</p>}
+                        {t.code && (
+                          <p className="mt-1 font-mono text-xs text-muted-foreground">{t.code}</p>
+                        )}
                         <div className="mt-2 flex flex-wrap gap-1">
                           {t.notation && <Badge className="text-xs">{t.notation}</Badge>}
-                          {t.cutType && <Badge variant="outline" className="text-xs">{t.cutType}</Badge>}
-                          {t.frequencyDays != null && <Badge variant="outline" className="text-xs">a cada {t.frequencyDays}d</Badge>}
-                          {t.restDays != null && <Badge variant="outline" className="text-xs">descanso {t.restDays}d</Badge>}
-                          {t.workDaysCycle != null && <Badge variant="outline" className="text-xs">{t.workDaysCycle}d/ciclo</Badge>}
+                          {t.cutType && (
+                            <Badge variant="outline" className="text-xs">
+                              {t.cutType}
+                            </Badge>
+                          )}
+                          {t.frequencyDays != null && (
+                            <Badge variant="outline" className="text-xs">
+                              a cada {t.frequencyDays}d
+                            </Badge>
+                          )}
+                          {t.restDays != null && (
+                            <Badge variant="outline" className="text-xs">
+                              descanso {t.restDays}d
+                            </Badge>
+                          )}
+                          {t.workDaysCycle != null && (
+                            <Badge variant="outline" className="text-xs">
+                              {t.workDaysCycle}d/ciclo
+                            </Badge>
+                          )}
                         </div>
                         {t.stimulation && (
-                          <p className="mt-2 text-xs text-muted-foreground">Estimulação: {t.stimulation}</p>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Estimulação: {t.stimulation}
+                          </p>
                         )}
-                        {t.description && <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{t.description}</p>}
+                        {t.description && (
+                          <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                            {t.description}
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(t)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setEditing(t)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setToDelete(t)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => setToDelete(t)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -131,11 +213,23 @@ function TabelasPage() {
         </>
       )}
 
-      {companyId && <TemplateManager companyId={companyId} tables={data} open={templateOpen} onOpenChange={setTemplateOpen} />}
+      {companyId && (
+        <TemplateManager
+          companyId={companyId}
+          tables={data}
+          open={templateOpen}
+          onOpenChange={setTemplateOpen}
+        />
+      )}
 
       <TableDialog
         open={creating || !!editing}
-        onOpenChange={(o) => { if (!o) { setCreating(false); setEditing(null); } }}
+        onOpenChange={(o) => {
+          if (!o) {
+            setCreating(false);
+            setEditing(null);
+          }
+        }}
         initial={editing ?? undefined}
         companyId={companyId}
         onSaved={() => qc.invalidateQueries({ queryKey: ["tapping-tables", companyId] })}
@@ -145,11 +239,20 @@ function TabelasPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir tabela?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação inativa a tabela (exclusão lógica).</AlertDialogDescription>
+            <AlertDialogDescription>
+              Esta ação inativa a tabela (exclusão lógica).
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (toDelete) del.mutate(toDelete.id); setToDelete(null); }}>Excluir</AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => {
+                if (toDelete) del.mutate(toDelete.id);
+                setToDelete(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -157,17 +260,127 @@ function TabelasPage() {
   );
 }
 
-function TemplateManager({ companyId, tables, open, onOpenChange }: { companyId: string; tables: TappingTable[]; open: boolean; onOpenChange: (v: boolean) => void }) {
-  const qc = useQueryClient(); const [name, setName] = useState(""); const [selected, setSelected] = useState<string[]>([]); const [editing, setEditing] = useState<TappingTableTemplate | null>(null);
-  const { data = [] } = useQuery({ queryKey: ["tapping-table-templates", companyId], queryFn: () => listTappingTableTemplates(companyId), enabled: open });
-  const save = useMutation({ mutationFn: () => editing ? updateTappingTableTemplate(editing.id, { name, tableIds: selected }) : createTappingTableTemplate({ companyId, name, tableIds: selected }), onSuccess: () => { toast.success("Modelo salvo"); setName(""); setSelected([]); setEditing(null); qc.invalidateQueries({ queryKey: ["tapping-table-templates", companyId] }); }, onError: (e: Error) => toast.error(e.message) });
-  const remove = useMutation({ mutationFn: (id: string) => deleteTappingTableTemplate(id, companyId), onSuccess: () => qc.invalidateQueries({ queryKey: ["tapping-table-templates", companyId] }) });
-  const toggle = (id: string) => setSelected((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id]);
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Modelos de tabelas</DialogTitle></DialogHeader><div className="space-y-3"><Input placeholder="Nome do modelo" value={name} onChange={(e) => setName(e.target.value)} /><div className="max-h-48 space-y-1 overflow-y-auto">{tables.map((t) => <label key={t.id} className="flex items-center gap-2 rounded border p-2 text-sm"><input type="checkbox" checked={selected.includes(t.id)} onChange={() => toggle(t.id)} />{t.name}</label>)}</div><Button disabled={!name.trim() || !selected.length || save.isPending} onClick={() => save.mutate()}>{editing ? "Atualizar" : "Criar modelo"}</Button><div className="border-t pt-3 space-y-1">{data.map((t) => <div key={t.id} className="flex items-center justify-between text-sm"><span>{t.name} ({t.tableIds.length})</span><span className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => { setEditing(t); setName(t.name); setSelected(t.tableIds); }}>Editar</Button><Button size="sm" variant="ghost" onClick={() => remove.mutate(t.id)}>Excluir</Button></span></div>)}</div></div></DialogContent></Dialog>;
+function TemplateManager({
+  companyId,
+  tables,
+  open,
+  onOpenChange,
+}: {
+  companyId: string;
+  tables: TappingTable[];
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [editing, setEditing] = useState<TappingTableTemplate | null>(null);
+  const { data = [] } = useQuery({
+    queryKey: ["tapping-table-templates", companyId],
+    queryFn: () => listTappingTableTemplates(companyId),
+    enabled: open,
+  });
+  const resetForm = () => {
+    setName("");
+    setSelected([]);
+    setEditing(null);
+  };
+  const save = useMutation({
+    mutationFn: () =>
+      editing
+        ? updateTappingTableTemplate(editing.id, { name: name.trim(), tableIds: selected })
+        : createTappingTableTemplate({ companyId, name: name.trim(), tableIds: selected }),
+    onSuccess: () => {
+      toast.success("Modelo salvo");
+      resetForm();
+      onOpenChange(false);
+      qc.invalidateQueries({ queryKey: ["tapping-table-templates", companyId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteTappingTableTemplate(id, companyId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tapping-table-templates", companyId] }),
+  });
+  const toggle = (id: string) =>
+    setSelected((current) =>
+      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
+    );
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) resetForm();
+    onOpenChange(nextOpen);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Modelos de tabelas</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Input
+            placeholder="Nome do modelo"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+          <div className="max-h-48 space-y-1 overflow-y-auto">
+            {tables.map((table) => (
+              <label
+                key={table.id}
+                className="flex cursor-pointer items-center gap-2 rounded border p-2 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(table.id)}
+                  onChange={() => toggle(table.id)}
+                />
+                {table.name}
+              </label>
+            ))}
+          </div>
+          <Button
+            disabled={!name.trim() || selected.length === 0 || save.isPending}
+            onClick={() => save.mutate()}
+          >
+            {editing ? "Atualizar" : "Criar modelo"}
+          </Button>
+          <div className="space-y-1 border-t pt-3">
+            {data.map((template) => (
+              <div key={template.id} className="flex items-center justify-between text-sm">
+                <span>
+                  {template.name} ({template.tableIds.length})
+                </span>
+                <span className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditing(template);
+                      setName(template.name);
+                      setSelected(template.tableIds);
+                    }}
+                  >
+                    Editar
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => remove.mutate(template.id)}>
+                    Excluir
+                  </Button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function TableDialog({
-  open, onOpenChange, initial, companyId, onSaved,
+  open,
+  onOpenChange,
+  initial,
+  companyId,
+  onSaved,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -179,18 +392,19 @@ function TableDialog({
 
   useEffect(() => {
     if (!open) return;
-    if (initial) setValues({
-      name: initial.name,
-      code: initial.code ?? "",
-      notation: initial.notation ?? "",
-      cutType: initial.cutType ?? "",
-      frequencyDays: initial.frequencyDays ?? null,
-      restDays: initial.restDays ?? null,
-      workDaysCycle: initial.workDaysCycle ?? null,
-      stimulation: initial.stimulation ?? "",
-      description: initial.description ?? "",
-      active: initial.active,
-    });
+    if (initial)
+      setValues({
+        name: initial.name,
+        code: initial.code ?? "",
+        notation: initial.notation ?? "",
+        cutType: initial.cutType ?? "",
+        frequencyDays: initial.frequencyDays ?? null,
+        restDays: initial.restDays ?? null,
+        workDaysCycle: initial.workDaysCycle ?? null,
+        stimulation: initial.stimulation ?? "",
+        description: initial.description ?? "",
+        active: initial.active,
+      });
     else setValues(empty);
   }, [open, initial]);
 
@@ -208,7 +422,8 @@ function TableDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const setNum = (key: "frequencyDays" | "restDays" | "workDaysCycle") =>
+  const setNum =
+    (key: "frequencyDays" | "restDays" | "workDaysCycle") =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const raw = e.target.value;
       setValues((v) => ({ ...v, [key]: raw === "" ? null : Number(raw) }));
@@ -217,37 +432,114 @@ function TableDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>{initial ? "Editar tabela" : "Nova tabela de sangria"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{initial ? "Editar tabela" : "Nova tabela de sangria"}</DialogTitle>
+        </DialogHeader>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!values.name.trim()) { toast.error("Nome obrigatório"); return; }
+            if (!values.name.trim()) {
+              toast.error("Nome obrigatório");
+              return;
+            }
             mut.mutate();
           }}
           className="grid gap-4"
         >
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Nome *</Label><Input value={values.name} onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))} required /></div>
-            <div><Label>Código</Label><Input value={values.code} onChange={(e) => setValues((v) => ({ ...v, code: e.target.value }))} /></div>
+            <div>
+              <Label>Nome *</Label>
+              <Input
+                value={values.name}
+                onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <Label>Código</Label>
+              <Input
+                value={values.code}
+                onChange={(e) => setValues((v) => ({ ...v, code: e.target.value }))}
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Notação</Label><Input value={values.notation} onChange={(e) => setValues((v) => ({ ...v, notation: e.target.value }))} placeholder="Ex: D/3 6d/7" /></div>
-            <div><Label>Tipo de corte</Label><Input value={values.cutType} onChange={(e) => setValues((v) => ({ ...v, cutType: e.target.value }))} placeholder="Ex: 1/2S" /></div>
+            <div>
+              <Label>Notação</Label>
+              <Input
+                value={values.notation}
+                onChange={(e) => setValues((v) => ({ ...v, notation: e.target.value }))}
+                placeholder="Ex: D/3 6d/7"
+              />
+            </div>
+            <div>
+              <Label>Tipo de corte</Label>
+              <Input
+                value={values.cutType}
+                onChange={(e) => setValues((v) => ({ ...v, cutType: e.target.value }))}
+                placeholder="Ex: 1/2S"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>Frequência (dias)</Label><Input type="number" min={0} value={values.frequencyDays ?? ""} onChange={setNum("frequencyDays")} /></div>
-            <div><Label>Descanso (dias)</Label><Input type="number" min={0} value={values.restDays ?? ""} onChange={setNum("restDays")} /></div>
-            <div><Label>Dias/ciclo</Label><Input type="number" min={0} value={values.workDaysCycle ?? ""} onChange={setNum("workDaysCycle")} /></div>
+            <div>
+              <Label>Frequência (dias)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.frequencyDays ?? ""}
+                onChange={setNum("frequencyDays")}
+              />
+            </div>
+            <div>
+              <Label>Descanso (dias)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.restDays ?? ""}
+                onChange={setNum("restDays")}
+              />
+            </div>
+            <div>
+              <Label>Dias/ciclo</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.workDaysCycle ?? ""}
+                onChange={setNum("workDaysCycle")}
+              />
+            </div>
           </div>
-          <div><Label>Estimulação</Label><Input value={values.stimulation} onChange={(e) => setValues((v) => ({ ...v, stimulation: e.target.value }))} placeholder="Ex: ET 2.5% 8/y" /></div>
-          <div><Label>Descrição</Label><Textarea rows={3} value={values.description} onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))} /></div>
+          <div>
+            <Label>Estimulação</Label>
+            <Input
+              value={values.stimulation}
+              onChange={(e) => setValues((v) => ({ ...v, stimulation: e.target.value }))}
+              placeholder="Ex: ET 2.5% 8/y"
+            />
+          </div>
+          <div>
+            <Label>Descrição</Label>
+            <Textarea
+              rows={3}
+              value={values.description}
+              onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
+            />
+          </div>
           <div className="flex items-center gap-3">
-            <Switch checked={values.active ?? true} onCheckedChange={(a) => setValues((v) => ({ ...v, active: a }))} />
+            <Switch
+              checked={values.active ?? true}
+              onCheckedChange={(a) => setValues((v) => ({ ...v, active: a }))}
+            />
             <Label>Ativa</Label>
           </div>
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={mut.isPending}>{mut.isPending ? "Salvando..." : "Salvar"}</Button>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={mut.isPending}>
+              {mut.isPending ? "Salvando..." : "Salvar"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
