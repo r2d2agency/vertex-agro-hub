@@ -6,7 +6,7 @@ import {
   type FieldMe, type FieldTapper, type FieldTapperTable,
 } from "@/lib/field.functions";
 import { getTapperRotation, type TapperRotationState } from "@/lib/tappers.functions";
-import { TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
+import { TASK_EXTENTS, END_PERIODS, listTappingTasks, type TappingTask } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -30,7 +30,8 @@ function SangriaPage() {
   const [tablesLoading, setTablesLoading] = useState(false);
   const [tappingTableId, setTappingTableId] = useState("");
   const [rotation, setRotation] = useState<TapperRotationState | null>(null);
-  const [taskExtents, setTaskExtents] = useState<string[]>([]);
+  const [tasks, setTasks] = useState<TappingTask[]>([]);
+  const [taskExtent, setTaskExtent] = useState("");
   const [endPeriod, setEndPeriod] = useState("");
 
   const [notes, setNotes] = useState("");
@@ -86,9 +87,12 @@ function SangriaPage() {
       .finally(() => setTablesLoading(false));
   }, [farm, tapperId]);
 
-  function toggleTask(value: string) {
-    setTaskExtents((cur) => cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value]);
-  }
+  useEffect(() => {
+    if (!farm) return;
+    listTappingTasks(farm.companyId)
+      .then(setTasks)
+      .catch(() => setTasks([]));
+  }, [farm]);
 
   async function onPhoto(f: File | null) {
     if (!f) return;
@@ -103,6 +107,7 @@ function SangriaPage() {
 
   async function save() {
     if (!farm || !tapper) { toast.error("Preencha fazenda e sangrador"); return; }
+    if (!taskExtent) { toast.error("Selecione uma tarefa"); return; }
     if (isDivergent && !confirmDivergence) {
       toast.warning(`A tabela selecionada (${selectedTable?.name ?? "—"}) é diferente da tabela do dia (${expectedTable?.name ?? "—"}). Confirme para continuar.`);
       return;
@@ -119,7 +124,7 @@ function SangriaPage() {
       // id sintético "rh:<userId>" — não é uma linha real de Tapper, então
       // não pode ser enviado como tapperId (chave estrangeira).
       tapperId: tapper.id.startsWith("rh:") ? undefined : tapper.id,
-      taskExtent: taskExtents.length ? taskExtents.join(",") : undefined,
+      taskExtent,
       endPeriod: endPeriod || undefined,
       treesExpected: table?.treeCount ?? undefined,
       notes: notes.trim() || undefined,
@@ -199,13 +204,13 @@ function SangriaPage() {
           <div>
             <Label className="mb-2 block text-xs font-medium text-muted-foreground">Tarefa</Label>
             <div className="grid grid-cols-3 gap-2">
-              {TASK_EXTENTS.map((t) => {
-                const active = taskExtents.includes(t.value);
+              {(tasks.length ? tasks : TASK_EXTENTS.map((t) => ({ id: t.value, companyId: farm?.companyId ?? "", code: t.value, label: t.label, position: 0, active: true }))).map((t) => {
+                const active = taskExtent === t.code;
                 return (
                   <button
                     key={t.value}
                     type="button"
-                    onClick={() => toggleTask(t.value)}
+                    onClick={() => setTaskExtent(t.code)}
                     className={`h-11 rounded-xl border text-xs font-semibold transition ${
                       active ? "border-primary bg-primary/15 text-primary" : "border-border/60 bg-background/40 text-muted-foreground"
                     }`}
@@ -215,7 +220,7 @@ function SangriaPage() {
                 );
               })}
             </div>
-            <p className="mt-1 px-1 text-[10px] text-muted-foreground italic">Pode marcar mais de uma opção (ex.: tabela completa + reposição).</p>
+            <p className="mt-1 px-1 text-[10px] text-muted-foreground italic">Selecione uma tarefa realizada.</p>
           </div>
         )}
         <div>

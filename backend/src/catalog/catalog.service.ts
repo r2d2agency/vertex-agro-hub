@@ -7,6 +7,7 @@ import {
   CreateTappingTableDto,
   UpdateCloneDto,
   UpdateTappingTableDto, CreateTappingTableTemplateDto, UpdateTappingTableTemplateDto,
+  CreateTappingTaskDto, UpdateTappingTaskDto,
 } from './dto';
 
 @Injectable()
@@ -15,6 +16,31 @@ export class CatalogService {
     private readonly prisma: PrismaService,
     private readonly access: CompanyAccess,
   ) {}
+
+  // ---------- Tapping tasks ----------
+  async listTasks(userId: string, companyId: string) {
+    await this.access.ensureCompany(userId, companyId);
+    return this.prisma.tappingTask.findMany({ where: { companyId, active: true, isDeleted: false }, orderBy: [{ position: 'asc' }, { label: 'asc' }] });
+  }
+
+  async createTask(userId: string, dto: CreateTappingTaskDto) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    return this.prisma.tappingTask.create({ data: { ...dto, code: dto.code.trim(), label: dto.label.trim(), createdById: userId, updatedById: userId } });
+  }
+
+  async updateTask(userId: string, id: string, dto: UpdateTappingTaskDto) {
+    const current = await this.prisma.tappingTask.findUnique({ where: { id } });
+    if (!current || current.isDeleted) throw new NotFoundException();
+    await this.access.ensureCompany(userId, current.companyId);
+    return this.prisma.tappingTask.update({ where: { id }, data: { ...dto, code: dto.code?.trim(), label: dto.label?.trim(), updatedById: userId, version: { increment: 1 } } });
+  }
+
+  async deleteTask(userId: string, id: string) {
+    const current = await this.prisma.tappingTask.findUnique({ where: { id } });
+    if (!current || current.isDeleted) throw new NotFoundException();
+    await this.access.ensureCompany(userId, current.companyId);
+    return this.prisma.tappingTask.update({ where: { id }, data: { active: false, isDeleted: true, deletedAt: new Date(), updatedById: userId, version: { increment: 1 } } });
+  }
 
   // ---------- Clones ----------
   async listClones(userId: string, companyId: string) {

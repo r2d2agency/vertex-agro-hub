@@ -5,6 +5,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FieldService } from './field.service';
 import { TappersService } from '../tappers/tappers.service';
+import { CatalogService } from '../catalog/catalog.service';
 import {
   CreatePhotoDto, CreateStimulationDto, UpdatePhotoDto, UpdateStimulationDto,
   CreateProductionDeliveryDto,
@@ -18,7 +19,7 @@ function need(v?: string) {
 @UseGuards(JwtAuthGuard)
 @Controller()
 export class FieldController {
-  constructor(private readonly svc: FieldService, private readonly tappersSvc: TappersService) {}
+  constructor(private readonly svc: FieldService, private readonly tappersSvc: TappersService, private readonly catalogSvc: CatalogService) {}
 
   // ---------- App de campo ----------
   @Get('field/me')
@@ -27,6 +28,11 @@ export class FieldController {
   @Get('field/tappers')
   listTappers(@Req() req: any, @Query('companyId') companyId?: string, @Query('farmId') farmId?: string) {
     return this.svc.listTappersForFarm(req.user.sub, need(companyId), need(farmId));
+  }
+
+  @Get('field/tapping-tasks')
+  listTappingTasks(@Req() req: any, @Query('companyId') companyId?: string) {
+    return this.catalogSvc.listTasks(req.user.sub, need(companyId));
   }
 
   @Get('field/tapping-tables')

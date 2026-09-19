@@ -218,6 +218,7 @@ model Company {
   plots                  Plot[]
   clones                 Clone[]
   tappingTables          TappingTable[]
+  tappingTasks           TappingTask[]
   tappingRecords         TappingRecord[]
   tappers                Tapper[]
   tapperPreRegistrations TapperPreRegistration[]
@@ -629,6 +630,32 @@ model TappingTableTemplateItem {
   @@unique([templateId, tappingTableId])
   @@index([templateId, position])
   @@map("tapping_table_template_items")
+}
+
+model TappingTask {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  code        String
+  label       String
+  description String?
+  position    Int      @default(0)
+  active      Boolean  @default(true)
+
+  version     Int        @default(1)
+  syncStatus  SyncStatus @default(synced) @map("sync_status")
+  deviceId    String?    @map("device_id")
+  isDeleted   Boolean    @default(false) @map("is_deleted")
+  deletedAt   DateTime?  @map("deleted_at")
+  createdById String?    @map("created_by") @db.Uuid
+  updatedById String?    @map("updated_by") @db.Uuid
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, code])
+  @@index([companyId, active, isDeleted, position])
+  @@map("tapping_tasks")
 }
 
 model TappingRecord {

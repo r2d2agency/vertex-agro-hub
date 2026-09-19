@@ -1,12 +1,37 @@
 import { apiRequest } from "@/lib/api";
 
-// Tarefa: o que o sangrador executou na tabela — não é single-select, ele
-// pode marcar mais de uma opção (ex.: tabela completa + reposição).
+export type TappingTask = {
+  id: string;
+  companyId: string;
+  code: string;
+  label: string;
+  description?: string | null;
+  position: number;
+  active: boolean;
+};
+
+// Fallback apenas para compatibilidade enquanto o catálogo é carregado.
 export const TASK_EXTENTS = [
   { value: "X", label: "Tabela completa (X)" },
   { value: "/", label: "Tabela adiantada (/)" },
   { value: "1", label: "Reposição (1)" },
 ] as const;
+
+export function listTappingTasks(companyId: string) {
+  return apiRequest<TappingTask[]>(`/field/tapping-tasks?companyId=${encodeURIComponent(companyId)}`);
+}
+
+export function createTappingTask(input: Omit<TappingTask, "id" | "companyId" | "active"> & { companyId: string; active?: boolean }) {
+  return apiRequest<TappingTask>("/tapping-tasks", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function updateTappingTask(id: string, input: Partial<Omit<TappingTask, "id" | "companyId">>) {
+  return apiRequest<TappingTask>(`/tapping-tasks/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function deleteTappingTask(id: string) {
+  return apiRequest(`/tapping-tasks/${id}`, { method: "DELETE" });
+}
 
 export const END_PERIODS = [
   { value: "manha", label: "Manhã" },

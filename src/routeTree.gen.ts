@@ -70,6 +70,7 @@ import { Route as AuthenticatedSimuladorRouteImport } from './routes/_authentica
 import { Route as AuthenticatedSincronizacaoRouteImport } from './routes/_authenticated/sincronizacao'
 import { Route as AuthenticatedTabelasRouteImport } from './routes/_authenticated/tabelas'
 import { Route as AuthenticatedTalhoesRouteImport } from './routes/_authenticated/talhoes'
+import { Route as AuthenticatedTarefasSangriaRouteImport } from './routes/_authenticated/tarefas-sangria'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedVisitasRouteImport } from './routes/_authenticated/visitas'
 import { Route as CampoIndexRouteImport } from './routes/campo/index'
@@ -419,6 +420,12 @@ const AuthenticatedTalhoesRoute = AuthenticatedTalhoesRouteImport.update({
   path: '/talhoes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTarefasSangriaRoute =
+  AuthenticatedTarefasSangriaRouteImport.update({
+    id: '/tarefas-sangria',
+    path: '/tarefas-sangria',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -625,6 +632,7 @@ export interface FileRoutesByFullPath {
   '/sincronizacao': typeof AuthenticatedSincronizacaoRoute
   '/tabelas': typeof AuthenticatedTabelasRoute
   '/talhoes': typeof AuthenticatedTalhoesRoute
+  '/tarefas-sangria': typeof AuthenticatedTarefasSangriaRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visitas': typeof AuthenticatedVisitasRoute
   '/campo/abastecimento': typeof CampoAbastecimentoRoute
@@ -713,6 +721,7 @@ export interface FileRoutesByTo {
   '/sincronizacao': typeof AuthenticatedSincronizacaoRoute
   '/tabelas': typeof AuthenticatedTabelasRoute
   '/talhoes': typeof AuthenticatedTalhoesRoute
+  '/tarefas-sangria': typeof AuthenticatedTarefasSangriaRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visitas': typeof AuthenticatedVisitasRoute
   '/campo/abastecimento': typeof CampoAbastecimentoRoute
@@ -805,6 +814,7 @@ export interface FileRoutesById {
   '/_authenticated/sincronizacao': typeof AuthenticatedSincronizacaoRoute
   '/_authenticated/tabelas': typeof AuthenticatedTabelasRoute
   '/_authenticated/talhoes': typeof AuthenticatedTalhoesRoute
+  '/_authenticated/tarefas-sangria': typeof AuthenticatedTarefasSangriaRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/visitas': typeof AuthenticatedVisitasRoute
   '/campo/abastecimento': typeof CampoAbastecimentoRoute
@@ -897,6 +907,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/tabelas'
     | '/talhoes'
+    | '/tarefas-sangria'
     | '/usuarios'
     | '/visitas'
     | '/campo/abastecimento'
@@ -985,6 +996,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/tabelas'
     | '/talhoes'
+    | '/tarefas-sangria'
     | '/usuarios'
     | '/visitas'
     | '/campo/abastecimento'
@@ -1076,6 +1088,7 @@ export interface FileRouteTypes {
     | '/_authenticated/sincronizacao'
     | '/_authenticated/tabelas'
     | '/_authenticated/talhoes'
+    | '/_authenticated/tarefas-sangria'
     | '/_authenticated/usuarios'
     | '/_authenticated/visitas'
     | '/campo/abastecimento'
@@ -1547,6 +1560,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTalhoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/tarefas-sangria': {
+      id: '/_authenticated/tarefas-sangria'
+      path: '/tarefas-sangria'
+      fullPath: '/tarefas-sangria'
+      preLoaderRoute: typeof AuthenticatedTarefasSangriaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/usuarios': {
       id: '/_authenticated/usuarios'
       path: '/usuarios'
@@ -1843,6 +1863,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSincronizacaoRoute: typeof AuthenticatedSincronizacaoRoute
   AuthenticatedTabelasRoute: typeof AuthenticatedTabelasRoute
   AuthenticatedTalhoesRoute: typeof AuthenticatedTalhoesRoute
+  AuthenticatedTarefasSangriaRoute: typeof AuthenticatedTarefasSangriaRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedVisitasRoute: typeof AuthenticatedVisitasRoute
 }
@@ -1900,6 +1921,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSincronizacaoRoute: AuthenticatedSincronizacaoRoute,
   AuthenticatedTabelasRoute: AuthenticatedTabelasRoute,
   AuthenticatedTalhoesRoute: AuthenticatedTalhoesRoute,
+  AuthenticatedTarefasSangriaRoute: AuthenticatedTarefasSangriaRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedVisitasRoute: AuthenticatedVisitasRoute,
 }

@@ -20,6 +20,7 @@ import {
   CreateTappingTableDto,
   UpdateCloneDto,
   UpdateTappingTableDto, CreateTappingTableTemplateDto, UpdateTappingTableTemplateDto,
+  CreateTappingTaskDto, UpdateTappingTaskDto,
 } from './dto';
 
 function requireCompanyId(companyId?: string) {
@@ -76,4 +77,17 @@ export class CatalogController {
   @Post('tapping-table-templates') createTemplate(@Req() req: any, @Body() dto: CreateTappingTableTemplateDto) { return this.svc.createTemplate(req.user.sub, dto); }
   @Patch('tapping-table-templates/:id') updateTemplate(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTappingTableTemplateDto) { return this.svc.updateTemplate(req.user.sub, id, dto); }
   @Delete('tapping-table-templates/:id') deleteTemplate(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) { return this.svc.deleteTemplate(req.user.sub, id); }
+
+  @Get('tapping-tasks') listTasks(@Req() req: any, @Query('companyId') companyId?: string) {
+    return this.svc.listTasks(req.user.sub, requireCompanyId(companyId));
+  }
+  @Post('tapping-tasks') createTask(@Req() req: any, @Body() dto: CreateTappingTaskDto) {
+    return this.svc.createTask(req.user.sub, dto);
+  }
+  @Patch('tapping-tasks/:id') updateTask(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTappingTaskDto) {
+    return this.svc.updateTask(req.user.sub, id, dto);
+  }
+  @Delete('tapping-tasks/:id') deleteTask(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
+    return this.svc.deleteTask(req.user.sub, id);
+  }
 }

@@ -114,6 +114,7 @@ const groups: { label: string; items: Item[] }[] = [
     label: "Operação",
     items: [
       { title: "Agenda", url: "/agenda", icon: Calendar },
+      { title: "Tarefas de Sangria", url: "/tarefas-sangria", icon: ClipboardList },
       { title: "Sangrias", url: "/sangrias", icon: Droplets },
       { title: "Estimulações", url: "/estimulacoes", icon: FlaskConical },
       { title: "Produção", url: "/producao", icon: BarChart3 },

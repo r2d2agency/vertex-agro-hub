@@ -52,6 +52,23 @@ export class UpdateTappingTableTemplateDto {
   @IsOptional() @IsUUID('4', { each: true }) tableIds?: string[];
 }
 
+export class CreateTappingTaskDto {
+  @IsUUID() companyId!: string;
+  @IsString() @MaxLength(40) code!: string;
+  @IsString() @MaxLength(200) label!: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsInt() @Min(0) position?: number;
+  @IsOptional() @IsBoolean() active?: boolean;
+}
+
+export class UpdateTappingTaskDto {
+  @IsOptional() @IsString() @MaxLength(40) code?: string;
+  @IsOptional() @IsString() @MaxLength(200) label?: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsInt() @Min(0) position?: number;
+  @IsOptional() @IsBoolean() active?: boolean;
+}
+
 export class UpdateTappingTableDto {
   @IsOptional() @IsString() @MaxLength(200) name?: string;
   @IsOptional() @IsString() @MaxLength(50) code?: string;
