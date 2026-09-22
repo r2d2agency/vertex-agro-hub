@@ -60,7 +60,7 @@ export function applyTappingTableTemplate(input: {
   plotId?: string;
   templateId: string;
 }) {
-  return apiRequest(`/tappers/table-links/apply-template`, {
+  return apiRequest<unknown[]>(`/tappers/table-links/apply-template`, {
     method: "POST",
     body: JSON.stringify(input),
   });
