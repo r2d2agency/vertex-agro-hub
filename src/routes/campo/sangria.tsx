@@ -156,8 +156,6 @@ function SangriaPage() {
       const payload = {
         companyId: farm.companyId, farmId: farm.id, plotId,
         tappingTableId: tappingTableId || undefined,
-        expectedTableId: rotation?.suggestedTableId || undefined,
-        divergent: isDivergent || undefined,
         date: recordDate,
         sangradorName: tapper.fullName,
         // Sangradores vinculados só pelo RH (sem ficha Tapper legada) vêm com um
