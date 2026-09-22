@@ -119,8 +119,9 @@ function SangriaPage() {
   useEffect(() => {
     if (!farm || !recordDate) { setDateRecords([]); return; }
     listTappingRecords(farm.companyId, { farmId: farm.id, from: recordDate, to: recordDate })
-      .then(setDateRecords).catch(() => setDateRecords([]));
-  }, [farm, recordDate]);
+      .then((records) => setDateRecords(records.filter((r) => r.plotId === plotId && r.taskExtent === taskExtent)))
+      .catch(() => setDateRecords([]));
+  }, [farm, plotId, taskExtent, recordDate]);
 
   useEffect(() => {
     if (!farm || !plotId || !tappingTableId || !taskExtent || !recordDate) { setExistingRecords([]); return; }

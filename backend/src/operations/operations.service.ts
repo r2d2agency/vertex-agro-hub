@@ -10,6 +10,11 @@ import {
   UpdateTappingRecordDto,
 } from './dto';
 
+function parseTappingDate(value: string | Date) {
+  if (value instanceof Date) return value;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00-03:00`) : new Date(value);
+}
+
 @Injectable()
 export class OperationsService {
   constructor(
@@ -55,7 +60,16 @@ export class OperationsService {
     // Campos de controle da API não pertencem ao registro persistido.
     const { date, allowDuplicate: _allowDuplicate, ...rest } = dto;
     if (dto.farmId && dto.plotId && dto.tappingTableId && dto.taskExtent) {
-      const duplicate = await this.prisma.tappingRecord.findFirst({ where: { companyId: dto.companyId, farmId: dto.farmId, plotId: dto.plotId, tappingTableId: dto.tappingTableId, tapperId: dto.tapperId ?? null, taskExtent: dto.taskExtent.trim(), date: new Date(date), isDeleted: false }, select: { id: true, createdAt: true } });
+      const duplicate = await this.prisma.tappingRecord.findFirst({
+        where: {
+          companyId: dto.companyId, farmId: dto.farmId, plotId: dto.plotId,
+          tappingTableId: dto.tappingTableId, taskExtent: dto.taskExtent.trim(),
+          isDeleted: false,
+          ...(dto.tapperId ? { tapperId: dto.tapperId } : { sangradorName: dto.sangradorName }),
+          date: parseTappingDate(date),
+        },
+        select: { id: true, createdAt: true },
+      });
       if (duplicate && !dto.allowDuplicate) throw new ConflictException('Esta sangria já foi registrada para este contexto e data');
     }
 
