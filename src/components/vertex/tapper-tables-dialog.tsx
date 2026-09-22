@@ -16,6 +16,10 @@ import {
   updateTapperTableLink, upsertTapperRotation,
 } from "@/lib/tappers.functions";
 import { listTappingTables } from "@/lib/tabelas.functions";
+import { listFarms } from "@/lib/fazendas.functions";
+import { listPlots } from "@/lib/talhoes.functions";
+import { createPlotTableLink, listPlotTableLinks } from "@/lib/tappers.functions";
+import { SearchableSelect } from "@/components/vertex/searchable-select";
 
 type SelectableTable = {
   id: string; name: string; notation?: string | null; frequencyDays?: number | null;
@@ -51,6 +55,10 @@ export function TapperTablesDialog({
   const [newOverrides, setNewOverrides] = useState<TableOverrides>(emptyOverrides);
   const [edits, setEdits] = useState<Record<string, TableOverrides>>({});
   const [anchorTableId, setAnchorTableId] = useState("");
+  const [farmId, setFarmId] = useState("");
+  const [plotId, setPlotId] = useState("");
+  const [plotTableId, setPlotTableId] = useState("");
+  const [plotTreeCount, setPlotTreeCount] = useState("");
 
   const linksQuery = useQuery({
     queryKey: ["tapper-table-links", companyId, tapperKey],
@@ -65,6 +73,10 @@ export function TapperTablesDialog({
   });
 
   const templatesQuery = useQuery({ queryKey: ["tapping-table-templates", companyId], queryFn: () => listTappingTableTemplates(companyId), enabled: open && !!companyId });
+  const farmsQuery = useQuery({ queryKey: ["farms", companyId], queryFn: () => listFarms(companyId), enabled: open && !!companyId });
+  const plotsQuery = useQuery({ queryKey: ["plots", companyId, farmId], queryFn: () => listPlots(companyId, farmId), enabled: open && !!companyId && !!farmId });
+  const plotLinksQuery = useQuery({ queryKey: ["plot-table-links", companyId, tapperKey, plotId], queryFn: () => listPlotTableLinks(companyId, tapperKey, plotId), enabled: open && !!companyId && !!tapperKey && !!plotId });
+  const plotLinkMutation = useMutation({ mutationFn: () => createPlotTableLink({ companyId, farmId, plotId, tapperKey, tappingTableId: plotTableId, treeCount: plotTreeCount ? Number(plotTreeCount) : undefined }), onSuccess: () => { toast.success("Tabela vinculada ao talhão"); setPlotTableId(""); setPlotTreeCount(""); qc.invalidateQueries({ queryKey: ["plot-table-links", companyId, tapperKey, plotId] }); }, onError: (e: Error) => toast.error(e.message) });
   const templateMutation = useMutation({ mutationFn: (templateId: string) => applyTappingTableTemplate({ companyId, tapperKey, templateId }), onSuccess: () => { toast.success("Modelo aplicado"); qc.invalidateQueries({ queryKey: ["tapper-table-links", companyId, tapperKey] }); qc.invalidateQueries({ queryKey: ["tapper-rotation", companyId, tapperKey] }); }, onError: (e: Error) => toast.error(e.message) });
 
   const tablesQuery = useQuery({
@@ -158,6 +170,18 @@ export function TapperTablesDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {farmsQuery.data && (
+          <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+            <Label className="text-xs">Configuração por talhão</Label>
+            <SearchableSelect value={farmId} onChange={(value) => { setFarmId(value); setPlotId(""); }} placeholder="Selecione a fazenda" options={farmsQuery.data.map((farm: any) => ({ value: farm.id, label: `${farm.name}${farm.code ? ` (${farm.code})` : ""}`, keywords: farm.code ?? "" }))} />
+            {farmId && <SearchableSelect value={plotId} onChange={setPlotId} placeholder="Selecione o talhão" options={(plotsQuery.data ?? []).map((plot: any) => ({ value: plot.id, label: `${plot.name}${plot.code ? ` (${plot.code})` : ""}`, keywords: plot.code ?? "" }))} empty="Nenhum talhão cadastrado" />}
+            {plotId && <>
+              <div className="grid grid-cols-[1fr_110px] gap-2"><Select value={plotTableId} onValueChange={setPlotTableId}><SelectTrigger><SelectValue placeholder="Tabela" /></SelectTrigger><SelectContent>{(tablesQuery.data ?? []).filter((table) => table.active !== false).map((table) => <SelectItem key={table.id} value={table.id}>{table.name}</SelectItem>)}</SelectContent></Select><Input type="number" min="0" placeholder="Árvores" value={plotTreeCount} onChange={(event) => setPlotTreeCount(event.target.value)} /></div>
+              <Button className="w-full" disabled={!plotTableId || plotLinkMutation.isPending} onClick={() => plotLinkMutation.mutate()}>Vincular tabela ao talhão</Button>
+              <div className="space-y-1">{(plotLinksQuery.data ?? []).map((link) => <div key={link.id} className="flex justify-between rounded border px-2 py-1 text-xs"><span>{link.tappingTable?.name ?? "Tabela"}</span><span>{link.treeCount ?? "—"} árvores</span></div>)}</div>
+            </>}
+          </div>
+        )}
         {templatesQuery.data && templatesQuery.data.length > 0 && (
           <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
             <Label className="text-xs">Aplicar modelo de tabelas</Label>

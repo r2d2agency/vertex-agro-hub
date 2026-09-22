@@ -255,6 +255,26 @@ export type TapperTableLink = {
   tappingTable: { id: string; name: string; notation: string | null; frequencyDays: number | null; restDays: number | null; workDaysCycle: number | null; cutType: string | null; stimulation: string | null } | null;
 };
 
+export type PlotTableLink = { id: string; companyId: string; farmId: string; plotId: string; tapperId?: string | null; userId?: string | null; tappingTableId: string; position: number; treeCount?: number | null; active: boolean; tappingTable?: { id: string; name: string; notation?: string | null } | null };
+
+export function listPlotTableLinks(companyId: string, tapperKey: string, plotId?: string) {
+  const qs = new URLSearchParams({ companyId, tapperKey });
+  if (plotId) qs.set("plotId", plotId);
+  return apiRequest<PlotTableLink[]>(`/tappers/plot-table-links?${qs.toString()}`);
+}
+
+export function createPlotTableLink(input: { companyId: string; farmId: string; plotId: string; tapperKey: string; tappingTableId: string; position?: number; treeCount?: number; notes?: string }) {
+  return apiRequest<PlotTableLink>("/tappers/plot-table-links", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function updatePlotTableLink(id: string, input: { companyId: string; position?: number; treeCount?: number; active?: boolean; notes?: string }) {
+  return apiRequest<PlotTableLink>(`/tappers/plot-table-links/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function deletePlotTableLink(id: string, companyId: string) {
+  return apiRequest(`/tappers/plot-table-links/${id}?companyId=${encodeURIComponent(companyId)}`, { method: "DELETE" });
+}
+
 export function listTapperTableLinks(companyId: string, tapperKey: string) {
   const qs = new URLSearchParams({ companyId, tapperKey });
   return apiRequest<TapperTableLink[]>(`/tappers/table-links?${qs.toString()}`);

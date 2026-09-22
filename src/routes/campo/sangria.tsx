@@ -5,7 +5,8 @@ import {
   getFieldMe, submitTapping, listFieldTappers, listFieldTapperTables,
   type FieldMe, type FieldTapper, type FieldTapperTable,
 } from "@/lib/field.functions";
-import { getTapperRotation, type TapperRotationState } from "@/lib/tappers.functions";
+import { getTapperRotation, listPlotTableLinks, type TapperRotationState } from "@/lib/tappers.functions";
+import { listPlots, type Plot } from "@/lib/talhoes.functions";
 import { TASK_EXTENTS, END_PERIODS, listTappingTasks, type TappingTask } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,8 @@ function SangriaPage() {
   const [farmId, setFarmId] = useState("");
   const [tapperId, setTapperId] = useState("");
   const [tappers, setTappers] = useState<FieldTapper[]>([]);
+  const [plots, setPlots] = useState<Plot[]>([]);
+  const [plotId, setPlotId] = useState("");
   const [tables, setTables] = useState<FieldTapperTable[]>([]);
   const [tablesLoading, setTablesLoading] = useState(false);
   const [tappingTableId, setTappingTableId] = useState("");
@@ -61,7 +64,9 @@ function SangriaPage() {
     setTapperId(""); setTappingTableId(""); setTables([]);
     setTappers([]);
     if (!farm) return;
-    listFieldTappers(farm.companyId, farm.id).then(setTappers).catch(() => undefined);
+    Promise.all([listFieldTappers(farm.companyId, farm.id), listPlots(farm.companyId, farm.id)])
+      .then(([nextTappers, nextPlots]) => { setTappers(nextTappers); setPlots(nextPlots); })
+      .catch(() => undefined);
   }, [farm]);
 
   // A tabela (não o talhão) é que define quantas árvores o sangrador tem que
@@ -69,11 +74,11 @@ function SangriaPage() {
   // sua própria quantidade. Quando o sangrador tem rotação configurada, a
   // pré-seleção vem da sequência (próxima tabela do ciclo), não da lista.
   useEffect(() => {
-    setTappingTableId(""); setTables([]); setRotation(null);
-    if (!farm || !tapperId) return;
+    setPlotId(""); setTappingTableId(""); setTables([]); setRotation(null);
+    if (!farm || !tapperId || !plotId) return;
     setTablesLoading(true);
     Promise.all([
-      listFieldTapperTables(farm.companyId, tapperId),
+      listPlotTableLinks(farm.companyId, tapperId, plotId),
       getTapperRotation(farm.companyId, tapperId).catch(() => null),
     ])
       .then(([ts, rot]) => {
@@ -85,7 +90,7 @@ function SangriaPage() {
       })
       .catch(() => setTables([]))
       .finally(() => setTablesLoading(false));
-  }, [farm, tapperId]);
+  }, [farm, tapperId, plotId]);
 
   useEffect(() => {
     if (!farm) return;
@@ -161,7 +166,15 @@ function SangriaPage() {
             <SelectContent>{tappers.map((t) => <SelectItem key={t.id} value={t.id}>{t.fullName}</SelectItem>)}</SelectContent>
           </Select>
         </Field>
-        {tapperId && rotation && !rotation.needsReset && rotation.suggestedTableId && (
+        {tapperId && (
+          <Field label="Talhão">
+            <Select value={plotId} onValueChange={setPlotId}>
+              <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione o talhão" /></SelectTrigger>
+              <SelectContent>{plots.map((plot) => <SelectItem key={plot.id} value={plot.id}>{plot.name}{plot.code ? ` — ${plot.code}` : ""}{plot.treeCount ? ` (${plot.treeCount.toLocaleString("pt-BR")} árvores)` : ""}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
+        )}
+        {tapperId && plotId && rotation && !rotation.needsReset && rotation.suggestedTableId && (
           <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
             <Repeat className="h-4 w-4 text-primary" />
             <span className="text-muted-foreground">Sequência de hoje:</span>
@@ -170,12 +183,12 @@ function SangriaPage() {
             </span>
           </div>
         )}
-        {tapperId && rotation?.needsReset && (
+        {tapperId && plotId && rotation?.needsReset && (
           <div className="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
             Sequência de tabelas desatualizada para este sangrador. Defina o ponto de partida em Sangradores &gt; Tabelas.
           </div>
         )}
-        {tapperId && (
+        {tapperId && plotId && (
           <Field label="Tabela">
             {tablesLoading ? (
               <div className="flex h-11 items-center gap-2 rounded-xl border border-border/60 bg-background/40 px-3 text-sm text-muted-foreground">

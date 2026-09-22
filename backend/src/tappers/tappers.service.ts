@@ -554,6 +554,41 @@ export class TappersService {
     return updated;
   }
 
+  async listPlotTableLinks(userId: string, companyId: string, tapperKey: string, plotId?: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const key = this.parseTapperKey(tapperKey);
+    const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, ...key, ...(plotId ? { plotId } : {}), active: true }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+    const tables = await this.prisma.tappingTable.findMany({ where: { id: { in: links.map((link) => link.tappingTableId) } }, select: { id: true, name: true, notation: true } });
+    const byId = new Map(tables.map((table) => [table.id, table]));
+    return links.map((link) => ({ ...link, tappingTable: byId.get(link.tappingTableId) ?? null }));
+  }
+
+  async createPlotTableLink(userId: string, dto: any) {
+    const key = this.parseTapperKey(dto.tapperKey);
+    await this.ensureManagerOrFarmStaff(userId, dto.companyId, key);
+    const [farm, plot, table] = await Promise.all([
+      this.prisma.farm.findFirst({ where: { id: dto.farmId, companyId: dto.companyId, isDeleted: false } }),
+      this.prisma.plot.findFirst({ where: { id: dto.plotId, farmId: dto.farmId, companyId: dto.companyId, isDeleted: false } }),
+      this.prisma.tappingTable.findFirst({ where: { id: dto.tappingTableId, companyId: dto.companyId, isDeleted: false, active: true } }),
+    ]);
+    if (!farm || !plot || !table) throw new NotFoundException('Fazenda, talhão ou tabela inválido');
+    return this.prisma.tapperPlotTableLink.create({ data: { companyId: dto.companyId, farmId: dto.farmId, plotId: dto.plotId, ...key, tappingTableId: dto.tappingTableId, position: dto.position ?? 0, treeCount: dto.treeCount, notes: dto.notes, createdById: userId } });
+  }
+
+  async updatePlotTableLink(userId: string, id: string, dto: any) {
+    const current = await this.prisma.tapperPlotTableLink.findUnique({ where: { id } });
+    if (!current) throw new NotFoundException('Vínculo não encontrado');
+    await this.access.ensureCompany(userId, current.companyId);
+    return this.prisma.tapperPlotTableLink.update({ where: { id }, data: { position: dto.position, treeCount: dto.treeCount, active: dto.active, notes: dto.notes } });
+  }
+
+  async deletePlotTableLink(userId: string, id: string, companyId: string) {
+    const current = await this.prisma.tapperPlotTableLink.findFirst({ where: { id, companyId } });
+    if (!current) throw new NotFoundException('Vínculo não encontrado');
+    await this.access.ensureCompany(userId, companyId);
+    return this.prisma.tapperPlotTableLink.update({ where: { id }, data: { active: false } });
+  }
+
   // ---------- Tabelas vinculadas ao sangrador ----------
   // tapperKey é o mesmo id "unificado" usado no app de campo: o UUID da
   // ficha legada (Tapper) ou "rh:<userId>" pra um vínculo só de RH.

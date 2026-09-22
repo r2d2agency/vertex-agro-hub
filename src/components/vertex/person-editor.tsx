@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/vertex/searchable-select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CepInput } from "@/components/vertex/cep-input";
 import { PhoneInput } from "@/components/vertex/phone-input";
@@ -649,22 +650,13 @@ function AssignmentsTab({ userId, companyId, personRoles }: { userId: string; co
             </Select>
           </Field>
           <Field label="Fazenda *">
-            <Select value={farmId} onValueChange={setFarmId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione a fazenda" />
-              </SelectTrigger>
-              <SelectContent position="popper" sideOffset={5} className="z-[9999] max-h-72">
-                {farms.length === 0 ? (
-                  <div className="p-2 text-xs text-muted-foreground text-center">Nenhuma fazenda cadastrada</div>
-                ) : (
-                  farms.map((f: any) => (
-                    <SelectItem key={f.id} value={f.id} className="cursor-pointer">
-                      {f.name}{f.code ? ` (${f.code})` : ""}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={farmId}
+              onChange={setFarmId}
+              placeholder="Selecione a fazenda"
+              options={farms.map((f: any) => ({ value: f.id, label: `${f.name}${f.code ? ` (${f.code})` : ""}`, keywords: f.code ?? "" }))}
+              empty="Nenhuma fazenda cadastrada"
+            />
 
           </Field>
           <Field label="Data de início *">

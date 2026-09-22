@@ -1739,6 +1739,30 @@ model TapperTableLink {
 // (position asc), a partir de lastTableId — cíclica. A sequência só avança
 // quando há registro de sangria (createTappingRecord atualiza
 // lastTableId/lastRecordId), nunca pelo calendário.
+model TapperPlotTableLink {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  farmId         String   @map("farm_id") @db.Uuid
+  plotId         String   @map("plot_id") @db.Uuid
+  tapperId       String?  @map("tapper_id") @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  tappingTableId String   @map("tapping_table_id") @db.Uuid
+  position       Int      @default(0)
+  treeCount      Int?     @map("tree_count")
+  active         Boolean  @default(true)
+  notes          String?
+  createdById    String?  @map("created_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([plotId, tapperId, tappingTableId])
+  @@unique([plotId, userId, tappingTableId])
+  @@index([companyId, farmId, plotId, active])
+  @@index([tapperId, plotId, position])
+  @@index([userId, plotId, position])
+  @@map("tapper_plot_table_links")
+}
+
 model TapperRotation {
   id            String   @id @default(uuid()) @db.Uuid
   companyId     String   @map("company_id") @db.Uuid

@@ -7,7 +7,7 @@ import { TappersService } from './tappers.service';
 import {
   CreateStintDto, CreateTapperDto, CreateTapperPreRegistrationDto, CreateTapperTableLinkDto,
   EndStintDto, ReviewTapperPreRegistrationDto, UpdateTapperDto, UpdateTapperTableLinkDto, UpsertTapperDto,
-  UpsertTapperRotationDto, ApplyTappingTableTemplateDto,
+  UpsertTapperRotationDto, ApplyTappingTableTemplateDto, CreateTapperPlotTableLinkDto, UpdateTapperPlotTableLinkDto,
 } from './dto';
 
 // Guard de classe: apenas autenticação. RolesGuard (admin/gestor) é aplicado
@@ -71,6 +71,26 @@ export class TappersController {
   // de rota: além de admin/gestor, um monitor ou consultor vinculado à
   // mesma fazenda do sangrador também pode gerenciar — TappersService
   // (ensureManagerOrFarmStaff) valida isso.
+  @Get('plot-table-links')
+  listPlotTableLinks(@Req() req: any, @Query('companyId', ParseUUIDPipe) companyId: string, @Query('tapperKey') tapperKey: string, @Query('plotId', ParseUUIDPipe) plotId?: string) {
+    return this.svc.listPlotTableLinks(req.user.sub, companyId, tapperKey, plotId);
+  }
+
+  @Post('plot-table-links')
+  createPlotTableLink(@Req() req: any, @Body() dto: CreateTapperPlotTableLinkDto) {
+    return this.svc.createPlotTableLink(req.user.sub, dto);
+  }
+
+  @Patch('plot-table-links/:linkId')
+  updatePlotTableLink(@Req() req: any, @Param('linkId', ParseUUIDPipe) linkId: string, @Body() dto: UpdateTapperPlotTableLinkDto) {
+    return this.svc.updatePlotTableLink(req.user.sub, linkId, dto);
+  }
+
+  @Delete('plot-table-links/:linkId')
+  deletePlotTableLink(@Req() req: any, @Param('linkId', ParseUUIDPipe) linkId: string, @Query('companyId', ParseUUIDPipe) companyId: string) {
+    return this.svc.deletePlotTableLink(req.user.sub, linkId, companyId);
+  }
+
   @Get('table-links')
   listTableLinks(
     @Req() req: any,

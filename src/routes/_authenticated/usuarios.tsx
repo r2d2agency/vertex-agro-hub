@@ -22,6 +22,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
+import { SearchableSelect } from "@/components/vertex/searchable-select";
+import { listFarms } from "@/lib/fazendas.functions";
 import {
   COMPANY_ROLES, invitePerson, listPeople, removePerson, resetPersonPassword, updatePersonRole, upsertPersonAccess,
   type CompanyRole, type Person,
@@ -51,6 +53,10 @@ function PeoplePage() {
   const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
   const [creds, setCreds] = useState<{ email: string; fullName: string | null; password: string } | null>(null);
   const [grantingAccessTo, setGrantingAccessTo] = useState<Person | null>(null);
+  const [farmFilter, setFarmFilter] = useState("");
+  const { data: farms = [] } = useQuery({ queryKey: ["farms", companyId], queryFn: () => listFarms(companyId!), enabled: !!companyId });
+  const { data: assignments = [] } = useQuery({ queryKey: ["company-assignments", companyId], queryFn: () => import("@/lib/people.functions").then(({ listCompanyAssignments }) => listCompanyAssignments(companyId!, { history: false })), enabled: !!companyId });
+  const visiblePeople = farmFilter ? data.filter((person) => assignments.some((assignment: any) => assignment.userId === person.id && assignment.farmId === farmFilter)) : data;
 
   const reset = useMutation({
     mutationFn: (userId: string) => resetPersonPassword(userId, companyId!),
@@ -125,7 +131,8 @@ function PeoplePage() {
         <NoCompanyCard />
       ) : (
         <>
-          <CompanyPicker companies={companies} companyId={companyId} onChange={setCompanyId} />
+          <CompanyPicker companies={companies} companyId={companyId} onChange={(id) => { setCompanyId(id); setFarmFilter(""); }} />
+          {companyId && <div className="mb-4 max-w-md"><SearchableSelect value={farmFilter} onChange={(value) => setFarmFilter(value === "all" ? "" : value)} placeholder="Todas as fazendas" options={[{ value: "all", label: "Todas as fazendas" }, ...farms.map((farm: any) => ({ value: farm.id, label: `${farm.name}${farm.code ? ` (${farm.code})` : ""}`, keywords: farm.code ?? "" }))]} /></div>}
 
           {loadingList ? (
             <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Carregando...</CardContent></Card>
@@ -133,7 +140,7 @@ function PeoplePage() {
             <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Nenhuma pessoa vinculada a esta empresa.</CardContent></Card>
           ) : (
             <div className="grid gap-3">
-              {data.map((p) => {
+              {visiblePeople.map((p) => {
                 const currentRole = p.roles[0] ?? "consulta";
                 return (
                   <Card key={p.id} className="overflow-hidden">

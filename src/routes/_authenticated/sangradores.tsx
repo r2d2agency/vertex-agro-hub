@@ -16,6 +16,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
+import { SearchableSelect } from "@/components/vertex/searchable-select";
+import { listFarms } from "@/lib/fazendas.functions";
 import {
   deleteTapper,
   listTappers,
@@ -45,6 +47,7 @@ function SangradoresPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [farmFilter, setFarmFilter] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<TapperListItem | null>(null);
   const [tablesTarget, setTablesTarget] = useState<{ key: string; name: string } | null>(null);
@@ -54,6 +57,8 @@ function SangradoresPage() {
     queryFn: () => listTappers(companyId!),
     enabled: !!companyId,
   });
+
+  const { data: farms = [] } = useQuery({ queryKey: ["farms", companyId], queryFn: () => listFarms(companyId!), enabled: !!companyId });
 
   const { data: people = [] } = useQuery({
     queryKey: ["people", companyId],
@@ -89,11 +94,12 @@ function SangradoresPage() {
           [t.fullName, t.nickname, t.code, t.cpf].some((v) => (v ?? "").toLowerCase().includes(q)),
         );
 
-    return filtered.map((tapper) => ({
+    const byFarm = farmFilter ? filtered.filter((t) => t.stints.some((stint) => !stint.endAt && stint.farmId === farmFilter)) : filtered;
+    return byFarm.map((tapper) => ({
       tapper,
       personId: resolveTapperPersonId(tapper, peopleMatch),
     }));
-  }, [tappers, search, peopleMatch]);
+  }, [tappers, search, farmFilter, peopleMatch]);
 
   const del = useMutation({
     mutationFn: (id: string) => deleteTapper(id),
@@ -197,9 +203,9 @@ function SangradoresPage() {
             />
           )}
 
-          <div className="mb-4 relative max-w-sm">
-            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-8" placeholder="Buscar por nome, apelido, código ou CPF..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="mb-4 grid gap-3 md:grid-cols-2">
+            <div className="relative"><Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-8" placeholder="Buscar por nome, apelido, código ou CPF..." value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+            <SearchableSelect value={farmFilter} onChange={(value) => setFarmFilter(value === "all" ? "" : value)} placeholder="Todas as fazendas" options={[{ value: "all", label: "Todas as fazendas" }, ...farms.map((farm: any) => ({ value: farm.id, label: `${farm.name}${farm.code ? ` (${farm.code})` : ""}`, keywords: farm.code ?? "" }))]} />
           </div>
 
           {loadingList ? (
