@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { subscribeOutbox, flushOutbox } from "@/lib/offline/queue";
 import { APP_VERSION, checkForUpdate, applyUpdate } from "@/lib/app-update";
+import { applyFontSize, readFontSize, writeFontSize, type FieldFontSize } from "@/lib/field-preferences";
 
 export const Route = createFileRoute("/campo/mais")({ component: PreferenciasPage });
 
@@ -28,6 +29,7 @@ function PreferenciasPage() {
   const [running, setRunning] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [fontSize, setFontSize] = useState<FieldFontSize>("normal");
 
   useEffect(() => {
     if (typeof navigator !== "undefined") setOnline(navigator.onLine);
@@ -44,6 +46,7 @@ function PreferenciasPage() {
 
     // Detect initial theme from document class
     const storedTheme = localStorage.getItem("vertex-field-theme");
+    setFontSize(readFontSize());
     const isDark = storedTheme === "dark";
     setTheme(isDark ? "dark" : "light");
 
@@ -53,6 +56,13 @@ function PreferenciasPage() {
       un();
     };
   }, []);
+
+  const changeFontSize = (value: FieldFontSize) => {
+    writeFontSize(value);
+    applyFontSize(value);
+    setFontSize(value);
+    toast.success(`Tamanho da fonte: ${value === "small" ? "pequeno" : value === "large" ? "maior" : value === "auto" ? "automático" : "normal"}`);
+  };
 
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
@@ -216,6 +226,18 @@ function PreferenciasPage() {
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Acessibilidade</h2>
+        <div className="rounded-2xl border border-border/60 bg-card p-4">
+          <div className="mb-3"><div className="text-sm font-semibold">Tamanho da fonte</div><div className="text-[11px] text-muted-foreground">Escolha como os textos aparecem no app.</div></div>
+          <div className="grid grid-cols-4 gap-2">
+            {([['small', 'Pequena'], ['normal', 'Normal'], ['large', 'Maior'], ['auto', 'Automática']] as const).map(([value, label]) => (
+              <button key={value} type="button" onClick={() => changeFontSize(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold transition ${fontSize === value ? "border-primary bg-primary/15 text-primary" : "border-border/60 bg-background/40 text-muted-foreground"}`} aria-pressed={fontSize === value}>{label}</button>
+            ))}
+          </div>
         </div>
       </div>
 

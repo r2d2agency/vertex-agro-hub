@@ -12,6 +12,7 @@ import { FieldBottomNav, FieldDesktopNav } from "@/components/vertex/field/botto
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
 import { Button } from "@/components/ui/button";
 import vertexLogo from "@/assets/vertex-logo.png";
+import { applyFontSize, readFontSize } from "@/lib/field-preferences";
 
 export const Route = createFileRoute("/campo")({
   ssr: false,
@@ -137,6 +138,7 @@ function FieldShell() {
   const [checkin, setCheckin] = useState<{ farmId?: string; at: number } | null>(null);
 
   useEffect(() => {
+    applyFontSize(readFontSize());
     const stored = localStorage.getItem("vertex-field-theme");
     const isConsultor = me?.roles?.includes("consultor") || me?.primaryRole === "consultor";
     const dark = !isConsultor && stored === "dark";

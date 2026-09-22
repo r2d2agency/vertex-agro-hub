@@ -71,15 +71,23 @@ function SangriaPage() {
     setTappers([]);
     if (!farm) return;
     Promise.all([listFieldTappers(farm.companyId, farm.id), listPlots(farm.companyId, farm.id)])
-      .then(([nextTappers, nextPlots]) => { setTappers(nextTappers); setPlots(nextPlots); })
+      .then(([nextTappers, nextPlots]) => {
+        setTappers(nextTappers);
+        setTapperId(nextTappers.length === 1 ? nextTappers[0].id : "");
+        setPlots(nextPlots);
+      })
       .catch(() => undefined);
   }, [farm]);
 
   useEffect(() => {
     if (!farm || !tapperId) return;
     listFieldTapperPlots(farm.companyId, tapperId, farm.id)
-      .then((assigned) => setPlots(assigned.map((p) => ({ ...p, companyId: farm.companyId, farmId: farm.id })) as Plot[]))
-      .catch(() => setPlots([]));
+      .then((assigned) => {
+        const next = assigned.map((p) => ({ ...p, companyId: farm.companyId, farmId: farm.id })) as Plot[];
+        setPlots(next);
+        setPlotId(next.length === 1 ? next[0].id : "");
+      })
+      .catch(() => { setPlots([]); setPlotId(""); });
   }, [farm, tapperId]);
 
   // A tabela (não o talhão) é que define quantas árvores o sangrador tem que
@@ -144,31 +152,36 @@ function SangriaPage() {
       return;
     }
     setSaving(true);
-    const payload = {
-      companyId: farm.companyId, farmId: farm.id, plotId,
-      tappingTableId: tappingTableId || undefined,
-      expectedTableId: rotation?.suggestedTableId || undefined,
-      divergent: isDivergent || undefined,
-      date: recordDate,
-      sangradorName: tapper.fullName,
-      // Sangradores vinculados só pelo RH (sem ficha Tapper legada) vêm com um
-      // id sintético "rh:<userId>" — não é uma linha real de Tapper, então
-      // não pode ser enviado como tapperId (chave estrangeira).
-      tapperId: tapper.id.startsWith("rh:") ? undefined : tapper.id,
-      taskExtent,
-      endPeriod: endPeriod || undefined,
-      treesExpected: table?.treeCount ?? undefined,
-      notes: notes.trim() || undefined,
-      photoUrls: photoUrls.length ? photoUrls : undefined,
-      audioUrl: audioUrl || undefined,
-      allowDuplicate: allowDuplicate || undefined,
-    } as any;
-    const res = editingId ? await updateTappingRecord(editingId, payload) : await submitTapping(payload);
-    setSaving(false);
-    setEditingId(null);
-    setAllowDuplicate(false);
-    toast.success(editingId ? "Sangria corrigida" : ("queued" in res && res.queued) ? "Sangria salva na fila (offline)" : "Sangria registrada");
-    nav({ to: "/campo" });
+    try {
+      const payload = {
+        companyId: farm.companyId, farmId: farm.id, plotId,
+        tappingTableId: tappingTableId || undefined,
+        expectedTableId: rotation?.suggestedTableId || undefined,
+        divergent: isDivergent || undefined,
+        date: recordDate,
+        sangradorName: tapper.fullName,
+        // Sangradores vinculados só pelo RH (sem ficha Tapper legada) vêm com um
+        // id sintético "rh:<userId>" — não é uma linha real de Tapper, então
+        // não pode ser enviado como tapperId (chave estrangeira).
+        tapperId: tapper.id.startsWith("rh:") ? undefined : tapper.id,
+        taskExtent,
+        endPeriod: endPeriod || undefined,
+        treesExpected: table?.treeCount ?? undefined,
+        notes: notes.trim() || undefined,
+        photoUrls: photoUrls.length ? photoUrls : undefined,
+        audioUrl: audioUrl || undefined,
+        allowDuplicate: allowDuplicate || undefined,
+      } as any;
+      const res = editingId ? await updateTappingRecord(editingId, payload) : await submitTapping(payload);
+      setEditingId(null);
+      setAllowDuplicate(false);
+      toast.success(editingId ? "Sangria corrigida" : ("queued" in res && res.queued) ? "Sangria salva na fila (offline)" : "Sangria registrada");
+      nav({ to: "/campo" });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Não foi possível salvar a sangria");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -195,12 +208,20 @@ function SangriaPage() {
           </Field>
         )}
         <Field label="Sangrador (Quem realizou a sangria)">
-          <Select value={tapperId} onValueChange={setTapperId}>
-            <SelectTrigger className="h-11 rounded-xl border-primary/50 bg-primary/5"><SelectValue placeholder={tappers.length ? "Selecione o sangrador" : "Nenhum sangrador vinculado a esta fazenda"} /></SelectTrigger>
-            <SelectContent>{tappers.map((t) => { const done = dateRecords.some((r) => (r.tapperId && r.tapperId === (t.id.startsWith("rh:") ? null : t.id)) || (!r.tapperId && r.sangradorName === t.fullName)); return <SelectItem key={t.id} value={t.id} className={done ? "bg-warning/15 text-warning" : ""}>{t.fullName}{done ? " · já realizou" : ""}</SelectItem>; })}</SelectContent>
-          </Select>
+          {tappers.length === 1 && tapper ? (
+            <div className="flex h-11 items-center rounded-xl border border-primary/30 bg-primary/5 px-3 text-sm font-medium">{tapper.fullName}</div>
+          ) : (
+            <Select value={tapperId} onValueChange={setTapperId}>
+              <SelectTrigger className="h-11 rounded-xl border-primary/50 bg-primary/5"><SelectValue placeholder={tappers.length ? "Selecione o sangrador" : "Nenhum sangrador vinculado a esta fazenda"} /></SelectTrigger>
+              <SelectContent>{tappers.map((t) => { const done = dateRecords.some((r) => (r.tapperId && r.tapperId === (t.id.startsWith("rh:") ? null : t.id)) || (!r.tapperId && r.sangradorName === t.fullName)); return <SelectItem key={t.id} value={t.id} className={done ? "bg-warning/15 text-warning" : ""}>{t.fullName}{done ? " · já realizou" : ""}</SelectItem>; })}</SelectContent>
+            </Select>
+          )}
         </Field>
-        {tapperId && (
+        {tapperId && plots.length === 1 ? (
+          <Field label="Talhão">
+            <div className="flex h-11 items-center rounded-xl border border-primary/30 bg-primary/5 px-3 text-sm font-medium text-foreground">{plots[0].name}{plots[0].code ? ` — ${plots[0].code}` : ""}{plots[0].treeCount ? ` (${plots[0].treeCount.toLocaleString("pt-BR")} árvores)` : ""}</div>
+          </Field>
+        ) : tapperId && (
           <Field label="Talhão">
             <Select value={plotId} onValueChange={setPlotId}>
               <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione o talhão" /></SelectTrigger>
