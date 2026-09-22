@@ -111,6 +111,13 @@ async function doRefreshAccessToken() {
   return true;
 }
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function readError(response: Response) {
   try {
     const body = await response.json();
@@ -158,7 +165,7 @@ export async function apiRequest<T>(
   if (!response.ok) {
     const errorMsg = await readError(response);
     console.error(`API Error [${path}]:`, errorMsg);
-    throw new Error(errorMsg);
+    throw new ApiError(errorMsg, response.status);
   }
 
   if (response.status === 204) return undefined as T;

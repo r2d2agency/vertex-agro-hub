@@ -102,8 +102,11 @@ async function submit(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE",
     try {
       await apiRequest(path, { method, body: JSON.stringify(body) });
       return { queued: false };
-    } catch {
-      // segue para a fila abaixo
+    } catch (error: any) {
+      // Conflitos e erros de validação foram recebidos pelo servidor: não devem
+      // virar fila offline, pois isso mascara o erro e pode duplicar operações.
+      if (error?.status >= 400 && error.status < 500) throw error;
+      // Falhas de rede/servidor ficam na fila para replay posterior.
     }
   }
   const key = await enqueueMutation({ path, method, body, label });
