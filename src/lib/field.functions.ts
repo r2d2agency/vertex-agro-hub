@@ -43,13 +43,19 @@ export function listFieldTappers(companyId: string, farmId: string) {
   return apiRequest<FieldTapper[]>(`/field/tappers?${qs.toString()}`);
 }
 
+export function listFieldTapperPlots(companyId: string, tapperKey: string, farmId: string) {
+  const qs = new URLSearchParams({ companyId, tapperKey, farmId });
+  return apiRequest<Array<{ id: string; name: string; code: string | null; treeCount: number | null; assignedTreeCount: number | null }>>(`/field/tapper-plots?${qs.toString()}`);
+}
+
 export function listFieldTappingTables(companyId: string) {
   const qs = new URLSearchParams({ companyId });
   return apiRequest<FieldTappingTable[]>(`/field/tapping-tables?${qs.toString()}`);
 }
 
-export async function listFieldTapperTables(companyId: string, tapperKey: string): Promise<FieldTapperTable[]> {
+export async function listFieldTapperTables(companyId: string, tapperKey: string, plotId?: string): Promise<FieldTapperTable[]> {
   const qs = new URLSearchParams({ companyId, tapperKey });
+  if (plotId) qs.set("plotId", plotId);
   const links = await apiRequest<Array<{
     id: string; treeCount: number | null;
     tappingTable: { id: string; name: string; notation: string | null; frequencyDays: number | null; restDays: number | null; workDaysCycle: number | null; cutType: string | null; stimulation: string | null } | null;

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Camera, Loader2, Repeat, Trees } from "lucide-react";
 import {
-  getFieldMe, submitTapping, listFieldTappers, listFieldTapperTables,
+  getFieldMe, submitTapping, listFieldTappers, listFieldTapperTables, listFieldTapperPlots,
   type FieldMe, type FieldTapper, type FieldTapperTable,
 } from "@/lib/field.functions";
 import { getTapperRotation, listPlotTableLinks, type TapperRotationState } from "@/lib/tappers.functions";
@@ -61,13 +61,20 @@ function SangriaPage() {
   const table = tables.find((t) => t.id === tappingTableId);
 
   useEffect(() => {
-    setTapperId(""); setTappingTableId(""); setTables([]);
+    setTapperId(""); setTappingTableId(""); setTables([]); setPlotId("");
     setTappers([]);
     if (!farm) return;
     Promise.all([listFieldTappers(farm.companyId, farm.id), listPlots(farm.companyId, farm.id)])
       .then(([nextTappers, nextPlots]) => { setTappers(nextTappers); setPlots(nextPlots); })
       .catch(() => undefined);
   }, [farm]);
+
+  useEffect(() => {
+    if (!farm || !tapperId) return;
+    listFieldTapperPlots(farm.companyId, tapperId, farm.id)
+      .then((assigned) => setPlots(assigned.map((p) => ({ ...p, companyId: farm.companyId, farmId: farm.id })) as Plot[]))
+      .catch(() => setPlots([]));
+  }, [farm, tapperId]);
 
   // A tabela (não o talhão) é que define quantas árvores o sangrador tem que
   // fazer — cada sangrador pode ter várias tabelas vinculadas, cada uma com

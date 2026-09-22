@@ -887,9 +887,21 @@ export class TappersService {
 
   // Usado pelo app de campo ao registrar sangria: tabelas disponíveis para
   // um sangrador, ordenadas para exibir a rotação.
-  async listTableLinksForField(userId: string, companyId: string, tapperKey: string) {
+  async listPlotsForField(userId: string, companyId: string, tapperKey: string, farmId: string) {
     await this.access.ensureCompany(userId, companyId);
     const key = this.parseTapperKey(tapperKey);
+    const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, farmId, active: true, ...key }, select: { plotId: true, farmId: true, treeCount: true }, distinct: ['plotId'] });
+    const plots = await this.prisma.plot.findMany({ where: { companyId, farmId, isDeleted: false, id: { in: links.map((l) => l.plotId) } }, select: { id: true, name: true, code: true, treeCount: true } });
+    return plots.map((plot) => ({ ...plot, assignedTreeCount: links.find((l) => l.plotId === plot.id)?.treeCount ?? null }));
+  }
+
+  async listTableLinksForField(userId: string, companyId: string, tapperKey: string, plotId?: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const key = this.parseTapperKey(tapperKey);
+    if (plotId) {
+      const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, plotId, active: true, ...key }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+      return this.attachTables(links);
+    }
     const { links } = await this.orderedRotationLinks(companyId, key);
     return this.attachTables(links);
   }

@@ -47,8 +47,19 @@ export class FieldController {
     @Req() req: any,
     @Query('companyId') companyId?: string,
     @Query('tapperKey') tapperKey?: string,
+    @Query('plotId') plotId?: string,
   ) {
-    return this.tappersSvc.listTableLinksForField(req.user.sub, need(companyId), need(tapperKey));
+    return this.tappersSvc.listTableLinksForField(req.user.sub, need(companyId), need(tapperKey), plotId);
+  }
+
+  @Get('field/tapper-plots')
+  listTapperPlots(
+    @Req() req: any,
+    @Query('companyId') companyId?: string,
+    @Query('tapperKey') tapperKey?: string,
+    @Query('farmId') farmId?: string,
+  ) {
+    return this.tappersSvc.listPlotsForField(req.user.sub, need(companyId), need(tapperKey), need(farmId));
   }
 
   @Post('field/checkin')
