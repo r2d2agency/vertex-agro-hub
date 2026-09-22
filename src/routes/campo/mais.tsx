@@ -26,7 +26,7 @@ function PreferenciasPage() {
   const [pending, setPending] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
   const [running, setRunning] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   useEffect(() => {
@@ -43,7 +43,8 @@ function PreferenciasPage() {
     });
 
     // Detect initial theme from document class
-    const isDark = document.documentElement.classList.contains("dark");
+    const storedTheme = localStorage.getItem("vertex-field-theme");
+    const isDark = storedTheme === "dark";
     setTheme(isDark ? "dark" : "light");
 
     return () => {
@@ -62,6 +63,7 @@ function PreferenciasPage() {
       document.documentElement.classList.remove("dark");
       document.body.classList.remove("dark");
     }
+    localStorage.setItem("vertex-field-theme", newTheme);
     setTheme(newTheme);
     toast.success(`Tema ${newTheme === 'dark' ? 'escuro' : 'claro'} ativado`);
   };

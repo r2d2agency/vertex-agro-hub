@@ -136,19 +136,13 @@ function FieldShell() {
   const gps = useGps();
   const [checkin, setCheckin] = useState<{ farmId?: string; at: number } | null>(null);
 
-  // Aplica tema dark no <html> para que portais (Sheet, Dialog, Toast) herdem os tokens.
   useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const hadHtml = html.classList.contains("dark");
-    const hadBody = body.classList.contains("dark");
-    html.classList.add("dark");
-    body.classList.add("dark");
-    return () => {
-      if (!hadHtml) html.classList.remove("dark");
-      if (!hadBody) body.classList.remove("dark");
-    };
-  }, []);
+    const stored = localStorage.getItem("vertex-field-theme");
+    const isConsultor = me?.roles?.includes("consultor") || me?.primaryRole === "consultor";
+    const dark = !isConsultor && stored === "dark";
+    document.documentElement.classList.toggle("dark", dark);
+    document.body.classList.toggle("dark", dark);
+  }, [me]);
 
   useEffect(() => { setCheckin(readCheckin()); }, []);
   useEffect(() => { getFieldMe().then(setMe).catch((e) => setError(e?.message ?? "Falha ao carregar")); }, []);

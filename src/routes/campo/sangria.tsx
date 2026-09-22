@@ -7,6 +7,7 @@ import {
 } from "@/lib/field.functions";
 import { getTapperRotation, listPlotTableLinks, type TapperRotationState } from "@/lib/tappers.functions";
 import { listPlots, type Plot } from "@/lib/talhoes.functions";
+import { listTappingRecords } from "@/lib/sangrias.functions";
 import { TASK_EXTENTS, END_PERIODS, listTappingTasks, type TappingTask } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,8 @@ function SangriaPage() {
   const [tasks, setTasks] = useState<TappingTask[]>([]);
   const [taskExtent, setTaskExtent] = useState("");
   const [endPeriod, setEndPeriod] = useState("");
+  const [recordDate, setRecordDate] = useState(() => getLocalIsoDate());
+  const [existingRecords, setExistingRecords] = useState<any[]>([]);
 
   const [notes, setNotes] = useState("");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -100,6 +103,13 @@ function SangriaPage() {
   }, [farm, tapperId, plotId]);
 
   useEffect(() => {
+    if (!farm || !plotId || !tappingTableId || !taskExtent || !recordDate) { setExistingRecords([]); return; }
+    listTappingRecords(farm.companyId, { farmId: farm.id, plotId, from: recordDate, to: recordDate })
+      .then((records) => setExistingRecords(records.filter((r) => r.tapperId === (tapperId.startsWith("rh:") ? null : tapperId) && r.tappingTableId === tappingTableId && r.taskExtent === taskExtent)))
+      .catch(() => setExistingRecords([]));
+  }, [farm, plotId, tappingTableId, taskExtent, recordDate, tapperId]);
+
+  useEffect(() => {
     if (!farm) return;
     listTappingTasks(farm.companyId)
       .then(setTasks)
@@ -130,7 +140,7 @@ function SangriaPage() {
       tappingTableId: tappingTableId || undefined,
       expectedTableId: rotation?.suggestedTableId || undefined,
       divergent: isDivergent || undefined,
-      date: getLocalIsoDate(),
+      date: recordDate,
       sangradorName: tapper.fullName,
       // Sangradores vinculados só pelo RH (sem ficha Tapper legada) vêm com um
       // id sintético "rh:<userId>" — não é uma linha real de Tapper, então
@@ -220,6 +230,11 @@ function SangriaPage() {
             <span className="font-semibold text-foreground">{table.treeCount ?? "—"}</span>
           </div>
         )}
+        <Field label="Data da sangria">
+          <input type="date" className="flex h-11 w-full rounded-xl border border-border/60 bg-background/40 px-3 text-sm" value={recordDate} max={getLocalIsoDate()} onChange={(e) => setRecordDate(e.target.value)} />
+          {recordDate < getLocalIsoDate() && <p className="mt-1 text-xs text-warning">Lançamento fora da data da sangria.</p>}
+        </Field>
+        {existingRecords.length > 0 && <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning">Esta sangria já foi registrada para este sangrador, talhão, tabela e tarefa nesta data.</div>}
         {tappingTableId && (
           <div>
             <Label className="mb-2 block text-xs font-medium text-muted-foreground">Tarefa</Label>
@@ -291,7 +306,7 @@ function SangriaPage() {
             </label>
           </div>
         )}
-        <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving || (isDivergent && !confirmDivergence)}>
+        <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving || existingRecords.length > 0 || (isDivergent && !confirmDivergence)}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar sangria
         </Button>
       </FieldCard>
