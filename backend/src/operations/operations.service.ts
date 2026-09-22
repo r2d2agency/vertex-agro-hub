@@ -34,8 +34,8 @@ export class OperationsService {
         ...(opts.from || opts.to
           ? {
               date: {
-                ...(opts.from ? { gte: new Date(opts.from) } : {}),
-                ...(opts.to ? { lte: new Date(opts.to) } : {}),
+                ...(opts.from ? { gte: new Date(`${opts.from}T00:00:00-03:00`) } : {}),
+                ...(opts.to ? { lte: new Date(`${opts.to}T23:59:59.999-03:00`) } : {}),
               },
             }
           : {}),

@@ -365,9 +365,11 @@ export class FieldService {
   async history(userId: string, companyId: string, opts: { farmId?: string; from?: string; to?: string; limit?: number } = {}) {
     await this.access.ensureCompany(userId, companyId);
     const limit = Math.min(opts.limit ?? 200, 500);
+    // Datas vindas do app são dias locais; o limite final precisa incluir o
+    // dia inteiro, não apenas a meia-noite UTC do início do dia.
     const dateFilter = opts.from || opts.to ? {
-      ...(opts.from ? { gte: parseInputDate(opts.from) } : {}),
-      ...(opts.to ? { lte: parseInputDate(opts.to) } : {}),
+      ...(opts.from ? { gte: new Date(`${opts.from}T00:00:00-03:00`) } : {}),
+      ...(opts.to ? { lte: new Date(`${opts.to}T23:59:59.999-03:00`) } : {}),
     } : undefined;
     const farm = opts.farmId ? { farmId: opts.farmId } : {};
     const base = { companyId, isDeleted: false, ...farm };
