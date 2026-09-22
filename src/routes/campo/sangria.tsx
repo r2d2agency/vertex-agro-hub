@@ -168,7 +168,6 @@ function SangriaPage() {
         notes: notes.trim() || undefined,
         photoUrls: photoUrls.length ? photoUrls : undefined,
         audioUrl: audioUrl || undefined,
-        allowDuplicate: allowDuplicate || undefined,
       } as any;
       const res = editingId ? await updateTappingRecord(editingId, payload) : await submitTapping(payload);
       setEditingId(null);

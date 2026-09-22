@@ -52,7 +52,8 @@ export class OperationsService {
       const plot = await this.prisma.plot.findFirst({ where: { id: dto.plotId, companyId: dto.companyId, farmId: dto.farmId, isDeleted: false }, select: { id: true } });
       if (!plot) throw new NotFoundException('Talhão não encontrado nesta fazenda');
     }
-    const { date, ...rest } = dto;
+    // Campos de controle da API não pertencem ao registro persistido.
+    const { date, allowDuplicate: _allowDuplicate, ...rest } = dto;
     if (dto.farmId && dto.plotId && dto.tappingTableId && dto.taskExtent) {
       const duplicate = await this.prisma.tappingRecord.findFirst({ where: { companyId: dto.companyId, farmId: dto.farmId, plotId: dto.plotId, tappingTableId: dto.tappingTableId, tapperId: dto.tapperId ?? null, taskExtent: dto.taskExtent.trim(), date: new Date(date), isDeleted: false }, select: { id: true, createdAt: true } });
       if (duplicate && !dto.allowDuplicate) throw new ConflictException('Esta sangria já foi registrada para este contexto e data');
