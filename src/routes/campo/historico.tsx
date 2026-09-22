@@ -81,7 +81,11 @@ function HistoricoPage() {
     if (!me) return;
     const companyIds = Array.from(new Set(me.assignments.map((a) => a.farm.companyId)));
     Promise.all(companyIds.map(async (id) => [id, (await getSettings(id).catch(() => null))?.timezone] as const))
-      .then((results) => setTimezones(Object.fromEntries(results.filter(([, zone]) => zone))));
+      .then((results) => {
+        const next: Record<string, string> = {};
+        for (const [id, zone] of results) if (zone) next[id] = zone;
+        setTimezones(next);
+      });
   }, [me]);
 
   // Linha do tempo: uma fazenda específica, ou todas as fazendas/empresas do usuário.
