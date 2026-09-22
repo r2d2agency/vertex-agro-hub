@@ -864,7 +864,12 @@ export class TappersService {
     const key = this.parseTapperKey(dto.tapperKey);
     await this.ensureManagerOrFarmStaff(userId, dto.companyId, key);
     const { links } = await this.orderedRotationLinks(dto.companyId, key);
-    if (!links.some((l) => l.tappingTableId === dto.anchorTableId)) {
+    const globallyLinked = links.some((l) => l.tappingTableId === dto.anchorTableId);
+    const plotLinked = !globallyLinked && await this.prisma.tapperPlotTableLink.findFirst({
+      where: { companyId: dto.companyId, active: true, ...key, tappingTableId: dto.anchorTableId },
+      select: { id: true },
+    });
+    if (!globallyLinked && !plotLinked) {
       throw new NotFoundException('A tabela inicial não está vinculada a este sangrador');
     }
     const data = {
