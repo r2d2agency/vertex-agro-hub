@@ -141,6 +141,8 @@ export class UpdateTapperTableLinkDto {
 export class ApplyTappingTableTemplateDto {
   @IsUUID() companyId!: string;
   @IsString() @MinLength(3) tapperKey!: string;
+  @IsUUID() farmId!: string;
+  @IsUUID() plotId!: string;
   @IsUUID() templateId!: string;
 }
 

@@ -56,6 +56,8 @@ export async function updateTappingTableTemplate(
 export function applyTappingTableTemplate(input: {
   companyId: string;
   tapperKey: string;
+  farmId?: string;
+  plotId?: string;
   templateId: string;
 }) {
   return apiRequest(`/tappers/table-links/apply-template`, {
