@@ -5,7 +5,7 @@ import { HardHat, Search, Trash2, MapPin, Phone, UserPlus, ShieldAlert, ShieldCh
 import { toast } from "sonner";
 import { PersonEditor } from "@/components/vertex/person-editor";
 import { PreRegistrationsCard } from "@/components/vertex/pre-registrations-card";
-import { TapperTablesDialog } from "@/components/vertex/tapper-tables-dialog";
+import { TapperPlotsDialog } from "@/components/vertex/tapper-plots-dialog";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,7 +50,7 @@ function SangradoresPage() {
   const [farmFilter, setFarmFilter] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<TapperListItem | null>(null);
-  const [tablesTarget, setTablesTarget] = useState<{ key: string; name: string } | null>(null);
+  const [plotsTarget, setPlotsTarget] = useState<{ key: string; name: string; farmIds: string[] } | null>(null);
 
   const { data: tappers = [], isLoading: loadingList } = useQuery({
     queryKey: ["tappers", companyId],
@@ -83,6 +83,11 @@ function SangradoresPage() {
       if (!a.farm?.name) continue;
       map.set(a.userId, [...(map.get(a.userId) ?? []), formatFarmLabel(a.farm)]);
     }
+    return map;
+  }, [rhSangradores]);
+  const rhFarmIdsByUserId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const a of rhSangradores) if (a.farm?.id) map.set(a.userId, [...(map.get(a.userId) ?? []), a.farm.id]);
     return map;
   }, [rhSangradores]);
 
@@ -175,12 +180,13 @@ function SangradoresPage() {
                         <div className="flex shrink-0 gap-1">
                           <Button
                             size="sm" variant="ghost"
-                            onClick={() => setTablesTarget({
+                            onClick={() => setPlotsTarget({
                               key: `rh:${assignment.userId}`,
                               name: assignment.user?.fullName || assignment.user?.email || "Sangrador",
+                              farmIds: assignment.farm?.id ? [assignment.farm.id] : [],
                             })}
                           >
-                            <ListTree className="mr-1 h-3.5 w-3.5" /> Tabelas
+                            <ListTree className="mr-1 h-3.5 w-3.5" /> Talhões e tabelas
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => setEditingUserId(assignment.userId)}>
                             Abrir no RH
@@ -263,10 +269,10 @@ function SangradoresPage() {
 
                       <div className="mt-3 flex gap-2">
                         <Button
-                          size="sm" variant="outline"
-                          onClick={() => setTablesTarget({ key: tapper.id, name: tapper.fullName })}
+                          size="sm" variant="default"
+                          onClick={() => setPlotsTarget({ key: tapper.id, name: tapper.fullName, farmIds: current?.farmId ? [current.farmId] : (personId ? (rhFarmIdsByUserId.get(personId) ?? []) : []) })}
                         >
-                          <ListTree className="mr-1 h-3.5 w-3.5" /> Tabelas
+                          <ListTree className="mr-1 h-3.5 w-3.5" /> Talhões e tabelas
                         </Button>
                         {inRh ? (
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditingUserId(personId)}>
@@ -305,13 +311,14 @@ function SangradoresPage() {
         />
       )}
 
-      {companyId && tablesTarget && (
-        <TapperTablesDialog
-          open={!!tablesTarget}
-          onOpenChange={(open) => !open && setTablesTarget(null)}
+      {companyId && plotsTarget && (
+        <TapperPlotsDialog
+          open={!!plotsTarget}
+          onOpenChange={(open) => !open && setPlotsTarget(null)}
           companyId={companyId}
-          tapperKey={tablesTarget.key}
-          tapperName={tablesTarget.name}
+          tapperKey={plotsTarget.key}
+          tapperName={plotsTarget.name}
+          farmIds={plotsTarget.farmIds}
         />
       )}
 

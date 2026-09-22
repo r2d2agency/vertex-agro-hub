@@ -74,7 +74,7 @@ function SangriaPage() {
   // sua própria quantidade. Quando o sangrador tem rotação configurada, a
   // pré-seleção vem da sequência (próxima tabela do ciclo), não da lista.
   useEffect(() => {
-    setPlotId(""); setTappingTableId(""); setTables([]); setRotation(null);
+    setTappingTableId(""); setTables([]); setRotation(null);
     if (!farm || !tapperId || !plotId) return;
     setTablesLoading(true);
     Promise.all([
@@ -82,7 +82,7 @@ function SangriaPage() {
       getTapperRotation(farm.companyId, tapperId).catch(() => null),
     ])
       .then(([ts, rot]) => {
-        setTables(ts);
+        setTables(ts.map((t) => ({ id: t.tappingTable?.id ?? t.tappingTableId, name: t.tappingTable?.name ?? "Tabela", notation: t.tappingTable?.notation ?? null, treeCount: t.treeCount ?? null } as FieldTapperTable)));
         setRotation(rot);
         const suggested = rot && !rot.needsReset && rot.suggestedTableId;
         if (suggested) setTappingTableId(suggested);
@@ -111,7 +111,7 @@ function SangriaPage() {
   if (me.assignments.length === 0) return <p className="text-sm text-muted-foreground">Sem fazendas atribuídas.</p>;
 
   async function save() {
-    if (!farm || !tapper) { toast.error("Preencha fazenda e sangrador"); return; }
+    if (!farm || !tapper || !plotId) { toast.error("Preencha fazenda, sangrador e talhão"); return; }
     if (!taskExtent) { toast.error("Selecione uma tarefa"); return; }
     if (isDivergent && !confirmDivergence) {
       toast.warning(`A tabela selecionada (${selectedTable?.name ?? "—"}) é diferente da tabela do dia (${expectedTable?.name ?? "—"}). Confirme para continuar.`);
@@ -119,7 +119,7 @@ function SangriaPage() {
     }
     setSaving(true);
     const res = await submitTapping({
-      companyId: farm.companyId, farmId: farm.id,
+      companyId: farm.companyId, farmId: farm.id, plotId,
       tappingTableId: tappingTableId || undefined,
       expectedTableId: rotation?.suggestedTableId || undefined,
       divergent: isDivergent || undefined,
@@ -221,7 +221,7 @@ function SangriaPage() {
                 const active = taskExtent === t.code;
                 return (
                   <button
-                    key={t.value}
+                    key={t.code}
                     type="button"
                     onClick={() => setTaskExtent(t.code)}
                     className={`h-11 rounded-xl border text-xs font-semibold transition ${

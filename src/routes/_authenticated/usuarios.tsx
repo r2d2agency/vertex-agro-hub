@@ -56,7 +56,6 @@ function PeoplePage() {
   const [farmFilter, setFarmFilter] = useState("");
   const { data: farms = [] } = useQuery({ queryKey: ["farms", companyId], queryFn: () => listFarms(companyId!), enabled: !!companyId });
   const { data: assignments = [] } = useQuery({ queryKey: ["company-assignments", companyId], queryFn: () => import("@/lib/people.functions").then(({ listCompanyAssignments }) => listCompanyAssignments(companyId!, { history: false })), enabled: !!companyId });
-  const visiblePeople = farmFilter ? data.filter((person) => assignments.some((assignment: any) => assignment.userId === person.id && assignment.farmId === farmFilter)) : data;
 
   const reset = useMutation({
     mutationFn: (userId: string) => resetPersonPassword(userId, companyId!),
@@ -69,6 +68,7 @@ function PeoplePage() {
     queryFn: () => listPeople(companyId!),
     enabled: !!companyId && companyId !== "null" && companyId !== "undefined",
   });
+  const visiblePeople = farmFilter ? data.filter((person) => assignments.some((assignment: any) => assignment.userId === person.id && assignment.farmId === farmFilter)) : data;
 
   const changeRole = useMutation({
     mutationFn: (v: { userId: string; role: CompanyRole }) =>

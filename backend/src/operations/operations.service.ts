@@ -47,6 +47,11 @@ export class OperationsService {
 
   async createTappingRecord(userId: string, dto: CreateTappingRecordDto) {
     await this.access.ensureCompany(userId, dto.companyId);
+    if (dto.plotId && !dto.farmId) throw new NotFoundException('Fazenda obrigatória para o talhão');
+    if (dto.plotId) {
+      const plot = await this.prisma.plot.findFirst({ where: { id: dto.plotId, companyId: dto.companyId, farmId: dto.farmId, isDeleted: false }, select: { id: true } });
+      if (!plot) throw new NotFoundException('Talhão não encontrado nesta fazenda');
+    }
     const { date, ...rest } = dto;
 
     // Rotação: identifica a tabela esperada pra este sangrador hoje e detecta
