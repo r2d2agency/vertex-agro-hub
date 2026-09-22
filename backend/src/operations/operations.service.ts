@@ -55,7 +55,7 @@ export class OperationsService {
     const { date, ...rest } = dto;
     if (dto.farmId && dto.plotId && dto.tappingTableId && dto.taskExtent) {
       const duplicate = await this.prisma.tappingRecord.findFirst({ where: { companyId: dto.companyId, farmId: dto.farmId, plotId: dto.plotId, tappingTableId: dto.tappingTableId, tapperId: dto.tapperId ?? null, taskExtent: dto.taskExtent.trim(), date: new Date(date), isDeleted: false }, select: { id: true, createdAt: true } });
-      if (duplicate) throw new ConflictException('Esta sangria já foi registrada para este contexto e data');
+      if (duplicate && !dto.allowDuplicate) throw new ConflictException('Esta sangria já foi registrada para este contexto e data');
     }
 
     // Rotação: identifica a tabela esperada pra este sangrador hoje e detecta

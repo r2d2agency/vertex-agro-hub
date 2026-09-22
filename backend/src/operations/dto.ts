@@ -32,6 +32,7 @@ export class CreateTappingRecordDto {
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) photoUrls?: string[];
   @IsOptional() @IsString() audioUrl?: string;
+  @IsOptional() allowDuplicate?: boolean;
 }
 
 export class UpdateTappingRecordDto {

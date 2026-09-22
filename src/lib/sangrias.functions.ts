@@ -85,6 +85,7 @@ export type TappingInput = {
   status?: string;
   quality?: string;
   tableCondition?: string;
+  allowDuplicate?: boolean;
 };
 
 export function listTappingRecords(
@@ -134,5 +135,6 @@ function clean(v: TappingInput) {
     status: v.status || undefined,
     quality: v.quality || undefined,
     tableCondition: v.tableCondition || undefined,
+    allowDuplicate: v.allowDuplicate || undefined,
   };
 }

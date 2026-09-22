@@ -1,13 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, Loader2, Repeat, Trees } from "lucide-react";
+import { Camera, Loader2, Repeat, Trees, AlertTriangle } from "lucide-react";
 import {
   getFieldMe, submitTapping, listFieldTappers, listFieldTapperTables, listFieldTapperPlots,
   type FieldMe, type FieldTapper, type FieldTapperTable,
 } from "@/lib/field.functions";
 import { getTapperRotation, listPlotTableLinks, type TapperRotationState } from "@/lib/tappers.functions";
 import { listPlots, type Plot } from "@/lib/talhoes.functions";
-import { listTappingRecords } from "@/lib/sangrias.functions";
+import { listTappingRecords, updateTappingRecord } from "@/lib/sangrias.functions";
 import { TASK_EXTENTS, END_PERIODS, listTappingTasks, type TappingTask } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,9 @@ function SangriaPage() {
   const [endPeriod, setEndPeriod] = useState("");
   const [recordDate, setRecordDate] = useState(() => getLocalIsoDate());
   const [existingRecords, setExistingRecords] = useState<any[]>([]);
+  const [dateRecords, setDateRecords] = useState<any[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [allowDuplicate, setAllowDuplicate] = useState(false);
 
   const [notes, setNotes] = useState("");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -103,6 +106,12 @@ function SangriaPage() {
   }, [farm, tapperId, plotId]);
 
   useEffect(() => {
+    if (!farm || !recordDate) { setDateRecords([]); return; }
+    listTappingRecords(farm.companyId, { farmId: farm.id, from: recordDate, to: recordDate })
+      .then(setDateRecords).catch(() => setDateRecords([]));
+  }, [farm, recordDate]);
+
+  useEffect(() => {
     if (!farm || !plotId || !tappingTableId || !taskExtent || !recordDate) { setExistingRecords([]); return; }
     listTappingRecords(farm.companyId, { farmId: farm.id, plotId, from: recordDate, to: recordDate })
       .then((records) => setExistingRecords(records.filter((r) => r.tapperId === (tapperId.startsWith("rh:") ? null : tapperId) && r.tappingTableId === tappingTableId && r.taskExtent === taskExtent)))
@@ -135,7 +144,7 @@ function SangriaPage() {
       return;
     }
     setSaving(true);
-    const res = await submitTapping({
+    const payload = {
       companyId: farm.companyId, farmId: farm.id, plotId,
       tappingTableId: tappingTableId || undefined,
       expectedTableId: rotation?.suggestedTableId || undefined,
@@ -152,17 +161,25 @@ function SangriaPage() {
       notes: notes.trim() || undefined,
       photoUrls: photoUrls.length ? photoUrls : undefined,
       audioUrl: audioUrl || undefined,
-    });
+      allowDuplicate: allowDuplicate || undefined,
+    } as any;
+    const res = editingId ? await updateTappingRecord(editingId, payload) : await submitTapping(payload);
     setSaving(false);
-    toast.success(res.queued ? "Sangria salva na fila (offline)" : "Sangria registrada");
+    setEditingId(null);
+    setAllowDuplicate(false);
+    toast.success(editingId ? "Sangria corrigida" : ("queued" in res && res.queued) ? "Sangria salva na fila (offline)" : "Sangria registrada");
     nav({ to: "/campo" });
   }
 
   return (
     <div>
-      <StepHeader title="Registrar sangria" step={1} steps={["Sangria"]} onBack={() => nav({ to: "/campo" })} />
+      <StepHeader title={editingId ? "Corrigir sangria" : "Registrar sangria"} step={1} steps={["Sangria"]} onBack={() => nav({ to: "/campo" })} />
 
       <FieldCard className="space-y-4">
+        <Field label="Data da sangria">
+          <input type="date" className="flex h-11 w-full rounded-xl border border-border/60 bg-background/40 px-3 text-sm" value={recordDate} max={getLocalIsoDate()} onChange={(e) => { setRecordDate(e.target.value); setAllowDuplicate(false); setEditingId(null); }} />
+          {recordDate < getLocalIsoDate() && <p className="mt-1 text-xs text-warning">Lançamento fora da data da sangria.</p>}
+        </Field>
         {me.assignments.length > 1 ? (
           <Field label="Fazenda">
             <Select value={farmId} onValueChange={setFarmId}>
@@ -180,7 +197,7 @@ function SangriaPage() {
         <Field label="Sangrador (Quem realizou a sangria)">
           <Select value={tapperId} onValueChange={setTapperId}>
             <SelectTrigger className="h-11 rounded-xl border-primary/50 bg-primary/5"><SelectValue placeholder={tappers.length ? "Selecione o sangrador" : "Nenhum sangrador vinculado a esta fazenda"} /></SelectTrigger>
-            <SelectContent>{tappers.map((t) => <SelectItem key={t.id} value={t.id}>{t.fullName}</SelectItem>)}</SelectContent>
+            <SelectContent>{tappers.map((t) => { const done = dateRecords.some((r) => (r.tapperId && r.tapperId === (t.id.startsWith("rh:") ? null : t.id)) || (!r.tapperId && r.sangradorName === t.fullName)); return <SelectItem key={t.id} value={t.id} className={done ? "bg-warning/15 text-warning" : ""}>{t.fullName}{done ? " · já realizou" : ""}</SelectItem>; })}</SelectContent>
           </Select>
         </Field>
         {tapperId && (
@@ -230,11 +247,8 @@ function SangriaPage() {
             <span className="font-semibold text-foreground">{table.treeCount ?? "—"}</span>
           </div>
         )}
-        <Field label="Data da sangria">
-          <input type="date" className="flex h-11 w-full rounded-xl border border-border/60 bg-background/40 px-3 text-sm" value={recordDate} max={getLocalIsoDate()} onChange={(e) => setRecordDate(e.target.value)} />
-          {recordDate < getLocalIsoDate() && <p className="mt-1 text-xs text-warning">Lançamento fora da data da sangria.</p>}
-        </Field>
-        {existingRecords.length > 0 && <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning">Esta sangria já foi registrada para este sangrador, talhão, tabela e tarefa nesta data.</div>}
+        {existingRecords.length > 0 && !editingId && !allowDuplicate && <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-semibold">Esta sangria já foi registrada</p><p className="mt-1 text-xs">Escolha se deseja corrigir o lançamento atual ou registrar uma nova sangria adicional.</p><div className="mt-3 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { const r = existingRecords[0]; setEditingId(r.id); setNotes(r.notes ?? ""); setEndPeriod(r.endPeriod ?? ""); setPhotoUrls(r.photoUrls ?? []); setAudioUrl(r.audioUrl ?? null); toast.info("Registro carregado para correção"); }}>Corrigir atual</Button><Button type="button" size="sm" onClick={() => setAllowDuplicate(true)}>Registrar nova mesmo assim</Button></div></div></div></div>}
+        {allowDuplicate && <div className="rounded-xl border border-primary/40 bg-primary/10 p-3 text-xs text-primary">Lançamento adicional confirmado. Ele será registrado separadamente.</div>}
         {tappingTableId && (
           <div>
             <Label className="mb-2 block text-xs font-medium text-muted-foreground">Tarefa</Label>
@@ -306,7 +320,7 @@ function SangriaPage() {
             </label>
           </div>
         )}
-        <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving || existingRecords.length > 0 || (isDivergent && !confirmDivergence)}>
+        <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={save} disabled={saving || (existingRecords.length > 0 && !editingId && !allowDuplicate) || (isDivergent && !confirmDivergence)}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar sangria
         </Button>
       </FieldCard>
