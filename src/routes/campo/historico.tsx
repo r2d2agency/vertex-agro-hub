@@ -6,6 +6,7 @@ import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
 import { listTappingRecords, type TappingRecord, TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getLocalIsoDate } from "@/lib/date-utils";
+import { getSettings } from "@/lib/configuracoes.functions";
 
 export const Route = createFileRoute("/campo/historico")({ component: HistoricoPage });
 
@@ -49,6 +50,7 @@ function HistoricoPage() {
   const [mode, setMode] = useState<"linha" | "sangrador">("linha");
   const [period, setPeriod] = useState<Period>("semana");
   const [farmId, setFarmId] = useState<string>(""); // "" = todas as fazendas
+  const [timezones, setTimezones] = useState<Record<string, string>>({});
 
   // modo linha do tempo
   const [kindTab, setKindTab] = useState<KindTab>("tudo");
@@ -71,6 +73,16 @@ function HistoricoPage() {
 
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
   const range = useMemo(() => rangeFor(period), [period]);
+  const timezone = farm ? timezones[farm.companyId] : undefined;
+  const timezoneForEvent = (event: HistoryEvent) => (event.farmId ? timezones[me?.assignments.find((a) => a.farm.id === event.farmId)?.farm.companyId ?? ""] : timezone) ?? "America/Sao_Paulo";
+  const formatDate = (value: string, options: Intl.DateTimeFormatOptions, zone: string) => new Intl.DateTimeFormat("pt-BR", { ...options, timeZone: zone }).format(new Date(value));
+
+  useEffect(() => {
+    if (!me) return;
+    const companyIds = Array.from(new Set(me.assignments.map((a) => a.farm.companyId)));
+    Promise.all(companyIds.map(async (id) => [id, (await getSettings(id).catch(() => null))?.timezone] as const))
+      .then((results) => setTimezones(Object.fromEntries(results.filter(([, zone]) => zone))));
+  }, [me]);
 
   // Linha do tempo: uma fazenda específica, ou todas as fazendas/empresas do usuário.
   useEffect(() => {
@@ -128,15 +140,15 @@ function HistoricoPage() {
     const f = kindTab === "tudo" ? entries : entries.filter((e) => e.kind === kindTab);
     const byDay = new Map<string, HistoryEvent[]>();
     for (const e of f) {
-      const d = new Date(e.date).toISOString().slice(0, 10);
+      const d = new Intl.DateTimeFormat("en-CA", { timeZone: timezoneForEvent(e), year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(e.date));
       if (!byDay.has(d)) byDay.set(d, []);
       byDay.get(d)!.push(e);
     }
     return Array.from(byDay.entries()).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [entries, kindTab]);
+  }, [entries, kindTab, timezones, farm, me]);
 
   const sangradorStats = useMemo(() => {
-    const days = new Set(tapperRecords.map((r) => new Date(r.date).toISOString().slice(0, 10)));
+    const days = new Set(tapperRecords.map((r) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone ?? "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(r.date))));
     const periodDays = period === "hoje" ? 1 : period === "semana" ? 7 : 30;
     return { total: tapperRecords.length, daysWithRecord: days.size, periodDays };
   }, [tapperRecords, period]);
@@ -201,13 +213,13 @@ function HistoricoPage() {
             grouped.map(([day, list]) => (
               <section key={day}>
                 <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {new Date(day + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+                  {formatDate(day + "T00:00:00Z", { day: "2-digit", month: "long", year: "numeric" }, timezone ?? "America/Sao_Paulo")}
                 </h2>
                 <ul className="space-y-2">
                   {list.map((e) => (
                     <li key={e.id} className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card p-3">
                       <div className="w-14 shrink-0 text-sm font-semibold">
-                        {new Date(e.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        {formatDate(e.date, { hour: "2-digit", minute: "2-digit" }, timezoneForEvent(e))}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex items-center gap-2">
@@ -254,7 +266,7 @@ function HistoricoPage() {
                         <li key={r.id} className="rounded-2xl border border-border/60 bg-card p-3">
                           <div className="mb-1 flex items-center justify-between">
                             <span className="text-sm font-semibold">
-                              {new Date(r.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                              {formatDate(r.date, { day: "2-digit", month: "short" }, timezone ?? "America/Sao_Paulo")}
                             </span>
                             {r.endPeriod && (
                               <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">

@@ -5,7 +5,7 @@ import {
   getFieldMe, submitTapping, listFieldTappers, listFieldTapperTables, listFieldTapperPlots,
   type FieldMe, type FieldTapper, type FieldTapperTable,
 } from "@/lib/field.functions";
-import { getTapperRotation, listPlotTableLinks, type TapperRotationState } from "@/lib/tappers.functions";
+import { getTapperRotation, listPlotTableLinks, upsertTapperRotation, type TapperRotationState } from "@/lib/tappers.functions";
 import { listPlots, type Plot } from "@/lib/talhoes.functions";
 import { listTappingRecords, updateTappingRecord } from "@/lib/sangrias.functions";
 import { TASK_EXTENTS, END_PERIODS, listTappingTasks, type TappingTask } from "@/lib/sangrias.functions";
@@ -34,6 +34,8 @@ function SangriaPage() {
   const [tablesLoading, setTablesLoading] = useState(false);
   const [tappingTableId, setTappingTableId] = useState("");
   const [rotation, setRotation] = useState<TapperRotationState | null>(null);
+  const [rotationAnchorTableId, setRotationAnchorTableId] = useState("");
+  const [savingRotation, setSavingRotation] = useState(false);
   const [tasks, setTasks] = useState<TappingTask[]>([]);
   const [taskExtent, setTaskExtent] = useState("");
   const [endPeriod, setEndPeriod] = useState("");
@@ -105,6 +107,7 @@ function SangriaPage() {
       .then(([ts, rot]) => {
         setTables(ts.map((t) => ({ id: t.tappingTable?.id ?? t.tappingTableId, name: t.tappingTable?.name ?? "Tabela", notation: t.tappingTable?.notation ?? null, treeCount: t.treeCount ?? null } as FieldTapperTable)));
         setRotation(rot);
+        setRotationAnchorTableId(rot?.needsReset ? (rot.orderedLinks.find((link) => ts.some((t) => (t.tappingTable?.id ?? t.tappingTableId) === link.tappingTableId))?.tappingTableId ?? "") : "");
         const suggested = rot && !rot.needsReset && rot.suggestedTableId;
         if (suggested) setTappingTableId(suggested);
         else if (ts.length === 1) setTappingTableId(ts[0].id);
@@ -132,6 +135,22 @@ function SangriaPage() {
       .then(setTasks)
       .catch(() => setTasks([]));
   }, [farm]);
+
+  async function resetRotation() {
+    if (!farm || !tapperId || !rotationAnchorTableId) return;
+    setSavingRotation(true);
+    try {
+      await upsertTapperRotation({ companyId: farm.companyId, tapperKey: tapperId, anchorTableId: rotationAnchorTableId, anchorDate: recordDate });
+      const nextRotation = await getTapperRotation(farm.companyId, tapperId);
+      setRotation(nextRotation);
+      setTappingTableId(nextRotation.suggestedTableId ?? rotationAnchorTableId);
+      toast.success("Sequência de tabelas atualizada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Não foi possível atualizar a sequência");
+    } finally {
+      setSavingRotation(false);
+    }
+  }
 
   async function onPhoto(f: File | null) {
     if (!f) return;
@@ -236,8 +255,15 @@ function SangriaPage() {
           </div>
         )}
         {tapperId && plotId && rotation?.needsReset && (
-          <div className="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
-            Sequência de tabelas desatualizada para este sangrador. Defina o ponto de partida em Sangradores &gt; Tabelas.
+          <div className="space-y-2 rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
+            <p>Sequência de tabelas desatualizada para este sangrador. Escolha o ponto de partida para {recordDate}.</p>
+            <Select value={rotationAnchorTableId} onValueChange={setRotationAnchorTableId}>
+              <SelectTrigger className="h-10 rounded-xl bg-background/60"><SelectValue placeholder="Selecione a tabela inicial" /></SelectTrigger>
+              <SelectContent>{rotation.orderedLinks.filter((link) => tables.some((t) => t.id === link.tappingTableId)).map((link) => { const nextTable = tables.find((t) => t.id === link.tappingTableId); return <SelectItem key={link.tappingTableId} value={link.tappingTableId}>{nextTable?.name ?? "Tabela"}{nextTable?.notation ? ` — ${nextTable.notation}` : ""}</SelectItem>; })}</SelectContent>
+            </Select>
+            <Button type="button" size="sm" onClick={resetRotation} disabled={savingRotation || !rotationAnchorTableId}>
+              {savingRotation && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Definir sequência
+            </Button>
           </div>
         )}
         {tapperId && plotId && (
