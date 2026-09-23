@@ -659,6 +659,27 @@ model TappingTask {
   @@map("tapping_tasks")
 }
 
+model TappingDailyAllocation {
+  id              String   @id @default(uuid()) @db.Uuid
+  companyId       String   @map("company_id") @db.Uuid
+  farmId          String   @map("farm_id") @db.Uuid
+  plotId          String   @map("plot_id") @db.Uuid
+  workDate        DateTime @map("work_date") @db.Date
+  tapperId        String?  @map("tapper_id") @db.Uuid
+  userId          String?  @map("user_id") @db.Uuid
+  tappingTableId  String   @map("tapping_table_id") @db.Uuid
+  taskExtent      String   @map("task_extent")
+  treesExpected   Int      @map("trees_expected")
+  active          Boolean  @default(true)
+  createdById     String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([plotId, workDate, tapperId, userId, tappingTableId, taskExtent])
+  @@index([companyId, farmId, plotId, workDate])
+  @@map("tapping_daily_allocations")
+}
+
 model TappingRecord {
   id              String   @id @default(uuid()) @db.Uuid
   companyId       String   @map("company_id") @db.Uuid

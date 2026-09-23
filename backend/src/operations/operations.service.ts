@@ -52,6 +52,23 @@ export class OperationsService {
     });
   }
 
+  async getDailyTreeAllocation(userId: string, opts: { companyId: string; farmId: string; plotId: string; tapperId?: string; tableId?: string; taskExtent?: string; date: string }) {
+    await this.access.ensureCompany(userId, opts.companyId);
+    const plot = await this.prisma.plot.findFirst({ where: { id: opts.plotId, companyId: opts.companyId, farmId: opts.farmId, isDeleted: false }, select: { treeCount: true } });
+    if (!plot) throw new NotFoundException('Talhão não encontrado nesta fazenda');
+    const links = await this.prisma.tapperPlotTableLink.findMany({
+      where: { companyId: opts.companyId, farmId: opts.farmId, plotId: opts.plotId, active: true },
+      select: { tapperId: true, userId: true, tappingTableId: true, treeCount: true },
+    });
+    const people = new Set(links.map((l) => l.tapperId ? `t:${l.tapperId}` : l.userId ? `u:${l.userId}` : null).filter(Boolean));
+    const tables = new Set(links.map((l) => l.tappingTableId));
+    const selected = links.find((l) => l.tappingTableId === opts.tableId && (opts.tapperId ? (l.tapperId === opts.tapperId || l.userId === opts.tapperId) : true));
+    const total = selected?.treeCount ?? plot.treeCount ?? 0;
+    const base = selected?.treeCount != null ? selected.treeCount : Math.floor(total / Math.max(tables.size, 1) / Math.max(people.size, 1));
+    const treesExpected = opts.taskExtent === '/' ? Math.floor(base / 2) : base;
+    return { date: opts.date, plotTreeCount: plot.treeCount, tableCount: tables.size, tapperCount: people.size, treesExpected, taskExtent: opts.taskExtent ?? null };
+  }
+
   async createTappingRecord(userId: string, dto: CreateTappingRecordDto) {
     await this.access.ensureCompany(userId, dto.companyId);
     if (dto.plotId && !dto.farmId) throw new NotFoundException('Fazenda obrigatória para o talhão');

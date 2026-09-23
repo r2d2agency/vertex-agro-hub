@@ -7,7 +7,7 @@ import {
 } from "@/lib/field.functions";
 import { getTapperRotation, listPlotTableLinks, upsertTapperRotation, type TapperRotationState } from "@/lib/tappers.functions";
 import { listPlots, type Plot } from "@/lib/talhoes.functions";
-import { listTappingRecords, updateTappingRecord, type TappingRecord } from "@/lib/sangrias.functions";
+import { listTappingRecords, updateTappingRecord, getDailyTreeAllocation, type TappingRecord } from "@/lib/sangrias.functions";
 import { TASK_EXTENTS, END_PERIODS, listTappingTasks, type TappingTask } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ function SangriaPage() {
   const [savingRotation, setSavingRotation] = useState(false);
   const [tasks, setTasks] = useState<TappingTask[]>([]);
   const [taskExtent, setTaskExtent] = useState("");
+  const [dailyTreesExpected, setDailyTreesExpected] = useState<number | null>(null);
   const [endPeriod, setEndPeriod] = useState("");
   const [recordDate, setRecordDate] = useState(() => getLocalIsoDate());
   const [existingRecords, setExistingRecords] = useState<any[]>([]);
@@ -119,6 +120,14 @@ function SangriaPage() {
   }, [farm, tapperId, plotId]);
 
   useEffect(() => {
+    setDailyTreesExpected(null);
+    if (!farm || !plotId || !tapperId || !tappingTableId || !taskExtent) return;
+    getDailyTreeAllocation({ companyId: farm.companyId, farmId: farm.id, plotId, tapperId, tableId: tappingTableId, taskExtent, date: recordDate })
+      .then((allocation) => setDailyTreesExpected(allocation.treesExpected))
+      .catch(() => setDailyTreesExpected(null));
+  }, [farm, plotId, tapperId, tappingTableId, taskExtent, recordDate]);
+
+  useEffect(() => {
     if (!farm || !recordDate) { setDateRecords([]); return; }
     listTappingRecords(farm.companyId, { farmId: farm.id, from: recordDate, to: recordDate })
       .then((records) => setDateRecords(records.filter((r) => r.plotId === plotId && r.taskExtent === taskExtent)))
@@ -187,7 +196,7 @@ function SangriaPage() {
         tapperId: tapper.id.startsWith("rh:") ? undefined : tapper.id,
         taskExtent,
         endPeriod: endPeriod || undefined,
-        treesExpected: table?.treeCount ?? undefined,
+        treesExpected: dailyTreesExpected ?? table?.treeCount ?? undefined,
         notes: notes.trim() || undefined,
         photoUrls: photoUrls.length ? photoUrls : undefined,
         audioUrl: audioUrl || undefined,
@@ -313,8 +322,8 @@ function SangriaPage() {
         {table && (
           <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
             <Trees className="h-4 w-4 text-primary" />
-            <span className="text-muted-foreground">Árvores previstas nesta tabela:</span>
-            <span className="font-semibold text-foreground">{table.treeCount ?? "—"}</span>
+            <span className="text-muted-foreground">Árvores previstas nesta tarefa:</span>
+            <span className="font-semibold text-foreground">{dailyTreesExpected ?? table.treeCount ?? "—"}</span>
           </div>
         )}
         {existingRecords.length > 0 && !editingId && !allowDuplicate && <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-semibold">Esta sangria já foi registrada</p><p className="mt-1 text-xs">Escolha se deseja corrigir o lançamento atual ou registrar uma nova sangria adicional.</p><div className="mt-3 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { const r = existingRecords[0]; setEditingId(r.id); setNotes(r.notes ?? ""); setEndPeriod(r.endPeriod ?? ""); setPhotoUrls(r.photoUrls ?? []); setAudioUrl(r.audioUrl ?? null); toast.info("Registro carregado para correção"); }}>Corrigir atual</Button><Button type="button" size="sm" onClick={() => setAllowDuplicate(true)}>Registrar nova mesmo assim</Button></div></div></div></div>}

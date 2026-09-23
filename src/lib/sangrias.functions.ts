@@ -17,6 +17,13 @@ export const TASK_EXTENTS = [
   { value: "1", label: "Reposição (1)" },
 ] as const;
 
+export type DailyTreeAllocation = { date: string; plotTreeCount: number | null; tableCount: number; tapperCount: number; treesExpected: number; taskExtent: string | null };
+
+export function getDailyTreeAllocation(input: { companyId: string; farmId: string; plotId: string; tapperId?: string; tableId?: string; taskExtent?: string; date: string }) {
+  const qs = new URLSearchParams(input as Record<string, string>);
+  return apiRequest<DailyTreeAllocation>(`/tapping-daily-allocation?${qs.toString()}`);
+}
+
 export function listTappingTasks(companyId: string) {
   return apiRequest<TappingTask[]>(`/field/tapping-tasks?companyId=${encodeURIComponent(companyId)}`);
 }
