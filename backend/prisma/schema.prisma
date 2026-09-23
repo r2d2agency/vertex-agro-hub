@@ -282,6 +282,7 @@ model Farm {
   code           String?
   city           String?
   state          String?
+  timezone       String   @default("America/Sao_Paulo")
   totalAreaHa    Float?   @map("total_area_ha")
   latitude       Float?
   longitude      Float?

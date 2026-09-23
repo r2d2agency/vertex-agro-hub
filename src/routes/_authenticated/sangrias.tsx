@@ -28,6 +28,7 @@ import { listFarms } from "@/lib/fazendas.functions";
 import { listPlots } from "@/lib/talhoes.functions";
 import { listTappers } from "@/lib/tappers.functions";
 import { listTappingTables } from "@/lib/tabelas.functions";
+import { getLocalIsoDate } from "@/lib/date-utils";
 import {
   createTappingRecord, deleteTappingRecord, listTappingRecords, updateTappingRecord,
   TASK_EXTENTS, END_PERIODS,
@@ -45,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/sangrias")({
   component: SangriasPage,
 });
 
-const today = () => "2026-08-12";
+const today = () => getLocalIsoDate();
 const empty: TappingInput = {
   farmId: "", plotId: "", date: today(), sangradorName: "",
   tapperId: null, taskExtent: "", endPeriod: "",
@@ -56,6 +57,7 @@ function SangriasPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
   const qc = useQueryClient();
   const [farmFilter, setFarmFilter] = useState("__all");
+  const [sangradorFilter, setSangradorFilter] = useState("__all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [creating, setCreating] = useState(false);
@@ -68,7 +70,25 @@ function SangriasPage() {
     enabled: !!companyId,
   });
 
-  const { data = [], isLoading: loading } = useQuery({
+  const { data: tappers = [] } = useQuery({
+    queryKey: ["tappers", companyId],
+    queryFn: () => listTappers(companyId!),
+    enabled: !!companyId,
+  });
+
+  const { data: tables = [] } = useQuery({
+    queryKey: ["tapping-tables", companyId],
+    queryFn: () => listTappingTables(companyId!),
+    enabled: !!companyId,
+  });
+
+  const { data: plots = [] } = useQuery({
+    queryKey: ["plots", companyId, farmFilter],
+    queryFn: () => listPlots(companyId!, farmFilter !== "__all" ? farmFilter : undefined),
+    enabled: !!companyId,
+  });
+
+  const { data: records = [], isLoading: loading } = useQuery({
     queryKey: ["taps", companyId, farmFilter, from, to],
     queryFn: () => listTappingRecords(companyId!, {
       farmId: farmFilter !== "__all" ? farmFilter : undefined,
@@ -78,12 +98,21 @@ function SangriasPage() {
     enabled: !!companyId,
   });
 
+  const data = useMemo(() => records.filter((r) => sangradorFilter === "__all" || r.sangradorName === sangradorFilter), [records, sangradorFilter]);
+  const sangradorNames = useMemo(() => Array.from(new Set(records.map((r) => r.sangradorName).filter(Boolean))).sort(), [records]);
+
   const exportCsv = () => {
     const farmName = (id?: string | null) => farms.find((f) => f.id === id)?.name ?? "";
+    const plotName = (id?: string | null) => plots.find((p) => p.id === id)?.name ?? "";
+    const tableName = (id?: string | null) => tables.find((t) => t.id === id)?.name ?? "";
     downloadCsv(`sangrias-${new Date().toISOString().slice(0, 10)}`, data, [
       { key: "date", label: "Data", format: fmtDateBR },
       { key: "sangradorName", label: "Sangrador" },
       { key: "farmId", label: "Fazenda", format: (v) => farmName(v) },
+      { key: "plotId", label: "Talhão", format: (v) => plotName(v) },
+      { key: "tappingTableId", label: "Tabela", format: (v) => tableName(v) },
+      { key: "taskExtent", label: "Tarefa" },
+      { key: "endPeriod", label: "Período" },
       { key: "treesTapped", label: "Árvores" },
       { key: "liters", label: "Litros" },
       { key: "drcPercent", label: "DRC %" },
@@ -144,6 +173,16 @@ function SangriasPage() {
               </Select>
             </div>
             <div>
+              <span className="mb-1 block text-xs text-muted-foreground">Sangrador</span>
+              <Select value={sangradorFilter} onValueChange={setSangradorFilter}>
+                <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">Todos</SelectItem>
+                  {sangradorNames.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <span className="mb-1 block text-xs text-muted-foreground">De</span>
               <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" />
             </div>
@@ -172,8 +211,12 @@ function SangriasPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Data</TableHead>
+                      <TableHead>Data/hora</TableHead>
                       <TableHead>Sangrador</TableHead>
+                      <TableHead>Fazenda</TableHead>
+                      <TableHead>Talhão</TableHead>
+                      <TableHead>Tabela</TableHead>
+                      <TableHead>Tarefa / período</TableHead>
                       <TableHead className="text-right">Árvores</TableHead>
                       <TableHead className="text-right">Saldo</TableHead>
                       <TableHead className="text-right">Litros</TableHead>
@@ -186,7 +229,7 @@ function SangriasPage() {
                   <TableBody>
                     {data.map((r) => (
                       <TableRow key={r.id}>
-                        <TableCell>{r.date.slice(0, 10).split("-").reverse().join("/")}</TableCell>
+                        <TableCell>{new Date(r.date).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</TableCell>
                         <TableCell className="font-medium">
                           <div>{r.sangradorName}</div>
                           <div className="text-[10px] text-muted-foreground uppercase flex gap-1">
@@ -194,6 +237,10 @@ function SangriasPage() {
                             {r.quality && <span>• {r.quality}</span>}
                           </div>
                         </TableCell>
+                        <TableCell>{farms.find((f) => f.id === r.farmId)?.name ?? "—"}</TableCell>
+                        <TableCell>{plots.find((p) => p.id === r.plotId)?.name ?? "—"}</TableCell>
+                        <TableCell>{tables.find((t) => t.id === r.tappingTableId)?.name ?? "—"}</TableCell>
+                        <TableCell>{r.taskExtent ?? "—"}{r.endPeriod ? ` / ${r.endPeriod}` : ""}</TableCell>
                         <TableCell className="text-right">{r.treesTapped ?? "—"}</TableCell>
                         <TableCell className="text-right">
                           <SaldoCell expected={r.treesExpected} tapped={r.treesTapped} />

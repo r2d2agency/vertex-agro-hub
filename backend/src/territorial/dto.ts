@@ -1,4 +1,22 @@
-import { IsDateString, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, MaxLength, Min, MinLength } from 'class-validator';
+import { IsDateString, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, MaxLength, Min, MinLength, Validate } from 'class-validator';
+import { ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
+
+@ValidatorConstraint({ name: 'ianaTimezone', async: false })
+class IanaTimezoneValidator implements ValidatorConstraintInterface {
+  validate(value: unknown): boolean {
+    if (typeof value !== 'string' || !value.includes('/')) return false;
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: value }).format();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  defaultMessage(_: ValidationArguments): string {
+    return 'timezone deve ser um identificador IANA válido';
+  }
+}
 
 export class CreateRegionalDto {
   @IsUUID() companyId!: string;
@@ -24,6 +42,7 @@ export class CreateFarmDto {
   @IsOptional() @IsString() @MaxLength(50) code?: string;
   @IsOptional() @IsString() @MaxLength(120) city?: string;
   @IsOptional() @IsString() @MaxLength(2) state?: string;
+  @IsOptional() @IsString() @MaxLength(100) @Validate(IanaTimezoneValidator) timezone?: string;
   @IsOptional() @IsNumber() totalAreaHa?: number;
   @IsOptional() @IsNumber() latitude?: number;
   @IsOptional() @IsNumber() longitude?: number;
@@ -40,6 +59,7 @@ export class UpdateFarmDto {
   @IsOptional() @IsString() @MaxLength(50) code?: string;
   @IsOptional() @IsString() @MaxLength(120) city?: string;
   @IsOptional() @IsString() @MaxLength(2) state?: string;
+  @IsOptional() @IsString() @MaxLength(100) @Validate(IanaTimezoneValidator) timezone?: string;
   @IsOptional() @IsNumber() totalAreaHa?: number;
   @IsOptional() @IsNumber() latitude?: number;
   @IsOptional() @IsNumber() longitude?: number;

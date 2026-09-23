@@ -53,7 +53,15 @@ const empty: FarmInput = {
   regionalId: "", name: "", code: "", city: "", state: "",
   totalAreaHa: null, latitude: null, longitude: null, owner: "", notes: "",
   boundary: null, photoUrls: [], checkinRadiusM: null,
+  timezone: "America/Sao_Paulo",
 };
+
+const BRAZIL_TIMEZONES = [
+  ["America/Sao_Paulo", "Brasília (UTC−03:00)"],
+  ["America/Manaus", "Manaus (UTC−04:00)"],
+  ["America/Rio_Branco", "Rio Branco (UTC−05:00)"],
+  ["America/Noronha", "Fernando de Noronha (UTC−02:00)"],
+] as const;
 
 const REGIME_LABEL: Record<string, string> = { propria: "própria", arrendada: "arrendada" };
 
@@ -272,6 +280,7 @@ function FarmDialog({
       boundary: initial.boundary ?? null,
       photoUrls: initial.photoUrls ?? [],
       checkinRadiusM: initial.checkinRadiusM ?? null,
+      timezone: initial.timezone ?? empty.timezone,
     });
     else setValues(empty);
     setActiveTab("dados");
@@ -417,6 +426,14 @@ function FarmDialog({
                   ) : null}
                   <Field label="Área total (ha)">
                     <Input type="number" step="0.01" value={values.totalAreaHa ?? ""} onChange={(e) => setValues((v) => ({ ...v, totalAreaHa: e.target.value ? Number(e.target.value) : null }))} />
+                  </Field>
+                  <Field label="Fuso horário da fazenda">
+                    <Select value={values.timezone || BRAZIL_TIMEZONES[0][0]} onValueChange={(timezone) => setValues((v) => ({ ...v, timezone }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {BRAZIL_TIMEZONES.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </Field>
                   <Field label="Raio de check-in (m)">
                     <Input

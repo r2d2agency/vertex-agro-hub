@@ -56,6 +56,7 @@ export type Farm = {
   boundary?: GeoBoundary | null;
   photoUrls?: string[];
   checkinRadiusM?: number | null;
+  timezone?: string | null;
 };
 
 export type FarmInput = {
@@ -72,6 +73,7 @@ export type FarmInput = {
   boundary?: GeoBoundary | null;
   photoUrls?: string[];
   checkinRadiusM?: number | null;
+  timezone?: string | null;
 };
 
 export function listFarms(companyId: string, regionalId?: string) {
@@ -158,5 +160,6 @@ function clean(v: FarmInput) {
     boundary: v.boundary ?? undefined,
     photoUrls: v.photoUrls ?? undefined,
     checkinRadiusM: v.checkinRadiusM ?? undefined,
+    timezone: v.timezone || undefined,
   };
 }
