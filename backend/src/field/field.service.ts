@@ -72,7 +72,7 @@ export class FieldService {
       include: {
         farm: {
           select: {
-            id: true, name: true, companyId: true, city: true, state: true, latitude: true, longitude: true,
+            id: true, name: true, companyId: true, timezone: true, city: true, state: true, latitude: true, longitude: true,
             checkinRadiusM: true,
             plots: {
               where: { isDeleted: false },

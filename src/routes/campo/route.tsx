@@ -144,7 +144,7 @@ function FieldShell() {
     const dark = !isConsultor && stored === "dark";
     document.documentElement.classList.toggle("dark", dark);
     document.body.classList.toggle("dark", dark);
-  }, [me]);
+  }, [me, location.pathname]);
 
   useEffect(() => { setCheckin(readCheckin()); }, []);
   useEffect(() => { getFieldMe().then(setMe).catch((e) => setError(e?.message ?? "Falha ao carregar")); }, []);

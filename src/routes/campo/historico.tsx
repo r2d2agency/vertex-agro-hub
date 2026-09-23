@@ -6,7 +6,6 @@ import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
 import { listTappingRecords, type TappingRecord, TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getLocalIsoDate } from "@/lib/date-utils";
-import { getSettings } from "@/lib/configuracoes.functions";
 
 export const Route = createFileRoute("/campo/historico")({ component: HistoricoPage });
 
@@ -50,7 +49,6 @@ function HistoricoPage() {
   const [mode, setMode] = useState<"linha" | "sangrador">("linha");
   const [period, setPeriod] = useState<Period>("semana");
   const [farmId, setFarmId] = useState<string>(""); // "" = todas as fazendas
-  const [timezones, setTimezones] = useState<Record<string, string>>({});
 
   // modo linha do tempo
   const [kindTab, setKindTab] = useState<KindTab>("tudo");
@@ -73,20 +71,10 @@ function HistoricoPage() {
 
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
   const range = useMemo(() => rangeFor(period), [period]);
-  const timezone = farm ? timezones[farm.companyId] : undefined;
-  const timezoneForEvent = (event: HistoryEvent) => (event.farmId ? timezones[me?.assignments.find((a) => a.farm.id === event.farmId)?.farm.companyId ?? ""] : timezone) ?? "America/Sao_Paulo";
+  const timezone = farm?.timezone ?? "America/Sao_Paulo";
+  const timezoneForEvent = (event: HistoryEvent) =>
+    (event.farmId ? me?.assignments.find((a) => a.farm.id === event.farmId)?.farm.timezone : timezone) ?? "America/Sao_Paulo";
   const formatDate = (value: string, options: Intl.DateTimeFormatOptions, zone: string) => new Intl.DateTimeFormat("pt-BR", { ...options, timeZone: zone }).format(new Date(value));
-
-  useEffect(() => {
-    if (!me) return;
-    const companyIds = Array.from(new Set(me.assignments.map((a) => a.farm.companyId)));
-    Promise.all(companyIds.map(async (id) => [id, (await getSettings(id).catch(() => null))?.timezone] as const))
-      .then((results) => {
-        const next: Record<string, string> = {};
-        for (const [id, zone] of results) if (zone) next[id] = zone;
-        setTimezones(next);
-      });
-  }, [me]);
 
   // Linha do tempo: uma fazenda específica, ou todas as fazendas/empresas do usuário.
   useEffect(() => {
@@ -149,7 +137,7 @@ function HistoricoPage() {
       byDay.get(d)!.push(e);
     }
     return Array.from(byDay.entries()).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [entries, kindTab, timezones, farm, me]);
+  }, [entries, kindTab, farm, me]);
 
   const sangradorStats = useMemo(() => {
     const days = new Set(tapperRecords.map((r) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone ?? "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(r.date))));

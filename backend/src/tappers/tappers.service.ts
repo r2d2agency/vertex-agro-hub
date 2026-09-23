@@ -844,9 +844,10 @@ export class TappersService {
   async getRotation(userId: string, companyId: string, tapperKey: string) {
     await this.access.ensureCompany(userId, companyId);
     const key = this.parseTapperKey(tapperKey);
-    const { links } = await this.orderedRotationLinks(companyId, key);
+    const { links, sibling } = await this.orderedRotationLinks(companyId, key);
     const rotation = await this.prisma.tapperRotation.findFirst({
-      where: { companyId, ...key },
+      where: { companyId, OR: sibling ? [key, sibling] : [key] },
+      orderBy: { updatedAt: 'desc' },
     });
     const stamp = computeLinkStamp(links);
     const next = rotation ? nextTableInRotation(rotation, links) : { needsReset: true as const, reason: 'missing_last' as const };

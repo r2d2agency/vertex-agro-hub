@@ -19,6 +19,7 @@ export type FieldMe = {
       id: string;
       name: string;
       companyId: string;
+      timezone?: string | null;
       city?: string | null;
       state?: string | null;
       latitude?: number | null;

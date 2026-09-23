@@ -107,7 +107,7 @@ function SangriaPage() {
       .then(([ts, rot]) => {
         setTables(ts.map((t) => ({ id: t.tappingTable?.id ?? t.tappingTableId, name: t.tappingTable?.name ?? "Tabela", notation: t.tappingTable?.notation ?? null, treeCount: t.treeCount ?? null } as FieldTapperTable)));
         setRotation(rot);
-        setRotationAnchorTableId(rot?.needsReset ? (ts[0]?.tappingTable?.id ?? ts[0]?.tappingTableId ?? "") : "");
+        setRotationAnchorTableId(rot?.needsReset ? (rot.rotation?.anchorTableId ?? ts[0]?.tappingTable?.id ?? ts[0]?.tappingTableId ?? "") : "");
         const suggested = rot && !rot.needsReset && rot.suggestedTableId;
         if (suggested) setTappingTableId(suggested);
         else if (ts.length === 1) setTappingTableId(ts[0].id);
