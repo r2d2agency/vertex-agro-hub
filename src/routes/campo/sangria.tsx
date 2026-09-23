@@ -176,7 +176,8 @@ function SangriaPage() {
       const payload = {
         companyId: farm.companyId, farmId: farm.id, plotId,
         tappingTableId: tappingTableId || undefined,
-        date: recordDate,
+        // Envia o instante real do aparelho; a data selecionada continua sendo usada para filtros civis.
+        date: editingId ? recordDate : new Date().toISOString(),
         sangradorName: tapper.fullName,
         // Sangradores vinculados só pelo RH (sem ficha Tapper legada) vêm com um
         // id sintético "rh:<userId>" — não é uma linha real de Tapper, então

@@ -12,7 +12,9 @@ import {
 
 function parseTappingDate(value: string | Date) {
   if (value instanceof Date) return value;
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00-03:00`) : new Date(value);
+  // Data civil sem horário: meio-dia evita que o navegador mostre o dia anterior.
+  // O app envia um ISO completo quando a sangria é registrada agora, preservando o instante real.
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00-03:00`) : new Date(value);
 }
 
 @Injectable()
@@ -104,7 +106,7 @@ export class OperationsService {
         ...rest,
         expectedTableId,
         divergent,
-        date: new Date(date),
+        date: parseTappingDate(date),
         createdById: userId,
         updatedById: userId,
       } as any,
