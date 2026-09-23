@@ -1,6 +1,7 @@
 import { apiRequest, setAuthTokens } from "@/lib/api";
 import { enqueueMutation, flushOutbox } from "@/lib/offline/queue";
 import { idbGet, idbPut } from "@/lib/offline/idb";
+import type { TappingRecord } from "@/lib/sangrias.functions";
 
 const FIELD_ME_CACHE_KEY = "field:me";
 
@@ -93,7 +94,7 @@ export async function captureLocation(timeout = 10000): Promise<Coords | null> {
   });
 }
 
-async function submit(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body: any, label: string) {
+async function submit<T = unknown>(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body: any, label: string): Promise<{ queued: false; data: T } | { queued: true; key: string }> {
   // Se já está online, tenta enviar direto — só cai na fila offline se a
   // tentativa falhar (rede caiu na hora, servidor fora) ou se o dispositivo
   // já estiver offline. Antes, todo registro ia direto pra fila e só saía
@@ -101,8 +102,8 @@ async function submit(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE",
   // então ficava "pendente" mesmo com internet normal.
   if (typeof navigator === "undefined" || navigator.onLine) {
     try {
-      await apiRequest(path, { method, body: JSON.stringify(body) });
-      return { queued: false };
+      const data = await apiRequest<T>(path, { method, body: JSON.stringify(body) });
+      return { queued: false, data };
     } catch (error: any) {
       // Conflitos e erros de validação foram recebidos pelo servidor: não devem
       // virar fila offline, pois isso mascara o erro e pode duplicar operações.
@@ -136,7 +137,7 @@ export function submitTapping(input: {
   if (data.adherencePct === null) delete data.adherencePct;
   if (!data.photoUrls?.length) delete data.photoUrls;
   if (data.audioUrl === null || data.audioUrl === undefined) delete data.audioUrl;
-  return submit("/tapping-records", "POST", data, `Sangria — ${input.sangradorName}`);
+  return submit<TappingRecord>("/tapping-records", "POST", data, `Sangria — ${input.sangradorName}`);
 }
 
 export function submitStimulation(input: {

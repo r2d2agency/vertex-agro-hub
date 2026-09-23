@@ -7,10 +7,11 @@ import {
 } from "@/lib/field.functions";
 import { getTapperRotation, listPlotTableLinks, upsertTapperRotation, type TapperRotationState } from "@/lib/tappers.functions";
 import { listPlots, type Plot } from "@/lib/talhoes.functions";
-import { listTappingRecords, updateTappingRecord } from "@/lib/sangrias.functions";
+import { listTappingRecords, updateTappingRecord, type TappingRecord } from "@/lib/sangrias.functions";
 import { TASK_EXTENTS, END_PERIODS, listTappingTasks, type TappingTask } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,6 +53,7 @@ function SangriaPage() {
 
   const [saving, setSaving] = useState(false);
   const [confirmDivergence, setConfirmDivergence] = useState(false);
+  const [savedRecord, setSavedRecord] = useState<TappingRecord | null>(null);
 
   const expectedTable = rotation?.suggestedTableId ? tables.find((t) => t.id === rotation.suggestedTableId) : undefined;
   const selectedTable = tables.find((t) => t.id === tappingTableId);
@@ -190,11 +192,22 @@ function SangriaPage() {
         photoUrls: photoUrls.length ? photoUrls : undefined,
         audioUrl: audioUrl || undefined,
       } as any;
-      const res = editingId ? await updateTappingRecord(editingId, payload) : await submitTapping(payload);
+      if (editingId) {
+        const record = await updateTappingRecord(editingId, payload);
+        setSavedRecord(record);
+      } else {
+        const result = await submitTapping(payload);
+        if (result.queued) {
+          setEditingId(null);
+          setAllowDuplicate(false);
+          toast.warning("Sangria guardada na fila do aparelho; ainda não há confirmação do servidor.");
+          nav({ to: "/campo" });
+          return;
+        }
+        setSavedRecord(result.data);
+      }
       setEditingId(null);
       setAllowDuplicate(false);
-      toast.success(editingId ? "Sangria corrigida" : ("queued" in res && res.queued) ? "Sangria salva na fila (offline)" : "Sangria registrada");
-      nav({ to: "/campo" });
     } catch (e: any) {
       toast.error(e?.message ?? "Não foi possível salvar a sangria");
     } finally {
@@ -202,7 +215,12 @@ function SangriaPage() {
     }
   }
 
+  const savedDateLabel = savedRecord?.date
+    ? new Intl.DateTimeFormat("pt-BR", { timeZone: farm?.timezone ?? "America/Sao_Paulo", dateStyle: "short", timeStyle: "medium" }).format(new Date(savedRecord.date))
+    : "—";
+
   return (
+    <>
     <div>
       <StepHeader title={editingId ? "Corrigir sangria" : "Registrar sangria"} step={1} steps={["Sangria"]} onBack={() => nav({ to: "/campo" })} />
 
@@ -371,6 +389,22 @@ function SangriaPage() {
         </Button>
       </FieldCard>
     </div>
+    <Dialog open={!!savedRecord} onOpenChange={(open) => { if (!open) setSavedRecord(null); }}>
+      <DialogContent className="max-w-sm rounded-2xl">
+        <DialogHeader>
+          <DialogTitle>Sangria confirmada pelo servidor</DialogTitle>
+          <DialogDescription>Estes são os dados devolvidos após a gravação.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 rounded-xl border border-border/60 bg-muted/30 p-4 text-sm">
+          <div><div className="text-xs text-muted-foreground">Data e horário gravados</div><div className="font-semibold">{savedDateLabel}</div></div>
+          <div><div className="text-xs text-muted-foreground">Sangrador gravado</div><div className="font-semibold">{savedRecord?.sangradorName ?? "—"}</div></div>
+        </div>
+        <DialogFooter>
+          <Button className="w-full" onClick={() => { setSavedRecord(null); nav({ to: "/campo" }); }}>Confirmar e sair</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
