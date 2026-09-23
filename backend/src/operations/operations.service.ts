@@ -62,9 +62,11 @@ export class OperationsService {
     });
     const people = new Set(links.map((l) => l.tapperId ? `t:${l.tapperId}` : l.userId ? `u:${l.userId}` : null).filter(Boolean));
     const tables = new Set(links.map((l) => l.tappingTableId));
-    const selected = links.find((l) => l.tappingTableId === opts.tableId && (opts.tapperId ? (l.tapperId === opts.tapperId || l.userId === opts.tapperId) : true));
-    const total = selected?.treeCount ?? plot.treeCount ?? 0;
-    const base = selected?.treeCount != null ? selected.treeCount : Math.floor(total / Math.max(tables.size, 1) / Math.max(people.size, 1));
+    // A quantidade da tarefa é calculada pelo total do talhão e pela equipe do dia.
+    // `treeCount` no vínculo é uma configuração legada do vínculo, não o total
+    // intrínseco da tabela, portanto não deve substituir esta divisão.
+    const total = plot.treeCount ?? 0;
+    const base = Math.floor(total / Math.max(tables.size, 1) / Math.max(people.size, 1));
     const treesExpected = opts.taskExtent === '/' ? Math.floor(base / 2) : base;
     return { date: opts.date, plotTreeCount: plot.treeCount, tableCount: tables.size, tapperCount: people.size, treesExpected, taskExtent: opts.taskExtent ?? null };
   }

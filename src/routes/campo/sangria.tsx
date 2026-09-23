@@ -178,6 +178,7 @@ function SangriaPage() {
   async function save() {
     if (!farm || !tapper || !plotId) { toast.error("Preencha fazenda, sangrador e talhão"); return; }
     if (!taskExtent) { toast.error("Selecione uma tarefa"); return; }
+    if (dailyTreesExpected == null) { toast.error("A quantidade prevista ainda não foi calculada"); return; }
     if (isDivergent && !confirmDivergence) {
       toast.warning(`A tabela selecionada (${selectedTable?.name ?? "—"}) é diferente da tabela do dia (${expectedTable?.name ?? "—"}). Confirme para continuar.`);
       return;
@@ -196,7 +197,7 @@ function SangriaPage() {
         tapperId: tapper.id.startsWith("rh:") ? undefined : tapper.id,
         taskExtent,
         endPeriod: endPeriod || undefined,
-        treesExpected: dailyTreesExpected ?? table?.treeCount ?? undefined,
+        treesExpected: dailyTreesExpected ?? undefined,
         notes: notes.trim() || undefined,
         photoUrls: photoUrls.length ? photoUrls : undefined,
         audioUrl: audioUrl || undefined,
@@ -323,7 +324,7 @@ function SangriaPage() {
           <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
             <Trees className="h-4 w-4 text-primary" />
             <span className="text-muted-foreground">Árvores previstas nesta tarefa:</span>
-            <span className="font-semibold text-foreground">{dailyTreesExpected ?? table.treeCount ?? "—"}</span>
+            <span className="font-semibold text-foreground">{dailyTreesExpected ?? "—"}</span>
           </div>
         )}
         {existingRecords.length > 0 && !editingId && !allowDuplicate && <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-semibold">Esta sangria já foi registrada</p><p className="mt-1 text-xs">Escolha se deseja corrigir o lançamento atual ou registrar uma nova sangria adicional.</p><div className="mt-3 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { const r = existingRecords[0]; setEditingId(r.id); setNotes(r.notes ?? ""); setEndPeriod(r.endPeriod ?? ""); setPhotoUrls(r.photoUrls ?? []); setAudioUrl(r.audioUrl ?? null); toast.info("Registro carregado para correção"); }}>Corrigir atual</Button><Button type="button" size="sm" onClick={() => setAllowDuplicate(true)}>Registrar nova mesmo assim</Button></div></div></div></div>}
