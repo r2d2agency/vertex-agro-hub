@@ -413,7 +413,7 @@ export class FieldService {
     const events: Event[] = [];
 
     for (const t of taps) events.push({
-      id: `tap-${t.id}`, kind: 'sangria', date: t.date.toISOString(),
+      id: `tap-${t.id}`, kind: 'sangria', date: (t.recordedAt ?? t.date).toISOString(),
       title: `Sangria — ${t.sangradorName}`,
       subtitle: [t.liters != null ? `${t.liters} L` : null, t.dryKg != null ? `${t.dryKg} kg secos` : null].filter(Boolean).join(' · '),
       farmId: t.farmId,

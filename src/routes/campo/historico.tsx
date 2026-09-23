@@ -140,7 +140,7 @@ function HistoricoPage() {
   }, [entries, kindTab, farm, me]);
 
   const sangradorStats = useMemo(() => {
-    const days = new Set(tapperRecords.map((r) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone ?? "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(r.date))));
+    const days = new Set(tapperRecords.map((r) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone ?? "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(r.recordedAt ?? r.date))));
     const periodDays = period === "hoje" ? 1 : period === "semana" ? 7 : 30;
     return { total: tapperRecords.length, daysWithRecord: days.size, periodDays };
   }, [tapperRecords, period]);
@@ -258,7 +258,7 @@ function HistoricoPage() {
                         <li key={r.id} className="rounded-2xl border border-border/60 bg-card p-3">
                           <div className="mb-1 flex items-center justify-between">
                             <span className="text-sm font-semibold">
-                              {formatDate(r.date, { day: "2-digit", month: "short" }, timezone ?? "America/Sao_Paulo")}
+                              {formatDate(r.recordedAt ?? r.date, { day: "2-digit", month: "short" }, timezone ?? "America/Sao_Paulo")}
                             </span>
                             {r.endPeriod && (
                               <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">

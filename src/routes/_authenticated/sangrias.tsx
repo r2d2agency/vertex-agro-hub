@@ -47,6 +47,13 @@ export const Route = createFileRoute("/_authenticated/sangrias")({
 });
 
 const today = () => getLocalIsoDate();
+function formatTappingDate(record: TappingRecord, timezone?: string | null) {
+  const value = record.recordedAt ?? record.date;
+  const options: Intl.DateTimeFormatOptions = record.recordedAt
+    ? { dateStyle: "short", timeStyle: "short" }
+    : { dateStyle: "short" };
+  return new Intl.DateTimeFormat("pt-BR", { ...options, timeZone: timezone || "America/Sao_Paulo" }).format(new Date(value));
+}
 const empty: TappingInput = {
   farmId: "", plotId: "", date: today(), sangradorName: "",
   tapperId: null, taskExtent: "", endPeriod: "",
@@ -229,7 +236,7 @@ function SangriasPage() {
                   <TableBody>
                     {data.map((r) => (
                       <TableRow key={r.id}>
-                        <TableCell>{new Date(r.date).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</TableCell>
+                        <TableCell>{formatTappingDate(r, farms.find((f) => f.id === r.farmId)?.timezone)}</TableCell>
                         <TableCell className="font-medium">
                           <div>{r.sangradorName}</div>
                           <div className="text-[10px] text-muted-foreground uppercase flex gap-1">
