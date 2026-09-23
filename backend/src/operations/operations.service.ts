@@ -101,12 +101,15 @@ export class OperationsService {
       }
     }
 
+    const parsed = parseTappingDate(date);
     const record = await this.prisma.tappingRecord.create({
       data: {
         ...rest,
         expectedTableId,
         divergent,
-        date: parseTappingDate(date),
+        date: parsed,
+        // Instante real de gravação separado da data operacional: preserva hora/minuto.
+        recordedAt: /^\d{4}-\d{2}-\d{2}$/.test(String(date)) ? null : parsed,
         createdById: userId,
         updatedById: userId,
       } as any,

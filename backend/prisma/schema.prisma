@@ -666,6 +666,7 @@ model TappingRecord {
   plotId          String?  @map("plot_id") @db.Uuid
   tappingTableId  String?  @map("tapping_table_id") @db.Uuid
   date            DateTime @db.Date
+  recordedAt      DateTime? @map("recorded_at") @db.Timestamptz(6)
   sangradorName   String   @map("sangrador_name")
   tapperId        String?  @map("tapper_id") @db.Uuid
   expectedTableId String?  @map("expected_table_id") @db.Uuid

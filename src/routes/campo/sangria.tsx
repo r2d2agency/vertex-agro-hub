@@ -215,8 +215,14 @@ function SangriaPage() {
     }
   }
 
-  const savedDateLabel = savedRecord?.date
-    ? new Intl.DateTimeFormat("pt-BR", { timeZone: farm?.timezone ?? "America/Sao_Paulo", dateStyle: "short", timeStyle: "medium" }).format(new Date(savedRecord.date))
+  const savedInstant = savedRecord?.recordedAt ?? savedRecord?.date;
+  const savedHasTime = Boolean(savedRecord?.recordedAt);
+  const savedDateLabel = savedInstant
+    ? new Intl.DateTimeFormat("pt-BR", {
+        timeZone: farm?.timezone ?? "America/Sao_Paulo",
+        dateStyle: "short",
+        ...(savedHasTime ? { timeStyle: "medium" as const } : {}),
+      }).format(new Date(savedInstant))
     : "—";
 
   return (

@@ -45,6 +45,7 @@ export type TappingRecord = {
   farmId?: string | null;
   plotId?: string | null;
   tappingTableId?: string | null;
+  recordedAt?: string | null;
   expectedTableId?: string | null;
   divergent?: boolean;
   date: string;

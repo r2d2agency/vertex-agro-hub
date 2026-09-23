@@ -136,6 +136,11 @@ function FieldShell() {
   const install = useInstallPrompt();
   const gps = useGps();
   const [checkin, setCheckin] = useState<{ farmId?: string; at: number } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     applyFontSize(readFontSize());
@@ -208,6 +213,10 @@ function FieldShell() {
     }
     const role = me.primaryRole;
     const firstName = me.user?.fullName?.split(" ")[0] ?? "campo";
+    // Topo temporário de diagnóstico: hora atual do aparelho no fuso da fazenda/check-in.
+    const clockFarm = me.assignments.find((a) => (checkin?.farmId ? a.farm.id === checkin.farmId : true))?.farm;
+    const clockZone = clockFarm?.timezone ?? "America/Sao_Paulo";
+    const clockLabel = new Intl.DateTimeFormat("pt-BR", { timeZone: clockZone, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(now);
     const GpsIcon = gpsBadge.icon;
     const isConsultantRoute = location.pathname.includes("/consultor");
     return (
@@ -221,6 +230,7 @@ function FieldShell() {
                 <div className="text-[11px] capitalize text-muted-foreground">
                   {role === "consultor" ? "Consultor" : "Monitor"}
                 </div>
+                <div className="text-[11px] font-semibold text-foreground">{clockLabel}</div>
               </div>
             </div>
             <div className="flex items-center gap-1">
