@@ -1,5 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getFieldMe, listFieldTappers, listFieldTapperTables, type FieldMe, type FieldTapper, type FieldTapperTable } from "@/lib/field.functions";
+import { getTapperRotation, upsertTapperRotation, type TapperRotationState } from "@/lib/tappers.functions";
+import { getLocalIsoDate } from "@/lib/date-utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Wifi,
   WifiOff,
@@ -15,6 +19,7 @@ import {
   DownloadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { subscribeOutbox, flushOutbox } from "@/lib/offline/queue";
 import { APP_VERSION, checkForUpdate, applyUpdate } from "@/lib/app-update";
 import { applyFontSize, readFontSize, writeFontSize, type FieldFontSize } from "@/lib/field-preferences";
@@ -30,6 +35,14 @@ function PreferenciasPage() {
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [fontSize, setFontSize] = useState<FieldFontSize>("normal");
+  const [me, setMe] = useState<FieldMe | null>(null);
+  const [rotationFarmId, setRotationFarmId] = useState("");
+  const [rotationTapperId, setRotationTapperId] = useState("");
+  const [rotationTappers, setRotationTappers] = useState<FieldTapper[]>([]);
+  const [rotationTables, setRotationTables] = useState<FieldTapperTable[]>([]);
+  const [rotationState, setRotationState] = useState<TapperRotationState | null>(null);
+  const [rotationAnchor, setRotationAnchor] = useState("");
+  const [rotationSaving, setRotationSaving] = useState(false);
 
   useEffect(() => {
     if (typeof navigator !== "undefined") setOnline(navigator.onLine);
@@ -47,6 +60,10 @@ function PreferenciasPage() {
     // Detect initial theme from document class
     const storedTheme = localStorage.getItem("vertex-field-theme");
     setFontSize(readFontSize());
+    getFieldMe().then((fieldMe) => {
+      setMe(fieldMe);
+      if (fieldMe.assignments.length === 1) setRotationFarmId(fieldMe.assignments[0].farm.id);
+    }).catch(() => undefined);
     const isDark = storedTheme === "dark";
     setTheme(isDark ? "dark" : "light");
 
@@ -56,6 +73,44 @@ function PreferenciasPage() {
       un();
     };
   }, []);
+
+  const rotationFarm = useMemo(() => me?.assignments.find((assignment) => assignment.farm.id === rotationFarmId)?.farm, [me, rotationFarmId]);
+
+  useEffect(() => {
+    setRotationTappers([]); setRotationTapperId(""); setRotationTables([]); setRotationState(null); setRotationAnchor("");
+    if (!rotationFarm) return;
+    listFieldTappers(rotationFarm.companyId, rotationFarm.id).then((items) => {
+      setRotationTappers(items);
+      if (items.length === 1) setRotationTapperId(items[0].id);
+    }).catch((error: any) => toast.error(error?.message ?? "Não foi possível carregar os sangradores"));
+  }, [rotationFarm]);
+
+  useEffect(() => {
+    setRotationTables([]); setRotationState(null); setRotationAnchor("");
+    if (!rotationFarm || !rotationTapperId) return;
+    Promise.all([
+      listFieldTapperTables(rotationFarm.companyId, rotationTapperId),
+      getTapperRotation(rotationFarm.companyId, rotationTapperId),
+    ]).then(([tables, state]) => {
+      setRotationTables(tables);
+      setRotationState(state);
+      setRotationAnchor(state.rotation?.anchorTableId ?? state.suggestedTableId ?? tables[0]?.id ?? "");
+    }).catch((error: any) => toast.error(error?.message ?? "Não foi possível carregar a sequência"));
+  }, [rotationFarm, rotationTapperId]);
+
+  async function saveRotationAnchor() {
+    if (!rotationFarm || !rotationTapperId || !rotationAnchor) return;
+    setRotationSaving(true);
+    try {
+      await upsertTapperRotation({ companyId: rotationFarm.companyId, tapperKey: rotationTapperId, anchorTableId: rotationAnchor, anchorDate: getLocalIsoDate(new Date(), rotationFarm.timezone ?? "America/Sao_Paulo") });
+      setRotationState(await getTapperRotation(rotationFarm.companyId, rotationTapperId));
+      toast.success("Ponto de partida da sequência atualizado");
+    } catch (error: any) {
+      toast.error(error?.message ?? "Não foi possível ajustar o ponto de partida");
+    } finally {
+      setRotationSaving(false);
+    }
+  }
 
   const changeFontSize = (value: FieldFontSize) => {
     writeFontSize(value);
@@ -238,6 +293,43 @@ function PreferenciasPage() {
               <button key={value} type="button" onClick={() => changeFontSize(value)} className={`rounded-xl border px-2 py-2 text-xs font-semibold transition ${fontSize === value ? "border-primary bg-primary/15 text-primary" : "border-border/60 bg-background/40 text-muted-foreground"}`} aria-pressed={fontSize === value}>{label}</button>
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Sequência de tabelas</h2>
+        <div className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
+          <p className="text-xs text-muted-foreground">Ajuste o ponto de partida quando precisar corrigir a tabela inicial do sangrador.</p>
+          {!me?.assignments.length ? (
+            <p className="text-sm text-muted-foreground">Carregando fazendas...</p>
+          ) : (
+            <>
+              {me.assignments.length > 1 && (
+                <Select value={rotationFarmId} onValueChange={setRotationFarmId}>
+                  <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Selecione a fazenda" /></SelectTrigger>
+                  <SelectContent>{me.assignments.map((assignment) => <SelectItem key={assignment.farm.id} value={assignment.farm.id}>{assignment.farm.name}</SelectItem>)}</SelectContent>
+                </Select>
+              )}
+              {rotationFarm && (
+                <Select value={rotationTapperId} onValueChange={setRotationTapperId}>
+                  <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder={rotationTappers.length ? "Selecione o sangrador" : "Nenhum sangrador disponível"} /></SelectTrigger>
+                  <SelectContent>{rotationTappers.map((tapper) => <SelectItem key={tapper.id} value={tapper.id}>{tapper.fullName}</SelectItem>)}</SelectContent>
+                </Select>
+              )}
+              {rotationTapperId && (
+                <>
+                  {rotationState && <p className="text-xs text-muted-foreground">{rotationState.needsReset ? "Sequência sem ponto de partida ou desatualizada." : `Sequência ativa · próxima: ${rotationTables.find((table) => table.id === rotationState.suggestedTableId)?.name ?? "—"}`}</p>}
+                  <Select value={rotationAnchor} onValueChange={setRotationAnchor}>
+                    <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Escolha a tabela inicial" /></SelectTrigger>
+                    <SelectContent>{rotationTables.map((table) => <SelectItem key={table.id} value={table.id}>{table.name}{table.notation ? ` — ${table.notation}` : ""}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Button className="w-full" onClick={saveRotationAnchor} disabled={!rotationAnchor || rotationSaving || !rotationTables.length}>
+                    {rotationSaving && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />} Atualizar ponto de partida
+                  </Button>
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
 

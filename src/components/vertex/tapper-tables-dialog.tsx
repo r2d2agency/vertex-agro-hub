@@ -190,38 +190,29 @@ export function TapperTablesDialog({
         )}
         {rotationQuery.data && (
           <div className={`rounded-lg border p-3 text-xs ${rotationQuery.data.needsReset ? "border-warning/50 bg-warning/10" : "border-primary/30 bg-primary/5"}`}>
-            {rotationQuery.data.needsReset ? (
-              <>
-                <p className="mb-2 flex items-center gap-1.5 font-semibold text-warning">
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  {rotationQuery.data.rotation
-                    ? "Sequência desatualizada — a lista de tabelas mudou. Defina um novo ponto de partida."
-                    : "Sem ponto de partida definido. Escolha em qual tabela o sangrador começa a sequência."}
-                </p>
-                <div className="flex gap-2">
-                  <Select value={anchorTableId} onValueChange={setAnchorTableId}>
-                    <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Tabela inicial" /></SelectTrigger>
-                    <SelectContent>
-                      {(rotationQuery.data.orderedLinks ?? []).map((l) => (
-                        <SelectItem key={l.id} value={l.tappingTableId}>
-                          {l.tappingTable?.name ?? "Tabela"}{l.tappingTable?.notation ? ` — ${l.tappingTable.notation}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" disabled={!anchorTableId || rotationMutation.isPending} onClick={() => rotationMutation.mutate()}>
-                    {rotationMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Definir"}
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <p className="font-medium text-primary">
-                Sequência ativa. Próxima tabela sugerida:{" "}
-                <span className="font-bold">
-                  {rotationQuery.data.orderedLinks.find((l) => l.tappingTableId === rotationQuery.data?.suggestedTableId)?.tappingTable?.name ?? "—"}
-                </span>
-              </p>
-            )}
+            <p className={`mb-2 flex items-center gap-1.5 font-semibold ${rotationQuery.data.needsReset ? "text-warning" : "text-primary"}`}>
+              <RotateCcw className="h-3.5 w-3.5" />
+              {rotationQuery.data.needsReset
+                ? rotationQuery.data.rotation
+                  ? "Sequência desatualizada — defina novamente o ponto de partida."
+                  : "Sem ponto de partida definido. Escolha a tabela inicial."
+                : <>Sequência ativa. Próxima tabela sugerida: <span className="font-bold">{rotationQuery.data.orderedLinks.find((l) => l.tappingTableId === rotationQuery.data?.suggestedTableId)?.tappingTable?.name ?? "—"}</span></>}
+            </p>
+            <div className="flex gap-2">
+              <Select value={anchorTableId} onValueChange={setAnchorTableId}>
+                <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Ajustar tabela inicial" /></SelectTrigger>
+                <SelectContent>
+                  {(rotationQuery.data.orderedLinks ?? []).map((l) => (
+                    <SelectItem key={l.id} value={l.tappingTableId}>
+                      {l.tappingTable?.name ?? "Tabela"}{l.tappingTable?.notation ? ` — ${l.tappingTable.notation}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" disabled={!anchorTableId || rotationMutation.isPending} onClick={() => rotationMutation.mutate()}>
+                {rotationMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Definir"}
+              </Button>
+            </div>
           </div>
         )}
 

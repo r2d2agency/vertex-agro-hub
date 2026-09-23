@@ -157,6 +157,11 @@ function SangradoresPage() {
         <>
           <CompanyPicker companies={companies} companyId={companyId} onChange={setCompanyId} />
 
+          <div className="mb-4 grid gap-3 md:grid-cols-2">
+            <div className="relative"><Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-8" placeholder="Buscar por nome, apelido, código ou CPF..." value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+            <SearchableSelect value={farmFilter} onChange={(value) => setFarmFilter(value === "all" ? "" : value)} placeholder="Todas as fazendas" options={[{ value: "all", label: "Todas as fazendas" }, ...farms.map((farm: any) => ({ value: farm.id, label: `${farm.name}${farm.code ? ` (${farm.code})` : ""}`, keywords: farm.code ?? "" }))]} />
+          </div>
+
           <div className="mb-4">
             {companyId && (
               <Card className="mb-4">
@@ -209,11 +214,6 @@ function SangradoresPage() {
               </CardContent>
             </Card>
           )}
-          </div>
-
-          <div className="mb-4 grid gap-3 md:grid-cols-2">
-            <div className="relative"><Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-8" placeholder="Buscar por nome, apelido, código ou CPF..." value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-            <SearchableSelect value={farmFilter} onChange={(value) => setFarmFilter(value === "all" ? "" : value)} placeholder="Todas as fazendas" options={[{ value: "all", label: "Todas as fazendas" }, ...farms.map((farm: any) => ({ value: farm.id, label: `${farm.name}${farm.code ? ` (${farm.code})` : ""}`, keywords: farm.code ?? "" }))]} />
           </div>
 
           {companyId && (
