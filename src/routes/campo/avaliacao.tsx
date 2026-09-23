@@ -338,7 +338,7 @@ function AvaliacaoPage() {
                                 </div>
                                 <div className="rounded-lg bg-background/60 p-2 text-center">
                                   <p className="text-lg font-bold text-foreground">
-                                    {new Set(statsRecords.map((r) => new Date(r.date).toISOString().slice(0, 10))).size}
+                                    {new Set(statsRecords.map((r) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(r.date)))).size}
                                   </p>
                                   <p className="text-[10px] uppercase text-muted-foreground">Dias com registro</p>
                                 </div>
@@ -350,7 +350,7 @@ function AvaliacaoPage() {
                                   {statsRecords.map((r) => (
                                     <li key={r.id} className="rounded-lg bg-background/60 p-2 text-xs">
                                       <div className="flex items-center justify-between">
-                                        <span className="font-medium">{new Date(r.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
+                                        <span className="font-medium">{new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "short" }).format(new Date(r.date))}</span>
                                         {r.endPeriod && (
                                           <span className="text-[10px] text-muted-foreground">{END_PERIODS.find((p) => p.value === r.endPeriod)?.label ?? r.endPeriod}</span>
                                         )}

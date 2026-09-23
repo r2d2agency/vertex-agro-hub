@@ -12,11 +12,15 @@ const TIMEZONE = 'America/Sao_Paulo';
 const DEFAULT_CHECKIN_RADIUS_M = 200;
 
 function getNow() {
-  return toZonedTime(new Date(), TIMEZONE);
+  return new Date();
 }
 
 function parseInputDate(dateStr: string | Date) {
-  return toZonedTime(new Date(dateStr), TIMEZONE);
+  if (dateStr instanceof Date) return dateStr;
+  // Date-only values are civil dates; never parse them as UTC midnight.
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+    ? new Date(`${dateStr}T12:00:00-03:00`)
+    : new Date(dateStr);
 }
 
 // Distância em metros entre duas coordenadas (fórmula de Haversine).

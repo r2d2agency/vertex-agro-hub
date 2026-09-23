@@ -8,8 +8,12 @@ import {
 } from './dto';
 
 const TIMEZONE = 'America/Sao_Paulo';
-const getNow = () => toZonedTime(new Date(), TIMEZONE);
-const parseDate = (d: string | Date) => toZonedTime(new Date(d), TIMEZONE);
+const getNow = () => new Date();
+const parseDate = (d: string | Date) => {
+  if (d instanceof Date) return d;
+  // Date-only values are civil dates, not UTC instants.
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T12:00:00-03:00`) : new Date(d);
+};
 
 @Injectable()
 export class ActivitiesService {
