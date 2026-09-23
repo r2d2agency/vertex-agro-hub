@@ -48,6 +48,7 @@ function SangradoresPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [farmFilter, setFarmFilter] = useState("");
+  const [rhFarmFilter, setRhFarmFilter] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<TapperListItem | null>(null);
   const [plotsTarget, setPlotsTarget] = useState<{ key: string; name: string; farmIds: string[] } | null>(null);
@@ -165,11 +166,19 @@ function SangradoresPage() {
                     Vínculo de fazenda e consultor feito pelo Portal de RH. Separado da ficha operacional (lista abaixo), usada nos lançamentos de sangria.
                   </p>
                 </div>
+                <div className="mb-3 max-w-sm">
+                  <SearchableSelect
+                    value={rhFarmFilter}
+                    onChange={(value) => setRhFarmFilter(value === "all" ? "" : value)}
+                    placeholder="Todas as fazendas"
+                    options={[{ value: "all", label: "Todas as fazendas" }, ...farms.map((farm: any) => ({ value: farm.id, label: `${farm.name}${farm.code ? ` (${farm.code})` : ""}`, keywords: farm.code ?? "" }))]}
+                  />
+                </div>
                 {rhSangradores.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhum sangrador vinculado por fazenda no RH ainda.</p>
                 ) : (
                   <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                    {rhSangradores.map((assignment) => (
+                    {rhSangradores.filter((assignment) => !rhFarmFilter || assignment.farm?.id === rhFarmFilter).map((assignment) => (
                       <div key={assignment.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 p-3 text-sm">
                         <div className="min-w-0">
                           <p className="truncate font-medium">{assignment.user?.fullName || assignment.user?.email || "Sem nome"}</p>
