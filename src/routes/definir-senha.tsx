@@ -27,17 +27,10 @@ function DefinirSenhaPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Tema padrão do app é claro; a tela de senha não força modo escuro.
   useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const hadHtml = html.classList.contains("dark");
-    const hadBody = body.classList.contains("dark");
-    html.classList.add("dark");
-    body.classList.add("dark");
-    return () => {
-      if (!hadHtml) html.classList.remove("dark");
-      if (!hadBody) body.classList.remove("dark");
-    };
+    document.documentElement.classList.remove("dark");
+    document.body.classList.remove("dark");
   }, []);
 
   async function handleSave() {
@@ -68,7 +61,7 @@ function DefinirSenhaPage() {
       >
         <div className="w-full max-w-sm space-y-6">
           <div className="flex flex-col items-center">
-            <img src={vertexLogo} alt="Vertex Agro" className="h-20 w-20" />
+            <img src={vertexLogo} alt="Vertex Agro" className="h-auto w-40 object-contain" />
             <div className="mt-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
               <KeyRound className="h-7 w-7" />
             </div>

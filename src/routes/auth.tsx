@@ -27,17 +27,10 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
+  // Tema padrão do app é claro; a tela de login não força modo escuro.
   useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const hadHtml = html.classList.contains("dark");
-    const hadBody = body.classList.contains("dark");
-    html.classList.add("dark");
-    body.classList.add("dark");
-    return () => {
-      if (!hadHtml) html.classList.remove("dark");
-      if (!hadBody) body.classList.remove("dark");
-    };
+    document.documentElement.classList.remove("dark");
+    document.body.classList.remove("dark");
   }, []);
 
   useEffect(() => { if (hasAuthTokens()) void routeAfterAuth(navigate); }, [navigate]);
@@ -59,7 +52,7 @@ function AuthPage() {
   }
 
   return (
-    <div className="dark">
+    <div>
       <div
         className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-6 py-12"
         style={{
@@ -68,7 +61,7 @@ function AuthPage() {
       >
         <div className="w-full max-w-sm">
           <div className="mb-10 flex flex-col items-center">
-            <img src={vertexLogo} alt="Vertex Agro" className="h-40 w-40 drop-shadow-[0_0_40px_color-mix(in_oklab,var(--color-primary)_35%,transparent)]" />
+            <img src={vertexLogo} alt="Vertex Agro" className="h-auto w-56 object-contain" />
             <h1 className="mt-2 text-lg font-semibold text-foreground">Login no sistema</h1>
             <p className="mt-1 text-sm text-muted-foreground">Acesse sua conta para continuar</p>
           </div>

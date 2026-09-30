@@ -118,9 +118,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR" className="light">
       <head>
         <HeadContent />
+        {/* Tema padrão é claro: evita piscar escuro antes da hidratação. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("vertex-field-theme");if(t!=="dark"){document.documentElement.classList.remove("dark");}}catch(e){document.documentElement.classList.remove("dark");}`,
+          }}
+        />
       </head>
       <body>
         {children}
