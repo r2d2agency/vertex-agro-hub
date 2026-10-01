@@ -410,7 +410,9 @@ function DailySangriaDialog({
   // Data decrescente: o mais recente do período primeiro.
   const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
 
-  useEffect(() => { setSearch(""); setTapperFilter(""); }, [category]);
+  // Precisa ser "all", não "": o filtro compara por desigualdade exata, e
+  // uma string vazia não casa com nenhum nome, zerando a lista inteira.
+  useEffect(() => { setSearch(""); setTapperFilter("all"); }, [category]);
 
   return (
     <Dialog open={!!category} onOpenChange={(open) => !open && onClose()}>
