@@ -178,20 +178,18 @@ function FieldShell() {
         return {
           icon: MapPin,
           label: `GPS ${acc ? `${Math.round(acc)}m` : "ok"}`,
-          className: good
-            ? "border-primary/40 bg-primary/10 text-primary"
-            : "border-warning/40 bg-warning/10 text-warning",
+          textClassName: good ? "text-primary" : "text-warning",
           title: `Localização ativa · precisão ${acc ? Math.round(acc) + " m" : "—"}`,
         };
       }
       case "locating":
-        return { icon: Crosshair, label: "GPS…", className: "border-muted-foreground/30 bg-muted text-muted-foreground animate-pulse", title: "Obtendo localização" };
+        return { icon: Crosshair, textClassName: "text-muted-foreground animate-pulse", title: "Obtendo localização" };
       case "denied":
-        return { icon: MapPinOff, label: "GPS off", className: "border-destructive/40 bg-destructive/10 text-destructive", title: "Permissão negada" };
+        return { icon: MapPinOff, textClassName: "text-destructive", title: "Permissão negada" };
       case "unsupported":
-        return { icon: MapPinOff, label: "GPS n/d", className: "border-destructive/40 bg-destructive/10 text-destructive", title: "Sem suporte" };
+        return { icon: MapPinOff, textClassName: "text-destructive", title: "Sem suporte" };
       default:
-        return { icon: Crosshair, label: "GPS", className: "border-muted-foreground/30 bg-muted text-muted-foreground", title: "GPS" };
+        return { icon: Crosshair, textClassName: "text-muted-foreground", title: "GPS" };
     }
   }, [gps]);
 
@@ -223,33 +221,28 @@ function FieldShell() {
       <div className={`min-h-screen bg-background text-foreground ${isMobile ? "pb-24" : "pb-10"}`}>
         <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
           <div className={`mx-auto flex items-center justify-between gap-3 px-4 py-3 ${isMobile ? "max-w-lg" : "max-w-5xl"}`}>
-            <div className="flex min-w-0 items-center gap-2.5">
-              <img src={vertexLogo} alt="Vertex" className="h-auto w-14 shrink-0 object-contain" />
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-foreground">Olá, {firstName}</div>
-                <div className="text-[11px] capitalize text-muted-foreground">
-                  {role === "consultor" ? "Consultor" : "Monitor"}
-                </div>
-                <div className="text-[11px] font-semibold text-foreground">{clockLabel}</div>
+            <div className="flex min-w-0 items-center gap-3">
+              <img src={vertexLogo} alt="Vertex" className="h-7 w-auto shrink-0 object-contain" />
+              <div className="flex min-w-0 flex-col leading-tight">
+                <div className="truncate text-[11px] text-muted-foreground">{clockLabel}</div>
+                <div className="truncate text-sm font-semibold text-foreground">{firstName}</div>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <span
-                className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium ${gpsBadge.className}`}
-                title={gpsBadge.title}
-              >
-                <GpsIcon className="h-3 w-3" />
-                {gpsBadge.label}
+            <div className="flex shrink-0 items-center gap-0.5">
+              <span className={`p-1.5 ${gpsBadge.textClassName}`} title={gpsBadge.title}>
+                <GpsIcon className="h-4 w-4" />
               </span>
               <button
                 onClick={() => { setFlushing(true); flushOutbox().finally(() => setFlushing(false)); }}
-                className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium ${
-                  online ? "border-primary/40 bg-primary/10 text-primary" : "border-warning/40 bg-warning/10 text-warning"
-                }`}
+                className={`relative p-1.5 ${online ? "text-primary" : "text-warning"}`}
                 title={online ? "Online" : "Offline"}
               >
-                {flushing ? <Loader2 className="h-3 w-3 animate-spin" /> : online ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-                {pending > 0 ? pending : online ? "On" : "Off"}
+                {flushing ? <Loader2 className="h-4 w-4 animate-spin" /> : online ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+                {pending > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 min-w-[15px] rounded-full bg-warning px-1 text-[9px] font-semibold leading-[15px] text-warning-foreground">
+                    {pending}
+                  </span>
+                )}
               </button>
               <Button variant="ghost" size="icon" className="h-9 w-9 text-foreground" title="Notificações">
                 <Bell className="h-4 w-4" />
