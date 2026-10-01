@@ -36,7 +36,7 @@ export type FieldTapper = { id: string; fullName: string; nickname?: string | nu
 export type FieldTappingTable = { id: string; name: string; notation?: string | null; frequencyDays?: number | null; restDays?: number | null; workDaysCycle?: number | null; cutType?: string | null; stimulation?: string | null };
 // Tabela vinculada a um sangrador específico, com a quantidade de árvores
 // prevista pra ele naquela tabela (em vez de vir do talhão).
-export type FieldTapperTable = FieldTappingTable & { linkId: string; treeCount: number | null };
+export type FieldTapperTable = FieldTappingTable & { linkId: string; treeCount: number | null; plotId?: string | null };
 
 export type Coords = { latitude: number; longitude: number; accuracyM?: number };
 

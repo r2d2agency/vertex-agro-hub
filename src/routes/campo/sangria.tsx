@@ -7,7 +7,7 @@ import {
 } from "@/lib/field.functions";
 import { getTapperRotation, listPlotTableLinks, upsertTapperRotation, type TapperRotationState } from "@/lib/tappers.functions";
 import { listPlots, type Plot } from "@/lib/talhoes.functions";
-import { listTappingRecords, updateTappingRecord, getDailyTreeAllocation, type TappingRecord } from "@/lib/sangrias.functions";
+import { listTappingRecords, updateTappingRecord, getDailyTreeAllocation, upsertTappingDailyAllocation, type TappingRecord, type DailyTreeAllocation } from "@/lib/sangrias.functions";
 import { TASK_EXTENTS, END_PERIODS, listTappingTasks, type TappingTask } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,10 @@ function SangriaPage() {
   const [savingRotation, setSavingRotation] = useState(false);
   const [tasks, setTasks] = useState<TappingTask[]>([]);
   const [taskExtent, setTaskExtent] = useState("");
-  const [dailyTreesExpected, setDailyTreesExpected] = useState<number | null>(null);
+  const [dailyAllocation, setDailyAllocation] = useState<DailyTreeAllocation | null>(null);
+  const [allocationLoading, setAllocationLoading] = useState(false);
+  const [allocationError, setAllocationError] = useState<string | null>(null);
+  const [savingAuxiliary, setSavingAuxiliary] = useState(false);
   const [endPeriod, setEndPeriod] = useState("");
   const [recordDate, setRecordDate] = useState(() => getLocalIsoDate());
   const [existingRecords, setExistingRecords] = useState<any[]>([]);
@@ -70,6 +73,19 @@ function SangriaPage() {
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
   const tapper = tappers.find((t) => t.id === tapperId);
   const table = tables.find((t) => t.id === tappingTableId);
+  // O talhão vem do vínculo da tabela escolhida, nunca de uma escolha à parte.
+  const plotLabel = (id?: string | null) => {
+    const plot = plots.find((p) => p.id === id);
+    return plot ? (plot.code ? `${plot.code} · ${plot.name}` : plot.name) : "";
+  };
+  const selectedPlot = useMemo(() => plots.find((p) => p.id === table?.plotId), [plots, table]);
+  // Escolher a tabela traz o talhão junto. É o único jeito de o talhão ser
+  // preenchido agora — por isso grava também no registro (ver save()).
+  function selectTable(tableId: string) {
+    setTappingTableId(tableId);
+    const link = tables.find((t) => t.id === tableId);
+    setPlotId(link?.plotId ?? "");
+  }
 
   useEffect(() => {
     setTapperId(""); setTappingTableId(""); setTables([]); setPlotId("");
@@ -90,41 +106,50 @@ function SangriaPage() {
       .then((assigned) => {
         const next = assigned.map((p) => ({ ...p, companyId: farm.companyId, farmId: farm.id })) as Plot[];
         setPlots(next);
-        setPlotId(next.length === 1 ? next[0].id : "");
       })
-      .catch(() => { setPlots([]); setPlotId(""); });
+      .catch(() => setPlots([]));
   }, [farm, tapperId]);
 
-  // A tabela (não o talhão) é que define quantas árvores o sangrador tem que
-  // fazer — cada sangrador pode ter várias tabelas vinculadas, cada uma com
-  // sua própria quantidade. Quando o sangrador tem rotação configurada, a
+  // O monitor escolhe a TABELA, e não o talhão: cada tabela já está vinculada
+  // a um talhão (TapperPlotTableLink), então o talhão vem junto e não é
+  // perguntado. Isso elimina a possibilidade de gravar uma tabela de um
+  // talhão apontando para outro.
+  //
+  // A tabela também é o que define quantas árvores o sangrador tem que fazer,
+  // via o treeCount do próprio vínculo. Quando há rotação configurada, a
   // pré-seleção vem da sequência (próxima tabela do ciclo), não da lista.
   useEffect(() => {
-    setTappingTableId(""); setTables([]); setRotation(null);
-    if (!farm || !tapperId || !plotId) return;
+    setTappingTableId(""); setTables([]); setRotation(null); setPlotId("");
+    if (!farm || !tapperId) return;
     setTablesLoading(true);
     Promise.all([
-      listPlotTableLinks(farm.companyId, tapperId, plotId),
+      // Sem plotId: traz todos os vínculos do sangrador de uma vez, que é o
+      // ponto da refatoração. O endpoint trata plotId como opcional.
+      listPlotTableLinks(farm.companyId, tapperId),
       getTapperRotation(farm.companyId, tapperId).catch(() => null),
     ])
       .then(([ts, rot]) => {
-        setTables(ts.map((t) => ({ id: t.tappingTable?.id ?? t.tappingTableId, name: t.tappingTable?.name ?? "Tabela", notation: t.tappingTable?.notation ?? null, treeCount: t.treeCount ?? null } as FieldTapperTable)));
+        setTables(ts.map((t) => ({ id: t.tappingTable?.id ?? t.tappingTableId, name: t.tappingTable?.name ?? "Tabela", notation: t.tappingTable?.notation ?? null, treeCount: t.treeCount ?? null, plotId: t.plotId } as FieldTapperTable)));
         setRotation(rot);
         setRotationAnchorTableId(rot?.needsReset ? (rot.rotation?.anchorTableId ?? ts[0]?.tappingTable?.id ?? ts[0]?.tappingTableId ?? "") : "");
         const suggested = rot && !rot.needsReset && rot.suggestedTableId;
         if (suggested) setTappingTableId(suggested);
-        else if (ts.length === 1) setTappingTableId(ts[0].id);
+        else if (ts.length === 1) { setTappingTableId(ts[0].id); setPlotId(ts[0].plotId); }
       })
       .catch(() => setTables([]))
       .finally(() => setTablesLoading(false));
-  }, [farm, tapperId, plotId]);
+  }, [farm, tapperId]);
 
   useEffect(() => {
-    setDailyTreesExpected(null);
-    if (!farm || !plotId || !tapperId || !tappingTableId || !taskExtent) return;
-    getDailyTreeAllocation({ companyId: farm.companyId, farmId: farm.id, plotId, tapperId, tableId: tappingTableId, taskExtent, date: recordDate })
-      .then((allocation) => setDailyTreesExpected(allocation.treesExpected))
-      .catch(() => setDailyTreesExpected(null));
+    setDailyAllocation(null);
+    setAllocationError(null);
+    if (!farm || !plotId || !tapperId || !tappingTableId || !taskExtent || !recordDate) return;
+    setAllocationLoading(true);
+    const isRh = tapperId.startsWith("rh:");
+    getDailyTreeAllocation({ companyId: farm.companyId, farmId: farm.id, plotId, ...(isRh ? { userId: tapperId.slice(3) } : { tapperId }), tableId: tappingTableId, taskExtent, date: recordDate })
+      .then(setDailyAllocation)
+      .catch((error: any) => setAllocationError(error?.message ?? "Não foi possível calcular a alocação"))
+      .finally(() => setAllocationLoading(false));
   }, [farm, plotId, tapperId, tappingTableId, taskExtent, recordDate]);
 
   useEffect(() => {
@@ -176,9 +201,14 @@ function SangriaPage() {
   if (me.assignments.length === 0) return <p className="text-sm text-muted-foreground">Sem fazendas atribuídas.</p>;
 
   async function save() {
-    if (!farm || !tapper || !plotId) { toast.error("Preencha fazenda, sangrador e talhão"); return; }
+    if (!farm || !tapper) { toast.error("Preencha fazenda e sangrador"); return; }
+    // O talhão vem da tabela escolhida. Se ela não tem talhão no vínculo, não
+    // há como saber de onde veio a sangria — e gravar sem isso deixaria o
+    // registro sem talhão para sempre.
+    if (!plotId) { toast.error("Selecione a tabela (o talhão vem dela)"); return; }
+    if (!tappingTableId) { toast.error("Selecione a tabela"); return; }
     if (!taskExtent) { toast.error("Selecione uma tarefa"); return; }
-    if (dailyTreesExpected == null) { toast.error("A quantidade prevista ainda não foi calculada"); return; }
+    if (dailyAllocation == null) { toast.error(allocationError ?? "A quantidade prevista ainda não foi calculada"); return; }
     if (isDivergent && !confirmDivergence) {
       toast.warning(`A tabela selecionada (${selectedTable?.name ?? "—"}) é diferente da tabela do dia (${expectedTable?.name ?? "—"}). Confirme para continuar.`);
       return;
@@ -197,7 +227,7 @@ function SangriaPage() {
         tapperId: tapper.id.startsWith("rh:") ? undefined : tapper.id,
         taskExtent,
         endPeriod: endPeriod || undefined,
-        treesExpected: dailyTreesExpected ?? undefined,
+        treesExpected: dailyAllocation.treesExpected,
         notes: notes.trim() || undefined,
         photoUrls: photoUrls.length ? photoUrls : undefined,
         audioUrl: audioUrl || undefined,
@@ -269,19 +299,16 @@ function SangriaPage() {
             </Select>
           )}
         </Field>
-        {tapperId && plots.length === 1 ? (
+        {tapperId && tappingTableId && (
           <Field label="Talhão">
-            <div className="flex h-11 items-center rounded-xl border border-primary/30 bg-primary/5 px-3 text-sm font-medium text-foreground">{plots[0].name}{plots[0].code ? ` — ${plots[0].code}` : ""}{plots[0].treeCount ? ` (${plots[0].treeCount.toLocaleString("pt-BR")} árvores)` : ""}</div>
-          </Field>
-        ) : tapperId && (
-          <Field label="Talhão">
-            <Select value={plotId} onValueChange={setPlotId}>
-              <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione o talhão" /></SelectTrigger>
-              <SelectContent>{plots.map((plot) => <SelectItem key={plot.id} value={plot.id}>{plot.name}{plot.code ? ` — ${plot.code}` : ""}{plot.treeCount ? ` (${plot.treeCount.toLocaleString("pt-BR")} árvores)` : ""}</SelectItem>)}</SelectContent>
-            </Select>
+            {/*derivado da tabela escolhida: informação para o monitor, não uma escolha*/}
+            <div className="flex h-11 items-center rounded-xl border border-primary/30 bg-primary/5 px-3 text-sm font-medium text-foreground">
+              {selectedPlot?.name ? `${selectedPlot.name}${selectedPlot.code ? ` — ${selectedPlot.code}` : ""}` : "—"}
+              {selectedPlot?.treeCount ? ` (${selectedPlot.treeCount.toLocaleString("pt-BR")} árvores)` : ""}
+            </div>
           </Field>
         )}
-        {tapperId && plotId && rotation && !rotation.needsReset && rotation.suggestedTableId && (
+        {tapperId && tables.length > 0 && rotation && !rotation.needsReset && rotation.suggestedTableId && (
           <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
             <Repeat className="h-4 w-4 text-primary" />
             <span className="text-muted-foreground">Sequência de hoje:</span>
@@ -302,7 +329,7 @@ function SangriaPage() {
             </Button>
           </div>
         )}
-        {tapperId && plotId && (
+        {tapperId && (
           <Field label="Tabela">
             {tablesLoading ? (
               <div className="flex h-11 items-center gap-2 rounded-xl border border-border/60 bg-background/40 px-3 text-sm text-muted-foreground">
@@ -313,18 +340,20 @@ function SangriaPage() {
                 Nenhuma tabela vinculada a este sangrador. Vincule em Sangradores &gt; Tabelas, no admin.
               </div>
             ) : (
-              <Select value={tappingTableId} onValueChange={setTappingTableId}>
+              <Select value={tappingTableId} onValueChange={selectTable}>
                 <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione a tabela" /></SelectTrigger>
-                <SelectContent>{tables.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>)}</SelectContent>
+                {/*O talhão entra como texto auxiliar: identifica a origem da
+                    tabela sem virar uma escolha para o monitor.*/}
+                <SelectContent>{tables.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}{t.notation ? ` — ${t.notation}` : ""}{plotLabel(t.plotId) ? ` · ${plotLabel(t.plotId)}` : ""}</SelectItem>)}</SelectContent>
               </Select>
             )}
           </Field>
         )}
         {table && (
-          <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
-            <Trees className="h-4 w-4 text-primary" />
-            <span className="text-muted-foreground">Árvores previstas nesta tarefa:</span>
-            <span className="font-semibold text-foreground">{dailyTreesExpected ?? "—"}</span>
+          <div className="space-y-1 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
+            <div className="flex items-center gap-2"><Trees className="h-4 w-4 text-primary" /><span className="text-muted-foreground">Árvores previstas nesta tarefa:</span><span className="font-semibold text-foreground">{allocationLoading ? "…" : dailyAllocation?.treesExpected ?? "—"}</span></div>
+            {dailyAllocation && <div className="text-xs text-muted-foreground">{dailyAllocation.plotTreeCount.toLocaleString("pt-BR")} árvores do talhão ÷ {dailyAllocation.tableCount} tabelas do dia ÷ {dailyAllocation.tapperCount} sangrador(es) do dia{taskExtent === "/" ? " ÷ 2 (meia tabela)" : ""}</div>}
+            {allocationError && <div className="text-xs text-destructive">{allocationError}</div>}
           </div>
         )}
         {existingRecords.length > 0 && !editingId && !allowDuplicate && <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-semibold">Esta sangria já foi registrada</p><p className="mt-1 text-xs">Escolha se deseja corrigir o lançamento atual ou registrar uma nova sangria adicional.</p><div className="mt-3 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { const r = existingRecords[0]; setEditingId(r.id); setNotes(r.notes ?? ""); setEndPeriod(r.endPeriod ?? ""); setPhotoUrls(r.photoUrls ?? []); setAudioUrl(r.audioUrl ?? null); toast.info("Registro carregado para correção"); }}>Corrigir atual</Button><Button type="button" size="sm" onClick={() => setAllowDuplicate(true)}>Registrar nova mesmo assim</Button></div></div></div></div>}
