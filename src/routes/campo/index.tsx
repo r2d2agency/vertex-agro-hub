@@ -129,17 +129,27 @@ function FieldHome() {
       try {
         const cids = Array.from(new Set(farms.map((a) => a.farm.companyId)));
         const [recordLists, taskLists, tableLists] = await Promise.all([
-          Promise.all(farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from, to }).catch(() => [] as TappingRecord[]))),
-          Promise.all(cids.map((cid) => listTappingTasks(cid).catch(() => [] as TappingTask[]))),
-          Promise.all(cids.map((cid) => listFieldTappingTables(cid).catch(() => [] as FieldTappingTable[]))),
+          // .catch por chamada: uma falha isolada zera só a parte dela, sem
+          // derrubar o resumo inteiro. O erro é logado, não escondido.
+          Promise.all(farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from, to })
+            .catch((e) => { console.error("[resumo] sangrias", a.farm.id, e); return [] as TappingRecord[]; }))),
+          Promise.all(cids.map((cid) => listTappingTasks(cid)
+            .catch((e) => { console.error("[resumo] tarefas", cid, e); return [] as TappingTask[]; }))),
+          Promise.all(cids.map((cid) => listFieldTappingTables(cid)
+            .catch((e) => { console.error("[resumo] tabelas", cid, e); return [] as FieldTappingTable[]; }))),
         ]);
         if (cancelled) return;
-        const records = recordLists.flat();
+        // A API pode devolver algo que não é lista (null num 204, ou objeto
+        // paginado). Sem isto, um for...of estoura e o resumo inteiro cai.
+        const asList = <T,>(value: T[] | unknown): T[] => (Array.isArray(value) ? value : []);
+        const records = recordLists.flatMap(asList<TappingRecord>);
         // Código → nome, do catálogo de cada empresa. É o nome que a UI
         // mostra; o código serve só de chave de junção.
         const catalog = new Map<string, string>();
-        for (const list of taskLists.flat()) {
-          for (const task of list) catalog.set(`${task.companyId}:${task.code}`, task.label);
+        for (const list of taskLists.flatMap(asList<TappingTask>)) {
+          for (const task of list) {
+            if (task?.code) catalog.set(`${task.companyId}:${task.code}`, task.label);
+          }
         }
         setTaskNames(catalog);
         // Tabelas por empresa: cada chamada já vem escopada a uma empresa,
@@ -147,7 +157,9 @@ function FieldHome() {
         const tables = new Map<string, Map<string, string>>();
         cids.forEach((cid, i) => {
           const map = new Map<string, string>();
-          for (const table of tableLists[i]) map.set(table.id, table.name);
+          for (const table of asList<FieldTappingTable>(tableLists[i])) {
+            if (table?.id) map.set(table.id, table.name);
+          }
           tables.set(cid, map);
         });
         setTableNames(tables);
@@ -157,15 +169,17 @@ function FieldHome() {
         const byTapperDay = new Map<string, SangriaDay>();
         for (const record of records) {
           const farmId = record.farmId ?? "";
-          const name = record.sangradorName.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-          const date = record.date.slice(0, 10);
+          const rawName = (record.sangradorName ?? "").trim();
+          const name = rawName.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+          const date = String(record.date ?? "").slice(0, 10);
+          if (!date) continue;
           const key = `${farmId}:${name}:${date}`;
           const existing = byTapperDay.get(key);
           if (existing) {
             existing.records.push(record);
           } else {
             byTapperDay.set(key, {
-              tapper: { id: record.tapperId ?? name, fullName: record.sangradorName.trim() || "Sem nome" },
+              tapper: { id: record.tapperId ?? name, fullName: rawName || "Sem nome" },
               farmId,
               companyId: record.companyId,
               date,
@@ -180,8 +194,11 @@ function FieldHome() {
           summary.done.push(day);
         }
         if (!cancelled) setSangriaSummary(summary);
-      } catch {
-        if (!cancelled) toast.error("Não foi possível carregar o resumo de sangrias");
+      } catch (error) {
+        // A mensagem real importa: sem ela, qualquer falha vira o mesmo
+        // "não foi possível carregar", sem pista de onde veio.
+        console.error("[resumo de sangrias]", error);
+        if (!cancelled) toast.error(`Não foi possível carregar o resumo: ${error instanceof Error ? error.message : "erro desconhecido"}`);
       }
     })();
     return () => { cancelled = true; };
