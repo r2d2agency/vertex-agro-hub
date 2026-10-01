@@ -3,7 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, ChevronRight, ChevronLeft, AlertTriangle, ShieldCheck, PlusCircle, Search, UserRound } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { getFieldMe, type FieldMe, type Coords, captureLocation, listFieldTappers, type FieldTapper } from "@/lib/field.functions";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { getFieldMe, type FieldMe, type Coords, captureLocation, type FieldTapper } from "@/lib/field.functions";
 import { toast } from "sonner";
 import { listTasks, categoryLabel, categoryStyle, type ScheduledTask } from "@/lib/agenda.functions";
 import { listTappingRecords, type TappingRecord } from "@/lib/sangrias.functions";
@@ -101,9 +104,11 @@ function FieldHome() {
   }, []);
 
   // Resumo de sangrias do período selecionado (mês civil, com navegação
-  // para meses anteriores). Cada balde conta dias-sangrador: concluída é
-  // tabela completa (X), antecipada é tabela adiantada (/), e o restante
-  // dos dias previstos que não fecharam cai em atrasada.
+  // para meses anteriores). Os baldes saem dos REGISTROS, não do cadastro de
+  // sangradores: se a lista de tappers viesse vazia ou com nomes divergentes,
+  // tudo zerava mesmo com o histórico cheio. Um dia-sangrador é um par
+  // (pessoa, data); concluída é tabela completa (X), antecipada é adiantada
+  // (/), e o resto dos dias registrados cai em atrasada.
   useEffect(() => {
     const farms = me?.assignments ?? [];
     if (farms.length === 0) return;
@@ -112,38 +117,39 @@ function FieldHome() {
     setSangriaSummary({ possible: [], done: [], late: [], ahead: [] });
     (async () => {
       try {
-        const [tapperLists, recordLists] = await Promise.all([
-          Promise.all(farms.map((a) => listFieldTappers(a.farm.companyId, a.farm.id).catch(() => [] as FieldTapper[]))),
-          Promise.all(farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from, to }).catch(() => [] as TappingRecord[]))),
-        ]);
-        if (cancelled) return;
-        const tappers = farms.flatMap((assignment, index) =>
-          (tapperLists[index] ?? []).map((t) => ({ tapper: t, farmId: assignment.farm.id, companyId: assignment.farm.companyId })),
+        const recordLists = await Promise.all(
+          farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from, to }).catch(() => [] as TappingRecord[])),
         );
+        if (cancelled) return;
         const records = recordLists.flat();
         const summary: SangriaSummary = { possible: [], done: [], late: [], ahead: [] };
-        for (const entry of tappers) {
-          const { tapper: t } = entry;
-          const own = records.filter((r) =>
-            r.farmId === entry.farmId &&
-            ((r.tapperId && r.tapperId === t.id) ||
-              r.sangradorName.trim().toLowerCase() === t.fullName.trim().toLowerCase()),
-          );
-          // Um item por dia trabalhado: o mesmo sangrador aparece uma vez
-          // por data, e não uma vez por linha de registro.
-          const byDate = new Map<string, TappingRecord[]>();
-          for (const record of own) {
-            const key = record.date.slice(0, 10);
-            byDate.set(key, [...(byDate.get(key) ?? []), record]);
+        // Chave: sangrador + fazenda + data. Nomes gravados sem acento ou
+        // com caixa diferente ainda casam, porque a comparação ignora ambos.
+        const byTapperDay = new Map<string, SangriaDay>();
+        for (const record of records) {
+          const farmId = record.farmId ?? "";
+          const name = record.sangradorName.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+          const date = record.date.slice(0, 10);
+          const key = `${farmId}:${name}:${date}`;
+          const existing = byTapperDay.get(key);
+          if (existing) {
+            existing.records.push(record);
+          } else {
+            byTapperDay.set(key, {
+              tapper: { id: record.tapperId ?? name, fullName: record.sangradorName.trim() || "Sem nome" },
+              farmId,
+              companyId: record.companyId,
+              date,
+              records: [record],
+            });
           }
-          for (const [date, dayRecords] of byDate) {
-            const extents = dayRecords.flatMap((r) => (r.taskExtent ?? "").split(",").map((v) => v.trim()).filter(Boolean));
-            const item: SangriaDay = { tapper: t, farmId: entry.farmId, companyId: entry.companyId, date, records: dayRecords };
-            summary.possible.push(item);
-            if (extents.includes("/")) summary.ahead.push(item);
-            else if (extents.includes("X")) summary.done.push(item);
-            else summary.late.push(item);
-          }
+        }
+        for (const day of byTapperDay.values()) {
+          const extents = day.records.flatMap((r) => (r.taskExtent ?? "").split(",").map((v) => v.trim()).filter(Boolean));
+          summary.possible.push(day);
+          if (extents.includes("/")) summary.ahead.push(day);
+          else if (extents.includes("X")) summary.done.push(day);
+          else summary.late.push(day);
         }
         if (!cancelled) setSangriaSummary(summary);
       } catch {
@@ -386,12 +392,25 @@ function DailySangriaDialog({
   onSelectTapper: (day: SangriaDay) => void;
 }) {
   const [search, setSearch] = useState("");
+  const [tapperFilter, setTapperFilter] = useState("all");
   const list = category ? summary[category] : [];
-  const filtered = list.filter((day) => day.tapper.fullName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  // Opções do select: só quem aparece no balde aberto, deduplicado.
+  const tapperOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const day of list) {
+      const key = day.tapper.fullName.trim().toLowerCase();
+      if (key && !seen.has(key)) seen.set(key, day.tapper.fullName.trim());
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [list]);
+  const filtered = list.filter((day) => {
+    if (tapperFilter !== "all" && day.tapper.fullName.trim().toLowerCase() !== tapperFilter) return false;
+    return day.tapper.fullName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
+  });
   // Data decrescente: o mais recente do período primeiro.
   const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
 
-  useEffect(() => { setSearch(""); }, [category]);
+  useEffect(() => { setSearch(""); setTapperFilter(""); }, [category]);
 
   return (
     <Dialog open={!!category} onOpenChange={(open) => !open && onClose()}>
@@ -400,9 +419,22 @@ function DailySangriaDialog({
           <DialogTitle>{category ? CATEGORY_LABEL[category] : "Sangrias"}</DialogTitle>
           <p className="text-xs text-muted-foreground">{monthLabel(monthOffset)}</p>
         </DialogHeader>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Pesquisar por sangrador..." value={search} onChange={(event) => setSearch(event.target.value)} />
+        <div className="space-y-2">
+          <Select value={tapperFilter} onValueChange={setTapperFilter}>
+            <SelectTrigger className="w-full" aria-label="Filtrar por sangrador">
+              <SelectValue placeholder="Todos os sangradores" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os sangradores</SelectItem>
+              {tapperOptions.map((name) => (
+                <SelectItem key={name} value={name.toLowerCase()}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-9" placeholder="Pesquisar por sangrador..." value={search} onChange={(event) => setSearch(event.target.value)} />
+          </div>
         </div>
         {sorted.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhum sangrador encontrado.</p> : (
           <div className="space-y-2">
