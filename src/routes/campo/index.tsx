@@ -142,51 +142,74 @@ function FieldHome() {
         // A API pode devolver algo que não é lista (null num 204, ou objeto
         // paginado). Sem isto, um for...of estoura e o resumo inteiro cai.
         const asList = <T,>(value: T[] | unknown): T[] => (Array.isArray(value) ? value : []);
-        const records = recordLists.flatMap(asList<TappingRecord>);
+        // Cada etapa degrada em vez de estourar: só os registros alimentam a
+        // contagem, então um catálogo malformado não pode zerar a tela. O
+        // nome da etapa vai no log, porque "is not iterable" sozinho não diz
+        // qual das três respostas quebrou.
+        const safe = <T,>(name: string, run: () => T, fallback: T): T => {
+          try { return run(); } catch (e) {
+            console.error(`[resumo] falha ao montar ${name}:`, e);
+            return fallback;
+          }
+        };
+        const records = safe("as sangrias", () => recordLists.flatMap(asList<TappingRecord>), [] as TappingRecord[]);
         // Código → nome, do catálogo de cada empresa. É o nome que a UI
         // mostra; o código serve só de chave de junção.
-        const catalog = new Map<string, string>();
-        for (const list of taskLists.flatMap(asList<TappingTask>)) {
-          for (const task of list) {
-            if (task?.code) catalog.set(`${task.companyId}:${task.code}`, task.label);
+        const catalog = safe("o catalogo de tarefas", () => {
+          const map = new Map<string, string>();
+          // flatMap já achata: o que sobra é a própria lista de tarefas, não
+          // listas de tarefas. Iterar por cima disso quebrava com
+          // "is not iterable".
+          for (const task of taskLists.flatMap(asList<TappingTask>)) {
+            if (task?.code) map.set(`${task.companyId}:${task.code}`, task.label);
           }
-        }
+          return map;
+        }, new Map<string, string>());
         setTaskNames(catalog);
         // Tabelas por empresa: cada chamada já vem escopada a uma empresa,
         // então o zip com cids é seguro.
-        const tables = new Map<string, Map<string, string>>();
-        cids.forEach((cid, i) => {
-          const map = new Map<string, string>();
-          for (const table of asList<FieldTappingTable>(tableLists[i])) {
-            if (table?.id) map.set(table.id, table.name);
-          }
-          tables.set(cid, map);
-        });
+        const tables = safe("o catalogo de tabelas", () => {
+          const map = new Map<string, Map<string, string>>();
+          cids.forEach((cid, i) => {
+            const inner = new Map<string, string>();
+            for (const table of asList<FieldTappingTable>(tableLists[i])) {
+              if (table?.id) inner.set(table.id, table.name);
+            }
+            map.set(cid, inner);
+          });
+          return map;
+        }, new Map<string, Map<string, string>>());
         setTableNames(tables);
         const summary: SangriaSummary = { possible: [], done: [] };
         // Chave: sangrador + fazenda + data. Nomes gravados sem acento ou
         // com caixa diferente ainda casam, porque a comparação ignora ambos.
-        const byTapperDay = new Map<string, SangriaDay>();
-        for (const record of records) {
-          const farmId = record.farmId ?? "";
-          const rawName = (record.sangradorName ?? "").trim();
-          const name = rawName.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-          const date = String(record.date ?? "").slice(0, 10);
-          if (!date) continue;
-          const key = `${farmId}:${name}:${date}`;
-          const existing = byTapperDay.get(key);
-          if (existing) {
-            existing.records.push(record);
-          } else {
-            byTapperDay.set(key, {
-              tapper: { id: record.tapperId ?? name, fullName: rawName || "Sem nome" },
-              farmId,
-              companyId: record.companyId,
-              date,
-              records: [record],
-            });
+        const byTapperDay = safe("o agrupamento por dia", () => {
+          const map = new Map<string, SangriaDay>();
+          for (const record of records) {
+            if (!record || typeof record !== "object") continue;
+            const farmId = record.farmId ?? "";
+            const rawName = typeof record.sangradorName === "string" ? record.sangradorName.trim() : "";
+            const name = rawName.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+            const date = String(record.date ?? "").slice(0, 10);
+            // Sem data não dá para localizar o dia; sem nome não dá para
+            // identificar quem. Descartar o registro é melhor que quebrar.
+            if (!date || !name) continue;
+            const key = `${farmId}:${name}:${date}`;
+            const existing = map.get(key);
+            if (existing) {
+              existing.records.push(record);
+            } else {
+              map.set(key, {
+                tapper: { id: record.tapperId ?? name, fullName: rawName || "Sem nome" },
+                farmId,
+                companyId: record.companyId,
+                date,
+                records: [record],
+              });
+            }
           }
-        }
+          return map;
+        }, new Map<string, SangriaDay>());
         // "Realizadas" = todo dia-sangrador com registro. A tarefa vem do
         // catálogo da empresa e nunca é inferida do código.
         for (const day of byTapperDay.values()) {
