@@ -572,6 +572,19 @@ export class TappersService {
       this.prisma.tappingTable.findFirst({ where: { id: dto.tappingTableId, companyId: dto.companyId, isDeleted: false, active: true } }),
     ]);
     if (!farm || !plot || !table) throw new NotFoundException('Fazenda, talhão ou tabela inválido');
+    // Remover é desativar (active=false), não apagar a linha — e plotId+tapperId+tappingTableId
+    // é único. Sem este ressuscitar, revincular uma tabela que já foi removida
+    // estourava unique violation (500) e o sangrador ficava sem nenhuma tabela
+    // ativa pra sempre.
+    const existing = await this.prisma.tapperPlotTableLink.findFirst({
+      where: { plotId: dto.plotId, tappingTableId: dto.tappingTableId, ...key },
+    });
+    if (existing) {
+      return this.prisma.tapperPlotTableLink.update({
+        where: { id: existing.id },
+        data: { active: true, farmId: dto.farmId, position: dto.position ?? existing.position, treeCount: dto.treeCount ?? existing.treeCount, notes: dto.notes ?? existing.notes },
+      });
+    }
     return this.prisma.tapperPlotTableLink.create({ data: { companyId: dto.companyId, farmId: dto.farmId, plotId: dto.plotId, ...key, tappingTableId: dto.tappingTableId, position: dto.position ?? 0, treeCount: dto.treeCount, notes: dto.notes, createdById: userId } });
   }
 
