@@ -831,10 +831,12 @@ export class TappersService {
 
   // Usado pelo app de campo (field.service.ts) ao registrar sangria: tabelas
   // disponíveis para um sangrador específico, já com a quantidade de árvores
-  // prevista pra ele naquela tabela.
+  // prevista pra ele naquela tabela. A rotação segue a mesma fonte da lista do
+  // app (TapperPlotTableLink) — se divergirem, a sugestão de "próxima tabela"
+  // apontaria pra uma tabela que nem aparece no seletor.
   private async orderedRotationLinks(companyId: string, key: { tapperId?: string; userId?: string }) {
     const sibling = await this.resolveSiblingKey(companyId, key);
-    const links = await this.prisma.tapperTableLink.findMany({
+    const links = await this.prisma.tapperPlotTableLink.findMany({
       where: { companyId, active: true, OR: sibling ? [key, sibling] : [key] },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
@@ -904,11 +906,17 @@ export class TappersService {
   async listTableLinksForField(userId: string, companyId: string, tapperKey: string, plotId?: string) {
     await this.access.ensureCompany(userId, companyId);
     const key = this.parseTapperKey(tapperKey);
+    const sibling = await this.resolveSiblingKey(companyId, key);
+    const or = sibling ? [key, sibling] : [key];
     if (plotId) {
-      const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, plotId, active: true, ...key }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+      const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, plotId, active: true, OR: or }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
       return this.attachTables(links);
     }
-    const { links } = await this.orderedRotationLinks(companyId, key);
+    // Sem talhão, a lista do app de campo é a lista do próprio vínculo com
+    // talhão: é lá que o admin grava (diálogo "Talhões e tabelas"). Ler os
+    // TapperTableLink (modelo antigo, só tabela) fazia o monitor ver
+    // "sem tabela vinculada" mesmo com tudo certo no admin.
+    const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, active: true, OR: or }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
     return this.attachTables(links);
   }
 }
