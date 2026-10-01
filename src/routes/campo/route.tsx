@@ -223,8 +223,8 @@ function FieldShell() {
       <div className={`min-h-screen bg-background text-foreground ${isMobile ? "pb-24" : "pb-10"}`}>
         <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
           <div className={`mx-auto flex items-center justify-between gap-3 px-4 py-3 ${isMobile ? "max-w-lg" : "max-w-5xl"}`}>
-            <div className="flex min-w-0 items-center gap-3">
-              <img src={vertexLogo} alt="Vertex" className="h-auto w-20 shrink-0 object-contain" />
+            <div className="flex min-w-0 items-center gap-2.5">
+              <img src={vertexLogo} alt="Vertex" className="h-auto w-14 shrink-0 object-contain" />
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold text-foreground">Olá, {firstName}</div>
                 <div className="text-[11px] capitalize text-muted-foreground">
