@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { getFieldMe, type FieldMe, type Coords, captureLocation, type FieldTapper } from "@/lib/field.functions";
+import { getFieldMe, type FieldMe, type Coords, captureLocation, type FieldTapper, listFieldTappingTables, type FieldTappingTable } from "@/lib/field.functions";
 import { toast } from "sonner";
 import { listTasks, categoryLabel, categoryStyle, type ScheduledTask } from "@/lib/agenda.functions";
-import { listTappingRecords, type TappingRecord } from "@/lib/sangrias.functions";
+import { listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask } from "@/lib/sangrias.functions";
 import { getLocalIsoDate, monthRange, monthLabel } from "@/lib/date-utils";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
 
@@ -22,7 +22,7 @@ const QUICK_ACTIONS: Array<{ to: string; label: string; emoji: string; roles?: s
   { to: "/campo/operacao-maquina", label: "Operação de máquina", emoji: "🚜" },
 ];
 
-type SangriaCategory = "possible" | "done" | "late" | "ahead";
+type SangriaCategory = "possible" | "done";
 // Um "dia-sangrador": a mesma pessoa pode aparecer em mais de um balde
 // no mesmo período, com um item por dia trabalhado. No modo diário o
 // período tem 1 dia, então o comportamento é idêntico ao anterior.
@@ -37,9 +37,16 @@ type SangriaSummary = Record<SangriaCategory, SangriaDay[]>;
 
 const CATEGORY_LABEL: Record<SangriaCategory, string> = {
   possible: "Sangrias previstas",
-  done: "Sangrias concluídas",
-  late: "Sangrias atrasadas",
-  ahead: "Sangrias antecipadas",
+  done: "Sangrias realizadas",
+};
+
+// Nomes das tarefas (catálogo por empresa). Uma sangria é classificada pelo
+// NOME da tarefa, nunca pelo código: o código varia por empresa e pode nem
+// existir. Sem o catálogo carregado, cai no rótulo genérico.
+const TASK_LABEL: Record<string, string> = {
+  X: "Tabela completa",
+  "/": "Tabela adiantada",
+  "1": "Reposição",
 };
 
 const PERIOD_OPTIONS = [
@@ -57,7 +64,11 @@ function FieldHome() {
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
   const [checkinSheetOpen, setCheckinSheetOpen] = useState(false);
   const [checkinCoords, setCheckinCoords] = useState<Coords | null>(null);
-  const [sangriaSummary, setSangriaSummary] = useState<SangriaSummary>({ possible: [], done: [], late: [], ahead: [] });
+  const [sangriaSummary, setSangriaSummary] = useState<SangriaSummary>({ possible: [], done: [] });
+  // `${companyId}:${code}` → nome da tarefa, para exibir rótulo em vez de código.
+  const [taskNames, setTaskNames] = useState<Map<string, string>>(new Map());
+  // companyId → (tableId → nome), para mostrar o nome da tabela no detalhe.
+  const [tableNames, setTableNames] = useState<Map<string, Map<string, string>>>(new Map());
   // 0 = mês atual, -1 = mês anterior, -2 = dois meses atrás…
   const [monthOffset, setMonthOffset] = useState(0);
   const [sangriaDetail, setSangriaDetail] = useState<SangriaCategory | null>(null);
@@ -106,23 +117,41 @@ function FieldHome() {
   // Resumo de sangrias do período selecionado (mês civil, com navegação
   // para meses anteriores). Os baldes saem dos REGISTROS, não do cadastro de
   // sangradores: se a lista de tappers viesse vazia ou com nomes divergentes,
-  // tudo zerava mesmo com o histórico cheio. Um dia-sangrador é um par
-  // (pessoa, data); concluída é tabela completa (X), antecipada é adiantada
-  // (/), e o resto dos dias registrados cai em atrasada.
+  // tudo zerava mesmo com o histórico cheio. "Realizadas" é todo dia com
+  // registro — a tarefa vem do catálogo da empresa, nunca do código.
   useEffect(() => {
     const farms = me?.assignments ?? [];
     if (farms.length === 0) return;
     const { from, to } = monthRange(monthOffset);
     let cancelled = false;
-    setSangriaSummary({ possible: [], done: [], late: [], ahead: [] });
+    setSangriaSummary({ possible: [], done: [] });
     (async () => {
       try {
-        const recordLists = await Promise.all(
-          farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from, to }).catch(() => [] as TappingRecord[])),
-        );
+        const cids = Array.from(new Set(farms.map((a) => a.farm.companyId)));
+        const [recordLists, taskLists, tableLists] = await Promise.all([
+          Promise.all(farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from, to }).catch(() => [] as TappingRecord[]))),
+          Promise.all(cids.map((cid) => listTappingTasks(cid).catch(() => [] as TappingTask[]))),
+          Promise.all(cids.map((cid) => listFieldTappingTables(cid).catch(() => [] as FieldTappingTable[]))),
+        ]);
         if (cancelled) return;
         const records = recordLists.flat();
-        const summary: SangriaSummary = { possible: [], done: [], late: [], ahead: [] };
+        // Código → nome, do catálogo de cada empresa. É o nome que a UI
+        // mostra; o código serve só de chave de junção.
+        const catalog = new Map<string, string>();
+        for (const list of taskLists.flat()) {
+          for (const task of list) catalog.set(`${task.companyId}:${task.code}`, task.label);
+        }
+        setTaskNames(catalog);
+        // Tabelas por empresa: cada chamada já vem escopada a uma empresa,
+        // então o zip com cids é seguro.
+        const tables = new Map<string, Map<string, string>>();
+        cids.forEach((cid, i) => {
+          const map = new Map<string, string>();
+          for (const table of tableLists[i]) map.set(table.id, table.name);
+          tables.set(cid, map);
+        });
+        setTableNames(tables);
+        const summary: SangriaSummary = { possible: [], done: [] };
         // Chave: sangrador + fazenda + data. Nomes gravados sem acento ou
         // com caixa diferente ainda casam, porque a comparação ignora ambos.
         const byTapperDay = new Map<string, SangriaDay>();
@@ -144,12 +173,11 @@ function FieldHome() {
             });
           }
         }
+        // "Realizadas" = todo dia-sangrador com registro. A tarefa vem do
+        // catálogo da empresa e nunca é inferida do código.
         for (const day of byTapperDay.values()) {
-          const extents = day.records.flatMap((r) => (r.taskExtent ?? "").split(",").map((v) => v.trim()).filter(Boolean));
           summary.possible.push(day);
-          if (extents.includes("/")) summary.ahead.push(day);
-          else if (extents.includes("X")) summary.done.push(day);
-          else summary.late.push(day);
+          summary.done.push(day);
         }
         if (!cancelled) setSangriaSummary(summary);
       } catch {
@@ -257,15 +285,13 @@ function FieldHome() {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <SummaryCell value={sangriaSummary.possible.length} label="Previstas" tone="muted" onClick={() => setSangriaDetail("possible")} />
-          <SummaryCell value={sangriaSummary.done.length} label="Concluídas" tone="primary" onClick={() => setSangriaDetail("done")} />
-          <SummaryCell value={sangriaSummary.late.length} label="Atrasadas" tone="destructive" onClick={() => setSangriaDetail("late")} />
-          <SummaryCell value={sangriaSummary.ahead.length} label="Antecipadas" tone="warning" onClick={() => setSangriaDetail("ahead")} />
+          <SummaryCell value={sangriaSummary.done.length} label="Realizadas" tone="primary" onClick={() => setSangriaDetail("done")} />
         </div>
         {sangriaSummary.possible.length > 0 && (
           <p className="mt-2 text-[11px] text-muted-foreground">
-            {sangriaSummary.done.length} de {sangriaSummary.possible.length} dias concluídos em {monthLabel(monthOffset).toLowerCase()}.
+            {sangriaSummary.done.length} sangria(s) realizada(s) em {monthLabel(monthOffset).toLowerCase()}.
           </p>
         )}
       </section>
@@ -360,6 +386,8 @@ function FieldHome() {
         category={sangriaDetail}
         summary={sangriaSummary}
         monthOffset={monthOffset}
+        taskNames={taskNames}
+        tableNames={tableNames}
         onClose={() => setSangriaDetail(null)}
         onSelectTapper={(day) => { setSangriaDetail(null); setSelectedTapper(day); }}
       />
@@ -383,17 +411,37 @@ function SummaryCell({ value, label, tone, onClick }: { value: number; label: st
 }
 
 function DailySangriaDialog({
-  category, summary, monthOffset, onClose, onSelectTapper,
+  category, summary, monthOffset, taskNames, tableNames, onClose, onSelectTapper,
 }: {
   category: SangriaCategory | null;
   summary: SangriaSummary;
   monthOffset: number;
+  taskNames: Map<string, string>;
+  tableNames: Map<string, Map<string, string>>;
   onClose: () => void;
   onSelectTapper: (day: SangriaDay) => void;
 }) {
   const [search, setSearch] = useState("");
   const [tapperFilter, setTapperFilter] = useState("all");
+  const [taskFilter, setTaskFilter] = useState("all");
   const list = category ? summary[category] : [];
+  // Nome da tarefa de um registro: catálogo da empresa, com o rótulo
+  // genérico como reserva quando o código não está no catálogo.
+  const labelFor = (record: TappingRecord) =>
+    taskNames.get(`${record.companyId}:${record.taskExtent ?? ""}`) ?? TASK_LABEL[record.taskExtent ?? ""] ?? "Sem tarefa";
+  // Nome da tabela, quando a tela de campo carregou o catálogo. Sem ele,
+  // mostra só o id curto em vez de omitir a informação.
+  const tableName = (record: TappingRecord) => {
+    const tables = tableNames.get(record.companyId);
+    const name = tables?.get(record.tappingTableId ?? "");
+    return name ?? (record.tappingTableId ? `#${record.tappingTableId.slice(0, 6)}` : "");
+  };
+  // Tarefas oferecidas no filtro: as que aparecem no balde aberto.
+  const taskOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const day of list) for (const record of day.records) seen.add(labelFor(record));
+    return [...seen].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [list, taskNames]);
   // Opções do select: só quem aparece no balde aberto, deduplicado.
   const tapperOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -405,6 +453,8 @@ function DailySangriaDialog({
   }, [list]);
   const filtered = list.filter((day) => {
     if (tapperFilter !== "all" && day.tapper.fullName.trim().toLowerCase() !== tapperFilter) return false;
+    // Um dia aparece se ao menos um dos registros casar com a tarefa.
+    if (taskFilter !== "all" && !day.records.some((record) => labelFor(record) === taskFilter)) return false;
     return day.tapper.fullName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
   });
   // Data decrescente: o mais recente do período primeiro.
@@ -412,7 +462,7 @@ function DailySangriaDialog({
 
   // Precisa ser "all", não "": o filtro compara por desigualdade exata, e
   // uma string vazia não casa com nenhum nome, zerando a lista inteira.
-  useEffect(() => { setSearch(""); setTapperFilter("all"); }, [category]);
+  useEffect(() => { setSearch(""); setTapperFilter("all"); setTaskFilter("all"); }, [category]);
 
   return (
     <Dialog open={!!category} onOpenChange={(open) => !open && onClose()}>
@@ -433,6 +483,17 @@ function DailySangriaDialog({
               ))}
             </SelectContent>
           </Select>
+          <Select value={taskFilter} onValueChange={setTaskFilter}>
+            <SelectTrigger className="w-full" aria-label="Filtrar por tarefa">
+              <SelectValue placeholder="Todas as tarefas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as tarefas</SelectItem>
+              {taskOptions.map((label) => (
+                <SelectItem key={label} value={label}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input className="pl-9" placeholder="Pesquisar por sangrador..." value={search} onChange={(event) => setSearch(event.target.value)} />
@@ -446,8 +507,15 @@ function DailySangriaDialog({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{day.tapper.fullName}</span>
                   <span className="block truncate text-[11px] text-muted-foreground">
-                    {new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })} · {day.records.length} registro(s)
+                    {new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
                   </span>
+                  {/* Uma linha por registro: a tarefa vem do catálogo, pelo nome. */}
+                  {day.records.map((record) => (
+                    <span key={record.id} className="mt-0.5 block truncate text-[11px] text-primary">
+                      {labelFor(record)}
+                      {record.tappingTableId ? ` · ${tableName(record)}` : ""}
+                    </span>
+                  ))}
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </button>
@@ -481,7 +549,6 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
     days: new Set(records.map((record) => record.date.slice(0, 10))).size,
     trees: records.reduce((sum, record) => sum + (record.treesTapped ?? 0), 0),
     liters: records.reduce((sum, record) => sum + (record.liters ?? 0), 0),
-    ahead: records.filter((record) => (record.taskExtent ?? "").split(",").includes("/")).length,
   }), [records]);
 
   return (
@@ -500,7 +567,6 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
             <StatCell label="Dias trabalhados" value={stats.days} />
             <StatCell label="Árvores sangradas" value={stats.trees.toLocaleString("pt-BR")} />
             <StatCell label="Litros" value={stats.liters.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} />
-            <StatCell label="Antecipadas" value={stats.ahead} />
           </div>
         )}
       </DialogContent>
