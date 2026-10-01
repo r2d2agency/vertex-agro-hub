@@ -1,13 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, ChevronRight, AlertTriangle, ShieldCheck, PlusCircle, Search, UserRound } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, AlertTriangle, ShieldCheck, PlusCircle, Search, UserRound } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { getFieldMe, type FieldMe, type Coords, captureLocation, listFieldTappers, type FieldTapper } from "@/lib/field.functions";
 import { toast } from "sonner";
 import { listTasks, categoryLabel, categoryStyle, type ScheduledTask } from "@/lib/agenda.functions";
 import { listTappingRecords, type TappingRecord } from "@/lib/sangrias.functions";
-import { getLocalIsoDate } from "@/lib/date-utils";
+import { getLocalIsoDate, monthRange, monthLabel } from "@/lib/date-utils";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
 
 // Atalhos que antes só apareciam no menu do "+" — trazidos pra tela inicial
@@ -19,12 +19,21 @@ const QUICK_ACTIONS: Array<{ to: string; label: string; emoji: string; roles?: s
   { to: "/campo/operacao-maquina", label: "Operação de máquina", emoji: "🚜" },
 ];
 
-type DailySangriaCategory = "possible" | "done" | "late" | "ahead";
-type DailyTapper = FieldTapper & { farmId: string; companyId: string; records: TappingRecord[] };
-type DailySangriaSummary = Record<DailySangriaCategory, DailyTapper[]>;
+type SangriaCategory = "possible" | "done" | "late" | "ahead";
+// Um "dia-sangrador": a mesma pessoa pode aparecer em mais de um balde
+// no mesmo período, com um item por dia trabalhado. No modo diário o
+// período tem 1 dia, então o comportamento é idêntico ao anterior.
+type SangriaDay = {
+  tapper: FieldTapper;
+  farmId: string;
+  companyId: string;
+  date: string;
+  records: TappingRecord[];
+};
+type SangriaSummary = Record<SangriaCategory, SangriaDay[]>;
 
-const CATEGORY_LABEL: Record<DailySangriaCategory, string> = {
-  possible: "Sangradores previstos",
+const CATEGORY_LABEL: Record<SangriaCategory, string> = {
+  possible: "Sangrias previstas",
   done: "Sangrias concluídas",
   late: "Sangrias atrasadas",
   ahead: "Sangrias antecipadas",
@@ -45,9 +54,11 @@ function FieldHome() {
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
   const [checkinSheetOpen, setCheckinSheetOpen] = useState(false);
   const [checkinCoords, setCheckinCoords] = useState<Coords | null>(null);
-  const [dailySangria, setDailySangria] = useState<DailySangriaSummary>({ possible: [], done: [], late: [], ahead: [] });
-  const [sangriaDetail, setSangriaDetail] = useState<DailySangriaCategory | null>(null);
-  const [selectedTapper, setSelectedTapper] = useState<DailyTapper | null>(null);
+  const [sangriaSummary, setSangriaSummary] = useState<SangriaSummary>({ possible: [], done: [], late: [], ahead: [] });
+  // 0 = mês atual, -1 = mês anterior, -2 = dois meses atrás…
+  const [monthOffset, setMonthOffset] = useState(0);
+  const [sangriaDetail, setSangriaDetail] = useState<SangriaCategory | null>(null);
+  const [selectedTapper, setSelectedTapper] = useState<SangriaDay | null>(null);
 
   useEffect(() => {
     const CHECKIN_KEY = "vertex.field.checkin.v1";
@@ -89,37 +100,58 @@ function FieldHome() {
     })();
   }, []);
 
-  // Resumo do dia: sangrias possíveis (total de sangradores ativos nas
-  // fazendas do usuário), concluídas (tabela completa), adiantadas (tabela
-  // adiantada) e atrasadas (o restante que ainda não fechou o dia).
+  // Resumo de sangrias do período selecionado (mês civil, com navegação
+  // para meses anteriores). Cada balde conta dias-sangrador: concluída é
+  // tabela completa (X), antecipada é tabela adiantada (/), e o restante
+  // dos dias previstos que não fecharam cai em atrasada.
   useEffect(() => {
     const farms = me?.assignments ?? [];
     if (farms.length === 0) return;
-    const today = getLocalIsoDate();
+    const { from, to } = monthRange(monthOffset);
+    let cancelled = false;
+    setSangriaSummary({ possible: [], done: [], late: [], ahead: [] });
     (async () => {
       try {
         const [tapperLists, recordLists] = await Promise.all([
           Promise.all(farms.map((a) => listFieldTappers(a.farm.companyId, a.farm.id).catch(() => [] as FieldTapper[]))),
-          Promise.all(farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from: today, to: today }).catch(() => [] as TappingRecord[]))),
+          Promise.all(farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from, to }).catch(() => [] as TappingRecord[]))),
         ]);
+        if (cancelled) return;
         const tappers = farms.flatMap((assignment, index) =>
-          (tapperLists[index] ?? []).map((t) => ({ ...t, farmId: assignment.farm.id, companyId: assignment.farm.companyId })),
+          (tapperLists[index] ?? []).map((t) => ({ tapper: t, farmId: assignment.farm.id, companyId: assignment.farm.companyId })),
         );
         const records = recordLists.flat();
-        const summary: DailySangriaSummary = { possible: [], done: [], late: [], ahead: [] };
-        for (const t of tappers) {
-          const own = records.filter((r) => (r.tapperId && r.tapperId === t.id) || r.sangradorName.trim().toLowerCase() === t.fullName.trim().toLowerCase());
-          const extents = own.flatMap((r) => (r.taskExtent ?? "").split(",").filter(Boolean));
-          const item: DailyTapper = { ...t, records: own };
-          summary.possible.push(item);
-          if (extents.includes("/")) summary.ahead.push(item);
-          else if (extents.includes("X")) summary.done.push(item);
-          else summary.late.push(item);
+        const summary: SangriaSummary = { possible: [], done: [], late: [], ahead: [] };
+        for (const entry of tappers) {
+          const { tapper: t } = entry;
+          const own = records.filter((r) =>
+            r.farmId === entry.farmId &&
+            ((r.tapperId && r.tapperId === t.id) ||
+              r.sangradorName.trim().toLowerCase() === t.fullName.trim().toLowerCase()),
+          );
+          // Um item por dia trabalhado: o mesmo sangrador aparece uma vez
+          // por data, e não uma vez por linha de registro.
+          const byDate = new Map<string, TappingRecord[]>();
+          for (const record of own) {
+            const key = record.date.slice(0, 10);
+            byDate.set(key, [...(byDate.get(key) ?? []), record]);
+          }
+          for (const [date, dayRecords] of byDate) {
+            const extents = dayRecords.flatMap((r) => (r.taskExtent ?? "").split(",").map((v) => v.trim()).filter(Boolean));
+            const item: SangriaDay = { tapper: t, farmId: entry.farmId, companyId: entry.companyId, date, records: dayRecords };
+            summary.possible.push(item);
+            if (extents.includes("/")) summary.ahead.push(item);
+            else if (extents.includes("X")) summary.done.push(item);
+            else summary.late.push(item);
+          }
         }
-        setDailySangria(summary);
-      } catch { /* mantém os valores zerados */ }
+        if (!cancelled) setSangriaSummary(summary);
+      } catch {
+        if (!cancelled) toast.error("Não foi possível carregar o resumo de sangrias");
+      }
     })();
-  }, [me]);
+    return () => { cancelled = true; };
+  }, [me, monthOffset]);
 
   const stats = useMemo(() => {
     const today = getLocalIsoDate();
@@ -192,15 +224,44 @@ function FieldHome() {
         </div>
       </section>
 
-      {/* Resumo do dia — sangrias de todos os sangradores das fazendas do usuário */}
+      {/* Resumo de sangrias — por mês civil, com navegação entre meses */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-foreground">Resumo de sangrias diárias</h2>
-        <div className="grid grid-cols-4 gap-2">
-          <SummaryCell value={dailySangria.possible.length} label="Possíveis" tone="muted" onClick={() => setSangriaDetail("possible")} />
-          <SummaryCell value={dailySangria.done.length} label="Concluídas" tone="primary" onClick={() => setSangriaDetail("done")} />
-          <SummaryCell value={dailySangria.late.length} label="Atrasadas" tone="destructive" onClick={() => setSangriaDetail("late")} />
-          <SummaryCell value={dailySangria.ahead.length} label="Antecipadas" tone="warning" onClick={() => setSangriaDetail("ahead")} />
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-foreground">Resumo de sangrias</h2>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setMonthOffset((n) => n - 1)}
+              className="rounded-lg border border-border/60 bg-card p-1.5 text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+              title="Mês anterior"
+              aria-label="Ver mês anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="min-w-[112px] text-center text-xs font-medium text-foreground">{monthLabel(monthOffset)}</span>
+            <button
+              type="button"
+              onClick={() => setMonthOffset((n) => Math.min(0, n + 1))}
+              disabled={monthOffset >= 0}
+              className="rounded-lg border border-border/60 bg-card p-1.5 text-muted-foreground transition hover:border-primary/60 hover:text-primary disabled:pointer-events-none disabled:opacity-40"
+              title="Mês seguinte"
+              aria-label="Voltar ao mês atual"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
+        <div className="grid grid-cols-4 gap-2">
+          <SummaryCell value={sangriaSummary.possible.length} label="Previstas" tone="muted" onClick={() => setSangriaDetail("possible")} />
+          <SummaryCell value={sangriaSummary.done.length} label="Concluídas" tone="primary" onClick={() => setSangriaDetail("done")} />
+          <SummaryCell value={sangriaSummary.late.length} label="Atrasadas" tone="destructive" onClick={() => setSangriaDetail("late")} />
+          <SummaryCell value={sangriaSummary.ahead.length} label="Antecipadas" tone="warning" onClick={() => setSangriaDetail("ahead")} />
+        </div>
+        {sangriaSummary.possible.length > 0 && (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {sangriaSummary.done.length} de {sangriaSummary.possible.length} dias concluídos em {monthLabel(monthOffset).toLowerCase()}.
+          </p>
+        )}
       </section>
 
       {/* Próxima atividade */}
@@ -291,11 +352,12 @@ function FieldHome() {
       />
       <DailySangriaDialog
         category={sangriaDetail}
-        summary={dailySangria}
+        summary={sangriaSummary}
+        monthOffset={monthOffset}
         onClose={() => setSangriaDetail(null)}
-        onSelectTapper={(tapper) => { setSangriaDetail(null); setSelectedTapper(tapper); }}
+        onSelectTapper={(day) => { setSangriaDetail(null); setSelectedTapper(day); }}
       />
-      <TapperStatsDialog tapper={selectedTapper} onClose={() => setSelectedTapper(null)} />
+      <TapperStatsDialog day={selectedTapper} onClose={() => setSelectedTapper(null)} />
     </div>
   );
 }
@@ -315,33 +377,44 @@ function SummaryCell({ value, label, tone, onClick }: { value: number; label: st
 }
 
 function DailySangriaDialog({
-  category, summary, onClose, onSelectTapper,
+  category, summary, monthOffset, onClose, onSelectTapper,
 }: {
-  category: DailySangriaCategory | null;
-  summary: DailySangriaSummary;
+  category: SangriaCategory | null;
+  summary: SangriaSummary;
+  monthOffset: number;
   onClose: () => void;
-  onSelectTapper: (tapper: DailyTapper) => void;
+  onSelectTapper: (day: SangriaDay) => void;
 }) {
   const [search, setSearch] = useState("");
   const list = category ? summary[category] : [];
-  const filtered = list.filter((tapper) => tapper.fullName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const filtered = list.filter((day) => day.tapper.fullName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  // Data decrescente: o mais recente do período primeiro.
+  const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
 
   useEffect(() => { setSearch(""); }, [category]);
 
   return (
     <Dialog open={!!category} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
-        <DialogHeader><DialogTitle>{category ? CATEGORY_LABEL[category] : "Sangrias"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{category ? CATEGORY_LABEL[category] : "Sangrias"}</DialogTitle>
+          <p className="text-xs text-muted-foreground">{monthLabel(monthOffset)}</p>
+        </DialogHeader>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input className="pl-9" placeholder="Pesquisar por sangrador..." value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
-        {filtered.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhum sangrador encontrado.</p> : (
+        {sorted.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhum sangrador encontrado.</p> : (
           <div className="space-y-2">
-            {filtered.map((tapper) => (
-              <button key={`${tapper.id}:${tapper.farmId}`} type="button" onClick={() => onSelectTapper(tapper)} className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card p-3 text-left transition hover:border-primary/60 hover:bg-primary/5">
+            {sorted.map((day) => (
+              <button key={`${day.tapper.id}:${day.farmId}:${day.date}`} type="button" onClick={() => onSelectTapper(day)} className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card p-3 text-left transition hover:border-primary/60 hover:bg-primary/5">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><UserRound className="h-4 w-4" /></span>
-                <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{tapper.fullName}</span><span className="block truncate text-[11px] text-muted-foreground">{tapper.records.length} registro(s) hoje</span></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">{day.tapper.fullName}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    {new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })} · {day.records.length} registro(s)
+                  </span>
+                </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </button>
             ))}
@@ -352,22 +425,22 @@ function DailySangriaDialog({
   );
 }
 
-function TapperStatsDialog({ tapper, onClose }: { tapper: DailyTapper | null; onClose: () => void }) {
+function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: () => void }) {
   const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("mes");
   const [records, setRecords] = useState<TappingRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!tapper) return;
+    if (!day) return;
     const option = PERIOD_OPTIONS.find((item) => item.value === period)!;
     const to = getLocalIsoDate();
     const from = getLocalIsoDate(new Date(Date.now() - (option.days - 1) * 86400000));
     setLoading(true);
-    listTappingRecords(tapper.companyId, { farmId: tapper.farmId, from, to })
-      .then((items) => setRecords(items.filter((record) => (record.tapperId && record.tapperId === tapper.id) || record.sangradorName.trim().toLowerCase() === tapper.fullName.trim().toLowerCase())))
+    listTappingRecords(day.companyId, { farmId: day.farmId, from, to })
+      .then((items) => setRecords(items.filter((record) => (record.tapperId && record.tapperId === day.tapper.id) || record.sangradorName.trim().toLowerCase() === day.tapper.fullName.trim().toLowerCase())))
       .catch(() => setRecords([]))
       .finally(() => setLoading(false));
-  }, [tapper, period]);
+  }, [day, period]);
 
   const stats = useMemo(() => ({
     records: records.length,
@@ -378,9 +451,12 @@ function TapperStatsDialog({ tapper, onClose }: { tapper: DailyTapper | null; on
   }), [records]);
 
   return (
-    <Dialog open={!!tapper} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={!!day} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{tapper?.fullName ?? "Sangrador"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{day?.tapper.fullName ?? "Sangrador"}</DialogTitle>
+          {day && <p className="text-xs text-muted-foreground">Tocado em {new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</p>}
+        </DialogHeader>
         <div className="grid grid-cols-3 gap-2">
           {PERIOD_OPTIONS.map((option) => <button key={option.value} type="button" onClick={() => setPeriod(option.value)} className={`rounded-lg border px-2 py-2 text-xs font-medium ${period === option.value ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>{option.label}</button>)}
         </div>

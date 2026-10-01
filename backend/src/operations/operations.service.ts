@@ -48,7 +48,8 @@ export class OperationsService {
           : {}),
       },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-      take: 500,
+      // Sem teto: o resumo mensal da home soma o mês inteiro, e um `take`
+      // fixo truncaria a resposta sem sinalizar, distorcendo os totais.
     });
   }
 
