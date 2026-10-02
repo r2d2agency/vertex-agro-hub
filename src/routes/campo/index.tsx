@@ -476,6 +476,16 @@ function DailySangriaDialog({
     const name = tables?.get(record.tappingTableId ?? "");
     return name ?? (record.tappingTableId ? `#${record.tappingTableId.slice(0, 6)}` : "");
   };
+  // Hora do registro — fica logo abaixo do nome, na mesma linha da data.
+  // Vem de recordedAt (quando o monitor gravou); sem ele, não há hora pra
+  // mostrar, e a linha mostra só a data em vez de um "--:--" inventado.
+  const timeFor = (day: SangriaDay) => {
+    const stamp = day.records.find((record) => record.recordedAt)?.recordedAt;
+    if (!stamp) return "";
+    const at = new Date(stamp);
+    if (Number.isNaN(at.getTime())) return "";
+    return at.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  };
   // Tarefas oferecidas no filtro: as que aparecem no balde aberto.
   const taskOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -548,6 +558,7 @@ function DailySangriaDialog({
                   <span className="block truncate text-sm font-semibold">{day.tapper.fullName}</span>
                   <span className="block truncate text-[11px] text-muted-foreground">
                     {new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+                    {timeFor(day) ? ` · ${timeFor(day)}` : ""}
                   </span>
                   {/* Uma linha por registro: a tarefa vem do catálogo, pelo nome. */}
                   {day.records.map((record) => (
@@ -596,7 +607,7 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{day?.tapper.fullName ?? "Sangrador"}</DialogTitle>
-          {day && <p className="text-xs text-muted-foreground">Tocado em {new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</p>}
+          {day && <p className="text-xs text-muted-foreground">Tocado em {new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}{(() => { const stamp = day.records.find((r) => r.recordedAt)?.recordedAt; if (!stamp) return ""; const at = new Date(stamp); return Number.isNaN(at.getTime()) ? "" : ` · ${at.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`; })()}</p>}
         </DialogHeader>
         <div className="grid grid-cols-3 gap-2">
           {PERIOD_OPTIONS.map((option) => <button key={option.value} type="button" onClick={() => setPeriod(option.value)} className={`rounded-lg border px-2 py-2 text-xs font-medium ${period === option.value ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>{option.label}</button>)}
