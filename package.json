@@ -4,6 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
+    "predev": "node scripts/gen-version.mjs",
     "dev": "vite dev",
     "prebuild": "node scripts/gen-version.mjs",
     "build": "vite build",

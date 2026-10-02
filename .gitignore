@@ -16,6 +16,13 @@ dist-ssr
 .nitro
 *.local
 
+# Gerados por scripts/gen-version.mjs no prebuild: version.json e o
+# APP_VERSION embutido no bundle mudam a cada build. Versionados, deixavam a
+# árvore suja após todo build e podiam invalidar a camada de cache do Docker
+# sem nenhuma mudança real de código.
+public/version.json
+src/lib/app-version.ts
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

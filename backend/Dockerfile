@@ -17,6 +17,10 @@ COPY tsconfig.json nest-cli.json ./
 COPY src ./src
 RUN npx prisma generate
 RUN npm run build
+# Poda as ferramentas de build depois de compilar, pra imagem final não
+# carregá-las. Feito aqui (e não com um "npm ci --omit=dev" no runtime) porque
+# o client do Prisma e outros pacotes são resolvidos em tempo de execução.
+RUN npm prune --omit=dev
 
 # --- runtime ---
 FROM node:22-alpine AS runtime
@@ -24,13 +28,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN apk add --no-cache openssl
 
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev || npm install --omit=dev
-
+# Reaproveita as dependências já podadas do estágio de build: antes havia um
+# segundo "npm ci" completo aqui, dobrando o tempo de instalação por build.
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 

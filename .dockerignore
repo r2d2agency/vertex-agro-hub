@@ -21,3 +21,15 @@ coverage
 backend
 README.md
 MIGRATION.md
+# Ruído de desenvolvimento: nada disso é usado na imagem e cada arquivo
+# manda o contexto inteiro pro daemon do Docker.
+supabase
+.tanstack
+.claude
+.lovable
+.vscode
+docker-compose.yml
+test-get-person.js
+test-get-person.ts
+debug-implement-patch-500-persist.md
+AGENTS.md
