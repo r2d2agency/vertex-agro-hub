@@ -555,11 +555,7 @@ function DailySangriaDialog({
               <button key={`${day.tapper.id}:${day.farmId}:${day.date}`} type="button" onClick={() => onSelectTapper(day)} className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card p-3 text-left transition hover:border-primary/60 hover:bg-primary/5">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><UserRound className="h-4 w-4" /></span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">
-                    {new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
-                    {timeFor(day) ? ` · ${timeFor(day)}` : ""}
-                  </span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{day.tapper.fullName}</span>
+                  <span className="block truncate text-sm font-semibold">{day.tapper.fullName}</span>
                   {/* Uma linha por registro: a tarefa vem do catálogo, pelo nome. */}
                   {day.records.map((record) => (
                     <span key={record.id} className="mt-0.5 block truncate text-[11px] text-primary">
@@ -568,7 +564,15 @@ function DailySangriaDialog({
                     </span>
                   ))}
                 </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                {/* Data/hora empilhadas acima do chevron: o nome fica sozinho à
+                    esquerda, sem a data competindo com ele por espaço. */}
+                <span className="flex shrink-0 flex-col items-end gap-1">
+                  <span className="text-right text-[11px] leading-tight text-muted-foreground">
+                    <span className="block">{new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</span>
+                    {timeFor(day) ? <span className="block">{timeFor(day)}</span> : null}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </span>
               </button>
             ))}
           </div>
