@@ -552,7 +552,7 @@ function DailySangriaDialog({
         {sorted.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhum sangrador encontrado.</p> : (
           <div className="space-y-2">
             {sorted.map((day) => (
-              <button key={`${day.tapper.id}:${day.farmId}:${day.date}`} type="button" onClick={() => onSelectTapper(day)} className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card p-3 text-left transition hover:border-primary/60 hover:bg-primary/5">
+              <button key={`${day.tapper.id}:${day.farmId}:${day.date}`} type="button" onClick={() => onSelectTapper(day)} className="flex w-full items-start gap-3 rounded-xl border border-border/60 bg-card p-3 text-left transition hover:border-primary/60 hover:bg-primary/5">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><UserRound className="h-4 w-4" /></span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{day.tapper.fullName}</span>
