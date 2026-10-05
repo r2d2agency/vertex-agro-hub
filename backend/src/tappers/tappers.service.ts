@@ -557,7 +557,15 @@ export class TappersService {
   async listPlotTableLinks(userId: string, companyId: string, tapperKey: string, plotId?: string) {
     await this.access.ensureCompany(userId, companyId);
     const key = this.parseTapperKey(tapperKey);
-    const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, ...key, ...(plotId ? { plotId } : {}), active: true }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+    // Este é o endpoint que o app de campo usa ao montar a lista de tabelas
+    // do sangrador. A pessoa pode existir como ficha legada (Tapper) e como
+    // vínculo só de RH (rh:<userId>), e o admin pode ter vinculado a tabela
+    // por qualquer um dos dois lados — sem a chave-irmã, o monitor lia por um
+    // lado e o admin tinha gravado pelo outro, e a tela pedia vincular tabela
+    // que já estava vinculada.
+    const sibling = await this.resolveSiblingKey(companyId, key);
+    const or = sibling ? [key, sibling] : [key];
+    const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, OR: or, ...(plotId ? { plotId } : {}), active: true }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
     const tables = await this.prisma.tappingTable.findMany({ where: { id: { in: links.map((link) => link.tappingTableId) } }, select: { id: true, name: true, notation: true } });
     const byId = new Map(tables.map((table) => [table.id, table]));
     return links.map((link) => ({ ...link, tappingTable: byId.get(link.tappingTableId) ?? null }));
@@ -911,7 +919,11 @@ export class TappersService {
   async listPlotsForField(userId: string, companyId: string, tapperKey: string, farmId: string) {
     await this.access.ensureCompany(userId, companyId);
     const key = this.parseTapperKey(tapperKey);
-    const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, farmId, active: true, ...key }, select: { plotId: true, farmId: true, treeCount: true }, distinct: ['plotId'] });
+    // Mesma chave-irmã de listPlotTableLinks: senão o monitor via a lista de
+    // talhões vazia mesmo com as tabelas vinculadas, porque o vínculo foi
+    // gravado pela outra identidade da mesma pessoa.
+    const sibling = await this.resolveSiblingKey(companyId, key);
+    const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, farmId, active: true, OR: sibling ? [key, sibling] : [key] }, select: { plotId: true, farmId: true, treeCount: true }, distinct: ['plotId'] });
     const plots = await this.prisma.plot.findMany({ where: { companyId, farmId, isDeleted: false, id: { in: links.map((l) => l.plotId) } }, select: { id: true, name: true, code: true, treeCount: true } });
     return plots.map((plot) => ({ ...plot, assignedTreeCount: links.find((l) => l.plotId === plot.id)?.treeCount ?? null }));
   }
