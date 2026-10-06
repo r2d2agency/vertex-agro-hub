@@ -11,6 +11,7 @@ import { listTappingRecords, updateTappingRecord, getDailyTreeAllocation, upsert
 import { TASK_EXTENTS, END_PERIODS, listTappingTasks, type TappingTask } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,6 +42,10 @@ function SangriaPage() {
   const [tasks, setTasks] = useState<TappingTask[]>([]);
   const [taskExtent, setTaskExtent] = useState("");
   const [dailyAllocation, setDailyAllocation] = useState<DailyTreeAllocation | null>(null);
+  // treesExpected nulo = talhão sem total de árvores cadastrado. O backend
+  // exige a quantidade quando há talhão+tabela+tarefa, então o monitor pede
+  // a árvore ao operador em vez de travar num erro de configuração.
+  const [manualTrees, setManualTrees] = useState("");
   const [allocationLoading, setAllocationLoading] = useState(false);
   const [allocationError, setAllocationError] = useState<string | null>(null);
   const [savingAuxiliary, setSavingAuxiliary] = useState(false);
@@ -225,10 +230,15 @@ function SangriaPage() {
     if (!tappingTableId) { toast.error("Selecione a tabela"); return; }
     if (!taskExtent) { toast.error("Selecione uma tarefa"); return; }
     if (dailyAllocation == null) { toast.error(allocationError ?? "A quantidade prevista ainda não foi calculada"); return; }
-    // treesExpected nulo = talhão sem total de árvores cadastrado. O
-    // lançamento segue válido: o registro grava sem previsão em vez de
-    // travar o monitor num erro de configuração que é do admin resolver.
-    const treesExpected = dailyAllocation.treesExpected ?? null;
+    // treesExpected nulo = talhão sem total de árvores cadastrado. O backend
+    // exige a quantidade quando há talhão+tabela+tarefa; o monitor digita o
+    // valor no campo manual em vez de travar num erro de configuração.
+    const manualValue = manualTrees.trim() ? Number(manualTrees) : null;
+    if (dailyAllocation.treesExpected == null && (manualValue == null || Number.isNaN(manualValue) || manualValue < 0)) {
+      toast.error("Informe a quantidade de árvores previstas");
+      return;
+    }
+    const treesExpected = dailyAllocation.treesExpected ?? manualValue;
     if (isDivergent && !confirmDivergence) {
       toast.warning(`A tabela selecionada (${selectedTable?.name ?? "—"}) é diferente da tabela do dia (${expectedTable?.name ?? "—"}). Confirme para continuar.`);
       return;
@@ -369,6 +379,14 @@ function SangriaPage() {
             <div className="flex items-center gap-2"><Trees className="h-4 w-4 text-primary" /><span className="text-muted-foreground">Árvores previstas nesta tarefa:</span><span className="font-semibold text-foreground">{allocationLoading ? "…" : dailyAllocation?.treesExpected ?? "—"}</span></div>
             {dailyAllocation && <div className="text-xs text-muted-foreground">{dailyAllocation.plotTreeCount != null ? `${dailyAllocation.plotTreeCount.toLocaleString("pt-BR")} árvores cadastradas ÷ ` : ""}{dailyAllocation.tableCount} tabelas do dia ÷ {dailyAllocation.tapperCount} sangrador(es){taskExtent === "/" ? " ÷ 2 (meia tabela)" : ""}</div>}
             {allocationError && <div className="text-xs text-destructive">{allocationError}</div>}
+            {/* Sem total de árvores no talhão, a previsão não pode ser
+                calculada — o operador informa a quantidade. */}
+            {dailyAllocation?.treesExpected == null && (
+              <div className="mt-2">
+                <Label className="mb-1 block text-xs font-medium text-muted-foreground">Árvores previstas (obrigatório)</Label>
+                <Input type="number" min="0" inputMode="numeric" placeholder="Ex.: 250" value={manualTrees} onChange={(event) => setManualTrees(event.target.value)} />
+              </div>
+            )}
           </div>
         )}
         {existingRecords.length > 0 && !editingId && !allowDuplicate && <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-semibold">Esta sangria já foi registrada</p><p className="mt-1 text-xs">Escolha se deseja corrigir o lançamento atual ou registrar uma nova sangria adicional.</p><div className="mt-3 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { const r = existingRecords[0]; setEditingId(r.id); setNotes(r.notes ?? ""); setEndPeriod(r.endPeriod ?? ""); setPhotoUrls(r.photoUrls ?? []); setAudioUrl(r.audioUrl ?? null); toast.info("Registro carregado para correção"); }}>Corrigir atual</Button><Button type="button" size="sm" onClick={() => setAllowDuplicate(true)}>Registrar nova mesmo assim</Button></div></div></div></div>}

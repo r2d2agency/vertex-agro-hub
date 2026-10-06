@@ -158,7 +158,7 @@ export class OperationsService {
     }
 
     if (dto.farmId && dto.plotId && dto.tappingTableId && dto.taskExtent && dto.treesExpected == null) {
-      throw new BadRequestException('treesExpected é obrigatório quando a sangria possui talhão, tabela e tarefa');
+      throw new BadRequestException('Informe a quantidade de árvores previstas para esta tarefa');
     }
     const parsed = parseTappingDate(date);
     const record = await this.prisma.tappingRecord.create({
