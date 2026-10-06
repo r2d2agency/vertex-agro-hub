@@ -10,6 +10,17 @@ import {
   Min,
 } from 'class-validator';
 
+export class UpsertTappingDailyAllocationDto {
+  @IsUUID() companyId!: string;
+  @IsUUID() farmId!: string;
+  @IsUUID() plotId!: string;
+  @IsDateString() workDate!: string;
+  @IsOptional() @IsUUID() tapperId?: string;
+  @IsOptional() @IsUUID() userId?: string;
+  @IsUUID() tappingTableId!: string;
+  @IsString() taskExtent!: string;
+}
+
 export class CreateTappingRecordDto {
   @IsUUID() companyId!: string;
   @IsOptional() @IsUUID() farmId?: string;

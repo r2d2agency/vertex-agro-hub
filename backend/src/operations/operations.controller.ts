@@ -19,6 +19,7 @@ import {
   CreateTappingRecordDto,
   UpdateDeliveryDto,
   UpdateTappingRecordDto,
+  UpsertTappingDailyAllocationDto,
 } from './dto';
 
 function need(v?: string) {
@@ -50,12 +51,17 @@ export class OperationsController {
     @Query('farmId') farmId?: string,
     @Query('plotId') plotId?: string,
     @Query('tapperId') tapperId?: string,
+    @Query('userId') userId?: string,
     @Query('tableId') tableId?: string,
     @Query('taskExtent') taskExtent?: string,
     @Query('date') date?: string,
   ) {
-    if (!farmId || !plotId || !date) throw new BadRequestException('farmId, plotId e date são obrigatórios');
-    return this.svc.getDailyTreeAllocation(req.user.sub, { companyId: need(companyId), farmId, plotId, tapperId, tableId, taskExtent, date });
+    if (!farmId || !plotId || !date || !tableId || !taskExtent) throw new BadRequestException('farmId, plotId, tableId, taskExtent e date são obrigatórios');
+    return this.svc.getDailyTreeAllocation(req.user.sub, { companyId: need(companyId), farmId, plotId, tapperId, userId, tableId, taskExtent, date });
+  }
+  @Post('tapping-daily-allocations')
+  upsertDailyAllocation(@Req() req: any, @Body() dto: UpsertTappingDailyAllocationDto) {
+    return this.svc.upsertTappingDailyAllocation(req.user.sub, dto);
   }
 
   @Post('tapping-records')

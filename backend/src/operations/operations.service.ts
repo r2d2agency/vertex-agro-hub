@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccess } from '../common/company-access';
 import { TappersService } from '../tappers/tappers.service';
@@ -6,6 +6,7 @@ import { computeLinkStamp, nextTableInRotation } from '../tappers/rotation.util'
 import {
   CreateDeliveryDto,
   CreateTappingRecordDto,
+  UpsertTappingDailyAllocationDto,
   UpdateDeliveryDto,
   UpdateTappingRecordDto,
 } from './dto';
@@ -53,23 +54,51 @@ export class OperationsService {
     });
   }
 
-  async getDailyTreeAllocation(userId: string, opts: { companyId: string; farmId: string; plotId: string; tapperId?: string; tableId?: string; taskExtent?: string; date: string }) {
+  async getDailyTreeAllocation(userId: string, opts: { companyId: string; farmId: string; plotId: string; tapperId?: string; userId?: string; tableId: string; taskExtent: string; date: string }) {
     await this.access.ensureCompany(userId, opts.companyId);
+    if (Boolean(opts.tapperId) === Boolean(opts.userId)) throw new BadRequestException('Informe exatamente um identificador de sangrador');
+    if (!opts.tableId || !opts.taskExtent || !opts.date) throw new BadRequestException('Tabela, tarefa e data são obrigatórias');
     const plot = await this.prisma.plot.findFirst({ where: { id: opts.plotId, companyId: opts.companyId, farmId: opts.farmId, isDeleted: false }, select: { treeCount: true } });
     if (!plot) throw new NotFoundException('Talhão não encontrado nesta fazenda');
+    const workDate = new Date(`${opts.date}T00:00:00.000Z`);
     const links = await this.prisma.tapperPlotTableLink.findMany({
       where: { companyId: opts.companyId, farmId: opts.farmId, plotId: opts.plotId, active: true },
-      select: { tapperId: true, userId: true, tappingTableId: true, treeCount: true },
+      select: { tapperId: true, userId: true, tappingTableId: true },
     });
-    const people = new Set(links.map((l) => l.tapperId ? `t:${l.tapperId}` : l.userId ? `u:${l.userId}` : null).filter(Boolean));
-    const tables = new Set(links.map((l) => l.tappingTableId));
-    // A quantidade da tarefa é calculada pelo total do talhão e pela equipe do dia.
-    // `treeCount` no vínculo é uma configuração legada do vínculo, não o total
-    // intrínseco da tabela, portanto não deve substituir esta divisão.
-    const total = plot.treeCount ?? 0;
-    const base = Math.floor(total / Math.max(tables.size, 1) / Math.max(people.size, 1));
+    const daily = await this.prisma.tappingDailyAllocation.findMany({
+      where: { companyId: opts.companyId, farmId: opts.farmId, plotId: opts.plotId, workDate, active: true },
+      select: { tapperId: true, userId: true, tappingTableId: true },
+    });
+    const isSamePerson = (a: { tapperId: string | null; userId: string | null }, b: { tapperId?: string | null; userId?: string | null }) =>
+      Boolean(b.tapperId ? a.tapperId === b.tapperId : b.userId ? a.userId === b.userId : false);
+    const selectionLinked = links.some((l) => l.tappingTableId === opts.tableId && isSamePerson(l, opts)) || daily.some((l) => l.tappingTableId === opts.tableId && isSamePerson(l, opts));
+    if (!selectionLinked) throw new BadRequestException('Sangrador e tabela não possuem vínculo válido para este talhão');
+    const applicableDaily = daily.filter((a) => links.some((l) => l.tappingTableId === a.tappingTableId && isSamePerson(l, a)) || a.tappingTableId === opts.tableId);
+    const effective = [...links, ...applicableDaily];
+    const people = new Set(effective.map((l) => l.tapperId ? `t:${l.tapperId}` : l.userId ? `u:${l.userId}` : null).filter(Boolean));
+    const tables = new Set(effective.map((l) => l.tappingTableId));
+    if (plot.treeCount == null || plot.treeCount < 1 || !tables.size || !people.size) throw new BadRequestException('Dados de árvores, tabelas ou sangradores insuficientes para calcular');
+    const base = Math.floor(plot.treeCount / tables.size / people.size);
     const treesExpected = opts.taskExtent === '/' ? Math.floor(base / 2) : base;
-    return { date: opts.date, plotTreeCount: plot.treeCount, tableCount: tables.size, tapperCount: people.size, treesExpected, taskExtent: opts.taskExtent ?? null };
+    return { date: opts.date, plotTreeCount: plot.treeCount, tableCount: tables.size, tapperCount: people.size, baseTrees: base, treesExpected, taskExtent: opts.taskExtent };
+  }
+
+  async upsertTappingDailyAllocation(userId: string, dto: UpsertTappingDailyAllocationDto) {
+    await this.access.ensureCompany(userId, dto.companyId);
+    if (Boolean(dto.tapperId) === Boolean(dto.userId)) throw new BadRequestException('Informe exatamente um identificador: tapperId ou userId');
+    const plot = await this.prisma.plot.findFirst({ where: { id: dto.plotId, companyId: dto.companyId, farmId: dto.farmId, isDeleted: false }, select: { id: true } });
+    if (!plot) throw new NotFoundException('Talhão não encontrado nesta fazenda');
+    const existingLink = await this.prisma.tapperPlotTableLink.findFirst({
+      where: { companyId: dto.companyId, farmId: dto.farmId, plotId: dto.plotId, tappingTableId: dto.tappingTableId, active: true,
+        ...(dto.tapperId ? { tapperId: dto.tapperId } : { userId: dto.userId }) }, select: { id: true },
+    });
+    if (!existingLink) throw new BadRequestException('O auxiliar precisa possuir vínculo permanente com a tabela e o talhão');
+    const where: any = { plotId: dto.plotId, workDate: new Date(`${dto.workDate}T00:00:00.000Z`), tapperId: dto.tapperId ?? null, userId: dto.userId ?? null, tappingTableId: dto.tappingTableId, taskExtent: dto.taskExtent };
+    return this.prisma.tappingDailyAllocation.upsert({
+      where: { plotId_workDate_tapperId_userId_tappingTableId_taskExtent: where },
+      create: { ...where, companyId: dto.companyId, farmId: dto.farmId, active: true, createdById: userId, treesExpected: 0 },
+      update: { active: true, updatedAt: new Date() },
+    });
   }
 
   async createTappingRecord(userId: string, dto: CreateTappingRecordDto) {
@@ -121,6 +150,9 @@ export class OperationsService {
       }
     }
 
+    if (dto.farmId && dto.plotId && dto.tappingTableId && dto.taskExtent && dto.treesExpected == null) {
+      throw new BadRequestException('treesExpected é obrigatório quando a sangria possui talhão, tabela e tarefa');
+    }
     const parsed = parseTappingDate(date);
     const record = await this.prisma.tappingRecord.create({
       data: {
@@ -221,11 +253,12 @@ export class OperationsService {
     const current = await this.prisma.tappingRecord.findUnique({ where: { id } });
     if (!current || current.isDeleted) throw new NotFoundException();
     await this.access.ensureCompany(userId, current.companyId);
-    const { date, ...rest } = dto;
+    const { date, treesExpected, ...rest } = dto;
     return this.prisma.tappingRecord.update({
       where: { id },
       data: {
         ...rest,
+        ...(treesExpected !== undefined ? { treesExpected } : {}),
         ...(date ? { date: new Date(date) } : {}),
         updatedById: userId,
         version: { increment: 1 },
