@@ -230,9 +230,10 @@ function SangriaPage() {
     if (!tappingTableId) { toast.error("Selecione a tabela"); return; }
     if (!taskExtent) { toast.error("Selecione uma tarefa"); return; }
     if (dailyAllocation == null) { toast.error(allocationError ?? "A quantidade prevista ainda não foi calculada"); return; }
-    // treesExpected nulo = talhão sem total de árvores cadastrado. O backend
-    // exige a quantidade quando há talhão+tabela+tarefa; o monitor digita o
-    // valor no campo manual em vez de travar num erro de configuração.
+    // A previsão vem da produção do sangrador na tabela (treeCount do vínculo
+    // ÷ frequência). Sem treeCount cadastrado, o backend devolve nulo e o
+    // monitor pede a quantidade — o lançamento não pode ficar travado por
+    // uma configuração que é do admin.
     const manualValue = manualTrees.trim() ? Number(manualTrees) : null;
     if (dailyAllocation.treesExpected == null && (manualValue == null || Number.isNaN(manualValue) || manualValue < 0)) {
       toast.error("Informe a quantidade de árvores previstas");
@@ -377,10 +378,9 @@ function SangriaPage() {
         {table && (
           <div className="space-y-1 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
             <div className="flex items-center gap-2"><Trees className="h-4 w-4 text-primary" /><span className="text-muted-foreground">Árvores previstas nesta tarefa:</span><span className="font-semibold text-foreground">{allocationLoading ? "…" : dailyAllocation?.treesExpected ?? "—"}</span></div>
-            {dailyAllocation && <div className="text-xs text-muted-foreground">{dailyAllocation.plotTreeCount != null ? `${dailyAllocation.plotTreeCount.toLocaleString("pt-BR")} árvores cadastradas ÷ ` : ""}{dailyAllocation.tableCount} tabelas do dia ÷ {dailyAllocation.tapperCount} sangrador(es){taskExtent === "/" ? " ÷ 2 (meia tabela)" : ""}</div>}
+            {/* A conta é do sangrador: produção dele na tabela ÷ frequência.
+                Sem treeCount no vínculo, o operador informa a quantidade. */}
             {allocationError && <div className="text-xs text-destructive">{allocationError}</div>}
-            {/* Sem total de árvores no talhão, a previsão não pode ser
-                calculada — o operador informa a quantidade. */}
             {dailyAllocation?.treesExpected == null && (
               <div className="mt-2">
                 <Label className="mb-1 block text-xs font-medium text-muted-foreground">Árvores previstas (obrigatório)</Label>

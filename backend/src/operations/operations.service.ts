@@ -54,40 +54,31 @@ export class OperationsService {
     });
   }
 
+  // A capacidade é DO SANGRADOR, não do talhão: o treeCount do vínculo
+  // (TapperPlotTableLink) é a produção total dele naquela tabela — ex.: João
+  // faz 5.000 árvores somando as 5 tabelas dele. A estimativa diária é
+  // treeCount ÷ frequência da tabela (ciclo em dias). O total do talhão
+  // (plot.treeCount) não entra no cálculo — fica para relatório interno de
+  // confronto (soma das produções dos sangradores vs. árvores do talhão).
   async getDailyTreeAllocation(userId: string, opts: { companyId: string; farmId: string; plotId: string; tapperId?: string; userId?: string; tableId: string; taskExtent: string; date: string }) {
     await this.access.ensureCompany(userId, opts.companyId);
     if (Boolean(opts.tapperId) === Boolean(opts.userId)) throw new BadRequestException('Informe exatamente um identificador de sangrador');
     if (!opts.tableId || !opts.taskExtent || !opts.date) throw new BadRequestException('Tabela, tarefa e data são obrigatórias');
     const plot = await this.prisma.plot.findFirst({ where: { id: opts.plotId, companyId: opts.companyId, farmId: opts.farmId, isDeleted: false }, select: { treeCount: true } });
     if (!plot) throw new NotFoundException('Talhão não encontrado nesta fazenda');
-    const workDate = new Date(`${opts.date}T00:00:00.000Z`);
-    const links = await this.prisma.tapperPlotTableLink.findMany({
-      where: { companyId: opts.companyId, farmId: opts.farmId, plotId: opts.plotId, active: true },
-      select: { tapperId: true, userId: true, tappingTableId: true },
+    const key = opts.tapperId ? { tapperId: opts.tapperId } : { userId: opts.userId };
+    const link = await this.prisma.tapperPlotTableLink.findFirst({
+      where: { companyId: opts.companyId, farmId: opts.farmId, plotId: opts.plotId, tappingTableId: opts.tableId, active: true, ...key },
+      select: { treeCount: true, frequencyDays: true, tappingTable: { select: { frequencyDays: true } } },
     });
-    const daily = await this.prisma.tappingDailyAllocation.findMany({
-      where: { companyId: opts.companyId, farmId: opts.farmId, plotId: opts.plotId, workDate, active: true },
-      select: { tapperId: true, userId: true, tappingTableId: true },
-    });
-    const isSamePerson = (a: { tapperId: string | null; userId: string | null }, b: { tapperId?: string | null; userId?: string | null }) =>
-      Boolean(b.tapperId ? a.tapperId === b.tapperId : b.userId ? a.userId === b.userId : false);
-    const selectionLinked = links.some((l) => l.tappingTableId === opts.tableId && isSamePerson(l, opts)) || daily.some((l) => l.tappingTableId === opts.tableId && isSamePerson(l, opts));
-    if (!selectionLinked) throw new BadRequestException('Sangrador e tabela não possuem vínculo válido para este talhão');
-    const applicableDaily = daily.filter((a) => links.some((l) => l.tappingTableId === a.tappingTableId && isSamePerson(l, a)) || a.tappingTableId === opts.tableId);
-    const effective = [...links, ...applicableDaily];
-    const people = new Set(effective.map((l) => l.tapperId ? `t:${l.tapperId}` : l.userId ? `u:${l.userId}` : null).filter(Boolean));
-    const tables = new Set(effective.map((l) => l.tappingTableId));
-        // Sem o total de árvores do talhão não há como dividir a tarefa — e o
-    // total ainda é opcional no cadastro. Em vez de abortar (o que travava
-    // a tela do monitor num talhão sem árvores registradas), devolvemos a
-    // contagem de tabelas/sangradores e treesExpected nulo; a tela mostra
-    // "—" e o save aceita o lançamento com a quantidade digitada.
-    if (plot.treeCount == null || plot.treeCount < 1 || !tables.size || !people.size) {
-      return { date: opts.date, plotTreeCount: plot.treeCount ?? null, tableCount: tables.size, tapperCount: people.size, baseTrees: null, treesExpected: null, taskExtent: opts.taskExtent };
-    }
-    const base = Math.floor(plot.treeCount / tables.size / people.size);
+    if (!link) throw new BadRequestException('Sangrador e tabela não possuem vínculo válido para este talhão');
+    // Frequência: a do vínculo tem precedência; sem ela, a da tabela; sem
+    // ambas, 1 (produção total por execução — sem ciclo não há como dividir).
+    const frequency = link.frequencyDays ?? link.tappingTable?.frequencyDays ?? 1;
+    const tableTotal = link.treeCount ?? 0;
+    const base = frequency > 0 ? Math.floor(tableTotal / frequency) : tableTotal;
     const treesExpected = opts.taskExtent === '/' ? Math.floor(base / 2) : base;
-    return { date: opts.date, plotTreeCount: plot.treeCount, tableCount: tables.size, tapperCount: people.size, baseTrees: base, treesExpected, taskExtent: opts.taskExtent };
+    return { date: opts.date, plotTreeCount: plot.treeCount ?? null, tableCount: 1, tapperCount: 1, baseTrees: base, treesExpected, taskExtent: opts.taskExtent };
   }
 
   async upsertTappingDailyAllocation(userId: string, dto: UpsertTappingDailyAllocationDto) {

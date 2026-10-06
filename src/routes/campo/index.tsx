@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { getFieldMe, type FieldMe, type Coords, captureLocation, type FieldTapper, listFieldTappingTables, type FieldTappingTable } from "@/lib/field.functions";
+import { getFieldMe, type FieldMe, type Coords, captureLocation, type FieldTapper, listFieldTappers, listFieldTappingTables, type FieldTappingTable } from "@/lib/field.functions";
 import { toast } from "sonner";
 import { listTasks, categoryLabel, categoryStyle, type ScheduledTask } from "@/lib/agenda.functions";
 import { listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask } from "@/lib/sangrias.functions";
@@ -115,10 +115,9 @@ function FieldHome() {
   }, []);
 
   // Resumo de sangrias do período selecionado (mês civil, com navegação
-  // para meses anteriores). Os baldes saem dos REGISTROS, não do cadastro de
-  // sangradores: se a lista de tappers viesse vazia ou com nomes divergentes,
-  // tudo zerava mesmo com o histórico cheio. "Realizadas" é todo dia com
-  // registro — a tarefa vem do catálogo da empresa, nunca do código.
+  // para meses anteriores). "Previstas" = sangradores ativos × dias do mês
+  // (cada sangrador faz 1 sangria/dia). "Realizadas" = dias com registro.
+  // A tarefa vem do catálogo da empresa, nunca do código.
   useEffect(() => {
     const farms = me?.assignments ?? [];
     if (farms.length === 0) return;
@@ -128,7 +127,7 @@ function FieldHome() {
     (async () => {
       try {
         const cids = Array.from(new Set(farms.map((a) => a.farm.companyId)));
-        const [recordLists, taskLists, tableLists] = await Promise.all([
+        const [recordLists, taskLists, tableLists, tapperLists] = await Promise.all([
           // .catch por chamada: uma falha isolada zera só a parte dela, sem
           // derrubar o resumo inteiro. O erro é logado, não escondido.
           Promise.all(farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from, to })
@@ -137,6 +136,8 @@ function FieldHome() {
             .catch((e) => { console.error("[resumo] tarefas", cid, e); return [] as TappingTask[]; }))),
           Promise.all(cids.map((cid) => listFieldTappingTables(cid)
             .catch((e) => { console.error("[resumo] tabelas", cid, e); return [] as FieldTappingTable[]; }))),
+          Promise.all(farms.map((a) => listFieldTappers(a.farm.companyId, a.farm.id)
+            .catch((e) => { console.error("[resumo] sangradores", a.farm.id, e); return [] as FieldTapper[]; }))),
         ]);
         if (cancelled) return;
         // A API pode devolver algo que não é lista (null num 204, ou objeto
@@ -210,10 +211,15 @@ function FieldHome() {
           }
           return map;
         }, new Map<string, SangriaDay>());
-        // "Realizadas" = todo dia-sangrador com registro. A tarefa vem do
-        // catálogo da empresa e nunca é inferida do código.
+        // "Previstas" = sangradores ativos × dias do mês. Cada sangrador faz
+        // 1 sangria por dia. "Realizadas" = dias com registro.
+        const tappers = safe("os sangradores", () => tapperLists.flatMap(asList<FieldTapper>), [] as FieldTapper[]);
+        const daysInMonth = Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86400000) + 1;
+        const possibleCount = tappers.length * daysInMonth;
+        for (let i = 0; i < possibleCount; i++) {
+          summary.possible.push({} as SangriaDay);
+        }
         for (const day of byTapperDay.values()) {
-          summary.possible.push(day);
           summary.done.push(day);
         }
         if (!cancelled) setSangriaSummary(summary);
