@@ -28,6 +28,7 @@ function SangriaPage() {
 
   const [farmId, setFarmId] = useState("");
   const [tapperId, setTapperId] = useState("");
+  const [tablesError, setTablesError] = useState<string | null>(null);
   const [tappers, setTappers] = useState<FieldTapper[]>([]);
   const [plots, setPlots] = useState<Plot[]>([]);
   const [plotId, setPlotId] = useState("");
@@ -119,7 +120,7 @@ function SangriaPage() {
   // via o treeCount do próprio vínculo. Quando há rotação configurada, a
   // pré-seleção vem da sequência (próxima tabela do ciclo), não da lista.
   useEffect(() => {
-    setTappingTableId(""); setTables([]); setRotation(null); setPlotId("");
+    setTappingTableId(""); setTables([]); setRotation(null); setPlotId(""); setTablesError(null);
     if (!farm || !tapperId) return;
     setTablesLoading(true);
     Promise.all([
@@ -136,7 +137,14 @@ function SangriaPage() {
         if (suggested) setTappingTableId(suggested);
         else if (ts.length === 1) { setTappingTableId(ts[0].id); setPlotId(ts[0].plotId); }
       })
-      .catch(() => setTables([]))
+      .catch((error) => {
+        // Sem isto, qualquer falha de rede ou erro do servidor virava "nenhuma
+        // tabela vinculada" — mandava o monitor caçar no admin um vínculo que
+        // estava correto. Registra o motivo para o log e distingue os dois casos.
+        console.error("[sangria] falha ao carregar tabelas do sangrador", tapperId, error);
+        setTables([]);
+        setTablesError(error instanceof Error ? error.message : String(error?.message ?? error));
+      })
       .finally(() => setTablesLoading(false));
   }, [farm, tapperId]);
 
@@ -337,7 +345,9 @@ function SangriaPage() {
               </div>
             ) : tables.length === 0 ? (
               <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
-                Nenhuma tabela vinculada a este sangrador. Vincule em Sangradores &gt; Tabelas, no admin.
+                {tablesError
+                  ? <>Não foi possível carregar as tabelas deste sangrador. Detalhe: {tablesError}</>
+                  : <>Nenhuma tabela vinculada a este sangrador. No admin, abra Sangradores, clique no nome e use <strong>Talhões e tabelas</strong> para escolher o talhão e as tabelas.</>}
               </div>
             ) : (
               <Select value={tappingTableId} onValueChange={selectTable}>

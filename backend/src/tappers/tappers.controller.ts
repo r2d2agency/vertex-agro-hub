@@ -72,7 +72,11 @@ export class TappersController {
   // mesma fazenda do sangrador também pode gerenciar — TappersService
   // (ensureManagerOrFarmStaff) valida isso.
   @Get('plot-table-links')
-  listPlotTableLinks(@Req() req: any, @Query('companyId', ParseUUIDPipe) companyId: string, @Query('tapperKey') tapperKey: string, @Query('plotId', ParseUUIDPipe) plotId?: string) {
+  // plotId é opcional no service (o app de campo pede a lista inteira do
+  // sangrador, sem talhão). O ParseUUIDPipe sem { optional: true } validava
+  // mesmo assim e devolvia 400 "value passed as UUID is not a string",
+  // engolido pelo catch do cliente — que aí mostrava "sem tabela vinculada".
+  listPlotTableLinks(@Req() req: any, @Query('companyId', ParseUUIDPipe) companyId: string, @Query('tapperKey') tapperKey: string, @Query('plotId', new ParseUUIDPipe({ optional: true })) plotId?: string) {
     return this.svc.listPlotTableLinks(req.user.sub, companyId, tapperKey, plotId);
   }
 
