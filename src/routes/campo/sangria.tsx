@@ -363,7 +363,7 @@ function SangriaPage() {
         {table && (
           <div className="space-y-1 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
             <div className="flex items-center gap-2"><Trees className="h-4 w-4 text-primary" /><span className="text-muted-foreground">Árvores previstas nesta tarefa:</span><span className="font-semibold text-foreground">{allocationLoading ? "…" : dailyAllocation?.treesExpected ?? "—"}</span></div>
-            {dailyAllocation && <div className="text-xs text-muted-foreground">{dailyAllocation.plotTreeCount.toLocaleString("pt-BR")} árvores do talhão ÷ {dailyAllocation.tableCount} tabelas do dia ÷ {dailyAllocation.tapperCount} sangrador(es) do dia{taskExtent === "/" ? " ÷ 2 (meia tabela)" : ""}</div>}
+            {dailyAllocation && <div className="text-xs text-muted-foreground">{dailyAllocation.plotTreeCount != null ? `${dailyAllocation.plotTreeCount.toLocaleString("pt-BR")} árvores cadastradas ÷ ` : ""}{dailyAllocation.tableCount} tabelas do dia ÷ {dailyAllocation.tapperCount} sangrador(es){taskExtent === "/" ? " ÷ 2 (meia tabela)" : ""}</div>}
             {allocationError && <div className="text-xs text-destructive">{allocationError}</div>}
           </div>
         )}
