@@ -79,7 +79,6 @@ function SangriaPage() {
     const plot = plots.find((p) => p.id === id);
     return plot ? (plot.code ? `${plot.code} · ${plot.name}` : plot.name) : "";
   };
-  const selectedPlot = useMemo(() => plots.find((p) => p.id === table?.plotId), [plots, table]);
   // Escolher a tabela traz o talhão junto. É o único jeito de o talhão ser
   // preenchido agora — por isso grava também no registro (ver save()).
   function selectTable(tableId: string) {
@@ -133,9 +132,18 @@ function SangriaPage() {
         setTables(ts.map((t) => ({ id: t.tappingTable?.id ?? t.tappingTableId, name: t.tappingTable?.name ?? "Tabela", notation: t.tappingTable?.notation ?? null, treeCount: t.treeCount ?? null, plotId: t.plotId } as FieldTapperTable)));
         setRotation(rot);
         setRotationAnchorTableId(rot?.needsReset ? (rot.rotation?.anchorTableId ?? ts[0]?.tappingTable?.id ?? ts[0]?.tappingTableId ?? "") : "");
+        // Toda seleção de tabela traz o talhão junto, inclusive a pré-seleção da
+        // rotação: antes só o id da tabela era preenchido, então a tela
+        // mostrava "Sequência de hoje: D" com o campo Talhão vazio e o save
+        // caia no guard "Selecione a tabela (o talhão vem dela)".
+        const withPlot = (tableId: string) => {
+          const link = ts.find((l) => (l.tappingTable?.id ?? l.tappingTableId) === tableId);
+          setTappingTableId(tableId);
+          setPlotId(link?.plotId ?? "");
+        };
         const suggested = rot && !rot.needsReset && rot.suggestedTableId;
-        if (suggested) setTappingTableId(suggested);
-        else if (ts.length === 1) { setTappingTableId(ts[0].id); setPlotId(ts[0].plotId); }
+        if (suggested) withPlot(suggested);
+        else if (ts.length === 1) withPlot(ts[0].id);
       })
       .catch((error) => {
         // Sem isto, qualquer falha de rede ou erro do servidor virava "nenhuma
@@ -307,15 +315,8 @@ function SangriaPage() {
             </Select>
           )}
         </Field>
-        {tapperId && tappingTableId && (
-          <Field label="Talhão">
-            {/*derivado da tabela escolhida: informação para o monitor, não uma escolha*/}
-            <div className="flex h-11 items-center rounded-xl border border-primary/30 bg-primary/5 px-3 text-sm font-medium text-foreground">
-              {selectedPlot?.name ? `${selectedPlot.name}${selectedPlot.code ? ` — ${selectedPlot.code}` : ""}` : "—"}
-              {selectedPlot?.treeCount ? ` (${selectedPlot.treeCount.toLocaleString("pt-BR")} árvores)` : ""}
-            </div>
-          </Field>
-        )}
+        {/* O talhão é derivado da tabela e o monitor não precisa vê-lo — o campo
+            sumiu da tela, mas continua sendo gravado no registro (save() usa plotId). */}
         {tapperId && tables.length > 0 && rotation && !rotation.needsReset && rotation.suggestedTableId && (
           <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
             <Repeat className="h-4 w-4 text-primary" />
