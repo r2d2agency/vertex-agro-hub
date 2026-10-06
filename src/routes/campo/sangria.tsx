@@ -225,6 +225,10 @@ function SangriaPage() {
     if (!tappingTableId) { toast.error("Selecione a tabela"); return; }
     if (!taskExtent) { toast.error("Selecione uma tarefa"); return; }
     if (dailyAllocation == null) { toast.error(allocationError ?? "A quantidade prevista ainda não foi calculada"); return; }
+    // treesExpected nulo = talhão sem total de árvores cadastrado. O
+    // lançamento segue válido: o registro grava sem previsão em vez de
+    // travar o monitor num erro de configuração que é do admin resolver.
+    const treesExpected = dailyAllocation.treesExpected ?? null;
     if (isDivergent && !confirmDivergence) {
       toast.warning(`A tabela selecionada (${selectedTable?.name ?? "—"}) é diferente da tabela do dia (${expectedTable?.name ?? "—"}). Confirme para continuar.`);
       return;
@@ -243,7 +247,7 @@ function SangriaPage() {
         tapperId: tapper.id.startsWith("rh:") ? undefined : tapper.id,
         taskExtent,
         endPeriod: endPeriod || undefined,
-        treesExpected: dailyAllocation.treesExpected,
+        treesExpected,
         notes: notes.trim() || undefined,
         photoUrls: photoUrls.length ? photoUrls : undefined,
         audioUrl: audioUrl || undefined,

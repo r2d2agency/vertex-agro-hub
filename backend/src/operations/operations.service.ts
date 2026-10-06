@@ -77,7 +77,14 @@ export class OperationsService {
     const effective = [...links, ...applicableDaily];
     const people = new Set(effective.map((l) => l.tapperId ? `t:${l.tapperId}` : l.userId ? `u:${l.userId}` : null).filter(Boolean));
     const tables = new Set(effective.map((l) => l.tappingTableId));
-    if (plot.treeCount == null || plot.treeCount < 1 || !tables.size || !people.size) throw new BadRequestException('Dados de árvores, tabelas ou sangradores insuficientes para calcular');
+        // Sem o total de árvores do talhão não há como dividir a tarefa — e o
+    // total ainda é opcional no cadastro. Em vez de abortar (o que travava
+    // a tela do monitor num talhão sem árvores registradas), devolvemos a
+    // contagem de tabelas/sangradores e treesExpected nulo; a tela mostra
+    // "—" e o save aceita o lançamento com a quantidade digitada.
+    if (plot.treeCount == null || plot.treeCount < 1 || !tables.size || !people.size) {
+      return { date: opts.date, plotTreeCount: plot.treeCount ?? null, tableCount: tables.size, tapperCount: people.size, baseTrees: null, treesExpected: null, taskExtent: opts.taskExtent };
+    }
     const base = Math.floor(plot.treeCount / tables.size / people.size);
     const treesExpected = opts.taskExtent === '/' ? Math.floor(base / 2) : base;
     return { date: opts.date, plotTreeCount: plot.treeCount, tableCount: tables.size, tapperCount: people.size, baseTrees: base, treesExpected, taskExtent: opts.taskExtent };

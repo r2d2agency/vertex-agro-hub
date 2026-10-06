@@ -17,7 +17,7 @@ export const TASK_EXTENTS = [
   { value: "1", label: "Reposição (1)" },
 ] as const;
 
-export type DailyTreeAllocation = { date: string; plotTreeCount: number; tableCount: number; tapperCount: number; baseTrees: number; treesExpected: number; taskExtent: string };
+export type DailyTreeAllocation = { date: string; plotTreeCount: number | null; tableCount: number; tapperCount: number; baseTrees: number | null; treesExpected: number | null; taskExtent: string };
 
 export function getDailyTreeAllocation(input: { companyId: string; farmId: string; plotId: string; tapperId?: string; userId?: string; tableId: string; taskExtent: string; date: string }) {
   const qs = new URLSearchParams(Object.entries(input).filter(([, value]) => value != null) as [string, string][]);
