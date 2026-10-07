@@ -589,7 +589,7 @@ function DailySangriaDialog({
 
   return (
     <Dialog open={!!category} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+      <DialogContent className="max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{category ? CATEGORY_LABEL[category] : "Sangrias"}</DialogTitle>
           <p className="text-xs text-muted-foreground">{monthLabel(monthOffset)}</p>
@@ -734,7 +734,7 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
 
   return (
     <Dialog open={!!day} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[80dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{day?.tapper.fullName ?? "Sangrador"}</DialogTitle>
           {day && <p className="text-xs text-muted-foreground">Tocado em {new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}{(() => { const stamp = day.records.find((r) => r.recordedAt)?.recordedAt; if (!stamp) return ""; const at = new Date(stamp); return Number.isNaN(at.getTime()) ? "" : ` · ${at.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`; })()}</p>}
