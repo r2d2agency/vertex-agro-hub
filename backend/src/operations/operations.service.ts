@@ -69,12 +69,17 @@ export class OperationsService {
     const key = opts.tapperId ? { tapperId: opts.tapperId } : { userId: opts.userId };
     const link = await this.prisma.tapperPlotTableLink.findFirst({
       where: { companyId: opts.companyId, farmId: opts.farmId, plotId: opts.plotId, tappingTableId: opts.tableId, active: true, ...key },
-      select: { treeCount: true, frequencyDays: true, tappingTable: { select: { frequencyDays: true } } },
+      select: { treeCount: true, tappingTableId: true },
     });
     if (!link) throw new BadRequestException('Sangrador e tabela não possuem vínculo válido para este talhão');
-    // Frequência: a do vínculo tem precedência; sem ela, a da tabela; sem
-    // ambas, 1 (produção total por execução — sem ciclo não há como dividir).
-    const frequency = link.frequencyDays ?? link.tappingTable?.frequencyDays ?? 1;
+    // Busca a tabela para obter a frequência (ciclo em dias)
+    const table = await this.prisma.tappingTable.findFirst({
+      where: { id: link.tappingTableId, companyId: opts.companyId },
+      select: { frequencyDays: true },
+    });
+    // Frequência: vem da tabela; sem ela, 1 (produção total por execução —
+    // sem ciclo não há como dividir).
+    const frequency = table?.frequencyDays ?? 1;
     const tableTotal = link.treeCount ?? 0;
     const base = frequency > 0 ? Math.floor(tableTotal / frequency) : tableTotal;
     const treesExpected = opts.taskExtent === '/' ? Math.floor(base / 2) : base;
