@@ -62,6 +62,19 @@ const PERIOD_OPTIONS = [
   { value: "mes", label: "Últimos 30 dias", days: 30 },
 ] as const;
 
+// Data segura: se o valor for inválido, retorna "" em vez de "Invalid Date".
+function safeDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// Formata data ISO (YYYY-MM-DD) para exibição, com fallback seguro.
+function formatDayDate(date: string | null | undefined): string {
+  const d = safeDate(`${date}T00:00:00`);
+  return d ? d.toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "";
+}
+
 export const Route = createFileRoute("/campo/")({ component: FieldHome });
 
 function FieldHome() {
@@ -649,7 +662,7 @@ function DailySangriaDialog({
                     esquerda, sem a data competindo com ele por espaço. */}
                 <span className="flex shrink-0 flex-col items-end gap-1">
                   <span className="text-right text-[11px] leading-tight text-muted-foreground">
-                    <span className="block">{new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</span>
+                    <span className="block">{formatDayDate(day.date)}</span>
                     {timeFor(day) ? <span className="block">{timeFor(day)}</span> : null}
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -737,7 +750,7 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
       <DialogContent className="max-w-lg max-h-[80dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{day?.tapper.fullName ?? "Sangrador"}</DialogTitle>
-          {day && <p className="text-xs text-muted-foreground">Tocado em {new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}{(() => { const stamp = day.records.find((r) => r.recordedAt)?.recordedAt; if (!stamp) return ""; const at = new Date(stamp); return Number.isNaN(at.getTime()) ? "" : ` · ${at.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`; })()}</p>}
+          {day && <p className="text-xs text-muted-foreground">Tocado em {formatDayDate(day.date)}{(() => { const stamp = day.records.find((r) => r.recordedAt)?.recordedAt; if (!stamp) return ""; const at = new Date(stamp); return Number.isNaN(at.getTime()) ? "" : ` · ${at.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`; })()}</p>}
         </DialogHeader>
         <div className="grid grid-cols-4 gap-2">
           {PERIOD_OPTIONS.map((option) => <button key={option.value} type="button" onClick={() => setPeriod(option.value)} className={`rounded-lg border px-2 py-2 text-xs font-medium ${period === option.value ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>{option.label}</button>)}
@@ -763,7 +776,7 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
                         <div className="text-xs font-medium">{task.label}</div>
                         {lastRecord && (
                           <div className="text-[10px] text-muted-foreground mt-0.5">
-                            {new Date(`${lastRecord.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+                            {formatDayDate(lastRecord.date)}
                           </div>
                         )}
                       </div>
@@ -791,7 +804,7 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
                         )}
                         {lastRecord && (
                           <div className="text-[10px] text-muted-foreground mt-0.5">
-                            {new Date(`${lastRecord.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+                            {formatDayDate(lastRecord.date)}
                           </div>
                         )}
                       </div>
