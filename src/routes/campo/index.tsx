@@ -366,11 +366,10 @@ function FieldHome() {
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <SummaryCell value={sangriaSummary.possible.length} label="Previstas" tone="muted" onClick={() => setSangriaDetail("possible")} />
           <SummaryCell value={sangriaSummary.done.length} label="Realizadas" tone="primary" onClick={() => setSangriaDetail("done")} />
           <SummaryCell value={sangriaSummary.overdue.length} label="Atrasadas" tone="destructive" onClick={() => setSangriaDetail("overdue")} />
-          <SummaryCell value={sangriaSummary.completed.length} label="Concluídas" tone="primary" onClick={() => setSangriaDetail("completed")} />
           <SummaryCell value={sangriaSummary.early.length} label="Antecipadas" tone="warning" onClick={() => setSangriaDetail("early")} />
         </div>
         {sangriaSummary.possible.length > 0 && (
