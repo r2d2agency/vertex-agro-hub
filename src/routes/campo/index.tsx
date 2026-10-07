@@ -22,7 +22,7 @@ const QUICK_ACTIONS: Array<{ to: string; label: string; emoji: string; roles?: s
   { to: "/campo/operacao-maquina", label: "Operação de máquina", emoji: "🚜" },
 ];
 
-type SangriaCategory = "possible" | "done" | "overdue" | "completed" | "early";
+type SangriaCategory = "possible" | "done" | "overdue" | "early";
 // Um "dia-sangrador": a mesma pessoa pode aparecer em mais de um balde
 // no mesmo período, com um item por dia trabalhado. No modo diário o
 // período tem 1 dia, então o comportamento é idêntico ao anterior.
@@ -39,7 +39,6 @@ const CATEGORY_LABEL: Record<SangriaCategory, string> = {
   possible: "Sangrias previstas",
   done: "Sangrias realizadas",
   overdue: "Sangrias atrasadas",
-  completed: "Sangrias concluídas",
   early: "Sangrias antecipadas",
 };
 
@@ -68,7 +67,7 @@ function FieldHome() {
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
   const [checkinSheetOpen, setCheckinSheetOpen] = useState(false);
   const [checkinCoords, setCheckinCoords] = useState<Coords | null>(null);
-  const [sangriaSummary, setSangriaSummary] = useState<SangriaSummary>({ possible: [], done: [], overdue: [], completed: [], early: [] });
+  const [sangriaSummary, setSangriaSummary] = useState<SangriaSummary>({ possible: [], done: [], overdue: [], early: [] });
   // `${companyId}:${code}` → nome da tarefa, para exibir rótulo em vez de código.
   const [taskNames, setTaskNames] = useState<Map<string, string>>(new Map());
   // companyId → (tableId → nome), para mostrar o nome da tabela no detalhe.
@@ -123,7 +122,6 @@ function FieldHome() {
   // "Previstas" = sangradores ativos × dias do período (cada sangrador faz 1 sangria/dia).
   // "Realizadas" = dias com registro.
   // "Atrasadas" = previstas que passaram e não foram realizadas.
-  // "Concluídas" = realizadas com status "concluida".
   // "Antecipadas" = realizadas antes do dia previsto.
   // A tarefa vem do catálogo da empresa, nunca do código.
   useEffect(() => {
@@ -136,7 +134,7 @@ function FieldHome() {
     const today = getLocalIsoDate();
 
     let cancelled = false;
-    setSangriaSummary({ possible: [], done: [], overdue: [], completed: [], early: [] });
+    setSangriaSummary({ possible: [], done: [], overdue: [], early: [] });
     (async () => {
       try {
         const cids = Array.from(new Set(farms.map((a) => a.farm.companyId)));
@@ -194,7 +192,7 @@ function FieldHome() {
           return map;
         }, new Map<string, Map<string, string>>());
         setTableNames(tables);
-        const summary: SangriaSummary = { possible: [], done: [], overdue: [], completed: [], early: [] };
+        const summary: SangriaSummary = { possible: [], done: [], overdue: [], early: [] };
         // Chave: sangrador + fazenda + data. Nomes gravados sem acento ou
         // com caixa diferente ainda casam, porque a comparação ignora ambos.
         const byTapperDay = safe("o agrupamento por dia", () => {
