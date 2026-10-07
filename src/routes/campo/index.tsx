@@ -51,6 +51,10 @@ const TASK_LABEL: Record<string, string> = {
   "1": "Reposição",
 };
 
+// Rótulo dos cards de prevista que ainda não têm registro. Precisa ser o
+// mesmo valor usado no filtro de tarefa, senão o select os esconderia.
+const TO_DO_LABEL = "A fazer";
+
 const PERIOD_OPTIONS = [
   { value: "hoje", label: "Hoje", days: 1 },
   { value: "semana", label: "Últimos 7 dias", days: 7 },
@@ -258,12 +262,17 @@ function FieldHome() {
           }
         }
         for (const day of possibleDays) {
-          summary.possible.push(day);
+          // "Previstas" = o que ainda NÃO foi feito. O que já tem registro é
+          // "Realizada" e não pode aparecer aqui — senão a aba mostrava o
+          // histórico do dia em vez da pendência.
           if (day.records.length > 0) {
             summary.done.push(day);
-          } else if (day.date < today) {
-            // Atrasada: passou e não foi realizada.
-            summary.overdue.push(day);
+          } else {
+            summary.possible.push(day);
+            if (day.date < today) {
+              // Atrasada: passou e não foi realizada.
+              summary.overdue.push(day);
+            }
           }
           if (day.date < today) {
             summary.early.push(day);
@@ -535,10 +544,18 @@ function DailySangriaDialog({
     if (Number.isNaN(at.getTime())) return "";
     return at.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   };
-  // Tarefas oferecidas no filtro: as que aparecem no balde aberto.
+  // Tarefas oferecidas no filtro: as que aparecem no balde aberto. Cards sem
+  // registro ("a fazer") entram como "A fazer", senão o filtro por tarefa
+  // os esconderia — não há tarefa realizada neles para casar.
   const taskOptions = useMemo(() => {
     const seen = new Set<string>();
-    for (const day of list) for (const record of day.records ?? []) seen.add(labelFor(record));
+    for (const day of list) {
+      if ((day.records ?? []).length === 0) {
+        seen.add(TO_DO_LABEL);
+      } else {
+        for (const record of day.records ?? []) seen.add(labelFor(record));
+      }
+    }
     return [...seen].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [list, taskNames]);
   // Opções do select: só quem aparece no balde aberto, deduplicado.
@@ -552,8 +569,15 @@ function DailySangriaDialog({
   }, [list]);
   const filtered = list.filter((day) => {
     if (tapperFilter !== "all" && day.tapper?.fullName?.trim().toLowerCase() !== tapperFilter) return false;
-    // Um dia aparece se ao menos um dos registros casar com a tarefa.
-    if (taskFilter !== "all" && !(day.records ?? []).some((record) => labelFor(record) === taskFilter)) return false;
+    // Um dia aparece se ao menos um dos registros casar com a tarefa. Cards
+    // sem registro só casam com "A fazer" — não há tarefa realizada neles.
+    if (taskFilter !== "all") {
+      const isToDo = (day.records ?? []).length === 0;
+      const matches = isToDo
+        ? taskFilter === TO_DO_LABEL
+        : (day.records ?? []).some((record) => labelFor(record) === taskFilter);
+      if (!matches) return false;
+    }
     return day.tapper?.fullName?.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()) ?? false;
   });
   // Data decrescente: o mais recente do período primeiro.
@@ -614,6 +638,12 @@ function DailySangriaDialog({
                       {record.tappingTableId ? ` · ${tableName(record)}` : ""}
                     </span>
                   ))}
+                  {/* Sem registro não há tabela feita: mostra a pendência. */}
+                  {(day.records ?? []).length === 0 && (
+                    <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                      A fazer
+                    </span>
+                  )}
                 </span>
                 {/* Data/hora empilhadas acima do chevron: o nome fica sozinho à
                     esquerda, sem a data competindo com ele por espaço. */}
