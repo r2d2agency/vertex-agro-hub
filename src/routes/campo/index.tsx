@@ -22,7 +22,7 @@ const QUICK_ACTIONS: Array<{ to: string; label: string; emoji: string; roles?: s
   { to: "/campo/operacao-maquina", label: "Operação de máquina", emoji: "🚜" },
 ];
 
-type SangriaCategory = "possible" | "done";
+type SangriaCategory = "possible" | "done" | "overdue" | "completed" | "early";
 // Um "dia-sangrador": a mesma pessoa pode aparecer em mais de um balde
 // no mesmo período, com um item por dia trabalhado. No modo diário o
 // período tem 1 dia, então o comportamento é idêntico ao anterior.
@@ -38,6 +38,9 @@ type SangriaSummary = Record<SangriaCategory, SangriaDay[]>;
 const CATEGORY_LABEL: Record<SangriaCategory, string> = {
   possible: "Sangrias previstas",
   done: "Sangrias realizadas",
+  overdue: "Sangrias atrasadas",
+  completed: "Sangrias concluídas",
+  early: "Sangrias antecipadas",
 };
 
 // Nomes das tarefas (catálogo por empresa). Uma sangria é classificada pelo
@@ -65,7 +68,7 @@ function FieldHome() {
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
   const [checkinSheetOpen, setCheckinSheetOpen] = useState(false);
   const [checkinCoords, setCheckinCoords] = useState<Coords | null>(null);
-  const [sangriaSummary, setSangriaSummary] = useState<SangriaSummary>({ possible: [], done: [] });
+  const [sangriaSummary, setSangriaSummary] = useState<SangriaSummary>({ possible: [], done: [], overdue: [], completed: [], early: [] });
   // `${companyId}:${code}` → nome da tarefa, para exibir rótulo em vez de código.
   const [taskNames, setTaskNames] = useState<Map<string, string>>(new Map());
   // companyId → (tableId → nome), para mostrar o nome da tabela no detalhe.
@@ -119,6 +122,9 @@ function FieldHome() {
   // Resumo de sangrias do período selecionado (hoje, 7 dias, 15 dias, 30 dias).
   // "Previstas" = sangradores ativos × dias do período (cada sangrador faz 1 sangria/dia).
   // "Realizadas" = dias com registro.
+  // "Atrasadas" = previstas que passaram e não foram realizadas.
+  // "Concluídas" = realizadas com status "concluida".
+  // "Antecipadas" = realizadas antes do dia previsto.
   // A tarefa vem do catálogo da empresa, nunca do código.
   useEffect(() => {
     const farms = me?.assignments ?? [];
@@ -127,9 +133,10 @@ function FieldHome() {
     const option = PERIOD_OPTIONS.find((item) => item.value === period)!;
     const to = getLocalIsoDate();
     const from = getLocalIsoDate(new Date(Date.now() - (option.days - 1) * 86400000));
+    const today = getLocalIsoDate();
 
     let cancelled = false;
-    setSangriaSummary({ possible: [], done: [] });
+    setSangriaSummary({ possible: [], done: [], overdue: [], completed: [], early: [] });
     (async () => {
       try {
         const cids = Array.from(new Set(farms.map((a) => a.farm.companyId)));
@@ -187,7 +194,7 @@ function FieldHome() {
           return map;
         }, new Map<string, Map<string, string>>());
         setTableNames(tables);
-        const summary: SangriaSummary = { possible: [], done: [] };
+        const summary: SangriaSummary = { possible: [], done: [], overdue: [], completed: [], early: [] };
         // Chave: sangrador + fazenda + data. Nomes gravados sem acento ou
         // com caixa diferente ainda casam, porque a comparação ignora ambos.
         const byTapperDay = safe("o agrupamento por dia", () => {
@@ -225,8 +232,38 @@ function FieldHome() {
         for (let i = 0; i < possibleCount; i++) {
           summary.possible.push({} as SangriaDay);
         }
+        // Classifica cada dia realizado
         for (const day of byTapperDay.values()) {
           summary.done.push(day);
+          const isCompleted = day.records.some((r) => r.status === "concluida");
+          const isEarly = day.date < today;
+          if (isCompleted) {
+            summary.completed.push(day);
+          }
+          if (isEarly) {
+            summary.early.push(day);
+          }
+        }
+        // Atrasadas: previstas que passaram e não foram realizadas
+        // (dias do período que já passaram e não têm registro)
+        const realizedKeys = new Set(byTapperDay.keys());
+        for (let i = 0; i < possibleCount; i++) {
+          const dayIndex = i % daysInMonth;
+          const tapperIndex = Math.floor(i / daysInMonth);
+          const tapper = tappers[tapperIndex];
+          if (!tapper) continue;
+          const date = getLocalIsoDate(new Date(`${from}T00:00:00`).getTime() + dayIndex * 86400000);
+          if (date >= today) continue; // Só conta dias que já passaram
+          const key = `:${tapper.fullName.toLowerCase()}:${date}`;
+          if (!realizedKeys.has(key)) {
+            summary.overdue.push({
+              tapper,
+              farmId: "",
+              companyId: "",
+              date,
+              records: [],
+            });
+          }
         }
         if (!cancelled) setSangriaSummary(summary);
       } catch (error) {
@@ -331,9 +368,12 @@ function FieldHome() {
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <SummaryCell value={sangriaSummary.possible.length} label="Previstas" tone="muted" onClick={() => setSangriaDetail("possible")} />
           <SummaryCell value={sangriaSummary.done.length} label="Realizadas" tone="primary" onClick={() => setSangriaDetail("done")} />
+          <SummaryCell value={sangriaSummary.overdue.length} label="Atrasadas" tone="destructive" onClick={() => setSangriaDetail("overdue")} />
+          <SummaryCell value={sangriaSummary.completed.length} label="Concluídas" tone="primary" onClick={() => setSangriaDetail("completed")} />
+          <SummaryCell value={sangriaSummary.early.length} label="Antecipadas" tone="warning" onClick={() => setSangriaDetail("early")} />
         </div>
         {sangriaSummary.possible.length > 0 && (
           <p className="mt-2 text-[11px] text-muted-foreground">
