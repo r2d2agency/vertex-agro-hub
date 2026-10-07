@@ -679,6 +679,7 @@ function DailySangriaDialog({
 
 function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: () => void }) {
   const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("mes");
+  const [monthOffset, setMonthOffset] = useState(0);
   const [records, setRecords] = useState<TappingRecord[]>([]);
   const [tasks, setTasks] = useState<TappingTask[]>([]);
   const [tables, setTables] = useState<FieldTapperTable[]>([]);
@@ -754,6 +755,16 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
         </DialogHeader>
         <div className="grid grid-cols-4 gap-2">
           {PERIOD_OPTIONS.map((option) => <button key={option.value} type="button" onClick={() => setPeriod(option.value)} className={`rounded-lg border px-2 py-2 text-xs font-medium ${period === option.value ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>{option.label}</button>)}
+        </div>
+        {/* Navegação por mês: permite ver o histórico de sangrias do sangrador em meses anteriores. */}
+        <div className="flex items-center justify-between gap-2">
+          <button type="button" onClick={() => setMonthOffset((v) => v - 1)} className="rounded-lg border border-border/60 p-2 text-muted-foreground hover:border-primary/60 hover:text-primary" aria-label="Mês anterior">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="text-xs font-medium text-muted-foreground">{monthLabel(monthOffset)}</span>
+          <button type="button" onClick={() => setMonthOffset((v) => v + 1)} className="rounded-lg border border-border/60 p-2 text-muted-foreground hover:border-primary/60 hover:text-primary" aria-label="Próximo mês">
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
         <div className="rounded-lg border border-border/60 bg-card px-3 py-2 text-xs text-muted-foreground">
           Total de árvores previstas: <span className="font-semibold text-foreground">{totalTrees ?? "—"}</span>
