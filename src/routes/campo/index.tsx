@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { getFieldMe, type FieldMe, type Coords, captureLocation, type FieldTapper, listFieldTappers, listFieldTappingTables, type FieldTappingTable } from "@/lib/field.functions";
+import { getFieldMe, type FieldMe, type Coords, captureLocation, type FieldTapper, listFieldTappers, listFieldTappingTables, type FieldTappingTable, listFieldTapperTables, type FieldTapperTable } from "@/lib/field.functions";
 import { toast } from "sonner";
 import { listTasks, categoryLabel, categoryStyle, type ScheduledTask } from "@/lib/agenda.functions";
 import { listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask } from "@/lib/sangrias.functions";
@@ -222,45 +222,51 @@ function FieldHome() {
           }
           return map;
         }, new Map<string, SangriaDay>());
-        // "Previstas" = sangradores ativos × dias do mês. Cada sangrador faz
+        // "Previstas" = sangradores ativos × dias do período. Cada sangrador faz
         // 1 sangria por dia. "Realizadas" = dias com registro.
-        const tappers = safe("os sangradores", () => tapperLists.flatMap(asList<FieldTapper>), [] as FieldTapper[]);
-        const daysInMonth = Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86400000) + 1;
-        const possibleCount = tappers.length * daysInMonth;
-        for (let i = 0; i < possibleCount; i++) {
-          summary.possible.push({} as SangriaDay);
-        }
-        // Classifica cada dia realizado
-        for (const day of byTapperDay.values()) {
-          summary.done.push(day);
-          const isCompleted = day.records.some((r) => r.status === "concluida");
-          const isEarly = day.date < today;
-          if (isCompleted) {
-            summary.completed.push(day);
+        const daysInPeriod = Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86400000) + 1;
+        // tapperLists vem na mesma ordem de farms (uma chamada por fazenda),
+        // então o zip é seguro e cada sangrador só prevê dia na sua fazenda.
+        const tappersByFarm = farms.map((farm, index) => ({
+          farm,
+          tappers: asList<FieldTapper>(tapperLists[index]),
+        }));
+        // A chave tem que casar com a do agrupamento: fazenda + nome sem
+        // acento/caixa + data. Sem a fazenda, o nome de um sangrador que
+        // trabalha em duas fazendas casava com o registro errado e o dia
+        // aparecia como realizado (ou atrasado) na fazenda errada.
+        const normalize = (value: string) => value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+        // Um item por (fazenda, sangrador, dia) — inclusive os já realizados.
+        // Antes os realizados entravam só em "done" e os vazios só em
+        // "overdue", então a aba "Previstas" mostrava uma lista de cards
+        // vazios e o total não fechava com a soma das outras abas.
+        const possibleDays: SangriaDay[] = [];
+        for (const { farm, tappers } of tappersByFarm) {
+          for (const tapper of tappers) {
+            for (let dayIndex = 0; dayIndex < daysInPeriod; dayIndex++) {
+              const date = getLocalIsoDate(new Date(new Date(`${from}T00:00:00`).getTime() + dayIndex * 86400000));
+              const key = `${farm.farm.id}:${normalize(tapper.fullName)}:${date}`;
+              const realized = byTapperDay.get(key);
+              possibleDays.push({
+                tapper,
+                farmId: farm.farm.id,
+                companyId: farm.farm.companyId,
+                date,
+                records: realized ? realized.records : [],
+              });
+            }
           }
-          if (isEarly) {
+        }
+        for (const day of possibleDays) {
+          summary.possible.push(day);
+          if (day.records.length > 0) {
+            summary.done.push(day);
+          } else if (day.date < today) {
+            // Atrasada: passou e não foi realizada.
+            summary.overdue.push(day);
+          }
+          if (day.date < today) {
             summary.early.push(day);
-          }
-        }
-        // Atrasadas: previstas que passaram e não foram realizadas
-        // (dias do período que já passaram e não têm registro)
-        const realizedKeys = new Set(byTapperDay.keys());
-        for (let i = 0; i < possibleCount; i++) {
-          const dayIndex = i % daysInMonth;
-          const tapperIndex = Math.floor(i / daysInMonth);
-          const tapper = tappers[tapperIndex];
-          if (!tapper) continue;
-          const date = getLocalIsoDate(new Date(`${from}T00:00:00`).getTime() + dayIndex * 86400000);
-          if (date >= today) continue; // Só conta dias que já passaram
-          const key = `:${tapper.fullName.toLowerCase()}:${date}`;
-          if (!realizedKeys.has(key)) {
-            summary.overdue.push({
-              tapper,
-              farmId: "",
-              companyId: "",
-              date,
-              records: [],
-            });
           }
         }
         if (!cancelled) setSangriaSummary(summary);
@@ -632,14 +638,16 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
   const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("mes");
   const [records, setRecords] = useState<TappingRecord[]>([]);
   const [tasks, setTasks] = useState<TappingTask[]>([]);
-  const [tables, setTables] = useState<FieldTappingTable[]>([]);
+  const [tables, setTables] = useState<FieldTapperTable[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!day) return;
     const option = PERIOD_OPTIONS.find((item) => item.value === period)!;
     const to = getLocalIsoDate();
-    const from = getLocalIsoDate(new Date(Date.now() - (option.days - 1) * 86400000));
+    // "Últimos 7 dias" = hoje + 6 dias atrás. Subtrair 7 em vez de 6 fazia o
+    // período começar um dia antes e puxar registro de fora da seleção.
+    const from = getLocalIsoDate(new Date(new Date(`${to}T00:00:00`).getTime() - (option.days - 1) * 86400000));
     setLoading(true);
 
     // Buscar sangrias do período
@@ -647,13 +655,15 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
       .then((items) => items.filter((record) => (record.tapperId && record.tapperId === day.tapper.id) || record.sangradorName.trim().toLowerCase() === day.tapper.fullName.trim().toLowerCase()))
       .catch(() => [] as TappingRecord[]);
 
-    // Buscar tarefas do período
-    const tasksPromise = listTappingTasks(day.companyId, { farmId: day.farmId, from, to })
+    // Buscar tarefas do período. O endpoint é só por empresa (não filtra por
+    // fazenda nem por data), então o recorte pelo período é feito abaixo.
+    const tasksPromise = listTappingTasks(day.companyId)
       .catch(() => [] as TappingTask[]);
 
-    // Buscar tabelas
-    const tablesPromise = listFieldTappingTables(day.companyId, day.farmId)
-      .catch(() => [] as FieldTappingTable[]);
+    // Buscar tabelas previstas do sangrador. O endpoint é por empresa; o
+    // treeCount vem do vínculo e pode não existir ainda — isso não é obrigatório.
+    const tablesPromise = listFieldTapperTables(day.companyId, day.tapper.id)
+      .catch(() => [] as FieldTapperTable[]);
 
     Promise.all([recordsPromise, tasksPromise, tablesPromise])
       .then(([recs, tsk, tbl]) => {
@@ -664,16 +674,33 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
       .finally(() => setLoading(false));
   }, [day, period]);
 
-  // Filtrar tarefas e tabelas que foram realizadas no período
+  // Filtrar tarefas realizadas no período. O registro não guarda o id da
+  // tarefa — guarda o "extent" (X, /, 1), que é o código dela no catálogo.
   const performedTasks = useMemo(() => {
-    const performedTaskIds = new Set(records.map((r) => r.tappingTaskId).filter(Boolean));
-    return tasks.filter((task) => performedTaskIds.has(task.id));
+    const extents = new Set(records.map((r) => r.taskExtent).filter(Boolean));
+    return tasks.filter((task) => extents.has(task.code));
   }, [records, tasks]);
 
   const performedTables = useMemo(() => {
     const performedTableIds = new Set(records.map((r) => r.tappingTableId).filter(Boolean));
     return tables.filter((table) => performedTableIds.has(table.id));
   }, [records, tables]);
+
+  // treeCount vive no vínculo (tapper-tables). Sem vínculo não há total — mostra "—" em vez de 0.
+  const treeCountByTable = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const link of tables) {
+      if (link.treeCount != null) map[link.id] = link.treeCount;
+    }
+    return map;
+  }, [tables]);
+
+  const totalTrees = useMemo(() => {
+    const values = performedTables
+      .map((table) => treeCountByTable[table.id])
+      .filter((value): value is number => value != null);
+    return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) : null;
+  }, [performedTables, treeCountByTable]);
 
   return (
     <Dialog open={!!day} onOpenChange={(open) => !open && onClose()}>
@@ -685,6 +712,10 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
         <div className="grid grid-cols-4 gap-2">
           {PERIOD_OPTIONS.map((option) => <button key={option.value} type="button" onClick={() => setPeriod(option.value)} className={`rounded-lg border px-2 py-2 text-xs font-medium ${period === option.value ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>{option.label}</button>)}
         </div>
+        <div className="rounded-lg border border-border/60 bg-card px-3 py-2 text-xs text-muted-foreground">
+          Total de árvores previstas: <span className="font-semibold text-foreground">{totalTrees ?? "—"}</span>
+          {totalTrees === null && <span className="ml-1 text-[10px]">(vincule o sangrador às tabelas)</span>}
+        </div>
         {loading ? <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div> : (
           <div className="space-y-4">
             {/* Tarefas Realizadas */}
@@ -695,11 +726,11 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
               ) : (
                 <div className="space-y-1">
                   {performedTasks.map((task) => {
-                    const taskRecords = records.filter((r) => r.tappingTaskId === task.id);
+                    const taskRecords = records.filter((r) => r.taskExtent === task.code);
                     const lastRecord = taskRecords[taskRecords.length - 1];
                     return (
                       <div key={task.id} className="rounded-lg border border-border/60 bg-card p-2">
-                        <div className="text-xs font-medium">{task.name}</div>
+                        <div className="text-xs font-medium">{task.label}</div>
                         {lastRecord && (
                           <div className="text-[10px] text-muted-foreground mt-0.5">
                             {new Date(`${lastRecord.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
@@ -725,6 +756,9 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
                     return (
                       <div key={table.id} className="rounded-lg border border-border/60 bg-card p-2">
                         <div className="text-xs font-medium">{table.name}</div>
+                        {treeCountByTable[table.id] != null && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5">{treeCountByTable[table.id]} árvores</div>
+                        )}
                         {lastRecord && (
                           <div className="text-[10px] text-muted-foreground mt-0.5">
                             {new Date(`${lastRecord.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
