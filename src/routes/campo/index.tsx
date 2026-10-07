@@ -486,7 +486,7 @@ function DailySangriaDialog({
   // Vem de recordedAt (quando o monitor gravou); sem ele, não há hora pra
   // mostrar, e a linha mostra só a data em vez de um "--:--" inventado.
   const timeFor = (day: SangriaDay) => {
-    const stamp = day.records.find((record) => record.recordedAt)?.recordedAt;
+    const stamp = day.records?.find((record) => record.recordedAt)?.recordedAt;
     if (!stamp) return "";
     const at = new Date(stamp);
     if (Number.isNaN(at.getTime())) return "";
@@ -495,23 +495,23 @@ function DailySangriaDialog({
   // Tarefas oferecidas no filtro: as que aparecem no balde aberto.
   const taskOptions = useMemo(() => {
     const seen = new Set<string>();
-    for (const day of list) for (const record of day.records) seen.add(labelFor(record));
+    for (const day of list) for (const record of day.records ?? []) seen.add(labelFor(record));
     return [...seen].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [list, taskNames]);
   // Opções do select: só quem aparece no balde aberto, deduplicado.
   const tapperOptions = useMemo(() => {
     const seen = new Map<string, string>();
     for (const day of list) {
-      const key = day.tapper.fullName.trim().toLowerCase();
-      if (key && !seen.has(key)) seen.set(key, day.tapper.fullName.trim());
+      const key = day.tapper?.fullName?.trim().toLowerCase();
+      if (key && !seen.has(key)) seen.set(key, day.tapper!.fullName.trim());
     }
     return [...seen.values()].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [list]);
   const filtered = list.filter((day) => {
-    if (tapperFilter !== "all" && day.tapper.fullName.trim().toLowerCase() !== tapperFilter) return false;
+    if (tapperFilter !== "all" && day.tapper?.fullName?.trim().toLowerCase() !== tapperFilter) return false;
     // Um dia aparece se ao menos um dos registros casar com a tarefa.
-    if (taskFilter !== "all" && !day.records.some((record) => labelFor(record) === taskFilter)) return false;
-    return day.tapper.fullName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
+    if (taskFilter !== "all" && !(day.records ?? []).some((record) => labelFor(record) === taskFilter)) return false;
+    return day.tapper?.fullName?.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()) ?? false;
   });
   // Data decrescente: o mais recente do período primeiro.
   const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
@@ -557,13 +557,15 @@ function DailySangriaDialog({
         </div>
         {sorted.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhum sangrador encontrado.</p> : (
           <div className="space-y-2">
-            {sorted.map((day) => (
-              <button key={`${day.tapper.id}:${day.farmId}:${day.date}`} type="button" onClick={() => onSelectTapper(day)} className="flex w-full items-start gap-3 rounded-xl border border-border/60 bg-card p-3 text-left transition hover:border-primary/60 hover:bg-primary/5">
+            {sorted.map((day, index) => {
+              const tapperName = day.tapper?.fullName?.trim() || "Sangrador não identificado";
+              return (
+              <button key={`${day.tapper?.id ?? "unknown"}:${day.farmId ?? ""}:${day.date ?? ""}:${index}`} type="button" onClick={() => onSelectTapper(day)} className="flex w-full items-start gap-3 rounded-xl border border-border/60 bg-card p-3 text-left transition hover:border-primary/60 hover:bg-primary/5">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><UserRound className="h-4 w-4" /></span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">{day.tapper.fullName}</span>
+                  <span className="block truncate text-sm font-semibold">{tapperName}</span>
                   {/* Uma linha por registro: a tarefa vem do catálogo, pelo nome. */}
-                  {day.records.map((record) => (
+                  {(day.records ?? []).map((record) => (
                     <span key={record.id} className="mt-0.5 block truncate text-[11px] text-primary">
                       {labelFor(record)}
                       {record.tappingTableId ? ` · ${tableName(record)}` : ""}
@@ -580,7 +582,8 @@ function DailySangriaDialog({
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </span>
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </DialogContent>
