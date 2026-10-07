@@ -52,6 +52,7 @@ const TASK_LABEL: Record<string, string> = {
 const PERIOD_OPTIONS = [
   { value: "hoje", label: "Hoje", days: 1 },
   { value: "semana", label: "Últimos 7 dias", days: 7 },
+  { value: "quinzena", label: "Últimos 15 dias", days: 15 },
   { value: "mes", label: "Últimos 30 dias", days: 30 },
 ] as const;
 
@@ -71,6 +72,7 @@ function FieldHome() {
   const [tableNames, setTableNames] = useState<Map<string, Map<string, string>>>(new Map());
   // 0 = mês atual, -1 = mês anterior, -2 = dois meses atrás…
   const [monthOffset, setMonthOffset] = useState(0);
+  const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("mes");
   const [sangriaDetail, setSangriaDetail] = useState<SangriaCategory | null>(null);
   const [selectedTapper, setSelectedTapper] = useState<SangriaDay | null>(null);
 
@@ -114,14 +116,18 @@ function FieldHome() {
     })();
   }, []);
 
-  // Resumo de sangrias do período selecionado (mês civil, com navegação
-  // para meses anteriores). "Previstas" = sangradores ativos × dias do mês
-  // (cada sangrador faz 1 sangria/dia). "Realizadas" = dias com registro.
+  // Resumo de sangrias do período selecionado (hoje, 7 dias, 15 dias, 30 dias).
+  // "Previstas" = sangradores ativos × dias do período (cada sangrador faz 1 sangria/dia).
+  // "Realizadas" = dias com registro.
   // A tarefa vem do catálogo da empresa, nunca do código.
   useEffect(() => {
     const farms = me?.assignments ?? [];
     if (farms.length === 0) return;
-    const { from, to } = monthRange(monthOffset);
+
+    const option = PERIOD_OPTIONS.find((item) => item.value === period)!;
+    const to = getLocalIsoDate();
+    const from = getLocalIsoDate(new Date(Date.now() - (option.days - 1) * 86400000));
+
     let cancelled = false;
     setSangriaSummary({ possible: [], done: [] });
     (async () => {
@@ -231,7 +237,7 @@ function FieldHome() {
       }
     })();
     return () => { cancelled = true; };
-  }, [me, monthOffset]);
+  }, [me, period]);
 
   const stats = useMemo(() => {
     const today = getLocalIsoDate();
@@ -304,32 +310,26 @@ function FieldHome() {
         </div>
       </section>
 
-      {/* Resumo de sangrias — por mês civil, com navegação entre meses */}
+      {/* Resumo de sangrias — por período selecionável */}
       <section>
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-foreground">Resumo de sangrias</h2>
-          <div className="flex items-center gap-1">
+        </div>
+        <div className="mb-3 grid grid-cols-4 gap-1">
+          {PERIOD_OPTIONS.map((option) => (
             <button
+              key={option.value}
               type="button"
-              onClick={() => setMonthOffset((n) => n - 1)}
-              className="rounded-lg border border-border/60 bg-card p-1.5 text-muted-foreground transition hover:border-primary/60 hover:text-primary"
-              title="Mês anterior"
-              aria-label="Ver mês anterior"
+              onClick={() => setPeriod(option.value)}
+              className={`rounded-lg border px-2 py-1.5 text-[11px] font-medium transition ${
+                period === option.value
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border/60 text-muted-foreground hover:border-primary/60 hover:text-primary"
+              }`}
             >
-              <ChevronLeft className="h-4 w-4" />
+              {option.label}
             </button>
-            <span className="min-w-[112px] text-center text-xs font-medium text-foreground">{monthLabel(monthOffset)}</span>
-            <button
-              type="button"
-              onClick={() => setMonthOffset((n) => Math.min(0, n + 1))}
-              disabled={monthOffset >= 0}
-              className="rounded-lg border border-border/60 bg-card p-1.5 text-muted-foreground transition hover:border-primary/60 hover:text-primary disabled:pointer-events-none disabled:opacity-40"
-              title="Mês seguinte"
-              aria-label="Voltar ao mês atual"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          ))}
         </div>
         <div className="grid grid-cols-2 gap-2">
           <SummaryCell value={sangriaSummary.possible.length} label="Previstas" tone="muted" onClick={() => setSangriaDetail("possible")} />
@@ -337,7 +337,7 @@ function FieldHome() {
         </div>
         {sangriaSummary.possible.length > 0 && (
           <p className="mt-2 text-[11px] text-muted-foreground">
-            {sangriaSummary.done.length} sangria(s) realizada(s) em {monthLabel(monthOffset).toLowerCase()}.
+            {sangriaSummary.done.length} sangria(s) realizada(s) no período.
           </p>
         )}
       </section>
@@ -591,6 +591,8 @@ function DailySangriaDialog({
 function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: () => void }) {
   const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("mes");
   const [records, setRecords] = useState<TappingRecord[]>([]);
+  const [tasks, setTasks] = useState<TappingTask[]>([]);
+  const [tables, setTables] = useState<FieldTappingTable[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -599,35 +601,101 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
     const to = getLocalIsoDate();
     const from = getLocalIsoDate(new Date(Date.now() - (option.days - 1) * 86400000));
     setLoading(true);
-    listTappingRecords(day.companyId, { farmId: day.farmId, from, to })
-      .then((items) => setRecords(items.filter((record) => (record.tapperId && record.tapperId === day.tapper.id) || record.sangradorName.trim().toLowerCase() === day.tapper.fullName.trim().toLowerCase())))
-      .catch(() => setRecords([]))
+
+    // Buscar sangrias do período
+    const recordsPromise = listTappingRecords(day.companyId, { farmId: day.farmId, from, to })
+      .then((items) => items.filter((record) => (record.tapperId && record.tapperId === day.tapper.id) || record.sangradorName.trim().toLowerCase() === day.tapper.fullName.trim().toLowerCase()))
+      .catch(() => [] as TappingRecord[]);
+
+    // Buscar tarefas do período
+    const tasksPromise = listTappingTasks(day.companyId, { farmId: day.farmId, from, to })
+      .catch(() => [] as TappingTask[]);
+
+    // Buscar tabelas
+    const tablesPromise = listFieldTappingTables(day.companyId, day.farmId)
+      .catch(() => [] as FieldTappingTable[]);
+
+    Promise.all([recordsPromise, tasksPromise, tablesPromise])
+      .then(([recs, tsk, tbl]) => {
+        setRecords(recs);
+        setTasks(tsk);
+        setTables(tbl);
+      })
       .finally(() => setLoading(false));
   }, [day, period]);
 
-  const stats = useMemo(() => ({
-    records: records.length,
-    days: new Set(records.map((record) => record.date.slice(0, 10))).size,
-    trees: records.reduce((sum, record) => sum + (record.treesTapped ?? 0), 0),
-    liters: records.reduce((sum, record) => sum + (record.liters ?? 0), 0),
-  }), [records]);
+  // Filtrar tarefas e tabelas que foram realizadas no período
+  const performedTasks = useMemo(() => {
+    const performedTaskIds = new Set(records.map((r) => r.tappingTaskId).filter(Boolean));
+    return tasks.filter((task) => performedTaskIds.has(task.id));
+  }, [records, tasks]);
+
+  const performedTables = useMemo(() => {
+    const performedTableIds = new Set(records.map((r) => r.tappingTableId).filter(Boolean));
+    return tables.filter((table) => performedTableIds.has(table.id));
+  }, [records, tables]);
 
   return (
     <Dialog open={!!day} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{day?.tapper.fullName ?? "Sangrador"}</DialogTitle>
           {day && <p className="text-xs text-muted-foreground">Tocado em {new Date(`${day.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}{(() => { const stamp = day.records.find((r) => r.recordedAt)?.recordedAt; if (!stamp) return ""; const at = new Date(stamp); return Number.isNaN(at.getTime()) ? "" : ` · ${at.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`; })()}</p>}
         </DialogHeader>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {PERIOD_OPTIONS.map((option) => <button key={option.value} type="button" onClick={() => setPeriod(option.value)} className={`rounded-lg border px-2 py-2 text-xs font-medium ${period === option.value ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>{option.label}</button>)}
         </div>
         {loading ? <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div> : (
-          <div className="grid grid-cols-2 gap-2">
-            <StatCell label="Sangrias" value={stats.records} />
-            <StatCell label="Dias trabalhados" value={stats.days} />
-            <StatCell label="Árvores sangradas" value={stats.trees.toLocaleString("pt-BR")} />
-            <StatCell label="Litros" value={stats.liters.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} />
+          <div className="space-y-4">
+            {/* Tarefas Realizadas */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Tarefas Realizadas ({performedTasks.length})</h3>
+              {performedTasks.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">Nenhuma tarefa realizada no período.</p>
+              ) : (
+                <div className="space-y-1">
+                  {performedTasks.map((task) => {
+                    const taskRecords = records.filter((r) => r.tappingTaskId === task.id);
+                    const lastRecord = taskRecords[taskRecords.length - 1];
+                    return (
+                      <div key={task.id} className="rounded-lg border border-border/60 bg-card p-2">
+                        <div className="text-xs font-medium">{task.name}</div>
+                        {lastRecord && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
+                            {new Date(`${lastRecord.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Tabelas Realizadas */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Tabelas Realizadas ({performedTables.length})</h3>
+              {performedTables.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">Nenhuma tabela realizada no período.</p>
+              ) : (
+                <div className="space-y-1">
+                  {performedTables.map((table) => {
+                    const tableRecords = records.filter((r) => r.tappingTableId === table.id);
+                    const lastRecord = tableRecords[tableRecords.length - 1];
+                    return (
+                      <div key={table.id} className="rounded-lg border border-border/60 bg-card p-2">
+                        <div className="text-xs font-medium">{table.name}</div>
+                        {lastRecord && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
+                            {new Date(`${lastRecord.date}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </DialogContent>
