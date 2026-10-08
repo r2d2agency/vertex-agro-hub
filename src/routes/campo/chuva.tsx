@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
-import { getLocalDatetimeInputValue } from "@/lib/date-utils";
+import { getLocalDatetimeInputValue, getLocalIsoDate } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/campo/chuva")({ component: ChuvaPage });
 
@@ -62,9 +62,16 @@ function ChuvaPage() {
     setSaving(true);
     const mm = Number(mmChuva.replace(",", ".")) || 0;
     const areaNames = plots.filter((p) => affectedPlotIds.includes(p.id)).map((p) => p.name);
+    // datetime-local vazio vira "" e new Date("") é Invalid Date — cairia no
+    // dia errado em vez de avisar. Sem início não há como datar a chuva.
+    if (!ini) { toast.error("Informe o início aproximado da chuva"); setSaving(false); return; }
     const res = await submitOccurrence({
       companyId: farm.companyId, farmId: farm.id,
-      date: ini.slice(0, 10),
+      // Data civil (YYYY-MM-DD) no fuso de Brasília. O backend grava o campo
+      // `date` como @db.Date: mandar o ISO completo do aparelho fazia o registro
+      // cair no dia anterior quando o instante local ainda não tinha virado o dia
+      // em UTC. O horário real vai na descrição, que é onde ele pertence.
+      date: getLocalIsoDate(new Date(ini)),
       type: "clima", severity: severityFromMm(mm), status: "aberta",
       title: `Chuva ${mmChuva ? `${mmChuva} mm` : ""}`.trim(),
       description: [

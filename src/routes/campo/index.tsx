@@ -91,7 +91,9 @@ function FieldHome() {
   const [tableNames, setTableNames] = useState<Map<string, Map<string, string>>>(new Map());
   // 0 = mês atual, -1 = mês anterior, -2 = dois meses atrás…
   const [monthOffset, setMonthOffset] = useState(0);
-  const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("mes");
+  // "Hoje" é o padrão: o monitor abre a tela pra ver o dia que está
+  // trabalhando, e um período de 30 dias escondia isso num mar de cards.
+  const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("hoje");
   const [sangriaDetail, setSangriaDetail] = useState<SangriaCategory | null>(null);
   const [selectedTapper, setSelectedTapper] = useState<SangriaDay | null>(null);
 
@@ -287,6 +289,9 @@ function FieldHome() {
               summary.overdue.push(day);
             }
           }
+          // "Antecipada" = a data do registro é anterior a hoje (o monitor fez
+          // a sangria de hoje antes da data). Um dia realizado também pode ser
+          // antecipado, então isso é avaliado fora do if/else de realização.
           if (day.date < today) {
             summary.early.push(day);
           }
@@ -678,7 +683,7 @@ function DailySangriaDialog({
 }
 
 function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: () => void }) {
-  const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("mes");
+  const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("hoje");
   const [monthOffset, setMonthOffset] = useState(0);
   const [records, setRecords] = useState<TappingRecord[]>([]);
   const [tasks, setTasks] = useState<TappingTask[]>([]);
