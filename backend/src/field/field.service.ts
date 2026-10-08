@@ -23,6 +23,20 @@ function parseInputDate(dateStr: string | Date) {
     : new Date(dateStr);
 }
 
+/**
+ * Campos @db.Date voltam do Prisma como meia-noite UTC. Serializar esse
+ * instante direto (toISOString) e formatar em America/Sao_Paulo desloca
+ * -3h: o dia vira o anterior e a hora vira 21:00. Ao meio-dia de Brasília
+ * o dia civil é preservado em qualquer fuso ocidental; a hora exibida vira
+ * 12:00, mas date-only não tem hora real — occurrências de chuva, entregas
+ * e estimulações mostram o dia certo.
+ */
+function civilDateToIso(v: Date) {
+  return new Date(
+    Date.UTC(v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate(), 15),
+  ).toISOString();
+}
+
 // Distância em metros entre duas coordenadas (fórmula de Haversine).
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371000;
@@ -413,21 +427,21 @@ export class FieldService {
     const events: Event[] = [];
 
     for (const t of taps) events.push({
-      id: `tap-${t.id}`, kind: 'sangria', date: (t.recordedAt ?? t.date).toISOString(),
+      id: `tap-${t.id}`, kind: 'sangria', date: t.recordedAt ? t.recordedAt.toISOString() : civilDateToIso(t.date),
       title: `Sangria — ${t.sangradorName}`,
       subtitle: [t.liters != null ? `${t.liters} L` : null, t.dryKg != null ? `${t.dryKg} kg secos` : null].filter(Boolean).join(' · '),
       farmId: t.farmId,
       status: t.status,
     });
     for (const d of dels) events.push({
-      id: `del-${d.id}`, kind: 'producao', date: d.deliveryDate.toISOString(),
+      id: `del-${d.id}`, kind: 'producao', date: civilDateToIso(d.deliveryDate),
       title: `Entrega ${d.latexType ?? ''}`.trim(),
       subtitle: [d.netWeightKg != null ? `${d.netWeightKg} kg líq.` : null, d.drcAvgPercent != null ? `DRC ${d.drcAvgPercent}%` : null].filter(Boolean).join(' · '),
       farmId: d.farmId,
       status: d.status,
     });
     for (const o of occ) events.push({
-      id: `occ-${o.id}`, kind: 'ocorrencia', date: o.date.toISOString(),
+      id: `occ-${o.id}`, kind: 'ocorrencia', date: civilDateToIso(o.date),
       title: o.title, subtitle: `${o.type} · ${o.severity} · ${o.status}`, farmId: o.farmId,
       status: o.status,
     });
@@ -437,7 +451,7 @@ export class FieldService {
       status: s.status,
     });
     for (const s of stims) events.push({
-      id: `stim-${s.id}`, kind: 'estimulacao', date: s.date.toISOString(),
+      id: `stim-${s.id}`, kind: 'estimulacao', date: civilDateToIso(s.date),
       title: `Estimulação — ${s.product}`,
       subtitle: [s.concentration, s.method].filter(Boolean).join(' · '),
       farmId: s.farmId,
