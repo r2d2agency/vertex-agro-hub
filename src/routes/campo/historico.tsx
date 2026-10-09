@@ -76,6 +76,13 @@ function HistoricoPage() {
   const timezoneForEvent = (event: HistoryEvent) =>
     (event.farmId ? me?.assignments.find((a) => a.farm.id === event.farmId)?.farm.timezone : timezone) ?? "America/Sao_Paulo";
   const formatDate = (value: string, options: Intl.DateTimeFormatOptions, zone: string) => new Intl.DateTimeFormat("pt-BR", { ...options, timeZone: zone }).format(new Date(value));
+  // Cabeçalho do dia: a chave vem do Intl em en-CA ("YYYY-MM-DD"). Ancorar em
+  // meia-noite UTC e formatar num fuso -3 desloca para 21:00 do dia ANTERIOR —
+  // o histórico mostrava tudo 1 dia atrasado. Âncora de 15:00 UTC (meio-dia de
+  // Brasília), igual ao `tappingRecordMoment` e ao `civilDateToIso` do backend:
+  // o dia civil sobrevive em qualquer fuso ocidental.
+  const formatDayKey = (day: string, zone: string) =>
+    new Intl.DateTimeFormat("pt-BR", { timeZone: zone, day: "2-digit", month: "long", year: "numeric" }).format(new Date(`${day}T15:00:00.000Z`));
 
   // Linha do tempo: uma fazenda específica, ou todas as fazendas/empresas do usuário.
   useEffect(() => {
@@ -206,7 +213,7 @@ function HistoricoPage() {
             grouped.map(([day, list]) => (
               <section key={day}>
                 <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {formatDate(day + "T00:00:00Z", { day: "2-digit", month: "long", year: "numeric" }, timezone ?? "America/Sao_Paulo")}
+                  {formatDayKey(day, timezone ?? "America/Sao_Paulo")}
                 </h2>
                 <ul className="space-y-2">
                   {list.map((e) => (
