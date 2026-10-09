@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { FieldCard, StepHeader } from "@/components/vertex/field/step-header";
 import { AudioRecorder } from "@/components/vertex/field/audio-recorder";
 import { getLocalIsoDate } from "@/lib/date-utils";
+import { tappingRecordMoment } from "@/lib/tapping-dates";
 
 export const Route = createFileRoute("/campo/sangria")({ component: SangriaPage });
 
@@ -292,14 +293,17 @@ function SangriaPage() {
     }
   }
 
-  const savedInstant = savedRecord?.recordedAt ?? savedRecord?.date;
-  const savedHasTime = Boolean(savedRecord?.recordedAt);
-  const savedDateLabel = savedInstant
+  // Mesmo ponto de formatação do histórico e da lista de sangrias: o instante
+  // real vem de `recordedAt`; sem ele, o dia civil é re-ancorado em 15:00 UTC
+  // para não virar o dia anterior às 21:00. O fuso é o da fazenda, como no
+  // resto do app — a linha de confirmação precisa bater com o que o monitor
+  // verá no histórico.
+  const savedDateLabel = savedRecord
     ? new Intl.DateTimeFormat("pt-BR", {
         timeZone: farm?.timezone ?? "America/Sao_Paulo",
         dateStyle: "short",
-        ...(savedHasTime ? { timeStyle: "medium" as const } : {}),
-      }).format(new Date(savedInstant))
+        ...(savedRecord.recordedAt ? { timeStyle: "medium" as const } : {}),
+      }).format(tappingRecordMoment(savedRecord))
     : "—";
 
   return (
