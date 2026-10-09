@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { listTasks, categoryLabel, categoryStyle, type ScheduledTask } from "@/lib/agenda.functions";
 import { listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask } from "@/lib/sangrias.functions";
 import { getLocalIsoDate, monthRange, monthLabel } from "@/lib/date-utils";
-import vertexLogo from "@/assets/vertex-logo.png";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
 
 // Saudação por horário do aparelho: bom dia até o meio-dia, boa tarde até o
@@ -402,26 +401,22 @@ function FieldHome() {
         )}
       </header>
 
-      {/* Logo em destaque, nome logo abaixo e a data depois da saudação. */}
-      <section className="flex flex-col items-center gap-3 text-center">
-        <img src={vertexLogo} alt="Vertex Agro" className="h-24 w-auto object-contain sm:h-28" />
-        <div className="space-y-1">
-          <p className="text-lg font-semibold tracking-tight text-foreground">{firstName}</p>
-          <p className="text-sm capitalize text-muted-foreground">
-            {greeting}, {firstName}!
-          </p>
-          <p className="text-xs capitalize text-muted-foreground">{todayLabel}</p>
-          {activeCheckin ? (
-            <div className="flex items-center justify-center gap-1.5 pt-1 text-xs font-medium text-primary">
-              <ShieldCheck className="h-3 w-3" />
-              <span className="leading-tight">
-                {(me.assignments || []).find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}
-              </span>
-            </div>
-          ) : (
-            <p className="pt-1 text-[10px] text-warning">{me.primaryRole === "monitor" ? "Escolha uma propriedade" : "Aguardando Check-in"}</p>
-          )}
-        </div>
+      {/* Saudação: a marca já está no topo do app, então aqui não vai logo. */}
+      <section className="space-y-1">
+        <p className="text-lg font-semibold tracking-tight text-foreground">
+          {greeting}, {firstName}!
+        </p>
+        <p className="text-xs capitalize text-muted-foreground">{todayLabel}</p>
+        {activeCheckin ? (
+          <div className="flex items-center gap-1.5 pt-1 text-xs font-medium text-primary">
+            <ShieldCheck className="h-3 w-3" />
+            <span className="leading-tight">
+              {(me.assignments || []).find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}
+            </span>
+          </div>
+        ) : (
+          <p className="pt-1 text-[10px] text-warning">{me.primaryRole === "monitor" ? "Escolha uma propriedade" : "Aguardando Check-in"}</p>
+        )}
       </section>
 
       {/* Acessos rápidos */}

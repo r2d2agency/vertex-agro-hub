@@ -136,11 +136,6 @@ function FieldShell() {
   const install = useInstallPrompt();
   const gps = useGps();
   const [checkin, setCheckin] = useState<{ farmId?: string; at: number } | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 30000);
-    return () => window.clearInterval(id);
-  }, []);
 
   useEffect(() => {
     applyFontSize(readFontSize());
@@ -210,11 +205,8 @@ function FieldShell() {
       );
     }
     const role = me.primaryRole;
-    const firstName = me.user?.fullName?.split(" ")[0] ?? "campo";
-    // Topo temporário de diagnóstico: hora atual do aparelho no fuso da fazenda/check-in.
-    const clockFarm = me.assignments.find((a) => (checkin?.farmId ? a.farm.id === checkin.farmId : true))?.farm;
-    const clockZone = clockFarm?.timezone ?? "America/Sao_Paulo";
-    const clockLabel = new Intl.DateTimeFormat("pt-BR", { timeZone: clockZone, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(now);
+    // O relógio do topo saiu junto com o nome e a data — agora é a home que
+    // mostra a saudação com horário, então nada de relógio aqui.
     const GpsIcon = gpsBadge.icon;
     const isConsultantRoute = location.pathname.includes("/consultor");
     return (
@@ -222,11 +214,8 @@ function FieldShell() {
         <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
           <div className={`mx-auto flex items-center justify-between gap-3 px-4 py-3 ${isMobile ? "max-w-lg" : "max-w-5xl"}`}>
             <div className="flex min-w-0 items-center gap-3">
-              <img src={vertexLogo} alt="Vertex" className="h-7 w-auto shrink-0 object-contain" />
-              <div className="flex min-w-0 flex-col leading-tight">
-                <div className="truncate text-[11px] text-muted-foreground">{clockLabel}</div>
-                <div className="truncate text-sm font-semibold text-foreground">{firstName}</div>
-              </div>
+              {/* Só a marca no topo: nome e data ficam na home, abaixo do menu. */}
+              <img src={vertexLogo} alt="Vertex" className="h-10 w-auto shrink-0 object-contain" />
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
               <span className={`p-1.5 ${gpsBadge.textClassName}`} title={gpsBadge.title}>
