@@ -11,7 +11,18 @@ import { toast } from "sonner";
 import { listTasks, categoryLabel, categoryStyle, type ScheduledTask } from "@/lib/agenda.functions";
 import { listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask } from "@/lib/sangrias.functions";
 import { getLocalIsoDate, monthRange, monthLabel } from "@/lib/date-utils";
+import vertexLogo from "@/assets/vertex-logo.png";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
+
+// Saudação por horário do aparelho: bom dia até o meio-dia, boa tarde até o
+// fim da tarde, boa noite depois. Fica fixa no primeiro render para não
+// mudar sozinha no meio da sessão.
+function greetingAt(d: Date) {
+  const h = d.getHours();
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
+}
 
 // Atalhos que antes só apareciam no menu do "+" — trazidos pra tela inicial
 // pra economizar um clique nas operações mais usadas do monitor.
@@ -358,6 +369,13 @@ function FieldHome() {
     return tasks.find((t) => t.status !== "concluida" && new Date(t.scheduledAt).getTime() >= now - 60_000);
   }, [tasks]);
 
+  const [greeting, setGreeting] = useState(() => greetingAt(new Date()));
+  useEffect(() => {
+    // Recalcula o bom dia/boa tarde/boa noite quando o app volta pra frente.
+    const onVisible = () => { if (!document.hidden) setGreeting(greetingAt(new Date())); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
   const [todayLabel, setTodayLabel] = useState("");
   useEffect(() => {
     setTodayLabel(new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" }));
@@ -366,34 +384,45 @@ function FieldHome() {
 
   if (loading || !me) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
+  // Primeiro nome só — a saudação é curta e o nome completo estourava a linha.
+  const firstName = (me.user?.fullName ?? "").trim().split(/\s+/)[0] || "campo";
+
   return (
     <div className="space-y-5">
-      <header className="flex items-center justify-between">
-        <div className="flex flex-col">
-          <div className="text-xs capitalize text-muted-foreground">{todayLabel}</div>
+      {/* Topo: só o atalho de check-in. A data foi para o bloco de boas-vindas. */}
+      <header className="flex items-center justify-end">
+        {activeCheckin && me.primaryRole !== "monitor" && (
+          <button
+            onClick={openCheckinSheet}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 transition-transform"
+            title="Trocar Fazenda / Novo Check-in"
+          >
+            <PlusCircle className="h-5 w-5" />
+          </button>
+        )}
+      </header>
+
+      {/* Logo em destaque, nome logo abaixo e a data depois da saudação. */}
+      <section className="flex flex-col items-center gap-3 text-center">
+        <img src={vertexLogo} alt="Vertex Agro" className="h-24 w-auto object-contain sm:h-28" />
+        <div className="space-y-1">
+          <p className="text-lg font-semibold tracking-tight text-foreground">{firstName}</p>
+          <p className="text-sm capitalize text-muted-foreground">
+            {greeting}, {firstName}!
+          </p>
+          <p className="text-xs capitalize text-muted-foreground">{todayLabel}</p>
           {activeCheckin ? (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-primary mt-0.5">
+            <div className="flex items-center justify-center gap-1.5 pt-1 text-xs font-medium text-primary">
               <ShieldCheck className="h-3 w-3" />
               <span className="leading-tight">
                 {(me.assignments || []).find(a => a.farm.id === activeCheckin.farmId)?.farm.name || "Fazenda"}
               </span>
             </div>
           ) : (
-            <p className="text-[10px] text-warning mt-0.5">{me.primaryRole === "monitor" ? "Escolha uma propriedade" : "Aguardando Check-in"}</p>
+            <p className="pt-1 text-[10px] text-warning">{me.primaryRole === "monitor" ? "Escolha uma propriedade" : "Aguardando Check-in"}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {activeCheckin && me.primaryRole !== "monitor" && (
-            <button
-              onClick={openCheckinSheet}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 transition-transform"
-              title="Trocar Fazenda / Novo Check-in"
-            >
-              <PlusCircle className="h-5 w-5" />
-            </button>
-          )}
-        </div>
-      </header>
+      </section>
 
       {/* Acessos rápidos */}
       <section>

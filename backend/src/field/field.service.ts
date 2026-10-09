@@ -37,6 +37,21 @@ function civilDateToIso(v: Date) {
   ).toISOString();
 }
 
+/**
+ * Instante a exibir de um registro de sangria. `recorded_at` com hora real é a
+ * fonte verdadeira. Mas a migração 20260923120000 gravou `recorded_at` como
+ * meia-noite UTC do dia civil — formatação em America/Sao_Paulo desloca -3h e o
+ * dia aparece como o anterior, às 21:00. Esses registros têm `date` correto,
+ * então quando o instante bate em meia-noite UTC o dia civil manda.
+ */
+function tappingInstant(t: { date: Date; recordedAt?: Date | null }) {
+  const r = t.recordedAt;
+  if (!r) return civilDateToIso(t.date);
+  const isMidnightUtc =
+    r.getUTCHours() === 0 && r.getUTCMinutes() === 0 && r.getUTCSeconds() === 0 && r.getUTCMilliseconds() === 0;
+  return isMidnightUtc ? civilDateToIso(t.date) : r.toISOString();
+}
+
 // Distância em metros entre duas coordenadas (fórmula de Haversine).
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371000;
@@ -427,7 +442,7 @@ export class FieldService {
     const events: Event[] = [];
 
     for (const t of taps) events.push({
-      id: `tap-${t.id}`, kind: 'sangria', date: t.recordedAt ? t.recordedAt.toISOString() : civilDateToIso(t.date),
+      id: `tap-${t.id}`, kind: 'sangria', date: tappingInstant(t),
       title: `Sangria — ${t.sangradorName}`,
       subtitle: [t.liters != null ? `${t.liters} L` : null, t.dryKg != null ? `${t.dryKg} kg secos` : null].filter(Boolean).join(' · '),
       farmId: t.farmId,
