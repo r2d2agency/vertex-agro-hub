@@ -249,8 +249,14 @@ function SangriaPage() {
       const payload = {
         companyId: farm.companyId, farmId: farm.id, plotId,
         tappingTableId: tappingTableId || undefined,
-        // Envia o instante real do aparelho; a data selecionada continua sendo usada para filtros civis.
-        date: editingId ? recordDate : new Date().toISOString(),
+        // Data civil (YYYY-MM-DD) no fuso de Brasília. O backend grava o campo
+        // `date` como @db.Date: mandar o ISO completo do aparelho fazia o registro
+        // cair no dia seguinte quando o instante local ainda não tinha virado o dia
+        // em UTC. O horário real vai na descrição, que é onde ele pertence.
+        date: editingId ? recordDate : getLocalIsoDate(),
+        // Instante real de gravação, para a linha de confirmação mostrar hora junto
+        // com a data. Dia civil (que é o que vai para `date`) não tem hora real.
+        ...(editingId ? {} : { recordedAt: new Date().toISOString() }),
         sangradorName: tapper.fullName,
         // Sangradores vinculados só pelo RH (sem ficha Tapper legada) vêm com um
         // id sintético "rh:<userId>" — não é uma linha real de Tapper, então

@@ -27,6 +27,7 @@ export class CreateTappingRecordDto {
   @IsOptional() @IsUUID() plotId?: string;
   @IsOptional() @IsUUID() tappingTableId?: string;
   @IsDateString() date!: string;
+  @IsOptional() @IsDateString() recordedAt?: string;
   @IsString() @MaxLength(200) sangradorName!: string;
   @IsOptional() @IsUUID() tapperId?: string;
   @IsOptional() @IsString() taskExtent?: string;

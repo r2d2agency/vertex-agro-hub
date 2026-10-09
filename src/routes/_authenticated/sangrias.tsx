@@ -34,6 +34,7 @@ import {
   TASK_EXTENTS, END_PERIODS,
   type TappingRecord, type TappingInput,
 } from "@/lib/sangrias.functions";
+import { tappingRecordMoment } from "@/lib/tapping-dates";
 
 export const Route = createFileRoute("/_authenticated/sangrias")({
   head: () => ({
@@ -48,11 +49,11 @@ export const Route = createFileRoute("/_authenticated/sangrias")({
 
 const today = () => getLocalIsoDate();
 function formatTappingDate(record: TappingRecord, timezone?: string | null) {
-  const value = record.recordedAt ?? record.date;
+  const moment = tappingRecordMoment(record);
   const options: Intl.DateTimeFormatOptions = record.recordedAt
     ? { dateStyle: "short", timeStyle: "short" }
     : { dateStyle: "short" };
-  return new Intl.DateTimeFormat("pt-BR", { ...options, timeZone: timezone || "America/Sao_Paulo" }).format(new Date(value));
+  return new Intl.DateTimeFormat("pt-BR", { ...options, timeZone: timezone || "America/Sao_Paulo" }).format(moment);
 }
 const empty: TappingInput = {
   farmId: "", plotId: "", date: today(), sangradorName: "",

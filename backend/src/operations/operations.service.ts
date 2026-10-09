@@ -14,7 +14,7 @@ import {
 function parseTappingDate(value: string | Date) {
   if (value instanceof Date) return value;
   // Data civil sem horário: meio-dia evita que o navegador mostre o dia anterior.
-  // O app envia um ISO completo quando a sangria é registrada agora, preservando o instante real.
+  // O app envia o dia civil (YYYY-MM-DD) e o instante real vai em `recordedAt`.
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00-03:00`) : new Date(value);
 }
 
@@ -112,7 +112,7 @@ export class OperationsService {
       if (!plot) throw new NotFoundException('Talhão não encontrado nesta fazenda');
     }
     // Campos de controle da API não pertencem ao registro persistido.
-    const { date, allowDuplicate: _allowDuplicate, ...rest } = dto;
+    const { date, recordedAt, allowDuplicate: _allowDuplicate, ...rest } = dto;
     if (dto.farmId && dto.plotId && dto.tappingTableId && dto.taskExtent) {
       const duplicate = await this.prisma.tappingRecord.findFirst({
         where: {
@@ -157,6 +157,9 @@ export class OperationsService {
       throw new BadRequestException('Informe a quantidade de árvores previstas para esta tarefa');
     }
     const parsed = parseTappingDate(date);
+    // O app agora envia o dia civil (YYYY-MM-DD) e o instante real separado.
+    // `recordedAt` é a fonte da hora; sem ele, o dia civil não tem hora real.
+    const recorded = recordedAt ? new Date(recordedAt) : null;
     const record = await this.prisma.tappingRecord.create({
       data: {
         ...rest,
@@ -164,7 +167,7 @@ export class OperationsService {
         divergent,
         date: parsed,
         // Instante real de gravação separado da data operacional: preserva hora/minuto.
-        recordedAt: /^\d{4}-\d{2}-\d{2}$/.test(String(date)) ? null : parsed,
+        recordedAt: recorded,
         createdById: userId,
         updatedById: userId,
       } as any,

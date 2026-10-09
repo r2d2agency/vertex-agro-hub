@@ -83,6 +83,7 @@ export type TappingInput = {
   plotId?: string;
   tappingTableId?: string;
   date: string;
+  recordedAt?: string;
   sangradorName: string;
   tapperId?: string | null;
   taskExtent?: string | null;

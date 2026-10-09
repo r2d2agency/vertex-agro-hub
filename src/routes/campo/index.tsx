@@ -143,6 +143,10 @@ function FieldHome() {
   // "Atrasadas" = previstas que passaram e não foram realizadas.
   // "Antecipadas" = realizadas antes do dia previsto.
   // A tarefa vem do catálogo da empresa, nunca do código.
+  // "Antecipada" = a tarefa da sangria é a "adiantada" do catálogo (o código
+  // continua gravado em `taskExtent`; a tela mostra o nome). Antes isso era
+  // `day.date < today`, que nunca é verdade no período padrão "hoje" — a aba
+  // ficava sempre zerada.
   useEffect(() => {
     const farms = me?.assignments ?? [];
     if (farms.length === 0) return;
@@ -197,6 +201,36 @@ function FieldHome() {
           return map;
         }, new Map<string, string>());
         setTaskNames(catalog);
+        // Nome → código, só para tarefas ativas. É o que permite classificar
+        // "antecipada" pelo nome exibido sem perder o código gravado em
+        // `taskExtent` (que a alocação de metade de árvores ainda usa).
+        const codeByName = safe("o reverso do catalogo de tarefas", () => {
+          const map = new Map<string, string>();
+          for (const task of taskLists.flatMap(asList<TappingTask>)) {
+            if (task?.active && task?.label) map.set(task.label, task.code);
+          }
+          return map;
+        }, new Map<string, string>());
+        // Código da tarefa "adiantada" — o que o monitor chama de
+        // "antecipada" na aba de resumo. Sem catálogo, cai no código legado.
+        const earlyCode = safe("o codigo da tarefa antecipada", () => {
+          const preferred = codeByName.get("Tabela adiantada");
+          if (preferred) return preferred;
+          // Fallback: qualquer tarefa ativa cujo nome mencione "adiant".
+          for (const [label, code] of codeByName) {
+            if (/adiant/i.test(label)) return code;
+          }
+          return "/";
+        }, "/");
+        // Um dia é "antecipada" se algum registro tem o código da tarefa
+        // adiantada na lista `taskExtent` (separada por vírgula).
+        const hasEarlyTask = (day: SangriaDay) =>
+          (day.records ?? []).some((record) =>
+            String(record.taskExtent ?? "")
+              .split(",")
+              .map((code) => code.trim())
+              .includes(earlyCode),
+          );
         // Tabelas por empresa: cada chamada já vem escopada a uma empresa,
         // então o zip com cids é seguro.
         const tables = safe("o catalogo de tabelas", () => {
@@ -289,10 +323,10 @@ function FieldHome() {
               summary.overdue.push(day);
             }
           }
-          // "Antecipada" = a data do registro é anterior a hoje (o monitor fez
-          // a sangria de hoje antes da data). Um dia realizado também pode ser
-          // antecipado, então isso é avaliado fora do if/else de realização.
-          if (day.date < today) {
+          // "Antecipada" = a tarefa da sangria é a "adiantada" do catálogo.
+          // Um dia realizado também pode ser antecipado, então isso é avaliado
+          // fora do if/else de realização.
+          if (hasEarlyTask(day)) {
             summary.early.push(day);
           }
         }
