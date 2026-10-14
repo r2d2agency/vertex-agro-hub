@@ -103,6 +103,16 @@ async function serveStatic(request, response, pathname) {
 
   if (pathname.startsWith("/assets/")) {
     headers["cache-control"] = "public, max-age=31536000, immutable";
+  } else if (pathname === "/version.json" || pathname === "/sw.js") {
+    // no-store: o mecanismo de detecção de atualização depende de ler a versão
+    // real do servidor a cada fetch — nem cache compartilhado serve aqui.
+    headers["cache-control"] = "no-store";
+  } else {
+    // HTML e manifest: no-cache força revalidação (ETag/Last-Modified), então
+    // o Safari nunca serve HTML velho de uma versão anterior. Sem isso o PWA
+    // instalado na tela de início do iPhone continua carregando o bundle
+    // antigo depois de um deploy — o problema clássico de "não atualiza".
+    headers["cache-control"] = "no-cache";
   }
 
   response.writeHead(200, headers);
@@ -207,8 +217,16 @@ async function proxyApiRequest(request, response, pathname) {
 
 function writeWebResponse(nodeResponse, webResponse, body) {
   for (const [key, value] of webResponse.headers.entries()) {
+    if (key.toLowerCase() === "cache-control") continue;
     if (key.toLowerCase() !== "set-cookie") nodeResponse.setHeader(key, value);
   }
+
+  // HTML e manifest: no-cache força revalidação (ETag/Last-Modified). Sem isso
+  // o Safari — principalmente no PWA instalado na tela de início, que tem cache
+  // ainda mais agressivo — pode servir o bundle antigo mesmo depois de um
+  // deploy. Assets hashed e version/sw.js já vêm com cache-control próprio
+  // de serveStatic, aqui só o HTML/manifest passa.
+  nodeResponse.setHeader("cache-control", "no-cache");
 
   const cookies = webResponse.headers.getSetCookie?.();
   if (cookies?.length) nodeResponse.setHeader("set-cookie", cookies);

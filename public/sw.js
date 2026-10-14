@@ -5,7 +5,7 @@
  *  - Suporta cleanup: envie mensagem { type: "SKIP_WAITING" } ou { type: "PURGE" }
  */
 
-const VERSION = "v1";
+const VERSION = "v2";
 const RUNTIME = `vertex-runtime-${VERSION}`;
 const ASSETS = `vertex-assets-${VERSION}`;
 

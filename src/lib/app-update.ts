@@ -9,6 +9,9 @@ export { APP_VERSION };
 export async function fetchRemoteVersion(): Promise<string | null> {
   if (typeof window === "undefined") return null;
   try {
+    // Dois níveles de bust: `?t=` ignora cache de memória do navegador e do
+    // proxy; o `cache: "no-store"` responde a esse bypass no servidor e evita
+    // que uma camada intermediária (CDN/proxy) sirva a versão antiga.
     const res = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
@@ -41,6 +44,10 @@ export async function applyUpdate() {
   } catch {
     // segue pro reload mesmo se a limpeza falhar
   } finally {
-    window.location.reload();
+    // location.reload(true) é ignorado em alguns navegadores modernos; o
+    // replace + bust garante que o fetch do HTML não use cache residual.
+    const url = new URL(window.location.href);
+    url.searchParams.set("_v", Date.now().toString());
+    window.location.replace(url.toString());
   }
 }
