@@ -6,7 +6,12 @@ import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
 import { listTappingRecords, type TappingRecord, TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
 import { tappingRecordMoment } from "@/lib/tapping-dates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
+import { CalendarDays } from "lucide-react";
 import { getLocalIsoDate } from "@/lib/date-utils";
+import type { DateRange } from "react-day-picker";
 
 export const Route = createFileRoute("/campo/historico")({ component: HistoricoPage });
 
@@ -30,11 +35,19 @@ const PERIODS = [
   { value: "hoje", label: "Hoje" },
   { value: "semana", label: "7 dias" },
   { value: "mes", label: "30 dias" },
+  { value: "custom", label: "Personalizado" },
 ] as const;
 type Period = typeof PERIODS[number]["value"];
 
-function rangeFor(period: Period) {
+type IsoRange = { from: string; to: string };
+
+function isoRange(from?: Date | null, to?: Date | null): IsoRange {
+  return { from: getLocalIsoDate(from ?? new Date()), to: getLocalIsoDate(to ?? from ?? new Date()) };
+}
+
+function rangeFor(period: Period, custom: IsoRange | null): IsoRange {
   const to = getLocalIsoDate();
+  if (period === "custom") return custom ?? isoRange();
   if (period === "hoje") return { from: to, to };
   const days = period === "semana" ? 7 : 30;
   return { from: getLocalIsoDate(new Date(Date.now() - days * 86400000)), to };
@@ -49,6 +62,7 @@ function HistoricoPage() {
   const [me, setMe] = useState<FieldMe | null>(null);
   const [mode, setMode] = useState<"linha" | "sangrador">("linha");
   const [period, setPeriod] = useState<Period>("semana");
+  const [custom, setCustom] = useState<IsoRange | null>(null);
   const [farmId, setFarmId] = useState<string>(""); // "" = todas as fazendas
 
   // modo linha do tempo
@@ -71,7 +85,7 @@ function HistoricoPage() {
   }, []);
 
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
-  const range = useMemo(() => rangeFor(period), [period]);
+  const range = useMemo(() => rangeFor(period, custom), [period, custom]);
   const timezone = farm?.timezone ?? "America/Sao_Paulo";
   const timezoneForEvent = (event: HistoryEvent) =>
     (event.farmId ? me?.assignments.find((a) => a.farm.id === event.farmId)?.farm.timezone : timezone) ?? "America/Sao_Paulo";
@@ -149,7 +163,9 @@ function HistoricoPage() {
 
   const sangradorStats = useMemo(() => {
     const days = new Set(tapperRecords.map((r) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone ?? "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(tappingRecordMoment(r))));
-    const periodDays = period === "hoje" ? 1 : period === "semana" ? 7 : 30;
+    const periodDays = period === "hoje" ? 1 : period === "semana" ? 7 : period === "custom" && custom
+      ? Math.round((new Date(`${custom.to}T15:00:00.000Z`).getTime() - new Date(`${custom.from}T15:00:00.000Z`).getTime()) / 86400000) + 1
+      : 30;
     return { total: tapperRecords.length, daysWithRecord: days.size, periodDays };
   }, [tapperRecords, period]);
 
@@ -190,6 +206,35 @@ function HistoricoPage() {
             {PERIODS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        {period === "custom" && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="col-span-2 h-10 justify-start rounded-xl font-normal">
+                <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />
+                {custom
+                  ? `${formatDate(`${custom.from}T15:00:00.000Z`, { day: "2-digit", month: "short" }, timezone)} – ${formatDate(`${custom.to}T15:00:00.000Z`, { day: "2-digit", month: "short", year: "numeric" }, timezone)}`
+                  : "Escolher período"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                numberOfMonths={2}
+                defaultMonth={custom ? new Date(`${custom.from}T15:00:00.000Z`) : undefined}
+                selected={
+                  custom
+                    ? { from: new Date(`${custom.from}T15:00:00.000Z`), to: new Date(`${custom.to}T15:00:00.000Z`) }
+                    : undefined
+                }
+                onSelect={(sel: DateRange | undefined) => {
+                  if (sel?.from && sel?.to) setCustom(isoRange(sel.from, sel.to));
+                }}
+                disabled={{ after: new Date() }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
 
       {mode === "linha" ? (
