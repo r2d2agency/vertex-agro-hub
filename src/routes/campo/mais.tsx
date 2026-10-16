@@ -17,11 +17,12 @@ import {
   Info,
   AlertTriangle,
   DownloadCloud,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { subscribeOutbox, flushOutbox } from "@/lib/offline/queue";
-import { APP_VERSION, checkForUpdate, applyUpdate } from "@/lib/app-update";
+import { APP_VERSION, checkForUpdate, applyUpdate, emergencyReset } from "@/lib/app-update";
 import { applyFontSize, readFontSize, writeFontSize, type FieldFontSize } from "@/lib/field-preferences";
 
 export const Route = createFileRoute("/campo/mais")({ component: PreferenciasPage });
@@ -34,6 +35,7 @@ function PreferenciasPage() {
   const [running, setRunning] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [fontSize, setFontSize] = useState<FieldFontSize>("normal");
   const [me, setMe] = useState<FieldMe | null>(null);
   const [rotationFarmId, setRotationFarmId] = useState("");
@@ -145,6 +147,22 @@ function PreferenciasPage() {
       }
     } finally {
       setCheckingUpdate(false);
+    }
+  };
+
+  const handleEmergencyReset = async () => {
+    const ok = window.confirm(
+      "Isso vai limpar todo o cache do app e recarregar a versão atual do servidor. " +
+      "Registros ainda não enviados serão mantidos e sincronizados depois. Continuar?"
+    );
+    if (!ok) return;
+    setResetting(true);
+    toast.info("Limpando cache, aguarde...");
+    try {
+      await emergencyReset();
+    } catch {
+      setResetting(false);
+      toast.error("Não foi possível limpar o cache. Tente novamente.");
     }
   };
 
@@ -352,6 +370,27 @@ function PreferenciasPage() {
             </div>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
+
+        {/* Reset de emergência: para quando o app não atualiza sozinho
+            (comum no iPhone, onde o PWA instalado segura o bundle antigo). */}
+        <button
+          onClick={handleEmergencyReset}
+          disabled={resetting}
+          className="flex w-full items-center justify-between rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-left transition active:scale-[0.98]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-destructive/15 text-destructive">
+              <RotateCcw className={`h-5 w-5 ${resetting ? "animate-spin" : ""}`} />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-destructive">Limpar cache e reiniciar</div>
+              <div className="text-[11px] text-muted-foreground">
+                {resetting ? "Limpando..." : "Se o app não atualiza sozinho, use este botão"}
+              </div>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-destructive" />
         </button>
       </div>
 

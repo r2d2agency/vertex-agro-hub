@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { AiProviderConfigCard } from "@/components/vertex/ai-provider-config";
 import { getSettings, updateSettings, type CompanySettings } from "@/lib/configuracoes.functions";
-import { APP_VERSION, checkForUpdate, applyUpdate } from "@/lib/app-update";
+import { APP_VERSION, checkForUpdate, applyUpdate, emergencyReset } from "@/lib/app-update";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
@@ -138,6 +138,7 @@ function ConfigPage() {
 
 function SystemVersionCard() {
   const [checking, setChecking] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   async function handleCheck() {
     setChecking(true);
@@ -154,6 +155,22 @@ function SystemVersionCard() {
     }
   }
 
+  async function handleEmergencyReset() {
+    const ok = window.confirm(
+      "Isso vai limpar todo o cache do app e recarregar a versão atual do servidor. " +
+      "Registros ainda não enviados serão mantidos e sincronizados depois. Continuar?"
+    );
+    if (!ok) return;
+    setResetting(true);
+    toast.info("Limpando cache, aguarde...");
+    try {
+      await emergencyReset();
+    } catch {
+      setResetting(false);
+      toast.error("Não foi possível limpar o cache. Tente novamente.");
+    }
+  }
+
   return (
     <Card>
       <CardHeader><CardTitle className="text-base">Sistema</CardTitle></CardHeader>
@@ -162,9 +179,14 @@ function SystemVersionCard() {
           <p className="text-sm">Versão atual (build)</p>
           <p className="text-xs text-muted-foreground">{APP_VERSION}</p>
         </div>
-        <Button variant="outline" onClick={handleCheck} disabled={checking}>
-          {checking ? "Verificando..." : "Verificar atualizações"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={handleCheck} disabled={checking || resetting}>
+            {checking ? "Verificando..." : "Verificar atualizações"}
+          </Button>
+          <Button variant="outline" onClick={handleEmergencyReset} disabled={checking || resetting}>
+            {resetting ? "Limpando..." : "Limpar cache e reiniciar"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

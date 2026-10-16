@@ -51,3 +51,52 @@ export async function applyUpdate() {
     window.location.replace(url.toString());
   }
 }
+
+/**
+ * Reset de emergência para o iPhone, onde o PWA instalado na tela de início
+ * teima em rodar o bundle antigo mesmo depois de um deploy.
+ *
+ * A diferença para `applyUpdate` é que aqui também desregistramos o service
+ * worker por completo — no iOS um SW antigo continua sendo usado enquanto
+ * estiver registrado, e `PURGE`/`SKIP_WAITING` não bastam. O registro é
+ * recriado no próximo carregamento por `register-sw.ts`.
+ *
+ * Segurança: a fila do IndexedDB NÃO é apagada. Cada operação é isolada para
+ * um passo falho não impedir os próximos, e só no final recarregamos.
+ */
+export async function emergencyReset() {
+  if (typeof window === "undefined") return;
+  const step = async (label: string, fn: () => Promise<void> | void) => {
+    try { await fn(); } catch { /* ignora: um passo falho não pode parar os outros */ }
+  };
+
+  // 1. Service worker: PURGE + unregister. É o passo que resolve no iOS.
+  await step("sw", async () => {
+    const regs = await navigator.serviceWorker?.getRegistrations?.();
+    for (const reg of regs ?? []) {
+      reg.active?.postMessage({ type: "PURGE" });
+      reg.waiting?.postMessage({ type: "SKIP_WAITING" });
+      await reg.unregister().catch(() => undefined);
+    }
+  });
+
+  // 2. Cache Storage: apaga tudo, não só as chaves vertex-*.
+  await step("caches", async () => {
+    if (!("caches" in window)) return;
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+  });
+
+  // 3. Reload bustado — sem `no-store` o Safari pode servir o HTML do cache.
+  const url = new URL(window.location.href);
+  url.searchParams.delete("_v");
+  url.searchParams.set("_emergencia", Date.now().toString());
+  const busted = url.toString();
+
+  await step("prefetch", async () => {
+    // Toca a rede antes do replace para o HTTP cache ser revalidado.
+    await fetch(busted, { cache: "no-store", headers: { "cache-control": "no-cache" } });
+  });
+
+  window.location.replace(busted);
+}
