@@ -157,7 +157,16 @@ function HistoricoPage() {
         if (task?.active && task?.label) codeByName.set(task.label, task.code);
       }
       setTaskNames(catalog);
-      setEarlyCode(codeByName.get("Tabela adiantada") ?? "/");
+      const preferred = codeByName.get("Tabela adiantada");
+      if (preferred) {
+        setEarlyCode(preferred);
+      } else {
+        let fallback = "/";
+        for (const [label, code] of codeByName) {
+          if (/adiant/i.test(label)) { fallback = code; break; }
+        }
+        setEarlyCode(fallback);
+      }
     });
   }, [me]);
 
