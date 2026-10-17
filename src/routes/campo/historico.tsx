@@ -70,6 +70,21 @@ function isEarlyTask(taskExtent: string | null | undefined, code: string) {
   return taskExtent.split(",").map((v) => v.trim()).includes(code);
 }
 
+// Fuso horário seguro para o Intl. O `??` do timezoneForEvent não pega string
+// vazia — e `new Intl.DateTimeFormat("pt-BR", { timeZone: "" })` joga
+// `RangeError: Invalid time zone specified`, que derruba a página inteira.
+// Qualquer valor vazio/inválido cai no padrão de Brasília.
+const DEFAULT_TIMEZONE = "America/Sao_Paulo";
+function safeZone(zone?: string | null): string {
+  if (!zone) return DEFAULT_TIMEZONE;
+  try {
+    new Intl.DateTimeFormat("pt-BR", { timeZone: zone });
+    return zone;
+  } catch {
+    return DEFAULT_TIMEZONE;
+  }
+}
+
 function HistoricoPage() {
   const [me, setMe] = useState<FieldMe | null>(null);
   const [mode, setMode] = useState<"linha" | "sangrador">("linha");
@@ -102,17 +117,24 @@ function HistoricoPage() {
 
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
   const range = useMemo(() => rangeFor(period, custom), [period, custom]);
-  const timezone = farm?.timezone ?? "America/Sao_Paulo";
+  const timezone = safeZone(farm?.timezone);
   const timezoneForEvent = (event: HistoryEvent) =>
-    (event.farmId ? me?.assignments.find((a) => a.farm.id === event.farmId)?.farm.timezone : timezone) ?? "America/Sao_Paulo";
-  const formatDate = (value: string, options: Intl.DateTimeFormatOptions, zone: string) => new Intl.DateTimeFormat("pt-BR", { ...options, timeZone: zone }).format(new Date(value));
+    safeZone(event.farmId ? me?.assignments.find((a) => a.farm.id === event.farmId)?.farm.timezone : timezone);
+  const formatDate = (value: string, options: Intl.DateTimeFormatOptions, zone: string) => {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "—";
+    return new Intl.DateTimeFormat("pt-BR", { ...options, timeZone: safeZone(zone) }).format(d);
+  };
   // Cabeçalho do dia: a chave vem do Intl em en-CA ("YYYY-MM-DD"). Ancorar em
   // meia-noite UTC e formatar num fuso -3 desloca para 21:00 do dia ANTERIOR —
   // o histórico mostrava tudo 1 dia atrasado. Âncora de 15:00 UTC (meio-dia de
   // Brasília), igual ao `tappingRecordMoment` e ao `civilDateToIso` do backend:
   // o dia civil sobrevive em qualquer fuso ocidental.
-  const formatDayKey = (day: string, zone: string) =>
-    new Intl.DateTimeFormat("pt-BR", { timeZone: zone, day: "2-digit", month: "long", year: "numeric" }).format(new Date(`${day}T15:00:00.000Z`));
+  const formatDayKey = (day: string, zone: string) => {
+    const d = new Date(`${day}T15:00:00.000Z`);
+    if (Number.isNaN(d.getTime())) return day;
+    return new Intl.DateTimeFormat("pt-BR", { timeZone: safeZone(zone), day: "2-digit", month: "long", year: "numeric" }).format(d);
+  };
 
   // Carrega catálogo de tabelas e tarefas por empresa (para enriquecer a linha do tempo)
   useEffect(() => {
@@ -221,7 +243,10 @@ function HistoricoPage() {
     const f = kindTab === "tudo" ? entries : entries.filter((e) => e.kind === kindTab);
     const byDay = new Map<string, HistoryEvent[]>();
     for (const e of f) {
-      const d = new Intl.DateTimeFormat("en-CA", { timeZone: timezoneForEvent(e), year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(e.date));
+      // `e.date` inválido viraria "Invalid Date" no agrupamento — descarta em vez de quebrar a página.
+      const when = new Date(e.date);
+      if (Number.isNaN(when.getTime())) continue;
+      const d = new Intl.DateTimeFormat("en-CA", { timeZone: timezoneForEvent(e), year: "numeric", month: "2-digit", day: "2-digit" }).format(when);
       if (!byDay.has(d)) byDay.set(d, []);
       byDay.get(d)!.push(e);
     }
@@ -229,7 +254,10 @@ function HistoricoPage() {
   }, [entries, kindTab, farm, me]);
 
   const sangradorStats = useMemo(() => {
-    const days = new Set(tapperRecords.map((r) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone ?? "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(tappingRecordMoment(r))));
+    const days = new Set(tapperRecords.flatMap((r) => {
+      const when = tappingRecordMoment(r);
+      return Number.isNaN(when.getTime()) ? [] : [new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(when)];
+    }));
     const periodDays = period === "hoje" ? 1 : period === "semana" ? 7 : period === "custom" && custom
       ? Math.round((new Date(`${custom.to}T15:00:00.000Z`).getTime() - new Date(`${custom.from}T15:00:00.000Z`).getTime()) / 86400000) + 1
       : 30;
