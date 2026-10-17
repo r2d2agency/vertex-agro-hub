@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Trees } from "lucide-react";
-import { getFieldMe, listFieldTappers, listFieldTapperTables, type FieldMe, type FieldTapper, type FieldTapperTable } from "@/lib/field.functions";
+import { getFieldMe, listFieldTappers, listFieldTapperTables, listFieldTappingTables, type FieldMe, type FieldTapper, type FieldTapperTable } from "@/lib/field.functions";
 import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
 import { listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask, TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
 import { tappingRecordMoment } from "@/lib/tapping-dates";
