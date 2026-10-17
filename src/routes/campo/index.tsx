@@ -99,6 +99,8 @@ function FieldHome() {
   const [taskNames, setTaskNames] = useState<Map<string, string>>(new Map());
   // companyId → (tableId → nome), para mostrar o nome da tabela no detalhe.
   const [tableNames, setTableNames] = useState<Map<string, Map<string, string>>>(new Map());
+  // Código da tarefa "adiantada" (para colorir nos diálogos).
+  const [earlyCode, setEarlyCode] = useState("/");
   // 0 = mês atual, -1 = mês anterior, -2 = dois meses atrás…
   const [monthOffset, setMonthOffset] = useState(0);
   // "Hoje" é o padrão: o monitor abre a tela pra ver o dia que está
@@ -223,7 +225,7 @@ function FieldHome() {
         }, new Map<string, string>());
         // Código da tarefa "adiantada" — o que o monitor chama de
         // "antecipada" na aba de resumo. Sem catálogo, cai no código legado.
-        const earlyCode = safe("o codigo da tarefa antecipada", () => {
+        const resolvedEarlyCode = safe("o codigo da tarefa antecipada", () => {
           const preferred = codeByName.get("Tabela adiantada");
           if (preferred) return preferred;
           // Fallback: qualquer tarefa ativa cujo nome mencione "adiant".
@@ -232,6 +234,7 @@ function FieldHome() {
           }
           return "/";
         }, "/");
+        setEarlyCode(resolvedEarlyCode);
         // Um dia é "antecipada" se algum registro tem o código da tarefa
         // adiantada na lista `taskExtent` (separada por vírgula).
         const hasEarlyTask = (day: SangriaDay) =>
@@ -239,7 +242,7 @@ function FieldHome() {
             String(record.taskExtent ?? "")
               .split(",")
               .map((code) => code.trim())
-              .includes(earlyCode),
+              .includes(resolvedEarlyCode),
           );
         // Tabelas por empresa: cada chamada já vem escopada a uma empresa,
         // então o zip com cids é seguro.
@@ -562,10 +565,11 @@ function FieldHome() {
         monthOffset={monthOffset}
         taskNames={taskNames}
         tableNames={tableNames}
+        earlyCode={earlyCode}
         onClose={() => setSangriaDetail(null)}
         onSelectTapper={(day) => { setSangriaDetail(null); setSelectedTapper(day); }}
       />
-      <TapperStatsDialog day={selectedTapper} onClose={() => setSelectedTapper(null)} />
+      <TapperStatsDialog day={selectedTapper} earlyCode={earlyCode} onClose={() => setSelectedTapper(null)} />
     </div>
   );
 }
@@ -585,13 +589,14 @@ function SummaryCell({ value, label, tone, onClick }: { value: number; label: st
 }
 
 function DailySangriaDialog({
-  category, summary, monthOffset, taskNames, tableNames, onClose, onSelectTapper,
+  category, summary, monthOffset, taskNames, tableNames, earlyCode, onClose, onSelectTapper,
 }: {
   category: SangriaCategory | null;
   summary: SangriaSummary;
   monthOffset: number;
   taskNames: Map<string, string>;
   tableNames: Map<string, Map<string, string>>;
+  earlyCode: string;
   onClose: () => void;
   onSelectTapper: (day: SangriaDay) => void;
 }) {
@@ -610,6 +615,9 @@ function DailySangriaDialog({
     const name = tables?.get(record.tappingTableId ?? "");
     return name ?? (record.tappingTableId ? `#${record.tappingTableId.slice(0, 6)}` : "");
   };
+  // Verifica se um registro é "adiantada"
+  const isEarly = (record: TappingRecord) =>
+    String(record.taskExtent ?? "").split(",").map((c) => c.trim()).includes(earlyCode);
   // Hora do registro — fica logo abaixo do nome, na mesma linha da data.
   // Vem de recordedAt (quando o monitor gravou); sem ele, não há hora pra
   // mostrar, e a linha mostra só a data em vez de um "--:--" inventado.
@@ -702,14 +710,15 @@ function DailySangriaDialog({
           <div className="space-y-2">
             {sorted.map((day, index) => {
               const tapperName = day.tapper?.fullName?.trim() || "Sangrador não identificado";
+              const dayHasEarly = (day.records ?? []).some(isEarly);
               return (
-              <button key={`${day.tapper?.id ?? "unknown"}:${day.farmId ?? ""}:${day.date ?? ""}:${index}`} type="button" onClick={() => onSelectTapper(day)} className="flex w-full items-start gap-3 rounded-xl border border-border/60 bg-card p-3 text-left transition hover:border-primary/60 hover:bg-primary/5">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><UserRound className="h-4 w-4" /></span>
+              <button key={`${day.tapper?.id ?? "unknown"}:${day.farmId ?? ""}:${day.date ?? ""}:${index}`} type="button" onClick={() => onSelectTapper(day)} className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition ${dayHasEarly ? "border-warning/40 bg-warning/5 hover:border-warning/60 hover:bg-warning/10" : "border-border/60 bg-card hover:border-primary/60 hover:bg-primary/5"}`}>
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${dayHasEarly ? "bg-warning/15 text-warning" : "bg-primary/10 text-primary"}`}><UserRound className="h-4 w-4" /></span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{tapperName}</span>
                   {/* Uma linha por registro: a tarefa vem do catálogo, pelo nome. */}
                   {(day.records ?? []).map((record) => (
-                    <span key={record.id} className="mt-0.5 block truncate text-[11px] text-primary">
+                    <span key={record.id} className={`mt-0.5 block truncate text-[11px] ${isEarly(record) ? "text-warning" : "text-primary"}`}>
                       {labelFor(record)}
                       {record.tappingTableId ? ` · ${tableName(record)}` : ""}
                     </span>
@@ -740,7 +749,7 @@ function DailySangriaDialog({
   );
 }
 
-function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: () => void }) {
+function TapperStatsDialog({ day, earlyCode, onClose }: { day: SangriaDay | null; earlyCode: string; onClose: () => void }) {
   const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("hoje");
   const [monthOffset, setMonthOffset] = useState(0);
   const [records, setRecords] = useState<TappingRecord[]>([]);
@@ -792,6 +801,17 @@ function TapperStatsDialog({ day, onClose }: { day: SangriaDay | null; onClose: 
     const performedTableIds = new Set(records.map((r) => r.tappingTableId).filter(Boolean));
     return tables.filter((table) => performedTableIds.has(table.id));
   }, [records, tables]);
+
+  // Uma tarefa/tabela é "adiantada" quando algum registro realizado carrega
+  // o código da tarefa adiantada. Usado só para cor de destaque.
+  const isEarlyTask = useMemo(
+    () => (taskExtent?: string | null) => !!taskExtent && String(taskExtent).split(",").map((c) => c.trim()).includes(earlyCode),
+    [earlyCode],
+  );
+  const isEarlyTable = useMemo(
+    () => (tableId?: string | null) => records.some((r) => r.tappingTableId === tableId && isEarlyTask(r.taskExtent)),
+    [records, isEarlyTask],
+  );
 
   // treeCount vive no vínculo (tapper-tables). Sem vínculo não há total — mostra "—" em vez de 0.
   const treeCountByTable = useMemo(() => {

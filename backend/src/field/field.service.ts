@@ -447,6 +447,7 @@ export class FieldService {
       subtitle: [t.liters != null ? `${t.liters} L` : null, t.dryKg != null ? `${t.dryKg} kg secos` : null].filter(Boolean).join(' · '),
       farmId: t.farmId,
       status: t.status,
+      meta: { tappingTableId: t.tappingTableId, taskExtent: t.taskExtent },
     });
     for (const d of dels) events.push({
       id: `del-${d.id}`, kind: 'producao', date: civilDateToIso(d.deliveryDate),

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, Trees } from "lucide-react";
 import { getFieldMe, listFieldTappers, listFieldTapperTables, type FieldMe, type FieldTapper, type FieldTapperTable } from "@/lib/field.functions";
 import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
-import { listTappingRecords, type TappingRecord, TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
+import { listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask, TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
 import { tappingRecordMoment } from "@/lib/tapping-dates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -58,6 +58,18 @@ function taskLabel(taskExtent?: string | null) {
   return taskExtent.split(",").map((v) => TASK_EXTENTS.find((t) => t.value === v)?.label ?? v).join(" + ");
 }
 
+// Nome da tarefa via catálogo da empresa, com fallback para TASK_EXTENTS
+function taskLabelFor(companyId: string, taskExtent?: string | null, catalog?: Map<string, string>) {
+  if (!taskExtent) return null;
+  return taskExtent.split(",").map((v) => catalog?.get(`${companyId}:${v}`) ?? TASK_EXTENTS.find((t) => t.value === v)?.label ?? v).join(" + ");
+}
+
+// Verifica se um registro é "adiantada" (tarefa com código earlyCode)
+function isEarlyTask(taskExtent: string | null | undefined, code: string) {
+  if (!taskExtent) return false;
+  return taskExtent.split(",").map((v) => v.trim()).includes(code);
+}
+
 function HistoricoPage() {
   const [me, setMe] = useState<FieldMe | null>(null);
   const [mode, setMode] = useState<"linha" | "sangrador">("linha");
@@ -69,6 +81,10 @@ function HistoricoPage() {
   const [kindTab, setKindTab] = useState<KindTab>("tudo");
   const [entries, setEntries] = useState<HistoryEvent[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(true);
+  // Catálogo de tabelas e tarefas por empresa, para enriquecer a linha do tempo
+  const [tableNames, setTableNames] = useState<Map<string, Map<string, string>>>(new Map());
+  const [taskNames, setTaskNames] = useState<Map<string, string>>(new Map());
+  const [earlyCode, setEarlyCode] = useState("/");
 
   // modo por sangrador
   const [tappers, setTappers] = useState<FieldTapper[]>([]);
@@ -97,6 +113,31 @@ function HistoricoPage() {
   // o dia civil sobrevive em qualquer fuso ocidental.
   const formatDayKey = (day: string, zone: string) =>
     new Intl.DateTimeFormat("pt-BR", { timeZone: zone, day: "2-digit", month: "long", year: "numeric" }).format(new Date(`${day}T15:00:00.000Z`));
+
+  // Carrega catálogo de tabelas e tarefas por empresa (para enriquecer a linha do tempo)
+  useEffect(() => {
+    if (!me) return;
+    const cids = Array.from(new Set(me.assignments.map((a) => a.farm.companyId)));
+    Promise.all(cids.map((cid) => listFieldTappingTables(cid).catch(() => []))).then((tableLists) => {
+      const map = new Map<string, Map<string, string>>();
+      cids.forEach((cid, i) => {
+        const inner = new Map<string, string>();
+        for (const t of tableLists[i] ?? []) if (t?.id) inner.set(t.id, t.name);
+        map.set(cid, inner);
+      });
+      setTableNames(map);
+    });
+    Promise.all(cids.map((cid) => listTappingTasks(cid).catch(() => []))).then((taskLists) => {
+      const catalog = new Map<string, string>();
+      const codeByName = new Map<string, string>();
+      for (const task of taskLists.flat()) {
+        if (task?.code) catalog.set(`${task.companyId}:${task.code}`, task.label);
+        if (task?.active && task?.label) codeByName.set(task.label, task.code);
+      }
+      setTaskNames(catalog);
+      setEarlyCode(codeByName.get("Tabela adiantada") ?? "/");
+    });
+  }, [me]);
 
   // Linha do tempo: uma fazenda específica, ou todas as fazendas/empresas do usuário.
   useEffect(() => {
@@ -149,6 +190,32 @@ function HistoricoPage() {
   }, [farm, tapperId, range.from, range.to, tappers]);
 
   const tableName = (id?: string | null) => tapperTables.find((t) => t.id === id)?.name;
+
+  // companyId de um evento de sangria, resolvido pelo farmId
+  const companyIdForEvent = (event: HistoryEvent) => {
+    if (!event.farmId) return farm?.companyId ?? "";
+    return me?.assignments.find((a) => a.farm.id === event.farmId)?.farm.companyId ?? "";
+  };
+
+  // Nome da tabela de um evento de sangria, via catálogo carregado
+  const tableNameForEvent = (event: HistoryEvent) => {
+    const cid = companyIdForEvent(event);
+    const tables = tableNames.get(cid);
+    const id = event.meta?.tappingTableId as string | undefined;
+    if (!id) return null;
+    return tables?.get(id) ?? `#${id.slice(0, 6)}`;
+  };
+
+  // Tarefa de um evento de sangria, via catálogo carregado
+  const taskLabelForEvent = (event: HistoryEvent) => {
+    const cid = companyIdForEvent(event);
+    return taskLabelFor(cid, event.meta?.taskExtent as string | undefined, taskNames);
+  };
+
+  // Verifica se um evento de sangria é "adiantada"
+  const isEarlyEvent = (event: HistoryEvent) => {
+    return isEarlyTask(event.meta?.taskExtent as string | undefined, earlyCode);
+  };
 
   const grouped = useMemo(() => {
     const f = kindTab === "tudo" ? entries : entries.filter((e) => e.kind === kindTab);
@@ -261,22 +328,37 @@ function HistoricoPage() {
                   {formatDayKey(day, timezone ?? "America/Sao_Paulo")}
                 </h2>
                 <ul className="space-y-2">
-                  {list.map((e) => (
-                    <li key={e.id} className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card p-3">
-                      <div className="w-14 shrink-0 text-sm font-semibold">
-                        {formatDate(e.date, { hour: "2-digit", minute: "2-digit" }, timezoneForEvent(e))}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex items-center gap-2">
-                          <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${KIND_STYLE[e.kind] ?? "bg-muted text-muted-foreground"}`}>
-                            {KIND_LABEL[e.kind] ?? e.kind}
-                          </span>
+                  {list.map((e) => {
+                    const early = e.kind === "sangria" && isEarlyEvent(e);
+                    const tLabel = e.kind === "sangria" ? taskLabelForEvent(e) : null;
+                    const tName = e.kind === "sangria" ? tableNameForEvent(e) : null;
+                    return (
+                      <li key={e.id} className={`flex items-start gap-3 rounded-2xl border p-3 ${early ? "border-warning/40 bg-warning/5" : "border-border/60 bg-card"}`}>
+                        <div className="w-14 shrink-0 text-sm font-semibold">
+                          {formatDate(e.date, { hour: "2-digit", minute: "2-digit" }, timezoneForEvent(e))}
                         </div>
-                        <div className="truncate text-sm font-medium">{e.title}</div>
-                        {e.subtitle && <div className="truncate text-[11px] text-muted-foreground">{e.subtitle}</div>}
-                      </div>
-                    </li>
-                  ))}
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex items-center gap-2">
+                            <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${KIND_STYLE[e.kind] ?? "bg-muted text-muted-foreground"}`}>
+                              {KIND_LABEL[e.kind] ?? e.kind}
+                            </span>
+                            {early && (
+                              <span className="rounded-md bg-warning/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-warning">
+                                Adiantada
+                              </span>
+                            )}
+                          </div>
+                          <div className="truncate text-sm font-medium">{e.title}</div>
+                          {e.subtitle && <div className="truncate text-[11px] text-muted-foreground">{e.subtitle}</div>}
+                          {e.kind === "sangria" && (tName || tLabel) && (
+                            <div className={`mt-0.5 truncate text-[11px] ${early ? "text-warning" : "text-primary"}`}>
+                              {tLabel}{tName ? ` · ${tName}` : ""}
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             ))
