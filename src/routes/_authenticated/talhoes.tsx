@@ -203,8 +203,8 @@ function TalhoesPage() {
                                 <span className="font-semibold">{summary?.plannedTreeCount ?? 0}</span>
                               </div>
                               {hasTapper && summary!.tappers.map((t) => (
-                                <div key={t.id} className="flex items-center justify-between">
-                                  <span className="truncate text-muted-foreground">{t.name ?? "Sangrador"}</span>
+                                <div key={t.id} className="flex items-center justify-between gap-2">
+                                  <span className="truncate text-muted-foreground">{t.name ?? "Sem nome"}</span>
                                   <span className="font-semibold">{t.treeCount}</span>
                                 </div>
                               ))}

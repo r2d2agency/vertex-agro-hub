@@ -232,32 +232,72 @@ export class TerritorialService {
 
     const links = await this.prisma.tapperPlotTableLink.findMany({
       where: { companyId, active: true, plotId: { in: plots.map((p) => p.id) } },
-      select: { plotId: true, tapperId: true, userId: true, treeCount: true },
+      select: { plotId: true, tapperId: true, userId: true, tappingTableId: true, treeCount: true },
     });
-    const tappers = await this.prisma.tapper.findMany({
-      where: { companyId, isDeleted: false },
-      select: { id: true, fullName: true },
-    });
-    const tapperName = new Map(tappers.map((t) => [t.id, t.fullName]));
+    const tapperIds = [...new Set(links.map((l) => l.tapperId).filter((id): id is string => !!id))];
+    const userIds = [...new Set(links.map((l) => l.userId).filter((id): id is string => !!id))];
+    const tappers = tapperIds.length
+      ? await this.prisma.tapper.findMany({
+          where: { id: { in: tapperIds } },
+          select: { id: true, fullName: true, cpf: true },
+        })
+      : [];
+    const users = userIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, fullName: true, cpf: true },
+        })
+      : [];
+
+    // O mesmo sangrador pode existir como ficha legada (Tapper) e como vínculo
+    // só de RH (User). O vínculo no talhão usa uma das duas chaves, então sem
+    // casar as duas o admin via "Sangrador" repetido em vez do nome, e a mesma
+    // pessoa podia aparecer duas vezes. Casa por CPF (preferencial) e, na
+    // falta dele, por nome normalizado.
+    const tapperById = new Map(tappers.map((t) => [t.id, t]));
+    const userById = new Map(users.map((u) => [u.id, u]));
+    const onlyDigits = (v: string | null | undefined) => (v ?? '').replace(/\D+/g, '');
+
+    const personOf = (link: { tapperId: string | null; userId: string | null }) => {
+      const tapper = link.tapperId ? tapperById.get(link.tapperId) : undefined;
+      const user = link.userId ? userById.get(link.userId) : undefined;
+      const cpf = onlyDigits(tapper?.cpf) || onlyDigits(user?.cpf);
+      if (cpf) return { key: `cpf:${cpf}`, name: tapper?.fullName ?? user?.fullName ?? null };
+      const name = (tapper?.fullName ?? user?.fullName ?? '').trim();
+      if (name) return { key: `nome:${name.toLowerCase()}`, name };
+      const raw = link.tapperId ?? link.userId ?? '';
+      return { key: `id:${raw}`, name: null };
+    };
 
     return plots.map((plot) => {
       const plotLinks = links.filter((l) => l.plotId === plot.id);
-      const byTapper = new Map<string, { name: string | null; treeCount: number }>();
+      // Uma linha por sangrador: nome e quantas árvores ele tem que colher
+      // neste talhão. A mesma pessoa pode aparecer pelas duas fichas (legada e
+      // RH) na mesma tabela — conta uma vez, pelo maior valor.
+      const byPerson = new Map<string, { name: string | null; tables: Map<string, number> }>();
+      let unassignedTrees = 0;
       for (const link of plotLinks) {
-        const key = link.tapperId ?? link.userId ?? '';
-        const name = link.tapperId ? tapperName.get(link.tapperId) ?? null : null;
-        const current = byTapper.get(key);
-        if (current) current.treeCount += link.treeCount ?? 0;
-        else byTapper.set(key, { name, treeCount: link.treeCount ?? 0 });
+        if (!link.tapperId && !link.userId) { unassignedTrees += link.treeCount ?? 0; continue; }
+        const { key, name } = personOf(link);
+        const person = byPerson.get(key) ?? { name, tables: new Map<string, number>() };
+        const value = link.treeCount ?? 0;
+        const prev = person.tables.get(link.tappingTableId);
+        if (prev === undefined || value > prev) person.tables.set(link.tappingTableId, value);
+        byPerson.set(key, person);
       }
+      const tappersOfPlot = [...byPerson.entries()].map(([id, v]) => ({
+        id,
+        name: v.name,
+        treeCount: [...v.tables.values()].reduce((sum, n) => sum + n, 0),
+      }));
       return {
         plotId: plot.id,
         farmId: plot.farmId,
         name: plot.name,
         plotTreeCount: plot.treeCount ?? null,
-        plannedTreeCount: plotLinks.reduce((sum, l) => sum + (l.treeCount ?? 0), 0),
-        tapperCount: byTapper.size,
-        tappers: [...byTapper.entries()].map(([id, v]) => ({ id, name: v.name, treeCount: v.treeCount })),
+        plannedTreeCount: tappersOfPlot.reduce((sum, t) => sum + t.treeCount, 0) + unassignedTrees,
+        tapperCount: tappersOfPlot.length,
+        tappers: tappersOfPlot,
       };
     });
   }
