@@ -13,9 +13,18 @@ export type TappingTask = {
 // Fallback apenas para compatibilidade enquanto o catálogo é carregado.
 export const TASK_EXTENTS = [
   { value: "X", label: "Tabela completa (X)" },
+  { value: "M", label: "Meia tabela (M)" },
   { value: "/", label: "Tabela adiantada (/)" },
   { value: "1", label: "Reposição (1)" },
 ] as const;
+
+// Tarefas que cobrem a tabela inteira ou parte dela. A quantidade prevista
+// continua sendo a cadastrada — a tarefa só define a fração realizada.
+export const PARTIAL_TASKS = ["M", "/"] as const;
+
+export function isPartialTask(code?: string | null) {
+  return !!code && (PARTIAL_TASKS as readonly string[]).includes(code);
+}
 
 export type DailyTreeAllocation = { date: string; plotTreeCount: number | null; tableCount: number; tapperCount: number; baseTrees: number | null; treesExpected: number | null; taskExtent: string };
 
@@ -42,6 +51,35 @@ export function updateTappingTask(id: string, input: Partial<Omit<TappingTask, "
 
 export function deleteTappingTask(id: string) {
   return apiRequest(`/tapping-tasks/${id}`, { method: "DELETE" });
+}
+
+// Relatório de árvores por talhão: feitas, do talhão, da fazenda, do
+// sangrador e quantas sangrias foram realizadas.
+export type TappingSummaryTapper = {
+  id: string;
+  name: string;
+  treeCount: number;
+  treesDone: number;
+  treesExpected: number;
+  records: number;
+};
+
+export type TappingSummary = {
+  plotId: string;
+  plotName: string;
+  farmId: string;
+  farmName: string;
+  plotTreeCount: number;
+  farmTreeCount: number;
+  plannedTreeCount: number;
+  treesDone: number;
+  treesRealized: number;
+  tappers: TappingSummaryTapper[];
+};
+
+export function listTappingSummary(input: { companyId: string; farmId?: string; plotId?: string; tapperId?: string; from?: string; to?: string }) {
+  const qs = new URLSearchParams(Object.entries(input).filter(([, value]) => value != null) as [string, string][]);
+  return apiRequest<TappingSummary[]>(`/tapping-summary?${qs.toString()}`);
 }
 
 export const END_PERIODS = [

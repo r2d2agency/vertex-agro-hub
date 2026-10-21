@@ -39,6 +39,24 @@ export function listPlots(companyId: string, farmId?: string) {
   return apiRequest<Plot[]>(`/plots?${qs.toString()}`);
 }
 
+// Resumo de sangração por talhão: quantas árvores estão previstas para
+// sangrar no talhão e quantos sangradores estão alocados.
+export type PlotTappingSummary = {
+  plotId: string;
+  farmId: string;
+  name: string;
+  plotTreeCount: number | null;
+  plannedTreeCount: number;
+  tapperCount: number;
+  tappers: Array<{ id: string; name: string | null; treeCount: number }>;
+};
+
+export function listPlotTappingSummary(companyId: string, farmId?: string) {
+  const qs = new URLSearchParams({ companyId });
+  if (farmId) qs.set("farmId", farmId);
+  return apiRequest<PlotTappingSummary[]>(`/plots/tapping-summary?${qs.toString()}`);
+}
+
 export function createPlot(companyId: string, values: PlotInput) {
   return apiRequest<Plot>("/plots", {
     method: "POST",

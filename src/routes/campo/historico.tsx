@@ -120,8 +120,8 @@ function HistoricoPage() {
   const timezone = safeZone(farm?.timezone);
   const timezoneForEvent = (event: HistoryEvent) =>
     safeZone(event.farmId ? me?.assignments.find((a) => a.farm.id === event.farmId)?.farm.timezone : timezone);
-  const formatDate = (value: string, options: Intl.DateTimeFormatOptions, zone: string) => {
-    const d = new Date(value);
+  const formatDate = (value: string | Date, options: Intl.DateTimeFormatOptions, zone: string) => {
+    const d = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(d.getTime())) return "—";
     return new Intl.DateTimeFormat("pt-BR", { ...options, timeZone: safeZone(zone) }).format(d);
   };

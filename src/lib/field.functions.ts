@@ -45,9 +45,20 @@ export function listFieldTappers(companyId: string, farmId: string) {
   return apiRequest<FieldTapper[]>(`/field/tappers?${qs.toString()}`);
 }
 
+// Talhão do sangrador no campo: total de árvores do talhão, quanto está
+// alocado a ele e as tabelas vinculadas (com a quantidade de cada tabela).
+export type FieldTapperPlot = {
+  id: string;
+  name: string;
+  code: string | null;
+  treeCount: number | null;
+  assignedTreeCount: number | null;
+  tables: Array<{ tappingTableId: string; name: string; notation: string | null; treeCount: number | null }>;
+};
+
 export function listFieldTapperPlots(companyId: string, tapperKey: string, farmId: string) {
   const qs = new URLSearchParams({ companyId, tapperKey, farmId });
-  return apiRequest<Array<{ id: string; name: string; code: string | null; treeCount: number | null; assignedTreeCount: number | null }>>(`/field/tapper-plots?${qs.toString()}`);
+  return apiRequest<FieldTapperPlot[]>(`/field/tapper-plots?${qs.toString()}`);
 }
 
 export function listFieldTappingTables(companyId: string) {

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Map as MapIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Pencil, Trash2, Map as MapIcon, ChevronLeft, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/vertex/page-header";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,8 @@ import {
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { listFarms, type Farm } from "@/lib/fazendas.functions";
 import {
-  createPlot, deletePlot, listPlots, updatePlot, type Plot, type PlotInput,
+  createPlot, deletePlot, listPlots, updatePlot, listPlotTappingSummary,
+  type Plot, type PlotInput, type PlotTappingSummary,
 } from "@/lib/talhoes.functions";
 import { listClones } from "@/lib/clones.functions";
 import { listTappingTables } from "@/lib/tabelas.functions";
@@ -47,7 +48,9 @@ const empty: PlotInput = {
 function TalhoesPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
   const qc = useQueryClient();
-  const [farmFilter, setFarmFilter] = useState<string>("__all");
+  // Nada é listado de cara: o admin escolhe a fazenda e só então vê os
+  // talhões dela, em ordem crescente pelo nome.
+  const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Plot | null>(null);
   const [toDelete, setToDelete] = useState<Plot | null>(null);
@@ -59,16 +62,41 @@ function TalhoesPage() {
   });
 
   const { data = [], isLoading: loadingList } = useQuery({
-    queryKey: ["plots", companyId, farmFilter],
-    queryFn: () => listPlots(companyId!, farmFilter !== "__all" ? farmFilter : undefined),
+    queryKey: ["plots", companyId],
+    queryFn: () => listPlots(companyId!),
     enabled: !!companyId,
   });
+
+  const { data: summaries = [] } = useQuery({
+    queryKey: ["plot-tapping-summary", companyId],
+    queryFn: () => listPlotTappingSummary(companyId!),
+    enabled: !!companyId,
+  });
+
+  const summaryByPlot = useMemo(() => {
+    const map = new Map<string, PlotTappingSummary>();
+    for (const s of summaries) map.set(s.plotId, s);
+    return map;
+  }, [summaries]);
+
+  // Só as fazendas que têm talhão entram na lista.
+  const farmsWithPlots = useMemo(
+    () => farms.filter((f) => data.some((p) => p.farmId === f.id)),
+    [farms, data],
+  );
+
+  const selectedFarm = farmsWithPlots.find((f) => f.id === selectedFarmId) ?? null;
+  const farmPlots = useMemo(
+    () => (selectedFarmId ? data.filter((p) => p.farmId === selectedFarmId).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")) : []),
+    [data, selectedFarmId],
+  );
 
   const del = useMutation({
     mutationFn: (id: string) => deletePlot(id),
     onSuccess: () => {
       toast.success("Talhão excluído");
       qc.invalidateQueries({ queryKey: ["plots", companyId] });
+      qc.invalidateQueries({ queryKey: ["plot-tapping-summary", companyId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -89,26 +117,50 @@ function TalhoesPage() {
 
           {farms.length === 0 ? (
             <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Cadastre uma fazenda antes de adicionar talhões.</CardContent></Card>
+          ) : loadingList ? (
+            <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Carregando...</CardContent></Card>
+          ) : farmsWithPlots.length === 0 ? (
+            <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Nenhum talhão cadastrado.</CardContent></Card>
+          ) : !selectedFarm ? (
+            // Primeiro nível: só as fazendas que têm talhão.
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {farmsWithPlots.map((f) => {
+                const farmPlotsCount = data.filter((p) => p.farmId === f.id).length;
+                const farmTrees = data
+                  .filter((p) => p.farmId === f.id)
+                  .reduce((sum, p) => sum + (p.treeCount ?? 0), 0);
+                return (
+                  <button key={f.id} type="button" onClick={() => setSelectedFarmId(f.id)} className="text-left">
+                    <Card className="transition-colors hover:border-primary/40">
+                      <CardContent className="p-5">
+                        <div className="flex items-center gap-2">
+                          <MapIcon className="h-4 w-4 text-primary" />
+                          <p className="truncate font-semibold">{f.name}</p>
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {farmPlotsCount} talhão{farmPlotsCount === 1 ? "" : "s"} · {farmTrees} árvores
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </button>
+                );
+              })}
+            </div>
           ) : (
-            <>
-              <div className="mb-4 flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Fazenda:</span>
-                <Select value={farmFilter} onValueChange={setFarmFilter}>
-                  <SelectTrigger className="w-72"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all">Todas</SelectItem>
-                    {farms.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+            // Segundo nível: os talhões da fazenda escolhida, em ordem pelo nome.
+            <div className="space-y-4">
+              <Button variant="ghost" onClick={() => setSelectedFarmId(null)}>
+                <ChevronLeft className="mr-2 h-4 w-4" /> Todas as fazendas
+              </Button>
+              <div className="flex items-center gap-2">
+                <MapIcon className="h-4 w-4 text-primary" />
+                <span className="font-semibold">{selectedFarm.name}</span>
               </div>
-
-              {loadingList ? (
-                <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Carregando...</CardContent></Card>
-              ) : data.length === 0 ? (
-                <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Nenhum talhão cadastrado.</CardContent></Card>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {data.map((p) => (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {farmPlots.map((p) => {
+                  const summary = summaryByPlot.get(p.id);
+                  const hasTapper = (summary?.tapperCount ?? 0) > 0;
+                  return (
                     <Card key={p.id} className="transition-colors hover:border-primary/40">
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between gap-3">
@@ -121,15 +173,41 @@ function TalhoesPage() {
                               />
                               <MapIcon className="h-4 w-4 text-primary" />
                               <p className="truncate font-semibold">{p.name}</p>
+                              {/* "Carinha" do sangrador: sinaliza que o talhão tem
+                                  alguém alocado para sangrar. */}
+                              {hasTapper ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                                  <UserCheck className="h-3 w-3" />
+                                  {summary!.tapperCount} sangrador{summary!.tapperCount === 1 ? "" : "es"}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                  <UserX className="h-3 w-3" /> sem sangrador
+                                </span>
+                              )}
                             </div>
                             {p.code && <p className="mt-1 font-mono text-xs text-muted-foreground">{p.code}</p>}
                             <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                              {p.farm && <p>Fazenda: {p.farm.name}</p>}
                               {p.areaHa != null && <p>{p.areaHa} ha</p>}
                               {p.cloneName && <p>Clone: {p.cloneName}</p>}
                               {p.plantingYear && <p>Plantio: {p.plantingYear}</p>}
-                              {p.treeCount && <p>{p.treeCount} árvores</p>}
                               {p.tappingSystem && <p>Sistema: {p.tappingSystem}</p>}
+                            </div>
+                            <div className="mt-3 space-y-1 rounded-lg bg-muted/40 px-3 py-2 text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Árvores no talhão</span>
+                                <span className="font-semibold">{summary?.plotTreeCount ?? p.treeCount ?? 0}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Previstas para sangrar</span>
+                                <span className="font-semibold">{summary?.plannedTreeCount ?? 0}</span>
+                              </div>
+                              {hasTapper && summary!.tappers.map((t) => (
+                                <div key={t.id} className="flex items-center justify-between">
+                                  <span className="truncate text-muted-foreground">{t.name ?? "Sangrador"}</span>
+                                  <span className="font-semibold">{t.treeCount}</span>
+                                </div>
+                              ))}
                             </div>
                           </div>
                           <div className="flex flex-col gap-1">
@@ -139,10 +217,10 @@ function TalhoesPage() {
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
-              )}
-            </>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </>
       )}
@@ -154,8 +232,11 @@ function TalhoesPage() {
         companyId={companyId}
         farms={farms}
         allPlots={data}
-        defaultFarmId={farmFilter !== "__all" ? farmFilter : undefined}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["plots", companyId] })}
+        defaultFarmId={selectedFarmId ?? undefined}
+        onSaved={() => {
+          qc.invalidateQueries({ queryKey: ["plots", companyId] });
+          qc.invalidateQueries({ queryKey: ["plot-tapping-summary", companyId] });
+        }}
       />
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>

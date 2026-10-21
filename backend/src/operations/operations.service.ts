@@ -86,6 +86,114 @@ export class OperationsService {
     return { date: opts.date, plotTreeCount: plot.treeCount ?? null, tableCount: 1, tapperCount: 1, baseTrees: base, treesExpected, taskExtent: opts.taskExtent };
   }
 
+  // ---------- Relatório de árvores ----------
+  // Uma linha por (talhão, sangrador). Traz o confronto pedido: quantas
+  // árvores foram feitas, quantas o talhão tem, quantas a fazenda tem,
+  // quantas são do sangrador e quantas sangrias foram realizadas.
+  async tappingSummary(
+    userId: string,
+    companyId: string,
+    opts: { farmId?: string; plotId?: string; tapperId?: string; from?: string; to?: string } = {},
+  ) {
+    await this.access.ensureCompany(userId, companyId);
+    const dateFilter =
+      opts.from || opts.to
+        ? {
+            ...(opts.from ? { gte: new Date(`${opts.from}T00:00:00-03:00`) } : {}),
+            ...(opts.to ? { lte: new Date(`${opts.to}T23:59:59.999-03:00`) } : {}),
+          }
+        : undefined;
+
+    const [plots, farmPlots, links, records, tappers] = await Promise.all([
+      this.prisma.plot.findMany({
+        where: { companyId, isDeleted: false, ...(opts.farmId ? { farmId: opts.farmId } : {}), ...(opts.plotId ? { id: opts.plotId } : {}) },
+        orderBy: { name: 'asc' },
+        select: { id: true, farmId: true, name: true, treeCount: true, farm: { select: { name: true } } },
+      }),
+      // Total de árvores da fazenda: soma de todos os talhões (não só os filtrados).
+      this.prisma.plot.groupBy({
+        by: ['farmId'],
+        where: { companyId, isDeleted: false },
+        _sum: { treeCount: true },
+      }),
+      this.prisma.tapperPlotTableLink.findMany({
+        where: { companyId, active: true, ...(opts.plotId ? { plotId: opts.plotId } : {}) },
+        select: { plotId: true, farmId: true, tappingTableId: true, tapperId: true, userId: true, treeCount: true },
+      }),
+      this.prisma.tappingRecord.findMany({
+        where: {
+          companyId, isDeleted: false,
+          ...(opts.farmId ? { farmId: opts.farmId } : {}),
+          ...(opts.plotId ? { plotId: opts.plotId } : {}),
+          ...(opts.tapperId ? { tapperId: opts.tapperId } : {}),
+          ...(dateFilter ? { date: dateFilter } : {}),
+        },
+        select: { plotId: true, farmId: true, tapperId: true, sangradorName: true, treesTapped: true, treesExpected: true, taskExtent: true, date: true },
+      }),
+      this.prisma.tapper.findMany({ where: { companyId, isDeleted: false }, select: { id: true, fullName: true } }),
+    ]);
+
+    const farmTreeCount = new Map(farmPlots.map((f) => [f.farmId, f._sum.treeCount ?? 0]));
+    const tapperName = new Map(tappers.map((t) => [t.id, t.fullName]));
+    const linksByPlot = new Map<string, typeof links>();
+    for (const link of links) {
+      if (opts.farmId && link.farmId !== opts.farmId) continue;
+      const list = linksByPlot.get(link.plotId) ?? [];
+      list.push(link);
+      linksByPlot.set(link.plotId, list);
+    }
+    const recordsByPlot = new Map<string, typeof records>();
+    for (const rec of records) {
+      if (!rec.plotId) continue;
+      const list = recordsByPlot.get(rec.plotId) ?? [];
+      list.push(rec);
+      recordsByPlot.set(rec.plotId, list);
+    }
+
+    return plots.map((plot) => {
+      const plotLinks = linksByPlot.get(plot.id) ?? [];
+      const plotRecords = recordsByPlot.get(plot.id) ?? [];
+
+      // Um grupo por sangrador dentro do talhão. A chave é o id do vínculo
+      // (tapperId ou userId); quando o registro não traz id, cai no nome —
+      // normalizado — pra ainda agrupar com o vínculo do mesmo sangrador.
+      const groups = new Map<string, { id: string; name: string; treeCount: number; treesDone: number; treesExpected: number; records: number }>();
+      const byName = new Map<string, string>();
+      const nameKey = (name: string | null | undefined) => (name ?? "").trim().toLowerCase();
+      for (const link of plotLinks) {
+        const key = link.tapperId ?? link.userId ?? '';
+        const name = (link.tapperId && tapperName.get(link.tapperId)) || '—';
+        const current = groups.get(key) ?? { id: key, name, treeCount: 0, treesDone: 0, treesExpected: 0, records: 0 };
+        current.treeCount += link.treeCount ?? 0;
+        groups.set(key, current);
+        if (name !== '—') byName.set(nameKey(name), key);
+      }
+      for (const rec of plotRecords) {
+        const byRecName = byName.get(nameKey(rec.sangradorName));
+        const key = rec.tapperId ?? byRecName ?? rec.sangradorName ?? '';
+        const current = groups.get(key) ?? { id: key, name: rec.sangradorName || '—', treeCount: 0, treesDone: 0, treesExpected: 0, records: 0 };
+        current.treesDone += rec.treesTapped ?? 0;
+        current.treesExpected += rec.treesExpected ?? 0;
+        current.records += 1;
+        groups.set(key, current);
+      }
+
+      return {
+        plotId: plot.id,
+        plotName: plot.name,
+        farmId: plot.farmId,
+        farmName: plot.farm?.name ?? '—',
+        // Árvores do talhão (cadastrado) x previstas para sangrar (soma dos vínculos).
+        plotTreeCount: plot.treeCount ?? 0,
+        farmTreeCount: farmTreeCount.get(plot.farmId) ?? 0,
+        plannedTreeCount: plotLinks.reduce((sum, l) => sum + (l.treeCount ?? 0), 0),
+        treesDone: plotRecords.reduce((sum, r) => sum + (r.treesTapped ?? 0), 0),
+        treesRealized: plotRecords.length,
+        tappers: [...groups.values()],
+      };
+    });
+  }
+
   async upsertTappingDailyAllocation(userId: string, dto: UpsertTappingDailyAllocationDto) {
     await this.access.ensureCompany(userId, dto.companyId);
     if (Boolean(dto.tapperId) === Boolean(dto.userId)) throw new BadRequestException('Informe exatamente um identificador: tapperId ou userId');

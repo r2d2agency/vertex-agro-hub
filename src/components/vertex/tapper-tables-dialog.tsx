@@ -17,8 +17,7 @@ import {
 } from "@/lib/tappers.functions";
 import { listTappingTables } from "@/lib/tabelas.functions";
 import { listFarms } from "@/lib/fazendas.functions";
-import { listPlots } from "@/lib/talhoes.functions";
-import { createPlotTableLink, listPlotTableLinks } from "@/lib/tappers.functions";
+import { createPlotTableLink, listPlotTableLinks, type PlotTableLink } from "@/lib/tappers.functions";
 import { SearchableSelect } from "@/components/vertex/searchable-select";
 
 type SelectableTable = {
@@ -74,9 +73,10 @@ export function TapperTablesDialog({
 
   const templatesQuery = useQuery({ queryKey: ["tapping-table-templates", companyId], queryFn: () => listTappingTableTemplates(companyId), enabled: open && !!companyId });
   const farmsQuery = useQuery({ queryKey: ["farms", companyId], queryFn: () => listFarms(companyId), enabled: open && !!companyId });
-  const plotsQuery = useQuery({ queryKey: ["plots", companyId, farmId], queryFn: () => listPlots(companyId, farmId), enabled: open && !!companyId && !!farmId });
-  const plotLinksQuery = useQuery({ queryKey: ["plot-table-links", companyId, tapperKey, plotId], queryFn: () => listPlotTableLinks(companyId, tapperKey, plotId), enabled: open && !!companyId && !!tapperKey && !!plotId });
-  const plotLinkMutation = useMutation({ mutationFn: () => createPlotTableLink({ companyId, farmId, plotId, tapperKey, tappingTableId: plotTableId, treeCount: plotTreeCount ? Number(plotTreeCount) : undefined }), onSuccess: () => { toast.success("Tabela vinculada ao talhão"); setPlotTableId(""); setPlotTreeCount(""); qc.invalidateQueries({ queryKey: ["plot-table-links", companyId, tapperKey, plotId] }); }, onError: (e: Error) => toast.error(e.message) });
+  // Todos os vínculos do sangrador (sem filtrar por talhão): é daqui que sai a
+  // lista de talhões que ele realmente tem tabela vinculada.
+  const allPlotLinksQuery = useQuery({ queryKey: ["plot-table-links", companyId, tapperKey, "all"], queryFn: () => listPlotTableLinks(companyId, tapperKey), enabled: open && !!companyId && !!tapperKey });
+  const plotLinkMutation = useMutation({ mutationFn: () => createPlotTableLink({ companyId, farmId, plotId, tapperKey, tappingTableId: plotTableId, treeCount: plotTreeCount ? Number(plotTreeCount) : undefined }), onSuccess: () => { toast.success("Tabela vinculada ao talhão"); setPlotTableId(""); setPlotTreeCount(""); qc.invalidateQueries({ queryKey: ["plot-table-links", companyId, tapperKey] }); }, onError: (e: Error) => toast.error(e.message) });
   const templateMutation = useMutation({ mutationFn: (templateId: string) => applyTappingTableTemplate({ companyId, tapperKey, templateId }), onSuccess: () => { toast.success("Modelo aplicado"); qc.invalidateQueries({ queryKey: ["tapper-table-links", companyId, tapperKey] }); qc.invalidateQueries({ queryKey: ["tapper-rotation", companyId, tapperKey] }); }, onError: (e: Error) => toast.error(e.message) });
 
   const tablesQuery = useQuery({
@@ -160,6 +160,40 @@ export function TapperTablesDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Só entram na lista os talhões onde este sangrador tem tabela vinculada —
+  // antes apareciam todos os talhões da fazenda, misturados.
+  const linksByPlot = useMemo(() => {
+    const map = new Map<string, PlotTableLink[]>();
+    for (const link of allPlotLinksQuery.data ?? []) {
+      const list = map.get(link.plotId) ?? [];
+      list.push(link);
+      map.set(link.plotId, list);
+    }
+    return map;
+  }, [allPlotLinksQuery.data]);
+
+  const farmLinks = useMemo(
+    () => (allPlotLinksQuery.data ?? []).filter((link) => !farmId || link.farmId === farmId),
+    [allPlotLinksQuery.data, farmId],
+  );
+
+  const plotOptions = useMemo(() => {
+    const byPlot = new Map<string, { name: string; links: number; trees: number }>();
+    for (const link of farmLinks) {
+      const current = byPlot.get(link.plotId) ?? { name: link.plot?.name ?? "Talhão", links: 0, trees: 0 };
+      current.links += 1;
+      current.trees += link.treeCount ?? 0;
+      byPlot.set(link.plotId, current);
+    }
+    return [...byPlot.entries()].map(([id, info]) => ({
+      value: id,
+      label: `${info.name} — ${info.links} tabela(s) · ${info.trees} árvores`,
+      keywords: info.name,
+    }));
+  }, [farmLinks]);
+
+  const selectedPlotLinks = plotId ? (linksByPlot.get(plotId) ?? []) : [];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
@@ -174,11 +208,32 @@ export function TapperTablesDialog({
           <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
             <Label className="text-xs">Configuração por talhão</Label>
             <SearchableSelect value={farmId} onChange={(value) => { setFarmId(value); setPlotId(""); }} placeholder="Selecione a fazenda" options={farmsQuery.data.map((farm: any) => ({ value: farm.id, label: `${farm.name}${farm.code ? ` (${farm.code})` : ""}`, keywords: farm.code ?? "" }))} />
-            {farmId && <SearchableSelect value={plotId} onChange={setPlotId} placeholder="Selecione o talhão" options={(plotsQuery.data ?? []).map((plot: any) => ({ value: plot.id, label: `${plot.name}${plot.code ? ` (${plot.code})` : ""}`, keywords: plot.code ?? "" }))} empty="Nenhum talhão cadastrado" />}
+            {farmId && <SearchableSelect value={plotId} onChange={setPlotId} placeholder="Selecione o talhão" options={plotOptions} empty="Este sangrador não tem tabela vinculada nesta fazenda" />}
             {plotId && <>
               <div className="grid grid-cols-[1fr_110px] gap-2"><Select value={plotTableId} onValueChange={setPlotTableId}><SelectTrigger><SelectValue placeholder="Tabela" /></SelectTrigger><SelectContent>{(tablesQuery.data ?? []).filter((table) => table.active !== false).map((table) => <SelectItem key={table.id} value={table.id}>{table.name}</SelectItem>)}</SelectContent></Select><Input type="number" min="0" placeholder="Árvores" value={plotTreeCount} onChange={(event) => setPlotTreeCount(event.target.value)} /></div>
               <Button className="w-full" disabled={!plotTableId || plotLinkMutation.isPending} onClick={() => plotLinkMutation.mutate()}>Vincular tabela ao talhão</Button>
-              <div className="space-y-1">{(plotLinksQuery.data ?? []).map((link) => <div key={link.id} className="flex justify-between rounded border px-2 py-1 text-xs"><span>{link.tappingTable?.name ?? "Tabela"}</span><span>{link.treeCount ?? "—"} árvores</span></div>)}</div>
+              {/* Saldo do talhão e o que está alocado em cada tabela. */}
+              <div className="space-y-1">
+                {selectedPlotLinks.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma tabela vinculada a este talhão.</p>
+                ) : selectedPlotLinks.map((link) => (
+                  <div key={link.id} className="rounded border px-2 py-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="font-medium">{link.tappingTable?.name ?? "Tabela"}</span>
+                      <span>{link.treeCount ?? "—"} árvores</span>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap gap-x-3 text-[10px] text-muted-foreground">
+                      <span>Total da tabela: {link.tableTreeCount ?? 0} árvores</span>
+                      <span>Alocado a este sangrador: {link.treeCount ?? 0}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-2 rounded border bg-muted/30 p-2 text-center text-[10px] text-muted-foreground">
+                <div><p className="text-sm font-semibold text-foreground">{selectedPlotLinks[0]?.plot?.treeCount ?? "—"}</p><p>Árvores no talhão</p></div>
+                <div><p className="text-sm font-semibold text-foreground">{selectedPlotLinks[0]?.plotAllocatedTreeCount ?? 0}</p><p>Alocadas</p></div>
+                <div><p className="text-sm font-semibold text-foreground">{selectedPlotLinks[0]?.plotBalance ?? "—"}</p><p>Saldo do talhão</p></div>
+              </div>
             </>}
           </div>
         )}

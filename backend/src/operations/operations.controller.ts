@@ -59,6 +59,18 @@ export class OperationsController {
     if (!farmId || !plotId || !date || !tableId || !taskExtent) throw new BadRequestException('farmId, plotId, tableId, taskExtent e date são obrigatórios');
     return this.svc.getDailyTreeAllocation(req.user.sub, { companyId: need(companyId), farmId, plotId, tapperId, userId, tableId, taskExtent, date });
   }
+  @Get('tapping-summary')
+  tappingSummary(
+    @Req() req: any,
+    @Query('companyId') companyId?: string,
+    @Query('farmId') farmId?: string,
+    @Query('plotId') plotId?: string,
+    @Query('tapperId') tapperId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.svc.tappingSummary(req.user.sub, need(companyId), { farmId, plotId, tapperId, from, to });
+  }
   @Post('tapping-daily-allocations')
   upsertDailyAllocation(@Req() req: any, @Body() dto: UpsertTappingDailyAllocationDto) {
     return this.svc.upsertTappingDailyAllocation(req.user.sub, dto);

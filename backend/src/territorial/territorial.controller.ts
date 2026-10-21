@@ -128,6 +128,14 @@ export class TerritorialController {
   ) {
     return this.svc.listPlots(req.user.sub, requireCompanyId(companyId), farmId);
   }
+  @Get('plots/tapping-summary')
+  listPlotTappingSummary(
+    @Req() req: any,
+    @Query('companyId') companyId?: string,
+    @Query('farmId') farmId?: string,
+  ) {
+    return this.svc.listPlotTappingSummary(req.user.sub, requireCompanyId(companyId), farmId);
+  }
   @UseGuards(RolesGuard)
   @Post('plots')
   createPlot(@Req() req: any, @Body() dto: CreatePlotDto) {

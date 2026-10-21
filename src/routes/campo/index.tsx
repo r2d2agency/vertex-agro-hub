@@ -57,6 +57,7 @@ const CATEGORY_LABEL: Record<SangriaCategory, string> = {
 // existir. Sem o catálogo carregado, cai no rótulo genérico.
 const TASK_LABEL: Record<string, string> = {
   X: "Tabela completa",
+  M: "Meia tabela",
   "/": "Tabela adiantada",
   "1": "Reposição",
 };

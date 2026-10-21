@@ -218,6 +218,50 @@ export class TerritorialService {
     return this.withTappingSchedule(companyId, plots);
   }
 
+  // Resumo de sangração por talhão: quantas árvores estão previstas para
+  // sangrar (soma das tabelas vinculadas) e quantos sangradores estão
+  // alocados. É o que o admin vê na listagem de talhões.
+  async listPlotTappingSummary(userId: string, companyId: string, farmId?: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const plots = await this.prisma.plot.findMany({
+      where: { companyId, isDeleted: false, ...(farmId ? { farmId } : {}) },
+      orderBy: { name: 'asc' },
+      select: { id: true, farmId: true, name: true, treeCount: true },
+    });
+    if (plots.length === 0) return [];
+
+    const links = await this.prisma.tapperPlotTableLink.findMany({
+      where: { companyId, active: true, plotId: { in: plots.map((p) => p.id) } },
+      select: { plotId: true, tapperId: true, userId: true, treeCount: true },
+    });
+    const tappers = await this.prisma.tapper.findMany({
+      where: { companyId, isDeleted: false },
+      select: { id: true, fullName: true },
+    });
+    const tapperName = new Map(tappers.map((t) => [t.id, t.fullName]));
+
+    return plots.map((plot) => {
+      const plotLinks = links.filter((l) => l.plotId === plot.id);
+      const byTapper = new Map<string, { name: string | null; treeCount: number }>();
+      for (const link of plotLinks) {
+        const key = link.tapperId ?? link.userId ?? '';
+        const name = link.tapperId ? tapperName.get(link.tapperId) ?? null : null;
+        const current = byTapper.get(key);
+        if (current) current.treeCount += link.treeCount ?? 0;
+        else byTapper.set(key, { name, treeCount: link.treeCount ?? 0 });
+      }
+      return {
+        plotId: plot.id,
+        farmId: plot.farmId,
+        name: plot.name,
+        plotTreeCount: plot.treeCount ?? null,
+        plannedTreeCount: plotLinks.reduce((sum, l) => sum + (l.treeCount ?? 0), 0),
+        tapperCount: byTapper.size,
+        tappers: [...byTapper.entries()].map(([id, v]) => ({ id, name: v.name, treeCount: v.treeCount })),
+      };
+    });
+  }
+
   // Calcula, para cada talhão, a data da última sangria e o prazo previsto para a
   // próxima (última data + frequência em dias da tabela de sangria associada ao
   // talhão via Plot.tappingSystem, casando com notation/name da TappingTable).

@@ -255,7 +255,17 @@ export type TapperTableLink = {
   tappingTable: { id: string; name: string; notation: string | null; frequencyDays: number | null; restDays: number | null; workDaysCycle: number | null; cutType: string | null; stimulation: string | null } | null;
 };
 
-export type PlotTableLink = { id: string; companyId: string; farmId: string; plotId: string; tapperId?: string | null; userId?: string | null; tappingTableId: string; position: number; treeCount?: number | null; active: boolean; tappingTable?: { id: string; name: string; notation?: string | null } | null };
+export type PlotTableLink = {
+  id: string; companyId: string; farmId: string; plotId: string;
+  tapperId?: string | null; userId?: string | null; tappingTableId: string;
+  position: number; treeCount?: number | null; active: boolean;
+  tappingTable?: { id: string; name: string; notation?: string | null } | null;
+  // Contexto de saldo preenchido pelo backend.
+  plot?: { id: string; name: string; treeCount: number | null } | null;
+  plotBalance?: number | null;
+  plotAllocatedTreeCount?: number;
+  tableTreeCount?: number;
+};
 
 export function listPlotTableLinks(companyId: string, tapperKey: string, plotId?: string) {
   const qs = new URLSearchParams({ companyId, tapperKey });

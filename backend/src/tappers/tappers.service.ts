@@ -568,7 +568,39 @@ export class TappersService {
     const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, OR: or, ...(plotId ? { plotId } : {}), active: true }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
     const tables = await this.prisma.tappingTable.findMany({ where: { id: { in: links.map((link) => link.tappingTableId) } }, select: { id: true, name: true, notation: true } });
     const byId = new Map(tables.map((table) => [table.id, table]));
-    return links.map((link) => ({ ...link, tappingTable: byId.get(link.tappingTableId) ?? null }));
+    // Contexto de saldo: quantas árvores o talhão tem, quantas já estão
+    // alocadas (soma de todos os vínculos do talhão, não só deste sangrador)
+    // e quantas a tabela tem no total. Sem isso a tela só mostrava o vínculo
+    // isolado e não dava pra saber o saldo que sobra no talhão.
+    const plotIds = [...new Set(links.map((link) => link.plotId))];
+    const [plots, allPlotLinks] = await Promise.all([
+      this.prisma.plot.findMany({ where: { id: { in: plotIds }, companyId, isDeleted: false }, select: { id: true, name: true, treeCount: true } }),
+      this.prisma.tapperPlotTableLink.findMany({ where: { companyId, plotId: { in: plotIds }, active: true }, select: { plotId: true, tappingTableId: true, treeCount: true } }),
+    ]);
+    const plotById = new Map(plots.map((plot) => [plot.id, plot]));
+    const plotAllocated = new Map<string, number>();
+    const tableTotal = new Map<string, number>();
+    for (const row of allPlotLinks) {
+      const plotKey = row.plotId;
+      plotAllocated.set(plotKey, (plotAllocated.get(plotKey) ?? 0) + (row.treeCount ?? 0));
+      const tableKey = `${row.plotId}:${row.tappingTableId}`;
+      tableTotal.set(tableKey, (tableTotal.get(tableKey) ?? 0) + (row.treeCount ?? 0));
+    }
+    return links.map((link) => {
+      const plot = plotById.get(link.plotId) ?? null;
+      const plotTreeCount = plot?.treeCount ?? null;
+      const allocated = plotAllocated.get(link.plotId) ?? 0;
+      return {
+        ...link,
+        tappingTable: byId.get(link.tappingTableId) ?? null,
+        plot: plot ? { id: plot.id, name: plot.name, treeCount: plotTreeCount } : null,
+        // Saldo do talhão: o que ainda não foi alocado a nenhum sangrador.
+        plotBalance: plotTreeCount == null ? null : Math.max(0, plotTreeCount - allocated),
+        plotAllocatedTreeCount: allocated,
+        // Total da tabela dentro do talhão (soma das alocações de todos).
+        tableTreeCount: tableTotal.get(`${link.plotId}:${link.tappingTableId}`) ?? 0,
+      };
+    });
   }
 
   async createPlotTableLink(userId: string, dto: any) {
@@ -923,9 +955,32 @@ export class TappersService {
     // talhões vazia mesmo com as tabelas vinculadas, porque o vínculo foi
     // gravado pela outra identidade da mesma pessoa.
     const sibling = await this.resolveSiblingKey(companyId, key);
-    const links = await this.prisma.tapperPlotTableLink.findMany({ where: { companyId, farmId, active: true, OR: sibling ? [key, sibling] : [key] }, select: { plotId: true, farmId: true, treeCount: true }, distinct: ['plotId'] });
-    const plots = await this.prisma.plot.findMany({ where: { companyId, farmId, isDeleted: false, id: { in: links.map((l) => l.plotId) } }, select: { id: true, name: true, code: true, treeCount: true } });
-    return plots.map((plot) => ({ ...plot, assignedTreeCount: links.find((l) => l.plotId === plot.id)?.treeCount ?? null }));
+    const links = await this.prisma.tapperPlotTableLink.findMany({
+      where: { companyId, farmId, active: true, OR: sibling ? [key, sibling] : [key] },
+      select: { plotId: true, farmId: true, tappingTableId: true, treeCount: true },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+    });
+    const plotIds = [...new Set(links.map((l) => l.plotId))];
+    const plots = await this.prisma.plot.findMany({ where: { companyId, farmId, isDeleted: false, id: { in: plotIds } }, select: { id: true, name: true, code: true, treeCount: true }, orderBy: { name: 'asc' } });
+    const tables = await this.prisma.tappingTable.findMany({ where: { id: { in: links.map((l) => l.tappingTableId) } }, select: { id: true, name: true, notation: true } });
+    const tableById = new Map(tables.map((t) => [t.id, t]));
+    return plots.map((plot) => {
+      const plotLinks = links.filter((l) => l.plotId === plot.id);
+      // A soma de todos os vínculos do talhão (não só o primeiro): o
+      // `distinct` anterior escolhia uma linha qualquer e o saldo exibido
+      // não batia com o total real do sangrador no talhão.
+      const assignedTreeCount = plotLinks.reduce((sum, l) => sum + (l.treeCount ?? 0), 0);
+      return {
+        ...plot,
+        assignedTreeCount,
+        tables: plotLinks.map((l) => ({
+          tappingTableId: l.tappingTableId,
+          name: tableById.get(l.tappingTableId)?.name ?? 'Tabela',
+          notation: tableById.get(l.tappingTableId)?.notation ?? null,
+          treeCount: l.treeCount ?? null,
+        })),
+      };
+    });
   }
 
   async listTableLinksForField(userId: string, companyId: string, tapperKey: string, plotId?: string) {
