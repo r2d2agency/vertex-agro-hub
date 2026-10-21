@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { getFieldMe, listFieldTappers, listFieldTapperTables, type FieldMe, type FieldTapper, type FieldTapperTable } from "@/lib/field.functions";
+import { getFieldMe, listFieldTappers, listFieldTapperTables, listFieldTapperPlots, type FieldMe, type FieldTapper, type FieldTapperTable, type FieldTapperPlot } from "@/lib/field.functions";
 import { getTapperRotation, upsertTapperRotation, type TapperRotationState } from "@/lib/tappers.functions";
 import { getLocalIsoDate } from "@/lib/date-utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,6 +41,8 @@ function PreferenciasPage() {
   const [rotationFarmId, setRotationFarmId] = useState("");
   const [rotationTapperId, setRotationTapperId] = useState("");
   const [rotationTappers, setRotationTappers] = useState<FieldTapper[]>([]);
+  const [rotationPlots, setRotationPlots] = useState<FieldTapperPlot[]>([]);
+  const [rotationPlotId, setRotationPlotId] = useState("");
   const [rotationTables, setRotationTables] = useState<FieldTapperTable[]>([]);
   const [rotationState, setRotationState] = useState<TapperRotationState | null>(null);
   const [rotationAnchor, setRotationAnchor] = useState("");
@@ -79,7 +81,7 @@ function PreferenciasPage() {
   const rotationFarm = useMemo(() => me?.assignments.find((assignment) => assignment.farm.id === rotationFarmId)?.farm, [me, rotationFarmId]);
 
   useEffect(() => {
-    setRotationTappers([]); setRotationTapperId(""); setRotationTables([]); setRotationState(null); setRotationAnchor("");
+    setRotationTappers([]); setRotationTapperId(""); setRotationPlots([]); setRotationPlotId(""); setRotationTables([]); setRotationState(null); setRotationAnchor("");
     if (!rotationFarm) return;
     listFieldTappers(rotationFarm.companyId, rotationFarm.id).then((items) => {
       setRotationTappers(items);
@@ -87,25 +89,38 @@ function PreferenciasPage() {
     }).catch((error: any) => toast.error(error?.message ?? "Não foi possível carregar os sangradores"));
   }, [rotationFarm]);
 
+  // Talhões do sangrador: a sequência é por talhão, então o ponto de partida
+  // também é definido por talhão.
+  useEffect(() => {
+    setRotationPlots([]); setRotationPlotId(""); setRotationTables([]); setRotationState(null); setRotationAnchor("");
+    if (!rotationFarm || !rotationTapperId) return;
+    listFieldTapperPlots(rotationFarm.companyId, rotationTapperId, rotationFarm.id)
+      .then((items) => {
+        setRotationPlots(items);
+        if (items.length === 1) setRotationPlotId(items[0].id);
+      })
+      .catch((error: any) => toast.error(error?.message ?? "Não foi possível carregar os talhões do sangrador"));
+  }, [rotationFarm, rotationTapperId]);
+
   useEffect(() => {
     setRotationTables([]); setRotationState(null); setRotationAnchor("");
-    if (!rotationFarm || !rotationTapperId) return;
+    if (!rotationFarm || !rotationTapperId || !rotationPlotId) return;
     Promise.all([
-      listFieldTapperTables(rotationFarm.companyId, rotationTapperId),
-      getTapperRotation(rotationFarm.companyId, rotationTapperId),
+      listFieldTapperTables(rotationFarm.companyId, rotationTapperId, rotationPlotId),
+      getTapperRotation(rotationFarm.companyId, rotationTapperId, rotationPlotId),
     ]).then(([tables, state]) => {
       setRotationTables(tables);
       setRotationState(state);
       setRotationAnchor(state.rotation?.anchorTableId ?? state.suggestedTableId ?? tables[0]?.id ?? "");
     }).catch((error: any) => toast.error(error?.message ?? "Não foi possível carregar a sequência"));
-  }, [rotationFarm, rotationTapperId]);
+  }, [rotationFarm, rotationTapperId, rotationPlotId]);
 
   async function saveRotationAnchor() {
-    if (!rotationFarm || !rotationTapperId || !rotationAnchor) return;
+    if (!rotationFarm || !rotationTapperId || !rotationPlotId || !rotationAnchor) return;
     setRotationSaving(true);
     try {
-      await upsertTapperRotation({ companyId: rotationFarm.companyId, tapperKey: rotationTapperId, anchorTableId: rotationAnchor, anchorDate: getLocalIsoDate(new Date(), rotationFarm.timezone ?? "America/Sao_Paulo") });
-      setRotationState(await getTapperRotation(rotationFarm.companyId, rotationTapperId));
+      await upsertTapperRotation({ companyId: rotationFarm.companyId, tapperKey: rotationTapperId, plotId: rotationPlotId, anchorTableId: rotationAnchor, anchorDate: getLocalIsoDate(new Date(), rotationFarm.timezone ?? "America/Sao_Paulo") });
+      setRotationState(await getTapperRotation(rotationFarm.companyId, rotationTapperId, rotationPlotId));
       toast.success("Ponto de partida da sequência atualizado");
     } catch (error: any) {
       toast.error(error?.message ?? "Não foi possível ajustar o ponto de partida");
@@ -335,6 +350,12 @@ function PreferenciasPage() {
                 </Select>
               )}
               {rotationTapperId && (
+                <Select value={rotationPlotId} onValueChange={setRotationPlotId}>
+                  <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder={rotationPlots.length ? "Selecione o talhão" : "Nenhum talhão para este sangrador"} /></SelectTrigger>
+                  <SelectContent>{rotationPlots.map((plot) => <SelectItem key={plot.id} value={plot.id}>{plot.name}</SelectItem>)}</SelectContent>
+                </Select>
+              )}
+              {rotationPlotId && (
                 <>
                   {rotationState && <p className="text-xs text-muted-foreground">{rotationState.needsReset ? "Sequência sem ponto de partida ou desatualizada." : `Sequência ativa · próxima: ${rotationTables.find((table) => table.id === rotationState.suggestedTableId)?.name ?? "—"}`}</p>}
                   <Select value={rotationAnchor} onValueChange={setRotationAnchor}>

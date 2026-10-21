@@ -293,24 +293,29 @@ export function listTapperTableLinks(companyId: string, tapperKey: string) {
 export type TapperRotationState = {
   rotation: {
     id: string;
+    plotId: string;
     anchorTableId: string;
     anchorDate: string;
     lastTableId: string;
     lastRecordId: string | null;
     linkStamp: string | null;
   } | null;
+  plotId: string | null;
   needsReset: boolean;
   suggestedTableId: string | null;
   orderedLinks: TapperTableLink[];
 };
 
-export function getTapperRotation(companyId: string, tapperKey: string) {
+// A sequência de tabelas é por talhão: o mesmo sangrador pode ter mais de um
+// talhão e cada um tem o seu próprio percurso de sangria.
+export function getTapperRotation(companyId: string, tapperKey: string, plotId?: string) {
   const qs = new URLSearchParams({ companyId, tapperKey });
+  if (plotId) qs.set("plotId", plotId);
   return apiRequest<TapperRotationState>(`/tappers/rotation?${qs.toString()}`);
 }
 
 export function upsertTapperRotation(input: {
-  companyId: string; tapperKey: string; anchorTableId: string; anchorDate: string;
+  companyId: string; tapperKey: string; plotId: string; anchorTableId: string; anchorDate: string;
 }) {
   return apiRequest<TapperRotationState["rotation"]>(`/tappers/rotation`, {
     method: "PUT",

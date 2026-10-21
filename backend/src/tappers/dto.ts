@@ -149,6 +149,9 @@ export class ApplyTappingTableTemplateDto {
 export class UpsertTapperRotationDto {
   @IsUUID() companyId!: string;
   @IsString() @MinLength(3) tapperKey!: string;
+  // A sequência de tabelas é por talhão: o mesmo sangrador pode ter mais de
+  // um talhão e cada um tem o seu próprio percurso.
+  @IsUUID() plotId!: string;
   @IsUUID() anchorTableId!: string;
   @IsDateString() anchorDate!: string;
 }

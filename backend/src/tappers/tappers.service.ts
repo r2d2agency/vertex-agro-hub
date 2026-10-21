@@ -887,28 +887,47 @@ export class TappersService {
   // prevista pra ele naquela tabela. A rotação segue a mesma fonte da lista do
   // app (TapperPlotTableLink) — se divergirem, a sugestão de "próxima tabela"
   // apontaria pra uma tabela que nem aparece no seletor.
-  private async orderedRotationLinks(companyId: string, key: { tapperId?: string; userId?: string }) {
+  //
+  // A sequência é por talhão: com `plotId`, o percurso considera só as tabelas
+  // daquele talhão. Sem `plotId` (consulta agregada, ex.: admin), considera
+  // todas — mas nesse caso não há sugestão, porque ela não seria por talhão.
+  private async orderedRotationLinks(
+    companyId: string,
+    key: { tapperId?: string; userId?: string },
+    plotId?: string,
+  ) {
     const sibling = await this.resolveSiblingKey(companyId, key);
     const links = await this.prisma.tapperPlotTableLink.findMany({
-      where: { companyId, active: true, OR: sibling ? [key, sibling] : [key] },
+      where: {
+        companyId,
+        active: true,
+        ...(plotId ? { plotId } : {}),
+        OR: sibling ? [key, sibling] : [key],
+      },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
     return { links, sibling };
   }
 
-  async getRotation(userId: string, companyId: string, tapperKey: string) {
+  async getRotation(userId: string, companyId: string, tapperKey: string, plotId?: string) {
     await this.access.ensureCompany(userId, companyId);
     const key = this.parseTapperKey(tapperKey);
-    const { links, sibling } = await this.orderedRotationLinks(companyId, key);
-    const rotation = await this.prisma.tapperRotation.findFirst({
-      where: { companyId, OR: sibling ? [key, sibling] : [key] },
-      orderBy: { updatedAt: 'desc' },
-    });
+    const { links, sibling } = await this.orderedRotationLinks(companyId, key, plotId);
+    // Sem talhão definido não há rotação: ela é sempre por talhão.
+    const rotation = plotId
+      ? await this.prisma.tapperRotation.findFirst({
+          where: { companyId, plotId, OR: sibling ? [key, sibling] : [key] },
+          orderBy: { updatedAt: 'desc' },
+        })
+      : null;
     const stamp = computeLinkStamp(links);
-    const next = rotation ? nextTableInRotation(rotation, links) : { needsReset: true as const, reason: 'missing_last' as const };
+    const next = rotation
+      ? nextTableInRotation(rotation, links)
+      : { needsReset: true as const, reason: 'missing_last' as const };
     const hydrated = await this.attachTables(links);
     return {
       rotation,
+      plotId: plotId ?? null,
       linkStamp: stamp,
       needsReset: 'needsReset' in next,
       suggestedTableId: 'tableId' in next ? next.tableId : null,
@@ -916,21 +935,24 @@ export class TappersService {
     };
   }
 
-  async upsertRotation(userId: string, dto: { companyId: string; tapperKey: string; anchorTableId: string; anchorDate: string }) {
+  async upsertRotation(userId: string, dto: { companyId: string; tapperKey: string; plotId: string; anchorTableId: string; anchorDate: string }) {
     const key = this.parseTapperKey(dto.tapperKey);
     await this.ensureManagerOrFarmStaff(userId, dto.companyId, key);
-    const { links } = await this.orderedRotationLinks(dto.companyId, key);
-    const globallyLinked = links.some((l) => l.tappingTableId === dto.anchorTableId);
-    const plotLinked = !globallyLinked && await this.prisma.tapperPlotTableLink.findFirst({
-      where: { companyId: dto.companyId, active: true, ...key, tappingTableId: dto.anchorTableId },
+    const plot = await this.prisma.plot.findFirst({
+      where: { id: dto.plotId, companyId: dto.companyId, isDeleted: false },
       select: { id: true },
     });
-    if (!globallyLinked && !plotLinked) {
-      throw new NotFoundException('A tabela inicial não está vinculada a este sangrador');
+    if (!plot) throw new NotFoundException('Talhão não encontrado');
+    // A tabela inicial precisa estar vinculada ao sangrador NESTE talhão: a
+    // sequência é por talhão, então a âncora vem das tabelas dele.
+    const { links } = await this.orderedRotationLinks(dto.companyId, key, dto.plotId);
+    if (!links.some((l) => l.tappingTableId === dto.anchorTableId)) {
+      throw new NotFoundException('A tabela inicial não está vinculada a este sangrador neste talhão');
     }
     const data = {
       companyId: dto.companyId,
       ...key,
+      plotId: dto.plotId,
       anchorTableId: dto.anchorTableId,
       anchorDate: new Date(dto.anchorDate),
       lastTableId: dto.anchorTableId,
@@ -938,9 +960,11 @@ export class TappersService {
       linkStamp: computeLinkStamp(links),
       createdById: userId,
     };
-    const where = key.tapperId ? { tapperId: key.tapperId } : { userId: key.userId };
+    const where = key.tapperId
+      ? { tapperId_plotId: { tapperId: key.tapperId, plotId: dto.plotId } }
+      : { userId_plotId: { userId: key.userId, plotId: dto.plotId } };
     return this.prisma.tapperRotation.upsert({
-      where,
+      where: where as any,
       create: data,
       update: { ...data, createdById: userId },
     });

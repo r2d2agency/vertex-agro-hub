@@ -131,15 +131,18 @@ export class TappersController {
   }
 
   // Rotação de tabelas do sangrador: sugestão da próxima tabela + estado do
-  // ponto de partida. Mesma autorização de table-links (monitor/consultor da
-  // fazenda ou admin), sem RolesGuard de rota.
+  // ponto de partida. A sequência é por talhão — por isso o `plotId` é
+  // obrigatório na consulta com sugestão.
+  // Mesma autorização de table-links (monitor/consultor da fazenda ou admin),
+  // sem RolesGuard de rota.
   @Get('rotation')
   getRotation(
     @Req() req: any,
     @Query('companyId', ParseUUIDPipe) companyId: string,
     @Query('tapperKey') tapperKey: string,
+    @Query('plotId') plotId?: string,
   ) {
-    return this.svc.getRotation(req.user.sub, companyId, tapperKey);
+    return this.svc.getRotation(req.user.sub, companyId, tapperKey, plotId);
   }
 
   @Put('rotation')

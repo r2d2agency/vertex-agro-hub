@@ -65,10 +65,11 @@ export function TapperTablesDialog({
     enabled: open && !!companyId && !!tapperKey,
   });
 
+  // A sequência é por talhão: só há rotação depois que um talhão é escolhido.
   const rotationQuery = useQuery({
-    queryKey: ["tapper-rotation", companyId, tapperKey],
-    queryFn: () => getTapperRotation(companyId, tapperKey),
-    enabled: open && !!companyId && !!tapperKey,
+    queryKey: ["tapper-rotation", companyId, tapperKey, plotId],
+    queryFn: () => getTapperRotation(companyId, tapperKey, plotId),
+    enabled: open && !!companyId && !!tapperKey && !!plotId,
   });
 
   const templatesQuery = useQuery({ queryKey: ["tapping-table-templates", companyId], queryFn: () => listTappingTableTemplates(companyId), enabled: open && !!companyId });
@@ -123,7 +124,7 @@ export function TapperTablesDialog({
   });
 
   const rotationMutation = useMutation({
-    mutationFn: () => upsertTapperRotation({ companyId, tapperKey, anchorTableId, anchorDate: new Date().toISOString() }),
+    mutationFn: () => upsertTapperRotation({ companyId, tapperKey, plotId, anchorTableId, anchorDate: new Date().toISOString() }),
     onSuccess: () => {
       toast.success("Ponto de partida definido");
       setAnchorTableId("");
@@ -243,7 +244,14 @@ export function TapperTablesDialog({
             <div className="flex flex-wrap gap-2">{templatesQuery.data.filter((t) => t.active).map((t) => <Button key={t.id} size="sm" variant="outline" disabled={templateMutation.isPending} onClick={() => templateMutation.mutate(t.id)}>{t.name}</Button>)}</div>
           </div>
         )}
-        {rotationQuery.data && (
+        {/* A sequência é por talhão: sem talhão escolhido não há rotação para
+            mostrar nem ponto de partida para definir. */}
+        {plotId && !rotationQuery.data && !rotationQuery.isLoading && (
+          <div className="rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">
+            Escolha o talhão para ver a sequência de sangria deste sangrador.
+          </div>
+        )}
+        {plotId && rotationQuery.data && (
           <div className={`rounded-lg border p-3 text-xs ${rotationQuery.data.needsReset ? "border-warning/50 bg-warning/10" : "border-primary/30 bg-primary/5"}`}>
             <p className={`mb-2 flex items-center gap-1.5 font-semibold ${rotationQuery.data.needsReset ? "text-warning" : "text-primary"}`}>
               <RotateCcw className="h-3.5 w-3.5" />

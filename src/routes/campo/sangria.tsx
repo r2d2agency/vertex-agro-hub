@@ -65,8 +65,9 @@ function SangriaPage() {
   // de árvores de cada uma, já cadastrada).
   const plot = plots.find((p) => p.id === plotId);
   const tables = useMemo(() => plot?.tables ?? [], [plot]);
-  const allTables = useMemo(() => plots.flatMap((p) => p.tables), [plots]);
-  const expectedTable = rotation?.suggestedTableId ? allTables.find((t) => t.tappingTableId === rotation.suggestedTableId) : undefined;
+  // A sequência é por talhão: a tabela sugerida sempre está entre as tabelas
+  // do talhão escolhido.
+  const expectedTable = rotation?.suggestedTableId ? tables.find((t) => t.tappingTableId === rotation.suggestedTableId) : undefined;
   const selectedTable = tables.find((t) => t.tappingTableId === tappingTableId);
   const isDivergent = Boolean(rotation?.suggestedTableId && tappingTableId && rotation.suggestedTableId !== tappingTableId);
 
@@ -120,25 +121,13 @@ function SangriaPage() {
     setPlots([]); setPlotId(""); setTappingTableId(""); setRotation(null); setTablesError(null);
     if (!farm || !tapperId) return;
     setTablesLoading(true);
-    Promise.all([
-      listFieldTapperPlots(farm.companyId, tapperId, farm.id),
-      getTapperRotation(farm.companyId, tapperId).catch(() => null),
-    ])
-      .then(([assigned, rot]) => {
+    listFieldTapperPlots(farm.companyId, tapperId, farm.id)
+      .then((assigned) => {
         setPlots(assigned);
-        setRotation(rot);
-        const all = assigned.flatMap((p) => p.tables);
-        setRotationAnchorTableId(rot?.needsReset ? (rot.rotation?.anchorTableId ?? all[0]?.tappingTableId ?? "") : "");
-        // A sequência de hoje pré-seleciona o talhão e a tabela, quando a tabela
-        // sugerida pertence a um dos talhões do sangrador.
-        const suggested = rot && !rot.needsReset ? rot.suggestedTableId : undefined;
-        if (suggested) {
-          const owner = assigned.find((p) => p.tables.some((t) => t.tappingTableId === suggested));
-          if (owner) {
-            setPlotId(owner.id);
-            setTappingTableId(suggested);
-          }
-        }
+        // Com um único talhão não há ambiguidade: já entra nele para exibir a
+        // sequência do dia. Com mais de um, a sequência só aparece depois que o
+        // monitor escolher o talhão — o percurso de sangria é por talhão.
+        if (assigned.length === 1) setPlotId(assigned[0].id);
       })
       .catch((error) => {
         // Sem isto, qualquer falha de rede ou erro do servidor virava "nenhuma
@@ -150,6 +139,24 @@ function SangriaPage() {
       })
       .finally(() => setTablesLoading(false));
   }, [farm, tapperId]);
+
+  // Sequência de tabelas do talhão escolhido. Só faz sentido com o talhão
+  // definido — enquanto o sangrador tiver mais de um talhão, não há sequência
+  // única a sugerir.
+  useEffect(() => {
+    setRotation(null);
+    if (!farm || !tapperId || !plotId) return;
+    getTapperRotation(farm.companyId, tapperId, plotId)
+      .then((rot) => {
+        setRotation(rot);
+        setRotationAnchorTableId(rot?.rotation?.anchorTableId ?? "");
+        // A sequência de hoje pré-seleciona a tabela sugerida do talhão.
+        if (rot && !rot.needsReset && rot.suggestedTableId) {
+          setTappingTableId((current) => current || rot.suggestedTableId!);
+        }
+      })
+      .catch(() => setRotation(null));
+  }, [farm, tapperId, plotId]);
 
   // Relatório do talhão: árvores do talhão, da fazenda, do sangrador e o que
   // já foi realizado.
@@ -183,11 +190,11 @@ function SangriaPage() {
   }, [farm]);
 
   async function resetRotation() {
-    if (!farm || !tapperId || !rotationAnchorTableId) return;
+    if (!farm || !tapperId || !plotId || !rotationAnchorTableId) return;
     setSavingRotation(true);
     try {
-      await upsertTapperRotation({ companyId: farm.companyId, tapperKey: tapperId, anchorTableId: rotationAnchorTableId, anchorDate: recordDate });
-      const nextRotation = await getTapperRotation(farm.companyId, tapperId);
+      await upsertTapperRotation({ companyId: farm.companyId, tapperKey: tapperId, plotId, anchorTableId: rotationAnchorTableId, anchorDate: recordDate });
+      const nextRotation = await getTapperRotation(farm.companyId, tapperId, plotId);
       setRotation(nextRotation);
       setTappingTableId(nextRotation.suggestedTableId ?? rotationAnchorTableId);
       toast.success("Sequência de tabelas atualizada");
@@ -324,29 +331,6 @@ function SangriaPage() {
             </Select>
           )}
         </Field>
-        {/* Sequência de rotação: só informativo, o talhão e a tabela são
-            escolhidos pelo monitor nos campos abaixo. */}
-        {tapperId && allTables.length > 0 && rotation && !rotation.needsReset && rotation.suggestedTableId && (
-          <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
-            <Repeat className="h-4 w-4 text-primary" />
-            <span className="text-muted-foreground">Sequência de hoje:</span>
-            <span className="font-semibold text-foreground">
-              {allTables.find((t) => t.tappingTableId === rotation.suggestedTableId)?.name ?? "Tabela"}
-            </span>
-          </div>
-        )}
-        {tapperId && plotId && rotation?.needsReset && (
-          <div className="space-y-2 rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
-            <p>Sequência de tabelas desatualizada para este sangrador. Escolha o ponto de partida para {recordDate}.</p>
-            <Select value={rotationAnchorTableId} onValueChange={setRotationAnchorTableId}>
-              <SelectTrigger className="h-10 rounded-xl bg-background/60"><SelectValue placeholder="Selecione a tabela inicial" /></SelectTrigger>
-              <SelectContent>{allTables.map((tableOption) => <SelectItem key={tableOption.tappingTableId} value={tableOption.tappingTableId}>{tableOption.name}{tableOption.notation ? ` — ${tableOption.notation}` : ""}</SelectItem>)}</SelectContent>
-            </Select>
-            <Button type="button" size="sm" onClick={resetRotation} disabled={savingRotation || !rotationAnchorTableId}>
-              {savingRotation && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Definir sequência
-            </Button>
-          </div>
-        )}
         {tapperId && (
           <Field label="Talhão">
             {tablesLoading ? (
@@ -382,6 +366,30 @@ function SangriaPage() {
               </Select>
             )}
           </Field>
+        )}
+        {/* Sequência do talhão escolhido: só aparece com o talhão definido,
+            porque o percurso de sangria é por talhão. */}
+        {plotId && rotation && !rotation.needsReset && rotation.suggestedTableId && (
+          <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
+            <Repeat className="h-4 w-4 text-primary" />
+            <span className="text-muted-foreground">Sequência de hoje:</span>
+            <span className="font-semibold text-foreground">
+              {tables.find((t) => t.tappingTableId === rotation.suggestedTableId)?.name ?? "Tabela"}
+            </span>
+          </div>
+        )}
+        {plotId && rotation?.needsReset && (
+          <div className="space-y-2 rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
+            <p>Sequência de tabelas desatualizada neste talhão. Escolha o ponto de partida para {recordDate}.</p>
+            <Select value={rotationAnchorTableId} onValueChange={setRotationAnchorTableId}>
+              <SelectTrigger className="h-10 rounded-xl bg-background/60"><SelectValue placeholder="Selecione a tabela inicial" /></SelectTrigger>
+              {/* Só as tabelas deste talhão — o ponto de partida é por talhão. */}
+              <SelectContent>{tables.map((t) => <SelectItem key={t.tappingTableId} value={t.tappingTableId}>{t.name}{t.notation ? ` — ${t.notation}` : ""}</SelectItem>)}</SelectContent>
+            </Select>
+            <Button type="button" size="sm" onClick={resetRotation} disabled={savingRotation || !rotationAnchorTableId}>
+              {savingRotation && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Definir sequência
+            </Button>
+          </div>
         )}
         {table && (
           <div className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">

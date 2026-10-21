@@ -539,6 +539,8 @@ model Plot {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   farm    Farm    @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
+  tapperRotations TapperRotation[]
+
   @@index([companyId, isDeleted])
   @@index([farmId])
   @@map("plots")
@@ -1791,6 +1793,9 @@ model TapperRotation {
   companyId     String   @map("company_id") @db.Uuid
   tapperId      String?  @map("tapper_id") @db.Uuid
   userId        String?  @map("user_id") @db.Uuid
+  // A sequência de tabelas é por talhão: o mesmo sangrador pode ter mais de
+  // um talhão e cada um tem o seu próprio percurso de sangria.
+  plotId        String   @map("plot_id") @db.Uuid
   anchorTableId String   @map("anchor_table_id") @db.Uuid
   anchorDate    DateTime @map("anchor_date") @db.Date
   lastTableId   String   @map("last_table_id") @db.Uuid
@@ -1800,10 +1805,13 @@ model TapperRotation {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  @@unique([tapperId])
-  @@unique([userId])
+  @@unique([tapperId, plotId])
+  @@unique([userId, plotId])
   @@index([companyId])
+  @@index([plotId])
   @@map("tapper_rotations")
+
+  plot Plot @relation(fields: [plotId], references: [id], onDelete: Cascade)
 }
 
 model TapperPreRegistration {

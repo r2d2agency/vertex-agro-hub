@@ -247,7 +247,7 @@ export class OperationsService {
           ? { tapperId: dto.tapperId }
           : await this.resolveTapperKeyByName(dto.companyId, dto.sangradorName);
         if (tapperKey) {
-          const { rotation, links } = await this.loadRotationState(dto.companyId, tapperKey);
+          const { rotation, links } = await this.loadRotationState(dto.companyId, tapperKey, dto.plotId);
           const next = rotation ? nextTableInRotation(rotation, links) : { needsReset: true as const, reason: 'missing_last' as const };
           if ('tableId' in next) {
             expectedTableId = next.tableId;
@@ -284,7 +284,7 @@ export class OperationsService {
     // Avança a rotação a partir do que foi de fato registrado (mesmo que
     // divergente) — a sequência de amanhã parte da tabela real de hoje.
     if (rotationKey) {
-      await this.advanceRotation(dto.companyId, rotationKey, dto.tappingTableId!, record.id).catch(() => undefined);
+      await this.advanceRotation(dto.companyId, rotationKey, dto.plotId, dto.tappingTableId!, record.id).catch(() => undefined);
       if (divergent) {
         await this.createDivergenceAlert(dto.companyId, record, expectedTableId!, dto).catch(() => undefined);
       }
@@ -307,25 +307,36 @@ export class OperationsService {
     return assignment ? { userId: assignment.userId } : null;
   }
 
-  private async loadRotationState(companyId: string, key: { tapperId?: string; userId?: string }) {
+  // A rotação é por talhão: o percurso de tabelas (e a tabela esperada hoje)
+  // vale para o talhão do registro, não para o sangrador inteiro.
+  private async loadRotationState(companyId: string, key: { tapperId?: string; userId?: string }, plotId?: string) {
     const sibling = await (this.tappers as any).resolveSiblingKey(companyId, key);
-    const links = await this.prisma.tapperTableLink.findMany({
-      where: { companyId, active: true, OR: sibling ? [key, sibling] : [key] },
+    const or = sibling ? [key, sibling] : [key];
+    // Mesma fonte de vínculos que o app de campo mostra (TapperPlotTableLink) —
+    // ler o modelo antigo (só tabela) sugeria tabela que nem aparece no seletor.
+    const links = await this.prisma.tapperPlotTableLink.findMany({
+      where: { companyId, active: true, ...(plotId ? { plotId } : {}), OR: or },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
-    const rotation = await this.prisma.tapperRotation.findFirst({
-      where: { companyId, OR: sibling ? [key, sibling] : [key] },
-    });
+    // Sem talhão não há rotação: ela é sempre por talhão.
+    const rotation = plotId
+      ? await this.prisma.tapperRotation.findFirst({
+          where: { companyId, plotId, OR: or },
+          orderBy: { updatedAt: 'desc' },
+        })
+      : null;
     const linkStamp = computeLinkStamp(links);
     return { links, rotation, linkStamp };
   }
 
-  private async advanceRotation(companyId: string, key: { tapperId?: string; userId?: string }, tableId: string, recordId: string) {
+  private async advanceRotation(companyId: string, key: { tapperId?: string; userId?: string }, plotId: string | undefined, tableId: string, recordId: string) {
+    if (!plotId) return;
     const sibling = await (this.tappers as any).resolveSiblingKey(companyId, key);
     // Pode existir rotação na chave irmã (admin cadastrou pelo outro lado) —
     // atualiza a que existir.
     const rotation = await this.prisma.tapperRotation.findFirst({
-      where: { companyId, OR: sibling ? [key, sibling] : [key] },
+      where: { companyId, plotId, OR: sibling ? [key, sibling] : [key] },
+      orderBy: { updatedAt: 'desc' },
     });
     if (!rotation) return;
     await this.prisma.tapperRotation.update({
