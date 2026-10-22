@@ -61,6 +61,13 @@ function SangriaPage() {
   const [confirmDivergence, setConfirmDivergence] = useState(false);
   const [savedRecord, setSavedRecord] = useState<TappingRecord | null>(null);
 
+  // Todas as combinações talhão–tabela do sangrador (ex.: "T10 – A"). Uma
+  // tabela pode se repetir em talhões diferentes, então a escolha é sempre o
+  // par talhão+tabela — o value carrega os dois ids separados por "|".
+  const combos = useMemo(
+    () => plots.flatMap((p) => p.tables.map((t) => ({ plot: p, table: t, value: `${p.id}|${t.tappingTableId}` }))),
+    [plots],
+  );
   // Tabelas do talhão escolhido: só as vinculadas a ele (com a quantidade
   // de árvores de cada uma, já cadastrada).
   const plot = plots.find((p) => p.id === plotId);
@@ -91,14 +98,11 @@ function SangriaPage() {
     return byName ?? null;
   }, [summary, tapperId, tapper?.fullName]);
   const table = selectedTable;
-  // Escolher o talhão abre a lista de tabelas dele. Escolher a tabela
-  // preenche o talhão no registro.
-  function selectPlot(id: string) {
-    setPlotId(id);
-    setTappingTableId("");
-  }
-  function selectTable(tableId: string) {
-    setTappingTableId(tableId);
+  // Uma escolha define os dois: o value traz "plotId|tableId".
+  function selectCombo(value: string) {
+    const [nextPlotId, nextTableId] = value.split("|");
+    setPlotId(nextPlotId ?? "");
+    setTappingTableId(nextTableId ?? "");
   }
 
   useEffect(() => {
@@ -122,10 +126,13 @@ function SangriaPage() {
     listFieldTapperPlots(farm.companyId, tapperId, farm.id)
       .then((assigned) => {
         setPlots(assigned);
-        // Com um único talhão não há ambiguidade: já entra nele para exibir a
-        // sequência do dia. Com mais de um, a sequência só aparece depois que o
-        // monitor escolher o talhão — o percurso de sangria é por talhão.
-        if (assigned.length === 1) setPlotId(assigned[0].id);
+        // Com uma única combinação talhão–tabela não há o que escolher: já
+        // define os dois direto, para exibir a sequência do dia e a previsão.
+        const only = assigned.length === 1 ? assigned[0] : null;
+        if (only && only.tables.length === 1) {
+          setPlotId(only.id);
+          setTappingTableId(only.tables[0].tappingTableId);
+        }
       })
       .catch((error) => {
         // Sem isto, qualquer falha de rede ou erro do servidor virava "nenhuma
@@ -216,8 +223,7 @@ function SangriaPage() {
 
   async function save() {
     if (!farm || !tapper) { toast.error("Preencha fazenda e sangrador"); return; }
-    if (!plotId) { toast.error("Selecione o talhão"); return; }
-    if (!tappingTableId) { toast.error("Selecione a tabela"); return; }
+    if (!plotId || !tappingTableId) { toast.error("Selecione o talhão e a tabela"); return; }
     if (!taskExtent) { toast.error("Selecione uma tarefa"); return; }
     // A quantidade prevista é sempre a que está cadastrada na tabela para
     // este sangrador — o monitor não preenche nada. A tarefa define a fração:
@@ -328,43 +334,30 @@ function SangriaPage() {
           )}
         </Field>
         {tapperId && (
-          <Field label="Talhão">
+          <Field label="Talhão e tabela">
             {tablesLoading ? (
               <div className="flex h-11 items-center gap-2 rounded-xl border border-border/60 bg-background/40 px-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Carregando talhões...
               </div>
-            ) : plots.length === 0 ? (
+            ) : combos.length === 0 ? (
               <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
                 {tablesError
                   ? <>Não foi possível carregar os talhões deste sangrador. Detalhe: {tablesError}</>
                   : <>Nenhum talhão vinculado a este sangrador. No admin, abra Sangradores, clique no nome e use <strong>Talhões e tabelas</strong> para escolher o talhão e as tabelas.</>}
               </div>
-            ) : plots.length === 1 ? (
-              /* Com um único talhão não há o que escolher: mostra só o nome,
-                 já que o talhão está definido de forma implícita. */
+            ) : combos.length === 1 ? (
+              /* Com uma única combinação não há o que escolher: mostra só ela,
+                 já que o talhão e a tabela estão definidos de forma implícita. */
               <div className="flex h-11 items-center rounded-xl border border-border/60 bg-background/40 px-3 text-sm font-medium">
-                {plots[0].name}
+                {combos[0].plot.name} – {combos[0].table.name}{combos[0].table.notation ? ` — ${combos[0].table.notation}` : ""}{combos[0].table.treeCount != null ? ` · ${combos[0].table.treeCount} árvores` : ""}
               </div>
             ) : (
-              <Select value={plotId} onValueChange={selectPlot}>
-                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione o talhão" /></SelectTrigger>
-                {/* Só o nome do talhão: o monitor não precisa do código nem de
-                    outras informações para escolher onde vai sangrar. */}
-                <SelectContent>{plots.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
-            )}
-          </Field>
-        )}
-        {plotId && (
-          <Field label="Tabela">
-            {tables.length === 0 ? (
-              <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
-                Este talhão não tem tabela vinculada para este sangrador.
-              </div>
-            ) : (
-              <Select value={tappingTableId} onValueChange={selectTable}>
-                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione a tabela" /></SelectTrigger>
-                <SelectContent>{tables.map((t) => <SelectItem key={t.tappingTableId} value={t.tappingTableId}>{t.name}{t.notation ? ` — ${t.notation}` : ""}{t.treeCount != null ? ` · ${t.treeCount} árvores` : ""}</SelectItem>)}</SelectContent>
+              <Select value={plotId && tappingTableId ? `${plotId}|${tappingTableId}` : ""} onValueChange={selectCombo}>
+                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione o talhão e a tabela" /></SelectTrigger>
+                {/* O par talhão–tabela com a quantidade de árvores do cadastro:
+                    a tabela pode se repetir em talhões diferentes, então a
+                    escolha é sempre a combinação. */}
+                <SelectContent>{combos.map((c) => <SelectItem key={c.value} value={c.value}>{c.plot.name} – {c.table.name}{c.table.notation ? ` — ${c.table.notation}` : ""}{c.table.treeCount != null ? ` · ${c.table.treeCount} árvores` : ""}</SelectItem>)}</SelectContent>
               </Select>
             )}
           </Field>
