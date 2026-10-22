@@ -334,7 +334,7 @@ function SangriaPage() {
           )}
         </Field>
         {tapperId && (
-          <Field label="Talhão e tabela">
+          <Field label="Tabela">
             {tablesLoading ? (
               <div className="flex h-11 items-center gap-2 rounded-xl border border-border/60 bg-background/40 px-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Carregando talhões...
@@ -349,15 +349,26 @@ function SangriaPage() {
               /* Com uma única combinação não há o que escolher: mostra só ela,
                  já que o talhão e a tabela estão definidos de forma implícita. */
               <div className="flex h-11 items-center rounded-xl border border-border/60 bg-background/40 px-3 text-sm font-medium">
-                {combos[0].plot.name} – {combos[0].table.name}{combos[0].table.notation ? ` — ${combos[0].table.notation}` : ""}{combos[0].table.treeCount != null ? ` · ${combos[0].table.treeCount} árvores` : ""}
+                {(() => {
+                  const name = (combos[0].table.name ?? "").trim();
+                  const notation = (combos[0].table.notation ?? "").trim();
+                  const showNotation = notation && notation.toLowerCase() !== name.toLowerCase();
+                  return <>{combos[0].plot.name} - {name}{showNotation ? ` - ${notation}` : ""}{combos[0].table.treeCount != null ? ` - ${combos[0].table.treeCount} árvores` : ""}</>;
+                })()}
               </div>
             ) : (
               <Select value={plotId && tappingTableId ? `${plotId}|${tappingTableId}` : ""} onValueChange={selectCombo}>
-                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione o talhão e a tabela" /></SelectTrigger>
+                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione a tabela" /></SelectTrigger>
                 {/* O par talhão–tabela com a quantidade de árvores do cadastro:
                     a tabela pode se repetir em talhões diferentes, então a
-                    escolha é sempre a combinação. */}
-                <SelectContent>{combos.map((c) => <SelectItem key={c.value} value={c.value}>{c.plot.name} – {c.table.name}{c.table.notation ? ` — ${c.table.notation}` : ""}{c.table.treeCount != null ? ` · ${c.table.treeCount} árvores` : ""}</SelectItem>)}</SelectContent>
+                    escolha é sempre a combinação. A notação só aparece quando
+                    for diferente do nome, para não duplicar ("A — A"). */}
+                <SelectContent>{combos.map((c) => {
+                  const name = (c.table.name ?? "").trim();
+                  const notation = (c.table.notation ?? "").trim();
+                  const showNotation = notation && notation.toLowerCase() !== name.toLowerCase();
+                  return <SelectItem key={c.value} value={c.value}>{c.plot.name} - {name}{showNotation ? ` - ${notation}` : ""}{c.table.treeCount != null ? ` - ${c.table.treeCount} árvores` : ""}</SelectItem>;
+                })}</SelectContent>
               </Select>
             )}
           </Field>
