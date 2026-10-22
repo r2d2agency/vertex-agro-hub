@@ -145,43 +145,48 @@ export class FieldService {
   async listTappersForFarm(userId: string, companyId: string, farmId: string) {
     await this.access.ensureCompany(userId, companyId);
 
-    const [tappers, assignments, endedStints] = await Promise.all([
-      this.prisma.tapper.findMany({
-        where: {
-          companyId, isDeleted: false,
-          stints: { some: { farmId, endAt: null } },
-        },
-        select: { id: true, fullName: true, nickname: true },
-      }),
-      // Sangradores vinculados só pelo Portal de RH (FarmAssignment) ainda não
-      // têm uma ficha Tapper/TapperStint correspondente — sem isso eles nunca
-      // apareciam aqui, mesmo com o vínculo de fazenda ativo no RH.
-      this.prisma.farmAssignment.findMany({
-        where: {
-          companyId, farmId, role: 'sangrador',
-          OR: [{ endAt: null }, { endAt: { gte: new Date() } }],
-        },
-        select: { userId: true, user: { select: { fullName: true, email: true } } },
-      }),
-      // Sangradores cujo vínculo de fazenda foi encerrado (stint com endAt)
-      // não devem mais aparecer no app de campo, mesmo que o FarmAssignment
-      // do RH ainda esteja ativo.
-      this.prisma.tapper.findMany({
-        where: {
-          companyId, isDeleted: false,
-          stints: { some: { farmId, endAt: { not: null } } },
-        },
-        select: { fullName: true },
-      }),
-    ]);
+    // Fonte de verdade: RH (FarmAssignment). Sangrador aparece no app de campo
+    // somente se houver vínculo ativo com a fazenda no RH.
+    const assignments = await this.prisma.farmAssignment.findMany({
+      where: {
+        companyId, farmId, role: 'sangrador',
+        OR: [{ endAt: null }, { endAt: { gte: new Date() } }],
+      },
+      select: { userId: true, user: { select: { fullName: true, email: true } } },
+    });
 
-    const existingNames = new Set(tappers.map((t) => t.fullName.trim().toLowerCase()));
-    const removedNames = new Set(endedStints.map((t) => t.fullName.trim().toLowerCase()));
     const fromRh = assignments
       .map((a) => ({ id: `rh:${a.userId}`, fullName: (a.user?.fullName || a.user?.email || '').trim(), nickname: null as string | null }))
-      .filter((p) => p.fullName && !existingNames.has(p.fullName.toLowerCase()) && !removedNames.has(p.fullName.toLowerCase()));
+      .filter((p) => p.fullName);
 
-    return [...tappers, ...fromRh].sort((a, b) => a.fullName.localeCompare(b.fullName));
+    // Mantém também sangradores com ficha Tapper e stint ativo, para não
+    // perder quem ainda não tem FarmAssignment no RH (compatibilidade).
+    const tappers = await this.prisma.tapper.findMany({
+      where: {
+        companyId, isDeleted: false,
+        stints: { some: { farmId, endAt: null } },
+      },
+      select: { id: true, fullName: true, nickname: true },
+    });
+
+    // Mas se o sangrador foi desvinculado no RH (FarmAssignment encerrado) e
+    // ainda tem stint ativo, ele NÃO deve aparecer.
+    const endedAssignments = await this.prisma.farmAssignment.findMany({
+      where: {
+        companyId, farmId, role: 'sangrador',
+        endAt: { not: null, lt: new Date() },
+      },
+      select: { user: { select: { fullName: true, email: true } } },
+    });
+    const removedNames = new Set(
+      endedAssignments.map((a) => (a.user?.fullName || a.user?.email || '').trim().toLowerCase()).filter(Boolean),
+    );
+
+    const safeTappers = tappers.filter((t) => !removedNames.has(t.fullName.trim().toLowerCase()));
+    const safeFromRh = fromRh; // fromRh ja filtra por ativo
+
+    return [...safeTappers.filter((t) => !existingNames.has(t.fullName.trim().toLowerCase())), ...safeFromRh]
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
   }
 
   async listTappingTablesForCompany(userId: string, companyId: string) {
