@@ -182,10 +182,12 @@ export class FieldService {
       endedAssignments.map((a) => (a.user?.fullName || a.user?.email || '').trim().toLowerCase()).filter(Boolean),
     );
 
-    const safeTappers = tappers.filter((t) => !removedNames.has(t.fullName.trim().toLowerCase()));
-    const safeFromRh = fromRh; // fromRh ja filtra por ativo
+    const rhNames = new Set(fromRh.map((p) => p.fullName.trim().toLowerCase()));
+    const safeTappers = tappers.filter(
+      (t) => !rhNames.has(t.fullName.trim().toLowerCase()) && !removedNames.has(t.fullName.trim().toLowerCase()),
+    );
 
-    return [...safeTappers.filter((t) => !existingNames.has(t.fullName.trim().toLowerCase())), ...safeFromRh]
+    return [...safeTappers, ...fromRh]
       .sort((a, b) => a.fullName.localeCompare(b.fullName));
   }
 
