@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { HardHat, Search, Trash2, MapPin, Phone, UserPlus, ShieldAlert, ShieldCheck, ListTree } from "lucide-react";
+import { HardHat, Search, Trash2, MapPin, Phone, UserPlus, ShieldAlert, ShieldCheck, ListTree, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { PersonEditor } from "@/components/vertex/person-editor";
 import { PreRegistrationsCard } from "@/components/vertex/pre-registrations-card";
@@ -47,7 +47,7 @@ function SangradoresPage() {
   const { companies, companyId, setCompanyId, isLoading } = useSelectedCompany();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const [farmFilter, setFarmFilter] = useState("");
+  const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null);
   const [rhFarmFilter, setRhFarmFilter] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<TapperListItem | null>(null);
@@ -100,12 +100,21 @@ function SangradoresPage() {
           [t.fullName, t.nickname, t.code, t.cpf].some((v) => (v ?? "").toLowerCase().includes(q)),
         );
 
-    const byFarm = farmFilter ? filtered.filter((t) => t.stints.some((stint) => !stint.endAt && stint.farmId === farmFilter)) : filtered;
-    return byFarm.map((tapper) => ({
-      tapper,
-      personId: resolveTapperPersonId(tapper, peopleMatch),
-    }));
-  }, [tappers, search, farmFilter, peopleMatch]);
+    // Só as fazendas que têm sangrador (ativo ou histórico) entram na lista.
+  const filteredByFarm = selectedFarmId
+    ? filtered.filter((t) => t.stints.some((stint) => stint.farmId === selectedFarmId))
+    : filtered;
+  return filteredByFarm.map((tapper) => ({
+    tapper,
+    personId: resolveTapperPersonId(tapper, peopleMatch),
+  }));
+  }, [tappers, search, selectedFarmId, peopleMatch]);
+
+  const farmsWithTappers = useMemo(
+    () => farms.filter((f) => tappers.some((t) => t.stints.some((stint) => stint.farmId === f.id))),
+    [farms, tappers],
+  );
+  const selectedFarm = farmsWithTappers.find((f) => f.id === selectedFarmId) ?? null;
 
   const del = useMutation({
     mutationFn: (id: string) => deleteTapper(id),
@@ -159,7 +168,7 @@ function SangradoresPage() {
 
           <div className="mb-4 grid gap-3 md:grid-cols-2">
             <div className="relative"><Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-8" placeholder="Buscar por nome, apelido, código ou CPF..." value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-            <SearchableSelect value={farmFilter} onChange={(value) => setFarmFilter(value === "all" ? "" : value)} placeholder="Todas as fazendas" options={[{ value: "all", label: "Todas as fazendas" }, ...farms.map((farm: any) => ({ value: farm.id, label: `${farm.name}${farm.code ? ` (${farm.code})` : ""}`, keywords: farm.code ?? "" }))]} />
+            <SearchableSelect value={selectedFarmId ?? ""} onChange={(value) => setSelectedFarmId(value === "all" ? null : value)} placeholder="Todas as fazendas" options={[{ value: "all", label: "Todas as fazendas" }, ...farms.map((farm: any) => ({ value: farm.id, label: `${farm.name}${farm.code ? ` (${farm.code})` : ""}`, keywords: farm.code ?? "" }))]} />
           </div>
 
           <div className="mb-4">
@@ -227,14 +236,45 @@ function SangradoresPage() {
 
           {loadingList ? (
             <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Carregando...</CardContent></Card>
+          ) : farmsWithTappers.length === 0 ? (
+            <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Nenhum sangrador vinculado a fazenda.</CardContent></Card>
+          ) : !selectedFarm ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {farmsWithTappers.map((f) => {
+                const farmTappers = tappers.filter((t) => t.stints.some((s) => s.farmId === f.id));
+                const activeCount = farmTappers.filter((t) => t.stints.some((s) => !s.endAt && s.farmId === f.id)).length;
+                return (
+                  <button key={f.id} type="button" onClick={() => setSelectedFarmId(f.id)} className="text-left">
+                    <Card className="transition-colors hover:border-primary/40">
+                      <CardContent className="p-5">
+                        <div className="flex items-center gap-2">
+                          <HardHat className="h-4 w-4 text-primary" />
+                          <p className="truncate font-semibold">{f.name}</p>
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {farmTappers.length} sangrador{farmTappers.length === 1 ? "" : "es"} · {activeCount} ativo{activeCount === 1 ? "" : "s"}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </button>
+                );
+              })}
+            </div>
           ) : list.length === 0 ? (
-            <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">
-              Nenhum sangrador encontrado.
-            </CardContent></Card>
+            <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Nenhum sangrador encontrado.</CardContent></Card>
           ) : (
+            <div className="space-y-4">
+              <Button variant="ghost" onClick={() => setSelectedFarmId(null)}>
+                <ChevronLeft className="mr-2 h-4 w-4" /> Todas as fazendas
+              </Button>
+              <div className="flex items-center gap-2">
+                <HardHat className="h-4 w-4 text-primary" />
+                <span className="font-semibold">{selectedFarm.name}</span>
+              </div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {list.map(({ tapper, personId }) => {
                 const current = tapper.stints.find((s) => !s.endAt);
+                const activeHere = tapper.stints.some((s) => !s.endAt && s.farmId === selectedFarmId);
                 const inRh = !!personId;
                 const rhFarms = personId ? rhFarmsByUserId.get(personId) : undefined;
                 const farmLabel = formatFarmLabel(current?.farm)
@@ -257,8 +297,8 @@ function SangradoresPage() {
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <Badge variant={tapper.status === "ativo" ? "default" : "secondary"}>
-                            {TAPPER_STATUS.find((s) => s.value === tapper.status)?.label ?? tapper.status}
+                          <Badge variant={activeHere ? "default" : "secondary"}>
+                            {activeHere ? "Ativo" : "Desativado"}
                           </Badge>
                           <Badge variant={inRh ? "outline" : "secondary"} className="text-[10px]">
                             {inRh ? <><ShieldCheck className="mr-1 h-3 w-3" /> No RH</> : <><ShieldAlert className="mr-1 h-3 w-3" /> Fora do RH</>}
@@ -308,6 +348,7 @@ function SangradoresPage() {
                   </Card>
                 );
               })}
+            </div>
             </div>
           )}
         </>
