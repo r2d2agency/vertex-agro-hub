@@ -145,7 +145,7 @@ export class FieldService {
   async listTappersForFarm(userId: string, companyId: string, farmId: string) {
     await this.access.ensureCompany(userId, companyId);
 
-    const [tappers, assignments] = await Promise.all([
+    const [tappers, assignments, endedStints] = await Promise.all([
       this.prisma.tapper.findMany({
         where: {
           companyId, isDeleted: false,
@@ -163,12 +163,23 @@ export class FieldService {
         },
         select: { userId: true, user: { select: { fullName: true, email: true } } },
       }),
+      // Sangradores cujo vínculo de fazenda foi encerrado (stint com endAt)
+      // não devem mais aparecer no app de campo, mesmo que o FarmAssignment
+      // do RH ainda esteja ativo.
+      this.prisma.tapper.findMany({
+        where: {
+          companyId, isDeleted: false,
+          stints: { some: { farmId, endAt: { not: null } } },
+        },
+        select: { fullName: true },
+      }),
     ]);
 
     const existingNames = new Set(tappers.map((t) => t.fullName.trim().toLowerCase()));
+    const removedNames = new Set(endedStints.map((t) => t.fullName.trim().toLowerCase()));
     const fromRh = assignments
       .map((a) => ({ id: `rh:${a.userId}`, fullName: (a.user?.fullName || a.user?.email || '').trim(), nickname: null as string | null }))
-      .filter((p) => p.fullName && !existingNames.has(p.fullName.toLowerCase()));
+      .filter((p) => p.fullName && !existingNames.has(p.fullName.toLowerCase()) && !removedNames.has(p.fullName.toLowerCase()));
 
     return [...tappers, ...fromRh].sort((a, b) => a.fullName.localeCompare(b.fullName));
   }
