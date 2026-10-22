@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, Loader2, Repeat, Trees, AlertTriangle } from "lucide-react";
+import { Camera, Loader2, Repeat, Trees, AlertTriangle, ChevronDown } from "lucide-react";
 import {
   getFieldMe, submitTapping, listFieldTappers, listFieldTapperPlots,
   type FieldMe, type FieldTapper, type FieldTapperPlot,
@@ -10,7 +10,6 @@ import { listTappingRecords, updateTappingRecord, listTappingSummary, type Tappi
 import { TASK_EXTENTS, END_PERIODS, listTappingTasks, isPartialTask, type TappingTask } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,9 +40,10 @@ function SangriaPage() {
   const [tasks, setTasks] = useState<TappingTask[]>([]);
   const [taskExtent, setTaskExtent] = useState("");
   // Árvores previstas: vêm do cadastro (treeCount do vínculo tabela/sangrador).
-  // Sem cadastro, o monitor informa a quantidade na mão.
-  const [manualTrees, setManualTrees] = useState("");
+  // O monitor não preenche nada — o valor é sempre o do cadastro.
   const [summary, setSummary] = useState<TappingSummary | null>(null);
+  // O resumo do talhão pode ser recolhido — os valores continuam disponíveis.
+  const [showSummary, setShowSummary] = useState(false);
   const [savingAuxiliary, setSavingAuxiliary] = useState(false);
   const [endPeriod, setEndPeriod] = useState("");
   const [recordDate, setRecordDate] = useState(() => getLocalIsoDate());
@@ -96,11 +96,9 @@ function SangriaPage() {
   function selectPlot(id: string) {
     setPlotId(id);
     setTappingTableId("");
-    setManualTrees("");
   }
   function selectTable(tableId: string) {
     setTappingTableId(tableId);
-    setManualTrees("");
   }
 
   useEffect(() => {
@@ -221,17 +219,15 @@ function SangriaPage() {
     if (!plotId) { toast.error("Selecione o talhão"); return; }
     if (!tappingTableId) { toast.error("Selecione a tabela"); return; }
     if (!taskExtent) { toast.error("Selecione uma tarefa"); return; }
-    // A quantidade prevista é a que está cadastrada na tabela para este
-    // sangrador — não há cálculo de alocação. A tarefa define a fração:
+    // A quantidade prevista é sempre a que está cadastrada na tabela para
+    // este sangrador — o monitor não preenche nada. A tarefa define a fração:
     // completa = todas as árvores da tabela; meia tabela e adiantamento = metade.
     const registered = table?.treeCount ?? null;
-    const manualValue = manualTrees.trim() ? Number(manualTrees) : null;
-    if (registered == null && (manualValue == null || Number.isNaN(manualValue) || manualValue < 0)) {
-      toast.error("Informe a quantidade de árvores previstas");
+    if (registered == null) {
+      toast.error("Esta tabela não tem quantidade de árvores cadastrada. Peça ao administrador para cadastrar antes de registrar a sangria.");
       return;
     }
-    const baseTrees = registered ?? manualValue!;
-    const treesExpected = isPartialTask(taskExtent) ? Math.floor(baseTrees / 2) : baseTrees;
+    const treesExpected = isPartialTask(taskExtent) ? Math.floor(registered / 2) : registered;
     if (isDivergent && !confirmDivergence) {
       toast.warning(`A tabela selecionada (${selectedTable?.name ?? "—"}) é diferente da tabela do dia (${expectedTable?.name ?? "—"}). Confirme para continuar.`);
       return;
@@ -343,6 +339,12 @@ function SangriaPage() {
                   ? <>Não foi possível carregar os talhões deste sangrador. Detalhe: {tablesError}</>
                   : <>Nenhum talhão vinculado a este sangrador. No admin, abra Sangradores, clique no nome e use <strong>Talhões e tabelas</strong> para escolher o talhão e as tabelas.</>}
               </div>
+            ) : plots.length === 1 ? (
+              /* Com um único talhão não há o que escolher: mostra só o nome,
+                 já que o talhão está definido de forma implícita. */
+              <div className="flex h-11 items-center rounded-xl border border-border/60 bg-background/40 px-3 text-sm font-medium">
+                {plots[0].name}
+              </div>
             ) : (
               <Select value={plotId} onValueChange={selectPlot}>
                 <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione o talhão" /></SelectTrigger>
@@ -396,13 +398,12 @@ function SangriaPage() {
             <div className="flex items-center gap-2">
               <Trees className="h-4 w-4 text-primary" />
               <span className="text-muted-foreground">Árvores previstas nesta tabela:</span>
-              <span className="font-semibold text-foreground">{table.treeCount ?? "—"}</span>
+              <span className="font-semibold text-foreground">{table.treeCount ?? "não cadastrado"}</span>
             </div>
             {table.treeCount == null ? (
-              <div className="mt-2">
-                <Label className="mb-1 block text-xs font-medium text-muted-foreground">Árvores previstas (obrigatório)</Label>
-                <Input type="number" min="0" inputMode="numeric" placeholder="Ex.: 250" value={manualTrees} onChange={(event) => setManualTrees(event.target.value)} />
-              </div>
+              <p className="text-xs text-warning">
+                Esta tabela não tem quantidade de árvores cadastrada. Peça ao administrador para cadastrar a tabela antes de registrar a sangria.
+              </p>
             ) : (
               <p className="text-xs text-muted-foreground">
                 {taskExtent
@@ -416,15 +417,24 @@ function SangriaPage() {
         )}
         {summary && (
           <div className="space-y-1 rounded-xl border border-border/60 bg-background/40 px-3 py-2.5 text-sm">
-            <div className="text-xs font-medium text-muted-foreground">Resumo do talhão</div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-              <span className="text-muted-foreground">Árvores do talhão</span><span className="text-right font-semibold">{summary.plotTreeCount}</span>
-              <span className="text-muted-foreground">Árvores da fazenda</span><span className="text-right font-semibold">{summary.farmTreeCount}</span>
-              <span className="text-muted-foreground">Previstas para sangrar</span><span className="text-right font-semibold">{summary.plannedTreeCount}</span>
-              <span className="text-muted-foreground">Do meu sangrador</span><span className="text-right font-semibold">{myTapperSummary ? myTapperSummary.treeCount : "—"}</span>
-              <span className="text-muted-foreground">Feitas</span><span className="text-right font-semibold">{summary.treesDone}</span>
-              <span className="text-muted-foreground">Sangrias realizadas</span><span className="text-right font-semibold">{summary.treesRealized}</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowSummary((s) => !s)}
+              className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground"
+            >
+              <span>Resumo do talhão</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showSummary ? "rotate-180" : ""}`} />
+            </button>
+            {showSummary && (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                <span className="text-muted-foreground">Árvores do talhão</span><span className="text-right font-semibold">{summary.plotTreeCount}</span>
+                <span className="text-muted-foreground">Árvores da fazenda</span><span className="text-right font-semibold">{summary.farmTreeCount}</span>
+                <span className="text-muted-foreground">Previstas para sangrar</span><span className="text-right font-semibold">{summary.plannedTreeCount}</span>
+                <span className="text-muted-foreground">Do meu sangrador</span><span className="text-right font-semibold">{myTapperSummary ? myTapperSummary.treeCount : "—"}</span>
+                <span className="text-muted-foreground">Feitas</span><span className="text-right font-semibold">{summary.treesDone}</span>
+                <span className="text-muted-foreground">Sangrias realizadas</span><span className="text-right font-semibold">{summary.treesRealized}</span>
+              </div>
+            )}
           </div>
         )}
         {existingRecords.length > 0 && !editingId && !allowDuplicate && <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-semibold">Esta sangria já foi registrada</p><p className="mt-1 text-xs">Escolha se deseja corrigir o lançamento atual ou registrar uma nova sangria adicional.</p><div className="mt-3 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { const r = existingRecords[0]; setEditingId(r.id); setNotes(r.notes ?? ""); setEndPeriod(r.endPeriod ?? ""); setPhotoUrls(r.photoUrls ?? []); setAudioUrl(r.audioUrl ?? null); toast.info("Registro carregado para correção"); }}>Corrigir atual</Button><Button type="button" size="sm" onClick={() => setAllowDuplicate(true)}>Registrar nova mesmo assim</Button></div></div></div></div>}
