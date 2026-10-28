@@ -10,20 +10,32 @@ export type TappingTask = {
   active: boolean;
 };
 
-// Fallback apenas para compatibilidade enquanto o catálogo é carregado.
+// 6 formas de sangria, dispostas em matriz 3x2:
+// Linha 1: Tabela completa, Adiantamento Completo, Reposição Completa
+// Linha 2: Meia Tabela, Meio Adiantamento, Meia Reposição
 export const TASK_EXTENTS = [
-  { value: "X", label: "Tabela completa (X)" },
-  { value: "M", label: "Meia tabela (M)" },
-  { value: "/", label: "Tabela adiantada (/)" },
-  { value: "1", label: "Reposição (1)" },
+  { value: "TC", label: "Tabela completa", color: "complete" },
+  { value: "AC", label: "Adiantamento Completo", color: "advance" },
+  { value: "RC", label: "Reposição Completa", color: "replenish" },
+  { value: "MT", label: "Meia Tabela", color: "complete" },
+  { value: "MA", label: "Meio Adiantamento", color: "advance" },
+  { value: "MR", label: "Meia Reposição", color: "replenish" },
 ] as const;
 
-// Tarefas que cobrem a tabela inteira ou parte dela. A quantidade prevista
-// continua sendo a cadastrada — a tarefa só define a fração realizada.
-export const PARTIAL_TASKS = ["M", "/"] as const;
+// Tarefas que cobrem apenas parte da tabela.
+export const PARTIAL_TASKS = ["MT", "MA", "MR"] as const;
 
 export function isPartialTask(code?: string | null) {
   return !!code && (PARTIAL_TASKS as readonly string[]).includes(code);
+}
+
+// Cores por categoria: adiantamentos (completo e meio) uma cor; reposições outra.
+export function taskColorClass(code?: string | null): string {
+  const item = TASK_EXTENTS.find((t) => t.value === code);
+  if (!item) return "bg-muted text-muted-foreground";
+  if (item.color === "advance") return "bg-amber-500 text-white hover:bg-amber-600";
+  if (item.color === "replenish") return "bg-violet-500 text-white hover:bg-violet-600";
+  return "bg-emerald-600 text-white hover:bg-emerald-700";
 }
 
 export type DailyTreeAllocation = { date: string; plotTreeCount: number | null; tableCount: number; tapperCount: number; baseTrees: number | null; treesExpected: number | null; taskExtent: string };

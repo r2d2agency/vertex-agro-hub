@@ -7,7 +7,7 @@ import {
 } from "@/lib/field.functions";
 import { getTapperRotation, upsertTapperRotation, type TapperRotationState } from "@/lib/tappers.functions";
 import { listTappingRecords, updateTappingRecord, listTappingSummary, type TappingRecord, type TappingSummary } from "@/lib/sangrias.functions";
-import { TASK_EXTENTS, END_PERIODS, listTappingTasks, isPartialTask, type TappingTask } from "@/lib/sangrias.functions";
+import { TASK_EXTENTS, END_PERIODS, listTappingTasks, isPartialTask, type TappingTask, taskColorClass } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -455,7 +455,7 @@ function SangriaPage() {
                     type="button"
                     onClick={() => setTaskExtent(t.code)}
                     className={`h-11 rounded-xl border text-xs font-semibold transition ${
-                      active ? "border-primary bg-primary/15 text-primary" : "border-border/60 bg-background/40 text-muted-foreground"
+                      active ? `${taskColorClass(t.code)}` : "border-border/60 bg-background/40 text-muted-foreground"
                     }`}
                   >
                     {t.label}

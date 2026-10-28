@@ -31,7 +31,7 @@ import { listTappingTables } from "@/lib/tabelas.functions";
 import { getLocalIsoDate } from "@/lib/date-utils";
 import {
   createTappingRecord, deleteTappingRecord, listTappingRecords, updateTappingRecord,
-  TASK_EXTENTS, END_PERIODS,
+  TASK_EXTENTS, END_PERIODS, taskColorClass,
   type TappingRecord, type TappingInput,
 } from "@/lib/sangrias.functions";
 import { tappingRecordMoment } from "@/lib/tapping-dates";
@@ -464,15 +464,24 @@ function SangriaDialog({
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>Tarefa</Label>
-            <Select value={values.taskExtent || "__none"} onValueChange={(v) => setValues((s) => ({ ...s, taskExtent: v === "__none" ? "" : v }))}>
-              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">—</SelectItem>
-                {TASK_EXTENTS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="md:col-span-2">
+            <Label>Tarefa (forma de sangria)</Label>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              {TASK_EXTENTS.map((t) => {
+                const active = values.taskExtent === t.value;
+                const colorClass = taskColorClass(t.value);
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setValues((s) => ({ ...s, taskExtent: active ? "" : t.value }))}
+                    className={`rounded-md border px-2 py-2 text-xs font-medium transition ${active ? `${colorClass} ring-2 ring-offset-1` : "bg-background text-foreground hover:bg-muted"}`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div>
             <Label>Período de término</Label>
