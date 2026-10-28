@@ -353,7 +353,7 @@ function SangriaPage() {
                   const name = (combos[0].table.name ?? "").trim();
                   const notation = (combos[0].table.notation ?? "").trim();
                   const showNotation = notation && notation.toLowerCase() !== name.toLowerCase();
-                  return <>{combos[0].plot.name} - {name}{showNotation ? ` - ${notation}` : ""}{combos[0].table.treeCount != null ? ` - ${combos[0].table.treeCount} árvores` : ""}</>;
+                  return <>{name}{showNotation ? ` — ${notation}` : ""}{combos[0].table.treeCount != null ? ` — ${combos[0].table.treeCount} árvores` : ""}</>;
                 })()}
               </div>
             ) : (
@@ -367,7 +367,7 @@ function SangriaPage() {
                   const name = (c.table.name ?? "").trim();
                   const notation = (c.table.notation ?? "").trim();
                   const showNotation = notation && notation.toLowerCase() !== name.toLowerCase();
-                  return <SelectItem key={c.value} value={c.value}>{c.plot.name} - {name}{showNotation ? ` - ${notation}` : ""}{c.table.treeCount != null ? ` - ${c.table.treeCount} árvores` : ""}</SelectItem>;
+                  return <SelectItem key={c.value} value={c.value}>{name}{showNotation ? ` — ${notation}` : ""}{c.table.treeCount != null ? ` — ${c.table.treeCount} árvores` : ""}</SelectItem>;
                 })}</SelectContent>
               </Select>
             )}
