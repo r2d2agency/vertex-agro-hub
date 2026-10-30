@@ -68,6 +68,20 @@ function SangriaPage() {
     () => plots.flatMap((p) => p.tables.map((t) => ({ plot: p, table: t, value: `${p.id}|${t.tappingTableId}` }))),
     [plots],
   );
+  // Deduplica por nome da tabela (A, B, C, D, E): uma entrada por letra,
+  // mesmo que exista em vários talhões. A seleção de uma letra implica
+  // todos os talhões daquela tabela.
+  const uniqueCombos = useMemo(() => {
+    const seen = new Set<string>();
+    const out: typeof combos = [];
+    for (const c of combos) {
+      const key = (c.table.name ?? "").trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(c);
+    }
+    return out;
+  }, [combos]);
   // Tabelas do talhão escolhido: só as vinculadas a ele (com a quantidade
   // de árvores de cada uma, já cadastrada).
   const plot = plots.find((p) => p.id === plotId);
@@ -345,7 +359,7 @@ function SangriaPage() {
                   ? <>Não foi possível carregar os talhões deste sangrador. Detalhe: {tablesError}</>
                   : <>Nenhum talhão vinculado a este sangrador. No admin, abra Sangradores, clique no nome e use <strong>Talhões e tabelas</strong> para escolher o talhão e as tabelas.</>}
               </div>
-            ) : combos.length === 1 ? (
+            ) : uniqueCombos.length === 1 ? (
               /* Com uma única combinação não há o que escolher: mostra só ela,
                  já que o talhão e a tabela estão definidos de forma implícita. */
               <div className="flex h-11 items-center rounded-xl border border-border/60 bg-background/40 px-3 text-sm font-medium">
@@ -353,7 +367,7 @@ function SangriaPage() {
                   const name = (combos[0].table.name ?? "").trim();
                   const notation = (combos[0].table.notation ?? "").trim();
                   const showNotation = notation && notation.toLowerCase() !== name.toLowerCase();
-                  return <>{name}{showNotation ? ` — ${notation}` : ""}{combos[0].table.treeCount != null ? ` — ${combos[0].table.treeCount} árvores` : ""}</>;
+                  return <>{name}{showNotation ? ` — ${notation}` : ""}</>;
                 })()}
               </div>
             ) : (
@@ -363,11 +377,11 @@ function SangriaPage() {
                     a tabela pode se repetir em talhões diferentes, então a
                     escolha é sempre a combinação. A notação só aparece quando
                     for diferente do nome, para não duplicar ("A — A"). */}
-                <SelectContent>{combos.map((c) => {
+                <SelectContent>{uniqueCombos.map((c) => {
                   const name = (c.table.name ?? "").trim();
                   const notation = (c.table.notation ?? "").trim();
                   const showNotation = notation && notation.toLowerCase() !== name.toLowerCase();
-                  return <SelectItem key={c.value} value={c.value}>{name}{showNotation ? ` — ${notation}` : ""}{c.table.treeCount != null ? ` — ${c.table.treeCount} árvores` : ""}</SelectItem>;
+                  return <SelectItem key={c.value} value={c.value}>{name}{showNotation ? ` — ${notation}` : ""}</SelectItem>;
                 })}</SelectContent>
               </Select>
             )}
