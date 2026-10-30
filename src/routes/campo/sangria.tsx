@@ -89,7 +89,14 @@ function SangriaPage() {
   // A sequência é por talhão: a tabela sugerida sempre está entre as tabelas
   // do talhão escolhido.
   const expectedTable = rotation?.suggestedTableId ? tables.find((t) => t.tappingTableId === rotation.suggestedTableId) : undefined;
-  const selectedTable = tables.find((t) => t.tappingTableId === tappingTableId);
+  // Todos os combos da letra selecionada (pode haver vários talhões).
+  const selectedCombos = useMemo(() => combos.filter((c) => c.table.tappingTableId === tappingTableId || (tappingTableId && c.table.name === combos.find((x) => x.table.tappingTableId === tappingTableId)?.table.name)), [combos, tappingTableId]);
+  const selectedTable = useMemo(() => {
+    if (!selectedCombos.length) return undefined;
+    const first = selectedCombos[0].table;
+    const totalTrees = selectedCombos.reduce((s, c) => s + (c.table.treeCount ?? 0), 0);
+    return { ...first, treeCount: totalTrees };
+  }, [selectedCombos]);
   const isDivergent = Boolean(rotation?.suggestedTableId && tappingTableId && rotation.suggestedTableId !== tappingTableId);
 
   useEffect(() => {
