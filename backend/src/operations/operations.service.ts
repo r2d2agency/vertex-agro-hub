@@ -261,9 +261,24 @@ export class OperationsService {
       }
     }
 
-    if (dto.farmId && dto.plotId && dto.tappingTableId && dto.taskExtent && dto.treesExpected == null) {
+    // Calcula a quantidade prevista automaticamente a partir da tarefa + vínculo
+    // (completa = treeCount; meia/adiantamento = metade), caso o cliente não
+    // a envie. treesTapped defaulta para treesExpected (o monitor não informa
+    // uma quantidade diferente).
+    let treesExpected = dto.treesExpected ?? null;
+    if (treesExpected == null && dto.farmId && dto.plotId && dto.tappingTableId && dto.taskExtent) {
+      const link = await this.prisma.tapperPlotTableLink.findFirst({
+        where: { companyId: dto.companyId, farmId: dto.farmId, plotId: dto.plotId, tappingTableId: dto.tappingTableId, active: true },
+        select: { treeCount: true },
+      });
+      const base = link?.treeCount ?? 0;
+      const code = dto.taskExtent.trim();
+      treesExpected = code === 'MT' || code === 'MA' || code === 'MR' ? Math.floor(base / 2) : base;
+    }
+    if (treesExpected == null) {
       throw new BadRequestException('Informe a quantidade de árvores previstas para esta tarefa');
     }
+    const treesTapped = dto.treesTapped ?? treesExpected;
     const parsed = parseTappingDate(date);
     // O app agora envia o dia civil (YYYY-MM-DD) e o instante real separado.
     // `recordedAt` é a fonte da hora; sem ele, o dia civil não tem hora real.
@@ -273,6 +288,8 @@ export class OperationsService {
         ...rest,
         expectedTableId,
         divergent,
+        treesExpected,
+        treesTapped,
         date: parsed,
         // Instante real de gravação separado da data operacional: preserva hora/minuto.
         recordedAt: recorded,
