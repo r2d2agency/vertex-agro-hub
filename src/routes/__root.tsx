@@ -15,6 +15,7 @@ import { installOfflineAutoFlush } from "@/lib/offline/network";
 import { Toaster } from "@/components/ui/sonner";
 import { AppUpdateWatcher } from "@/components/vertex/app-update-watcher";
 import { InstallPromptBanner } from "@/components/vertex/install-prompt-banner";
+import { OfflineIndicator } from "@/components/vertex/offline-indicator";
 
 function NotFoundComponent() {
   return (
@@ -153,6 +154,7 @@ function RootComponent() {
       <Toaster richColors position="top-center" />
       <AppUpdateWatcher />
       <InstallPromptBanner />
+      <OfflineIndicator />
     </QueryClientProvider>
   );
 }

@@ -97,7 +97,11 @@ function AuthPage() {
           <button
             type="button"
             className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border/60 bg-card/40 py-3 text-sm text-muted-foreground backdrop-blur transition hover:text-foreground"
-            onClick={() => toast.info("Modo offline: use dados locais já sincronizados.")}
+            onClick={async () => {
+              if (!hasAuthTokens()) { toast.error("Sem sessão salva", { description: "Conecte-se à internet ao menos uma vez para entrar offline." }); return; }
+              try { await routeAfterAuth(navigate); toast.success("Modo offline ativo"); }
+              catch (e) { toast.error("Não foi possível carregar dados locais", { description: e instanceof Error ? e.message : String(e) }); }
+            }}
           >
             <WifiOff className="h-4 w-4" />
             <span className="flex flex-col items-center leading-tight">

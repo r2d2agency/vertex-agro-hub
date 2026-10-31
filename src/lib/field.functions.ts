@@ -40,9 +40,18 @@ export type FieldTapperTable = FieldTappingTable & { linkId: string; treeCount: 
 
 export type Coords = { latitude: number; longitude: number; accuracyM?: number };
 
-export function listFieldTappers(companyId: string, farmId: string) {
+export async function listFieldTappers(companyId: string, farmId: string) {
   const qs = new URLSearchParams({ companyId, farmId });
-  return apiRequest<FieldTapper[]>(`/field/tappers?${qs.toString()}`);
+  const key = `field:tappers:${companyId}:${farmId}`;
+  try {
+    const data = await apiRequest<FieldTapper[]>(`/field/tappers?${qs.toString()}`);
+    await idbPut("cache", { key, data, at: Date.now() });
+    return data;
+  } catch (e) {
+    const cached = await idbGet<{ key: string; data: FieldTapper[] }>("cache", key);
+    if (cached?.data) return cached.data;
+    throw e;
+  }
 }
 
 // Talhão do sangrador no campo: total de árvores do talhão, quanto está
@@ -56,26 +65,53 @@ export type FieldTapperPlot = {
   tables: Array<{ tappingTableId: string; name: string; notation: string | null; treeCount: number | null }>;
 };
 
-export function listFieldTapperPlots(companyId: string, tapperKey: string, farmId: string) {
+export async function listFieldTapperPlots(companyId: string, tapperKey: string, farmId: string) {
   const qs = new URLSearchParams({ companyId, tapperKey, farmId });
-  return apiRequest<FieldTapperPlot[]>(`/field/tapper-plots?${qs.toString()}`);
+  const key = `field:tapper-plots:${companyId}:${tapperKey}:${farmId}`;
+  try {
+    const data = await apiRequest<FieldTapperPlot[]>(`/field/tapper-plots?${qs.toString()}`);
+    await idbPut("cache", { key, data, at: Date.now() });
+    return data;
+  } catch (e) {
+    const cached = await idbGet<{ key: string; data: FieldTapperPlot[] }>("cache", key);
+    if (cached?.data) return cached.data;
+    throw e;
+  }
 }
 
-export function listFieldTappingTables(companyId: string) {
+export async function listFieldTappingTables(companyId: string) {
   const qs = new URLSearchParams({ companyId });
-  return apiRequest<FieldTappingTable[]>(`/field/tapping-tables?${qs.toString()}`);
+  const key = `field:tapping-tables:${companyId}`;
+  try {
+    const data = await apiRequest<FieldTappingTable[]>(`/field/tapping-tables?${qs.toString()}`);
+    await idbPut("cache", { key, data, at: Date.now() });
+    return data;
+  } catch (e) {
+    const cached = await idbGet<{ key: string; data: FieldTappingTable[] }>("cache", key);
+    if (cached?.data) return cached.data;
+    throw e;
+  }
 }
 
 export async function listFieldTapperTables(companyId: string, tapperKey: string, plotId?: string): Promise<FieldTapperTable[]> {
   const qs = new URLSearchParams({ companyId, tapperKey });
   if (plotId) qs.set("plotId", plotId);
-  const links = await apiRequest<Array<{
-    id: string; treeCount: number | null;
-    tappingTable: { id: string; name: string; notation: string | null; frequencyDays: number | null; restDays: number | null; workDaysCycle: number | null; cutType: string | null; stimulation: string | null } | null;
-  }>>(`/field/tapper-tables?${qs.toString()}`);
-  return links
-    .filter((l) => l.tappingTable)
-    .map((l) => ({ ...(l.tappingTable as FieldTappingTable), linkId: l.id, treeCount: l.treeCount }));
+  const key = `field:tapper-tables:${companyId}:${tapperKey}:${plotId ?? ""}`;
+  try {
+    const links = await apiRequest<Array<{
+      id: string; treeCount: number | null;
+      tappingTable: { id: string; name: string; notation: string | null; frequencyDays: number | null; restDays: number | null; workDaysCycle: number | null; cutType: string | null; stimulation: string | null } | null;
+    }>>(`/field/tapper-tables?${qs.toString()}`);
+    const data = links
+      .filter((l) => l.tappingTable)
+      .map((l) => ({ ...(l.tappingTable as FieldTappingTable), linkId: l.id, treeCount: l.treeCount }));
+    await idbPut("cache", { key, data, at: Date.now() });
+    return data;
+  } catch (e) {
+    const cached = await idbGet<{ key: string; data: FieldTapperTable[] }>("cache", key);
+    if (cached?.data) return cached.data;
+    throw e;
+  }
 }
 
 export async function getFieldMe(): Promise<FieldMe> {
