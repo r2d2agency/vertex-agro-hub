@@ -173,7 +173,6 @@ export async function apiRequest<T>(
 }
 
 export async function login(email: string, password: string) {
-  clearAuthTokens();
   const tokens = await apiRequest<AuthTokens>("/auth/login", {
     method: "POST",
     auth: false,
@@ -228,4 +227,3 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
   }
   return (await response.json()) as UploadedFile;
 }
-

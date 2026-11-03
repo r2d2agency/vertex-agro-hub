@@ -3,9 +3,9 @@
 > Fonte única para retomar o trabalho entre sessões. Atualizado automaticamente pelo assistente.
 
 ## Status atual
-- **Objetivo:** Implementar a lógica de sangria por tabelas (A–E) conforme solicitação do usuário.
-- **Última ação:** Validado: fluxo de sequência (needsReset + "Definir sequência" pelo monitor) já existia e atende à solicitação. Matriz 3x2 de formas com cores implementada (admin + campo). TypeScript passou sem erros.
-- **Estado:** concluído (parte de código); backend ativação formal opcional pendente, mas fluxo existente já cobre.
+- **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
+- **Última ação:** Leituras de registros/resumo de sangria agora usam cache IndexedDB; correções de sangria podem ser enfileiradas offline; login preserva tokens anteriores se a tentativa online falhar.
+- **Estado:** build de produção passou com Node 22. Typecheck bloqueado por declaração sintaticamente incompleta em `node_modules/date-fns/isMatch.d.ts`; ESLint reportou CRLF/prettier em massa. Offline segue limitado aos fluxos de campo e aos dados previamente sincronizados.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -35,18 +35,23 @@
 ## Arquivos envolvidos
 | Arquivo | Motivo da alteração/uso | Status |
 | --- | --- | --- |
-|  |  |  |
+| `src/lib/api.ts` | Login mantém sessão local caso a tentativa online falhe | alterado |
+| `src/lib/field.functions.ts` | Enfileira correção de registro existente como PATCH | alterado |
+| `src/lib/sangrias.functions.ts` | Cache/fallback offline para histórico e resumo | alterado |
+| `src/routes/campo/sangria.tsx` | Usa fila ao corrigir lançamento offline | alterado |
+| `docs/plano-offline.md` | Diagnóstico, escopo offline e pendências | alterado |
 
 ## Decisões tomadas
-- Solicitação registrada integralmente para retomada futura (ver pendência abaixo).
+- Falha de login online sem mensagem/log não permite concluir se é URL, rede, credencial ou backend; não alterar configuração de API por suposição.
+- Login offline significa retomar sessão previamente autenticada, não validar senha sem servidor.
+- Foco de implementação desta sessão: telas de campo de sangria; disponibilidade offline dos módulos administrativos permanece fora do escopo já implementado.
 
 ## Pendências / Próximos passos
-- [ ] Implementar cadastro do sangrador seguindo a ideia das tabelas (A–E) por talhão/fazenda, com quantidade de plantas por tabela.
-- [ ] Implementar operação no app de campo: seleção fazenda → sangrador → tabela sugerida do dia + qtd de árvores a sangrar + qtd sangrada hoje.
-- [ ] Implementar seleção da forma de sangria (6 opções em matriz 3x2) com cores diferenciadas para adiantamentos e reposições.
-- [ ] Implementar ciclo diário A,B,C,D,E com suporte a reposição de dia atrasado no mesmo dia.
-- [ ] Implementar ativação da "ordem do dia" pelo Monitor (sugestão passa a valer no dia seguinte).
-- [ ] Mapear arquivos/tabelas/campos atuais do sistema para ajustar (pendente de exploração do codebase).
+- [ ] Validar build quando as dependências frontend estiverem instaladas.
+- [ ] Obter mensagem exata do erro de login online e logs correlatos para identificar causa de ambiente/backend.
+- [ ] Completar cache de dados locais pendentes para duplicidade/resumo e fila de upload de fotos/áudios.
+- [ ] Associar cache offline à identidade do usuário para evitar mistura de dados ao alternar contas.
+- [ ] Avaliar suporte offline dos módulos administrativos; hoje apenas o app de campo tem fila/cache parcial.
 
 ## Migrations / Banco
 - **Migrations relevantes:** 
@@ -58,6 +63,7 @@
 | --- | --- |
 | 2026-10-27 | Arquivo criado com instrução no AGENTS.md para leitura/atualização automática. |
 | 2026-10-27 | Registrada solicitação completa de lógica de sangria por tabelas (A–E), ciclo diário, formas de sangria (6 opções) e fluxo do app Monitor. |
+| 2026-11-03 | Analisado suporte offline: cache para histórico/resumo de sangria, PATCH enfileirado e preservação de tokens em falha de login; escopo e limites registrados em `docs/plano-offline.md`. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 

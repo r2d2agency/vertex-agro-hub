@@ -187,6 +187,10 @@ export function submitTapping(input: {
   return submit<TappingRecord>("/tapping-records", "POST", data, `Sangria — ${input.sangradorName}`);
 }
 
+export function submitTappingUpdate(id: string, input: Record<string, unknown>) {
+  return submit<TappingRecord>(`/tapping-records/${id}`, "PATCH", input, "Correção de sangria");
+}
+
 export function submitStimulation(input: {
   companyId: string; farmId?: string; plotId?: string;
   date: string; product: string; concentration?: string;

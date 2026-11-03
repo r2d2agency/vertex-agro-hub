@@ -101,7 +101,17 @@ export type TappingSummary = {
 
 export function listTappingSummary(input: { companyId: string; farmId?: string; plotId?: string; tapperId?: string; from?: string; to?: string }) {
   const qs = new URLSearchParams(Object.entries(input).filter(([, value]) => value != null) as [string, string][]);
-  return apiRequest<TappingSummary[]>(`/tapping-summary?${qs.toString()}`);
+  const key = `tapping-summary:${qs.toString()}`;
+  return apiRequest<TappingSummary[]>(`/tapping-summary?${qs.toString()}`)
+    .then(async (data) => {
+      await idbPut("cache", { key, data, at: Date.now() });
+      return data;
+    })
+    .catch(async (error) => {
+      const cached = await idbGet<{ key: string; data: TappingSummary[] }>("cache", key);
+      if (cached) return cached.data;
+      throw error;
+    });
 }
 
 export const END_PERIODS = [
@@ -161,13 +171,22 @@ export type TappingInput = {
   allowDuplicate?: boolean;
 };
 
-export function listTappingRecords(
+export async function listTappingRecords(
   companyId: string,
   opts: { farmId?: string; plotId?: string; from?: string; to?: string } = {},
 ) {
   const qs = new URLSearchParams({ companyId });
   Object.entries(opts).forEach(([k, v]) => v && qs.set(k, v));
-  return apiRequest<TappingRecord[]>(`/tapping-records?${qs.toString()}`);
+  const key = `tapping-records:${qs.toString()}`;
+  try {
+    const data = await apiRequest<TappingRecord[]>(`/tapping-records?${qs.toString()}`);
+    await idbPut("cache", { key, data, at: Date.now() });
+    return data;
+  } catch (error) {
+    const cached = await idbGet<{ key: string; data: TappingRecord[] }>("cache", key);
+    if (cached) return cached.data;
+    throw error;
+  }
 }
 
 export function createTappingRecord(companyId: string, v: TappingInput) {

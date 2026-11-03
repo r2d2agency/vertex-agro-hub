@@ -1,7 +1,7 @@
 # Plano: Suporte Offline Completo — Vertex Agro Hub
 
 > Arquivo de acompanhamento. Atualizar a cada passo concluído.
-> Última atualização: 2026-10-31
+> Última atualização: 2026-11-03
 
 ## Objetivo
 Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos localmente, registros de sangria (e demais fluxos do campo) salvos localmente e sincronizados quando online, com indicação de "versão offline".
@@ -11,6 +11,9 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 - [x] `public/sw.js` v2 — network-first HTML, cache-first assets, never cache `/api/*`
 - [x] `src/lib/api.ts` — tokens em localStorage
 - [x] `src/routes/campo/sincronizacao.tsx` e `_authenticated/sincronizacao.tsx`
+- O suporte implementado é principalmente para o app de campo; o painel administrativo ainda depende da API.
+- O login offline é retomada de uma sessão já autenticada e dos dados previamente baixados; não valida senha nem cria sessão sem o servidor.
+- A fila já aceita POST/PATCH/PUT/DELETE, mas anexos (fotos/áudios) continuam dependendo do upload online.
 
 ## Gaps a fechar
 - [ ] Login offline: cachear sessão/token no IDB; permitir login quando offline usando cache.
@@ -22,11 +25,15 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 
 ## Fases
 ### Fase 1 — App de campo (sangria) offline end-to-end
-- [x] Login cacheado (botão "Trabalhar offline" carrega sessão/tokens do localStorage e dados do IDB)
+- [x] Retomar sessão cacheada (botão "Trabalhar offline" usa tokens salvos e dados do IDB; exige autenticação online prévia)
 - [x] Dados cacheados (getFieldMe + listFieldTappers + listFieldTapperPlots + listFieldTappingTables + listFieldTapperTables)
-- [x] Mutação enfileirada (submitTapping via submit/enqueueMutation)
+- [x] Novo registro de sangria enfileirado via submit/enqueueMutation
+- [x] Listas de sangrias e resumos com leitura do último cache disponível
+- [x] Correção de sangria existente enfileirada como PATCH
 - [x] Indicador offline (OfflineIndicator no root)
 - [x] Auto-flush ao voltar online (já existia)
+- [ ] Anexos offline: guardar localmente o arquivo e sincronizar upload antes/dependente da sangria.
+- [ ] Refletir registros pendentes nas consultas offline para validação de duplicidade e resumo imediato.
 
 ### Fase 2 — Demais fluxos do campo
 - [x] Mutação enfileirada em todos os fluxos (submitStimulation, submitDelivery, submitOccurrence, submitEvaluation, submitCheckin, submitOperationLog, submitFuelMovement, submitChecklist, submitInventoryMovement) via `submit()`/`enqueueMutation`
@@ -36,8 +43,19 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 - [x] Indicador global (OfflineIndicator no root)
 - [x] Backend idempotência em memória (instância única — cobre EasyPanel)
 - [ ] Backend idempotência persistente em DB (multi-instância) — opcional, não bloqueante
+- [ ] Login offline seguro por identidade: associar cache local a usuário e impedir mistura de dados ao trocar de conta.
+- [ ] Mapear e implementar funcionamento offline dos módulos administrativos, fora do app de campo.
+
+## Diagnóstico (2026-11-03)
+- O código da API não permite identificar a causa exata do erro de login online sem a mensagem exibida ou logs do backend/configuração de `VITE_API_URL`.
+- Antes, `login()` apagava os tokens locais antes da chamada online. A limpeza foi removida: falha de rede/credencial não destrói uma sessão já salva; novo token substitui a sessão apenas após login aceito.
+- A tela de sangria consultava histórico e resumo diretamente, sem cache; agora essas leituras usam IndexedDB como fallback.
+- A edição de sangria usava PATCH direto, mesmo offline; agora a correção entra na fila persistente e informa que aguarda confirmação do servidor.
+- Para testar totalmente offline, é necessário abrir o app online antes, autenticar e visitar/sincronizar os dados de campo necessários. Service Worker e IndexedDB não conseguem recuperar dados que nunca foram baixados.
+- Validação desta sessão: `npm run build` passou com Node 22. O `tsc --noEmit` não concluiu por erro sintático dentro de `node_modules/date-fns/isMatch.d.ts`; o ESLint falhou reportando CRLF/prettier em massa nos arquivos do workspace.
 
 ## Histórico
 | Data | Passo concluído |
 | --- | --- |
 | 2026-10-31 | Arquivo criado com plano offline. |
+| 2026-11-03 | Diagnóstico dos fluxos de login/sangria; cache de histórico/resumo e fila PATCH de correção; preservação de sessão local em falha de login. |

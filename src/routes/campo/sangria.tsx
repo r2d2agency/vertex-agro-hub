@@ -2,11 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Camera, Loader2, Repeat, Trees, AlertTriangle, ChevronDown } from "lucide-react";
 import {
-  getFieldMe, submitTapping, listFieldTappers, listFieldTapperPlots,
+  getFieldMe, submitTapping, submitTappingUpdate, listFieldTappers, listFieldTapperPlots,
   type FieldMe, type FieldTapper, type FieldTapperPlot,
 } from "@/lib/field.functions";
 import { getTapperRotation, upsertTapperRotation, type TapperRotationState } from "@/lib/tappers.functions";
-import { listTappingRecords, updateTappingRecord, listTappingSummary, type TappingRecord, type TappingSummary } from "@/lib/sangrias.functions";
+import { listTappingRecords, listTappingSummary, type TappingRecord, type TappingSummary } from "@/lib/sangrias.functions";
 import { TASK_EXTENTS, END_PERIODS, listTappingTasks, isPartialTask, type TappingTask, taskColorClass } from "@/lib/sangrias.functions";
 import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -285,8 +285,15 @@ function SangriaPage() {
         audioUrl: audioUrl || undefined,
       } as any;
       if (editingId) {
-        const record = await updateTappingRecord(editingId, payload);
-        setSavedRecord(record);
+        const result = await submitTappingUpdate(editingId, payload);
+        if (result.queued) {
+          setEditingId(null);
+          setAllowDuplicate(false);
+          toast.warning("Correção guardada na fila do aparelho; ainda não há confirmação do servidor.");
+          nav({ to: "/campo" });
+          return;
+        }
+        setSavedRecord(result.data);
       } else {
         const result = await submitTapping(payload);
         if (result.queued) {
