@@ -25,6 +25,7 @@ export const Route = createFileRoute("/campo/sangria")({ component: SangriaPage 
 function SangriaPage() {
   const nav = useNavigate();
   const [me, setMe] = useState<FieldMe | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [farmId, setFarmId] = useState("");
   const [tapperId, setTapperId] = useState("");
@@ -103,6 +104,9 @@ function SangriaPage() {
     getFieldMe().then((m) => {
       setMe(m);
       if (m.assignments[0]) setFarmId(m.assignments[0].farm.id);
+    }).catch((error) => {
+      console.error("[sangria] falha ao carregar dados do campo", error);
+      setLoadError(error instanceof Error ? error.message : String(error));
     });
   }, []);
 
@@ -243,6 +247,17 @@ function SangriaPage() {
     finally { setUploadingPhoto(false); }
   }
 
+  if (!me && loadError) {
+    return (
+      <div className="space-y-3 px-4 py-10 text-center">
+        <p className="font-semibold text-destructive">Não foi possível carregar os dados para registrar a sangria.</p>
+        <p className="break-words text-sm text-muted-foreground">{loadError}</p>
+        <Button type="button" variant="outline" onClick={() => nav({ to: "/campo/sincronizacao" })}>
+          Ver sincronização offline
+        </Button>
+      </div>
+    );
+  }
   if (!me) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   if (me.assignments.length === 0) return <p className="text-sm text-muted-foreground">Sem fazendas atribuídas.</p>;
 

@@ -4,8 +4,8 @@
 
 ## Status atual
 - **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Adicionado preparo de cache de todos os sangradores/talhões/sequências e listas da frota, gravação offline de chuva/abastecimento e início/finalização local de operação de máquina.
-- **Estado:** build de produção passou com Node 22 após as alterações. Offline ainda exige baixar os dados previamente na tela Sincronização; anexos continuam dependentes de conexão.
+- **Última ação:** Após relato de tela genérica ao abrir sangria offline, a tela global de erro agora exibe nome/mensagem da exceção; o carregamento inicial de `getFieldMe` na sangria também mostra erro local explícito.
+- **Estado:** build de produção passou com Node 22. Ainda não foi possível identificar a exceção original reportada pelo aparelho, pois a interface anterior a escondia; precisa validar a nova mensagem técnica após publicar.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -47,6 +47,7 @@
 | `src/routes/campo/abastecimento.tsx` | Cache de tanques e tratamento de erro no salvamento | alterado |
 | `src/lib/frota.functions.ts` / `src/lib/frota-ops.functions.ts` | Cache de listas usadas nas operações de campo | alterado |
 | `public/sw.js` | Atualiza cache do app e adiciona rotas de campo faltantes | alterado |
+| `src/routes/__root.tsx` | Exibe detalhe técnico no boundary para diagnosticar erro de render/rota | alterado |
 | `docs/plano-offline.md` | Diagnóstico, escopo offline e pendências | alterado |
 
 ## Decisões tomadas
@@ -54,10 +55,12 @@
 - Login offline significa retomar sessão previamente autenticada, não validar senha sem servidor.
 - Foco de implementação desta sessão: telas de campo de sangria; disponibilidade offline dos módulos administrativos permanece fora do escopo já implementado.
 - Antes de ficar offline, abrir Campo → Sincronização e usar "Baixar dados para uso offline"; a preparação percorre os sangradores/talhões atribuídos e listas da frota para popular o IndexedDB.
+- Usuário relata que, mesmo após preparo de 1 fazenda, 12 sangradores e 16 talhões, abrir "Registrar sangria" exibe tela genérica de erro; a exceção original não estava visível. Nova versão mostra `name/message` em "Detalhe técnico do erro".
 
 ## Pendências / Próximos passos
 - [x] Validar build após instalar as dependências locais ausentes (Node 22).
 - [ ] Obter mensagem exata do erro de login online e logs correlatos para identificar causa de ambiente/backend.
+- [ ] Obter detalhe técnico exibido ao abrir a rota de sangria offline e corrigir a causa específica.
 - [ ] Completar cache de dados locais pendentes para duplicidade/resumo e fila de upload de fotos/áudios.
 - [ ] Associar cache offline à identidade do usuário para evitar mistura de dados ao alternar contas.
 - [ ] Avaliar suporte offline dos módulos administrativos; hoje apenas o app de campo tem fila/cache parcial.
@@ -74,6 +77,7 @@
 | 2026-10-27 | Registrada solicitação completa de lógica de sangria por tabelas (A–E), ciclo diário, formas de sangria (6 opções) e fluxo do app Monitor. |
 | 2026-11-03 | Analisado suporte offline: cache para histórico/resumo de sangria, PATCH enfileirado e preservação de tokens em falha de login; escopo e limites registrados em `docs/plano-offline.md`. |
 | 2026-11-03 | Preparação offline para sangradores, sequências, frota e sangrias recentes; operação de máquina iniciada localmente e rotas de campo adicionadas ao Service Worker. |
+| 2026-11-03 | Relato de erro genérico ao abrir sangria offline; adicionado detalhe técnico visível no error boundary e estado de erro no carregamento inicial. Build passou; diagnóstico raiz depende da nova mensagem no aparelho. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 
