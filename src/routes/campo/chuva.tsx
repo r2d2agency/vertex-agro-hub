@@ -60,32 +60,39 @@ function ChuvaPage() {
   async function save() {
     if (!farm) return;
     setSaving(true);
-    const mm = Number(mmChuva.replace(",", ".")) || 0;
-    const areaNames = plots.filter((p) => affectedPlotIds.includes(p.id)).map((p) => p.name);
-    // datetime-local vazio vira "" e new Date("") é Invalid Date — cairia no
-    // dia errado em vez de avisar. Sem início não há como datar a chuva.
-    if (!ini) { toast.error("Informe o início aproximado da chuva"); setSaving(false); return; }
-    const res = await submitOccurrence({
-      companyId: farm.companyId, farmId: farm.id,
-      // Data civil (YYYY-MM-DD) no fuso de Brasília. O backend grava o campo
-      // `date` como @db.Date: mandar o ISO completo do aparelho fazia o registro
-      // cair no dia anterior quando o instante local ainda não tinha virado o dia
-      // em UTC. O horário real vai na descrição, que é onde ele pertence.
-      date: getLocalIsoDate(new Date(ini)),
-      type: "clima", severity: severityFromMm(mm), status: "aberta",
-      title: `Chuva ${mmChuva ? `${mmChuva} mm` : ""}`.trim(),
-      description: [
-        `Início: ${ini}`,
-        fim && `Fim: ${fim}`,
-        mmChuva && `Milímetros de chuva: ${mmChuva} mm`,
-        areaNames.length && `Áreas afetadas: ${areaNames.join(", ")}`,
-        notes,
-        photo && `Foto: ${photo}`,
-      ].filter(Boolean).join("\n"),
-    });
-    setSaving(false);
-    toast.success(res.queued ? "Salvo na fila" : "Chuva registrada");
-    nav({ to: "/campo" });
+    try {
+      const mm = Number(mmChuva.replace(",", ".")) || 0;
+      const areaNames = plots.filter((p) => affectedPlotIds.includes(p.id)).map((p) => p.name);
+      // datetime-local vazio vira "" e new Date("") é Invalid Date — cairia no
+      // dia errado em vez de avisar. Sem início não há como datar a chuva.
+      if (!ini) { toast.error("Informe o início aproximado da chuva"); return; }
+      const res = await submitOccurrence({
+        companyId: farm.companyId, farmId: farm.id,
+        // Data civil (YYYY-MM-DD) no fuso de Brasília. O backend grava o campo
+        // `date` como @db.Date: mandar o ISO completo do aparelho fazia o registro
+        // cair no dia anterior quando o instante local ainda não tinha virado o dia
+        // em UTC. O horário real vai na descrição, que é onde ele pertence.
+        date: getLocalIsoDate(new Date(ini)),
+        type: "clima", severity: severityFromMm(mm), status: "aberta",
+        title: `Chuva ${mmChuva ? `${mmChuva} mm` : ""}`.trim(),
+        description: [
+          `Início: ${ini}`,
+          fim && `Fim: ${fim}`,
+          mmChuva && `Milímetros de chuva: ${mmChuva} mm`,
+          areaNames.length && `Áreas afetadas: ${areaNames.join(", ")}`,
+          notes,
+          photo && `Foto: ${photo}`,
+        ].filter(Boolean).join("\n"),
+      });
+      toast.success(res.queued ? "Chuva salva na fila do aparelho" : "Chuva registrada");
+      nav({ to: "/campo" });
+    } catch (error) {
+      toast.error("Não foi possível salvar a chuva", {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!me) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;

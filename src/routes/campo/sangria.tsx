@@ -223,7 +223,11 @@ function SangriaPage() {
       const nextRotation = await getTapperRotation(farm.companyId, tapperId, plotId);
       setRotation(nextRotation);
       setTappingTableId(nextRotation.suggestedTableId ?? rotationAnchorTableId);
-      toast.success("Sequência de tabelas atualizada");
+      if (nextRotation.rotation?.offlineQueued) {
+        toast.warning("Sequência salva no aparelho e aguardando sincronização.");
+      } else {
+        toast.success("Sequência de tabelas atualizada");
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "Não foi possível atualizar a sequência");
     } finally {
@@ -370,7 +374,13 @@ function SangriaPage() {
             ) : combos.length === 0 ? (
               <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
                 {tablesError
-                  ? <>Não foi possível carregar os talhões deste sangrador. Detalhe: {tablesError}</>
+                  ? <>
+                      Não foi possível carregar os talhões deste sangrador. Detalhe: {tablesError}
+                      <p className="mt-2">Conecte-se e prepare os dados de todos os sangradores na tela Sincronização antes de trabalhar offline.</p>
+                      <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => nav({ to: "/campo/sincronizacao" })}>
+                        Preparar dados offline
+                      </Button>
+                    </>
                   : <>Nenhum talhão vinculado a este sangrador. No admin, abra Sangradores, clique no nome e use <strong>Talhões e tabelas</strong> para escolher o talhão e as tabelas.</>}
               </div>
             ) : uniqueCombos.length === 1 ? (

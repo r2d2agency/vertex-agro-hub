@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api";
+import { cachedApiRequest } from "@/lib/offline/cached-request";
 
 export type Machine = {
   id: string;
@@ -120,7 +121,7 @@ const qs = (params: Record<string, string | undefined>) => {
 
 // ----- Machines -----
 export const listMachines = (companyId: string, opts: { farmId?: string; status?: string } = {}) =>
-  apiRequest<Machine[]>(`/machines?${qs({ companyId, ...opts })}`);
+  cachedApiRequest<Machine[]>(`fleet:machines:${qs({ companyId, ...opts })}`, `/machines?${qs({ companyId, ...opts })}`);
 export const getMachine = (id: string) => apiRequest<MachineDetail>(`/machines/${id}`);
 export const createMachine = (dto: Partial<Machine> & { companyId: string; name: string }) =>
   apiRequest<Machine>(`/machines`, { method: "POST", body: JSON.stringify(dto) });
@@ -131,7 +132,7 @@ export const deleteMachine = (id: string) =>
 
 // ----- Implements -----
 export const listImplements = (companyId: string, farmId?: string) =>
-  apiRequest<Implement[]>(`/implements?${qs({ companyId, farmId })}`);
+  cachedApiRequest<Implement[]>(`fleet:implements:${qs({ companyId, farmId })}`, `/implements?${qs({ companyId, farmId })}`);
 export const createImplement = (dto: Partial<Implement> & { companyId: string; name: string }) =>
   apiRequest<Implement>(`/implements`, { method: "POST", body: JSON.stringify(dto) });
 export const updateImplement = (id: string, dto: Partial<Implement>) =>
@@ -141,7 +142,7 @@ export const deleteImplement = (id: string) =>
 
 // ----- Operators -----
 export const listOperators = (companyId: string, farmId?: string) =>
-  apiRequest<Operator[]>(`/operators?${qs({ companyId, farmId })}`);
+  cachedApiRequest<Operator[]>(`fleet:operators:${qs({ companyId, farmId })}`, `/operators?${qs({ companyId, farmId })}`);
 export const createOperator = (dto: Partial<Operator> & { companyId: string; name: string }) =>
   apiRequest<Operator>(`/operators`, { method: "POST", body: JSON.stringify(dto) });
 export const updateOperator = (id: string, dto: Partial<Operator>) =>
@@ -151,7 +152,7 @@ export const deleteOperator = (id: string) =>
 
 // ----- Operation types -----
 export const listOperationTypes = (companyId: string) =>
-  apiRequest<OperationType[]>(`/operation-types?${qs({ companyId })}`);
+  cachedApiRequest<OperationType[]>(`fleet:operation-types:${qs({ companyId })}`, `/operation-types?${qs({ companyId })}`);
 export const createOperationType = (dto: Partial<OperationType> & { companyId: string; name: string }) =>
   apiRequest<OperationType>(`/operation-types`, { method: "POST", body: JSON.stringify(dto) });
 export const updateOperationType = (id: string, dto: Partial<OperationType>) =>

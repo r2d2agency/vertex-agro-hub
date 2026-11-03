@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/api";
-import { idbGet, idbPut } from "@/lib/offline/idb";
+import { idbGet, idbGetAll, idbPut } from "@/lib/offline/idb";
 
 export type TappingTask = {
   id: string;
@@ -185,6 +185,23 @@ export async function listTappingRecords(
   } catch (error) {
     const cached = await idbGet<{ key: string; data: TappingRecord[] }>("cache", key);
     if (cached) return cached.data;
+    const recordsCache = (await idbGetAll<{ key: string; data: TappingRecord[] }>("cache"))
+      .filter((entry) => entry.key.startsWith("tapping-records:"));
+    for (const entry of recordsCache) {
+      const cachedQuery = new URLSearchParams(entry.key.slice("tapping-records:".length));
+      if (cachedQuery.get("companyId") !== companyId) continue;
+      if (opts.farmId && cachedQuery.get("farmId") && cachedQuery.get("farmId") !== opts.farmId) continue;
+      if (!opts.farmId && cachedQuery.has("farmId")) continue;
+      if (opts.plotId && cachedQuery.get("plotId") && cachedQuery.get("plotId") !== opts.plotId) continue;
+      if (!opts.plotId && cachedQuery.has("plotId")) continue;
+      const cachedFrom = cachedQuery.get("from");
+      const cachedTo = cachedQuery.get("to");
+      if (opts.from && (!cachedFrom || cachedFrom > opts.from)) continue;
+      if (opts.to && (!cachedTo || cachedTo < opts.to)) continue;
+      if (!opts.from && cachedFrom) continue;
+      if (!opts.to && cachedTo) continue;
+      return entry.data;
+    }
     throw error;
   }
 }

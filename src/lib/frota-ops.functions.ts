@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api";
+import { cachedApiRequest } from "@/lib/offline/cached-request";
 
 const qs = (params: Record<string, string | undefined | boolean>) => {
   const p = new URLSearchParams();
@@ -105,7 +106,7 @@ export type OpsOverview = {
 
 // ============ Fuel Tanks ============
 export const listFuelTanks = (companyId: string, farmId?: string) =>
-  apiRequest<FuelTank[]>(`/fuel-tanks?${qs({ companyId, farmId })}`);
+  cachedApiRequest<FuelTank[]>(`fleet:fuel-tanks:${qs({ companyId, farmId })}`, `/fuel-tanks?${qs({ companyId, farmId })}`);
 export const createFuelTank = (dto: Partial<FuelTank> & { companyId: string; name: string }) =>
   apiRequest<FuelTank>(`/fuel-tanks`, { method: "POST", body: JSON.stringify(dto) });
 export const updateFuelTank = (id: string, dto: Partial<FuelTank>) =>

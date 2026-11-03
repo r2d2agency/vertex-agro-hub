@@ -4,8 +4,8 @@
 
 ## Status atual
 - **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Leituras de registros/resumo de sangria agora usam cache IndexedDB; correções de sangria podem ser enfileiradas offline; login preserva tokens anteriores se a tentativa online falhar.
-- **Estado:** build de produção passou com Node 22. Typecheck bloqueado por declaração sintaticamente incompleta em `node_modules/date-fns/isMatch.d.ts`; ESLint reportou CRLF/prettier em massa. Offline segue limitado aos fluxos de campo e aos dados previamente sincronizados.
+- **Última ação:** Adicionado preparo de cache de todos os sangradores/talhões/sequências e listas da frota, gravação offline de chuva/abastecimento e início/finalização local de operação de máquina.
+- **Estado:** build de produção passou com Node 22 após as alterações. Offline ainda exige baixar os dados previamente na tela Sincronização; anexos continuam dependentes de conexão.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -39,15 +39,24 @@
 | `src/lib/field.functions.ts` | Enfileira correção de registro existente como PATCH | alterado |
 | `src/lib/sangrias.functions.ts` | Cache/fallback offline para histórico e resumo | alterado |
 | `src/routes/campo/sangria.tsx` | Usa fila ao corrigir lançamento offline | alterado |
+| `src/lib/offline/prepare-field-data.ts` | Baixa dados de campo/frota e sequência para todos os atribuídos | novo |
+| `src/lib/offline/cached-request.ts` | GET com cache IndexedDB e fallback offline | novo |
+| `src/routes/campo/sincronizacao.tsx` | Ação de preparar dados offline | alterado |
+| `src/routes/campo/operacao-maquina.tsx` | Início local e envio da operação ao finalizar offline | alterado |
+| `src/routes/campo/chuva.tsx` | Mensagem explícita e tratamento de erro no salvamento | alterado |
+| `src/routes/campo/abastecimento.tsx` | Cache de tanques e tratamento de erro no salvamento | alterado |
+| `src/lib/frota.functions.ts` / `src/lib/frota-ops.functions.ts` | Cache de listas usadas nas operações de campo | alterado |
+| `public/sw.js` | Atualiza cache do app e adiciona rotas de campo faltantes | alterado |
 | `docs/plano-offline.md` | Diagnóstico, escopo offline e pendências | alterado |
 
 ## Decisões tomadas
 - Falha de login online sem mensagem/log não permite concluir se é URL, rede, credencial ou backend; não alterar configuração de API por suposição.
 - Login offline significa retomar sessão previamente autenticada, não validar senha sem servidor.
 - Foco de implementação desta sessão: telas de campo de sangria; disponibilidade offline dos módulos administrativos permanece fora do escopo já implementado.
+- Antes de ficar offline, abrir Campo → Sincronização e usar "Baixar dados para uso offline"; a preparação percorre os sangradores/talhões atribuídos e listas da frota para popular o IndexedDB.
 
 ## Pendências / Próximos passos
-- [ ] Validar build quando as dependências frontend estiverem instaladas.
+- [x] Validar build após instalar as dependências locais ausentes (Node 22).
 - [ ] Obter mensagem exata do erro de login online e logs correlatos para identificar causa de ambiente/backend.
 - [ ] Completar cache de dados locais pendentes para duplicidade/resumo e fila de upload de fotos/áudios.
 - [ ] Associar cache offline à identidade do usuário para evitar mistura de dados ao alternar contas.
@@ -64,6 +73,7 @@
 | 2026-10-27 | Arquivo criado com instrução no AGENTS.md para leitura/atualização automática. |
 | 2026-10-27 | Registrada solicitação completa de lógica de sangria por tabelas (A–E), ciclo diário, formas de sangria (6 opções) e fluxo do app Monitor. |
 | 2026-11-03 | Analisado suporte offline: cache para histórico/resumo de sangria, PATCH enfileirado e preservação de tokens em falha de login; escopo e limites registrados em `docs/plano-offline.md`. |
+| 2026-11-03 | Preparação offline para sangradores, sequências, frota e sangrias recentes; operação de máquina iniciada localmente e rotas de campo adicionadas ao Service Worker. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 

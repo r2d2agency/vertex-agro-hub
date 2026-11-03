@@ -1,9 +1,14 @@
 /* Vertex Agro — Service Worker (offline-capable) */
-const VERSION = "v7";
+const VERSION = "v8";
 const SHELL = `vertex-shell-${VERSION}`;
 const ASSETS = `vertex-assets-${VERSION}`;
 
-const SHELL_URLS = ["/", "/campo", "/auth", "/campo/sangria", "/campo/producao", "/campo/ocorrencia", "/campo/avaliacao", "/campo/consultor", "/campo/mais", "/campo/sincronizacao"];
+const SHELL_URLS = [
+  "/", "/campo", "/auth", "/campo/sangria", "/campo/producao", "/campo/ocorrencia",
+  "/campo/avaliacao", "/campo/consultor", "/campo/mais", "/campo/sincronizacao",
+  "/campo/chuva", "/campo/abastecimento", "/campo/operacao-maquina", "/campo/checklist",
+  "/campo/estimulacao", "/campo/agenda",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {

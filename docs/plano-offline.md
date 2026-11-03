@@ -30,6 +30,9 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 - [x] Novo registro de sangria enfileirado via submit/enqueueMutation
 - [x] Listas de sangrias e resumos com leitura do último cache disponível
 - [x] Correção de sangria existente enfileirada como PATCH
+- [x] Ação de preparação baixa tabelas/sequências de todos os sangradores/talhões atribuídos
+- [x] Sangrias recentes (60 dias) reaproveitadas para consultas diárias offline
+- [x] Definição da sequência inicial pode ser enfileirada offline e atualiza o cache local
 - [x] Indicador offline (OfflineIndicator no root)
 - [x] Auto-flush ao voltar online (já existia)
 - [ ] Anexos offline: guardar localmente o arquivo e sincronizar upload antes/dependente da sangria.
@@ -37,6 +40,9 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 
 ### Fase 2 — Demais fluxos do campo
 - [x] Mutação enfileirada em todos os fluxos (submitStimulation, submitDelivery, submitOccurrence, submitEvaluation, submitCheckin, submitOperationLog, submitFuelMovement, submitChecklist, submitInventoryMovement) via `submit()`/`enqueueMutation`
+- [x] Cache de máquinas, implementos, operadores, tipos de operação e tanques para telas de campo
+- [x] Início de operação de máquina fica localmente até a finalização quando não há rede; o registro completo então vai para a fila
+- [x] Rotas de chuva, abastecimento, operação de máquina, checklist, estimulação e agenda incluídas no shell do Service Worker
 
 ### Fase 3 — Login offline robusto + sincronização + indicador global
 - [x] Sincronização automática (installOfflineAutoFlush no root)
@@ -53,6 +59,7 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 - A edição de sangria usava PATCH direto, mesmo offline; agora a correção entra na fila persistente e informa que aguarda confirmação do servidor.
 - Para testar totalmente offline, é necessário abrir o app online antes, autenticar e visitar/sincronizar os dados de campo necessários. Service Worker e IndexedDB não conseguem recuperar dados que nunca foram baixados.
 - Validação desta sessão: `npm run build` passou com Node 22. O `tsc --noEmit` não concluiu por erro sintático dentro de `node_modules/date-fns/isMatch.d.ts`; o ESLint falhou reportando CRLF/prettier em massa nos arquivos do workspace.
+- Para preparar o aparelho: depois de publicar/abrir a atualização com internet, abrir **Campo → Sincronização → Baixar dados para uso offline**. O cache inclui sangrias dos últimos 60 dias, configurações e listas atuais; sem essa etapa, dados nunca visitados podem não estar disponíveis.
 
 ## Histórico
 | Data | Passo concluído |

@@ -1,4 +1,4 @@
-import { apiRequest, setAuthTokens } from "@/lib/api";
+import { ApiError, apiRequest, setAuthTokens } from "@/lib/api";
 import { enqueueMutation, flushOutbox } from "@/lib/offline/queue";
 import { idbGet, idbPut } from "@/lib/offline/idb";
 import type { TappingRecord } from "@/lib/sangrias.functions";
@@ -265,6 +265,21 @@ export async function submitOperationLog(input: any) {
     }
   }
   return submit(path, method, body, desc);
+}
+
+export async function startOperationLog(input: Record<string, unknown>) {
+  if (typeof navigator !== "undefined" && navigator.onLine) {
+    try {
+      const data = await apiRequest<any>("/operation-logs", {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
+      return { localOnly: false as const, data };
+    } catch (error) {
+      if (error instanceof ApiError && error.status >= 400 && error.status < 500) throw error;
+    }
+  }
+  return { localOnly: true as const };
 }
 
 export function submitFuelMovement(input: {

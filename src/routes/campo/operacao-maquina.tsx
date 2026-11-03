@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
-import { getFieldMe, type FieldMe, submitOperationLog, captureLocation } from "@/lib/field.functions";
+import { getFieldMe, type FieldMe, submitOperationLog, startOperationLog, captureLocation } from "@/lib/field.functions";
 import { listMachines, listImplements, listOperators, listOperationTypes } from "@/lib/frota.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,8 @@ function OperacaoMaquinaPage() {
   const [isFinishing, setIsFinishing] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [pendingLogId, setPendingLogId] = useState<string | null>(null);
+  const [pendingOffline, setPendingOffline] = useState(false);
+  const [pendingStartedAt, setPendingStartedAt] = useState<string | null>(null);
 
   useEffect(() => {
     getFieldMe().then((m) => {
@@ -45,12 +47,24 @@ function OperacaoMaquinaPage() {
 
     const pending = localStorage.getItem("vertex_pending_op_log");
     if (pending) {
-      const log = JSON.parse(pending);
-      setPendingLogId(log.id);
-      setMachineId(log.machineId);
-      setHmStart(String(log.hourmeterStart || ""));
-      setFarmId(log.farmId);
-      setIsFinishing(true);
+      try {
+        const log = JSON.parse(pending);
+        setPendingLogId(log.id ?? null);
+        setPendingOffline(Boolean(log.offline));
+        setPendingStartedAt(log.startedAt ?? null);
+        setMachineId(log.machineId ?? "");
+        setImplementId(log.implementId ?? "");
+        setOperatorId(log.operatorId ?? "");
+        setTypeId(log.operationTypeId ?? "");
+        setNotes(log.notes ?? "");
+        setHmStart(String(log.hourmeterStart || ""));
+        setFarmId(log.farmId ?? "");
+        setIsFinishing(true);
+      } catch (error) {
+        console.error("[operacao-maquina] registro local inválido", error);
+        localStorage.removeItem("vertex_pending_op_log");
+        toast.error("O registro local da operação está inválido e foi removido.");
+      }
     }
   }, []);
 
@@ -87,7 +101,7 @@ function OperacaoMaquinaPage() {
       implementId: implementId || undefined,
       operatorId: operatorId || undefined,
       operationTypeId: typeId || undefined,
-      startedAt: isFinishing ? undefined : getLocalIsoString(),
+      startedAt: isFinishing ? (pendingOffline ? pendingStartedAt ?? undefined : undefined) : getLocalIsoString(),
       finishedAt: isFinishing ? getLocalIsoString() : undefined,
       hourmeterStart: hmStart ? Number(hmStart) : undefined,
       hourmeterEnd: hmEnd ? Number(hmEnd) : undefined,
@@ -100,25 +114,45 @@ function OperacaoMaquinaPage() {
     };
 
     try {
-      if (isFinishing && pendingLogId) {
-        payload.id = pendingLogId;
-        const res = await submitOperationLog(payload);
+      if (isFinishing) {
+        const res = pendingLogId
+          ? await submitOperationLog({ ...payload, id: pendingLogId })
+          : await submitOperationLog(payload);
         localStorage.removeItem("vertex_pending_op_log");
-        toast.success(res.queued ? "Finalização em fila" : "Operação concluída");
+        toast.success(res.queued ? "Operação completa guardada na fila" : "Operação concluída");
       } else {
-        if (!payload.startedAt) payload.startedAt = getLocalIsoString();
-        const res = await (submitOperationLog(payload) as Promise<any>);
-        if (!isFinishing && !res.queued && res.data?.id) {
-          localStorage.setItem(
-            "vertex_pending_op_log",
-            JSON.stringify({ id: res.data.id, machineId, farmId: farm.id, hourmeterStart: hmStart })
-          );
+        const res = await startOperationLog(payload);
+        if (res.localOnly) {
+          localStorage.setItem("vertex_pending_op_log", JSON.stringify({
+            offline: true,
+            startedAt: payload.startedAt,
+            machineId,
+            implementId: implementId || undefined,
+            operatorId: operatorId || undefined,
+            operationTypeId: typeId || undefined,
+            farmId: farm.id,
+            hourmeterStart: hmStart,
+            notes: notes || undefined,
+          }));
+          toast.warning("Início salvo neste aparelho. Finalize a operação para enviar o registro.");
+        } else if (res.data?.id) {
+          localStorage.setItem("vertex_pending_op_log", JSON.stringify({
+            id: res.data.id,
+            machineId,
+            farmId: farm.id,
+            hourmeterStart: hmStart,
+          }));
+          toast.success("Operação iniciada");
+        } else {
+          toast.error("O servidor não retornou o identificador da operação.");
+          return;
         }
-        toast.success(res.queued ? "Início em fila" : "Operação iniciada");
       }
       nav({ to: "/campo" });
-    } catch (e) {
-      toast.error("Erro ao salvar operação");
+    } catch (error) {
+      toast.error("Erro ao salvar operação", {
+        description: error instanceof Error ? error.message : String(error),
+      });
     } finally {
       setSaving(false);
     }
@@ -141,6 +175,11 @@ function OperacaoMaquinaPage() {
             <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
             <SelectContent>{machines.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}{m.plate ? ` · ${m.plate}` : ""}</SelectItem>)}</SelectContent>
           </Select>
+          {machines.length === 0 && (
+            <p className="mt-1 text-xs text-warning">
+              Nenhuma máquina está salva neste aparelho. Conecte-se e prepare os dados offline na tela Sincronização.
+            </p>
+          )}
         </F>
         <F label="Horímetro inicial"><Input className="h-11 rounded-xl" inputMode="decimal" value={hmStart} onChange={(e) => setHmStart(e.target.value)} disabled={isFinishing} /></F>
 
@@ -199,7 +238,7 @@ function OperacaoMaquinaPage() {
           {isFinishing ? "Finalizar Operação" : "Iniciar Operação"}
         </Button>
         {isFinishing && (
-          <Button variant="ghost" className="w-full mt-2" onClick={() => { localStorage.removeItem("vertex_pending_op_log"); setIsFinishing(false); setPendingLogId(null); setMachineId(""); setHmStart(""); }}>
+          <Button variant="ghost" className="w-full mt-2" onClick={() => { localStorage.removeItem("vertex_pending_op_log"); setIsFinishing(false); setPendingLogId(null); setPendingOffline(false); setPendingStartedAt(null); setMachineId(""); setHmStart(""); }}>
             Cancelar / Novo início
           </Button>
         )}

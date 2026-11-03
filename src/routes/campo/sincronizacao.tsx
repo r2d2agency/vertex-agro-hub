@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Loader2, RefreshCw, Trash2, Wifi, WifiOff } from "lucide-react";
 import { clearOutboxItem, flushOutbox, listOutbox, subscribeOutbox, type OutboxItem } from "@/lib/offline/queue";
+import { prepareFieldOfflineData } from "@/lib/offline/prepare-field-data";
 import { FieldCard } from "@/components/vertex/field/step-header";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/campo/sincronizacao")({ component: SyncPage });
 
@@ -13,8 +15,33 @@ function SyncPage() {
   const [running, setRunning] = useState(false);
   const [items, setItems] = useState<OutboxItem[]>([]);
   const [lastSync, setLastSync] = useState<string>("—");
+  const [preparing, setPreparing] = useState(false);
+  const [prepared, setPrepared] = useState<{ farms: number; tappers: number; plots: number; errors: string[] } | null>(null);
 
   const refresh = async () => setItems(await listOutbox());
+
+  async function prepareOffline() {
+    setPreparing(true);
+    setPrepared(null);
+    try {
+      const result = await prepareFieldOfflineData();
+      setPrepared(result);
+      setLastSync(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+      if (result.errors.length) {
+        toast.warning(`Dados baixados parcialmente (${result.errors.length} falha(s)).`, {
+          description: result.errors[0],
+        });
+      } else {
+        toast.success("Dados de campo preparados para uso offline.");
+      }
+    } catch (error) {
+      toast.error("Não foi possível preparar os dados offline.", {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setPreparing(false);
+    }
+  }
 
   useEffect(() => {
     if (typeof navigator !== "undefined") setOnline(navigator.onLine);
@@ -51,6 +78,34 @@ function SyncPage() {
         <Row label="Última sincronização" value={`Hoje, ${lastSync}`} />
         <Row label="Registros pendentes" value={String(pending - failedCount)} />
         {failedCount > 0 && <Row label="Com falha (precisam de ação)" value={String(failedCount)} danger />}
+      </FieldCard>
+
+      <FieldCard className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold">Preparar para trabalhar offline</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Baixa sangradores, talhões, tabelas, sequências, registros recentes, máquinas, operadores e tanques desta conta.
+          </p>
+        </div>
+        <button
+          disabled={!online || preparing}
+          onClick={prepareOffline}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 py-3 text-sm font-semibold text-primary disabled:opacity-60"
+        >
+          {preparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {preparing ? "Baixando dados..." : "Baixar dados para uso offline"}
+        </button>
+        {!online && <p className="text-xs text-warning">Conecte-se à internet para atualizar os dados locais.</p>}
+        {prepared && (
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <p>{prepared.farms} fazenda(s), {prepared.tappers} sangrador(es) e {prepared.plots} talhão(ões) preparados.</p>
+            {prepared.errors.length > 0 && (
+              <p className="text-destructive">
+                {prepared.errors.length} item(ns) não foram baixados. Primeiro erro: {prepared.errors[0]}
+              </p>
+            )}
+          </div>
+        )}
       </FieldCard>
 
       <button

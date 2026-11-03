@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/api";
 import { idbGet, idbPut } from "@/lib/offline/idb";
+import { enqueueMutation } from "@/lib/offline/queue";
 
 export type Tapper = {
   id: string;
@@ -300,6 +301,7 @@ export type TapperRotationState = {
     lastTableId: string;
     lastRecordId: string | null;
     linkStamp: string | null;
+    offlineQueued?: boolean;
   } | null;
   plotId: string | null;
   needsReset: boolean;
@@ -327,9 +329,44 @@ export async function getTapperRotation(companyId: string, tapperKey: string, pl
 export function upsertTapperRotation(input: {
   companyId: string; tapperKey: string; plotId: string; anchorTableId: string; anchorDate: string;
 }) {
-  return apiRequest<TapperRotationState["rotation"]>(`/tappers/rotation`, {
+  const path = "/tappers/rotation";
+  const body = clean(input);
+  return apiRequest<TapperRotationState["rotation"]>(path, {
     method: "PUT",
-    body: JSON.stringify(clean(input)),
+    body: JSON.stringify(body),
+  }).catch(async (error) => {
+    if (error instanceof Error && "status" in error && typeof error.status === "number" && error.status >= 400 && error.status < 500) {
+      throw error;
+    }
+
+    const key = `tapper-rotation:${input.companyId}:${input.tapperKey}:${input.plotId}`;
+    const cached = await idbGet<{ key: string; data: TapperRotationState }>("cache", key);
+    if (!cached) throw error;
+
+    const anchorIndex = cached.data.orderedLinks.findIndex((link) => link.tappingTableId === input.anchorTableId);
+    if (anchorIndex < 0 || cached.data.orderedLinks.length === 0) {
+      throw new Error("A tabela escolhida não está na sequência salva neste aparelho.");
+    }
+    const rotation: NonNullable<TapperRotationState["rotation"]> = {
+      id: cached.data.rotation?.id ?? `offline:${input.tapperKey}:${input.plotId}`,
+      plotId: input.plotId,
+      anchorTableId: input.anchorTableId,
+      anchorDate: input.anchorDate,
+      lastTableId: input.anchorTableId,
+      lastRecordId: null,
+      linkStamp: cached.data.linkStamp,
+      offlineQueued: true,
+    };
+    const next = cached.data.orderedLinks[(anchorIndex + 1) % cached.data.orderedLinks.length];
+    const updated: TapperRotationState = {
+      ...cached.data,
+      rotation,
+      needsReset: false,
+      suggestedTableId: next.tappingTableId,
+    };
+    await enqueueMutation({ path, method: "PUT", body, label: "Definição da sequência de sangria" });
+    await idbPut("cache", { key, data: updated, at: Date.now() });
+    return rotation;
   });
 }
 

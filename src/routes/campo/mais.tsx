@@ -120,8 +120,13 @@ function PreferenciasPage() {
     setRotationSaving(true);
     try {
       await upsertTapperRotation({ companyId: rotationFarm.companyId, tapperKey: rotationTapperId, plotId: rotationPlotId, anchorTableId: rotationAnchor, anchorDate: getLocalIsoDate(new Date(), rotationFarm.timezone ?? "America/Sao_Paulo") });
-      setRotationState(await getTapperRotation(rotationFarm.companyId, rotationTapperId, rotationPlotId));
-      toast.success("Ponto de partida da sequência atualizado");
+      const state = await getTapperRotation(rotationFarm.companyId, rotationTapperId, rotationPlotId);
+      setRotationState(state);
+      if (state.rotation?.offlineQueued) {
+        toast.warning("Sequência salva no aparelho e aguardando sincronização.");
+      } else {
+        toast.success("Ponto de partida da sequência atualizado");
+      }
     } catch (error: any) {
       toast.error(error?.message ?? "Não foi possível ajustar o ponto de partida");
     } finally {

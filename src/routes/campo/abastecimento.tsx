@@ -57,20 +57,27 @@ function AbastecimentoPage() {
   async function save() {
     if (!companyId || !tankId || !liters) { toast.error("Preencha tanque e litros"); return; }
     setSaving(true);
-    const res = await submitFuelMovement({
-      companyId, farmId: farmId || undefined, tankId, kind,
-      liters: Number(liters.replace(",", ".")),
-      occurredAt: getLocalIsoString(),
-      machineId: machineId || undefined,
-      operatorId: operatorId || undefined,
-      hourmeter: hm ? Number(hm) : undefined,
-      unitCost: unitCost ? Number(unitCost.replace(",", ".")) : undefined,
-      supplier: supplier || undefined,
-      notes: notes || undefined,
-    });
-    setSaving(false);
-    toast.success(res.queued ? "Salvo na fila" : "Abastecimento registrado");
-    nav({ to: "/campo" });
+    try {
+      const res = await submitFuelMovement({
+        companyId, farmId: farmId || undefined, tankId, kind,
+        liters: Number(liters.replace(",", ".")),
+        occurredAt: getLocalIsoString(),
+        machineId: machineId || undefined,
+        operatorId: operatorId || undefined,
+        hourmeter: hm ? Number(hm) : undefined,
+        unitCost: unitCost ? Number(unitCost.replace(",", ".")) : undefined,
+        supplier: supplier || undefined,
+        notes: notes || undefined,
+      });
+      toast.success(res.queued ? "Abastecimento salvo na fila do aparelho" : "Abastecimento registrado");
+      nav({ to: "/campo" });
+    } catch (error) {
+      toast.error("Não foi possível salvar o abastecimento", {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!me) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -97,6 +104,11 @@ function AbastecimentoPage() {
             </Select>
           )}
           {tank && <p className="mt-1 text-[11px] text-muted-foreground">Saldo atual: {tank.currentLevel} L</p>}
+          {tanks.length === 0 && (
+            <p className="mt-1 text-xs text-warning">
+              Nenhum tanque está salvo neste aparelho. Conecte-se e prepare os dados offline na tela Sincronização.
+            </p>
+          )}
         </F>
         <div>
           <Label className="mb-2 block text-xs font-medium text-muted-foreground">Tipo</Label>
