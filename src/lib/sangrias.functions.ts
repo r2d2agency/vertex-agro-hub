@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api";
+import { idbGet, idbPut } from "@/lib/offline/idb";
 
 export type TappingTask = {
   id: string;
@@ -49,8 +50,17 @@ export function upsertTappingDailyAllocation(input: { companyId: string; farmId:
   return apiRequest(`/tapping-daily-allocations`, { method: "POST", body: JSON.stringify(input) });
 }
 
-export function listTappingTasks(companyId: string) {
-  return apiRequest<TappingTask[]>(`/field/tapping-tasks?companyId=${encodeURIComponent(companyId)}`);
+export async function listTappingTasks(companyId: string) {
+  const key = "tapping-tasks:" + companyId;
+  try {
+    const data = await apiRequest<TappingTask[]>(`/field/tapping-tasks?companyId=${encodeURIComponent(companyId)}`);
+    await idbPut("cache", { key, data, at: Date.now() });
+    return data;
+  } catch (e) {
+    const cached = await idbGet<{ key: string; data: TappingTask[] }>("cache", key);
+    if (cached && cached.data) return cached.data;
+    throw e;
+  }
 }
 
 export function createTappingTask(input: Omit<TappingTask, "id" | "companyId" | "active"> & { companyId: string; active?: boolean }) {
