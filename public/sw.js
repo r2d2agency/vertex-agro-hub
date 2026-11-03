@@ -1,5 +1,5 @@
 /* Vertex Agro — Service Worker (offline-capable) */
-const VERSION = "v6";
+const VERSION = "v7";
 const SHELL = `vertex-shell-${VERSION}`;
 const ASSETS = `vertex-assets-${VERSION}`;
 
@@ -52,16 +52,18 @@ self.addEventListener("fetch", (event) => {
         if (res.ok) cache.put(req.url, res.clone());
         return res;
       } catch (e) {
-        // Tenta a URL exata, depois a raiz, depois qualquer cache HTML
         let cached = await cache.match(req);
         if (!cached) cached = await cache.match(req.url);
+        if (!cached && url.pathname.startsWith("/campo")) cached = await cache.match("/campo");
         if (!cached) cached = await cache.match("/");
         if (!cached) {
           const keys = await caches.keys();
           for (const k of keys) {
             if (!k.startsWith("vertex-")) continue;
             const c = await caches.open(k);
-            const m = await c.match(req) || await c.match("/") || await c.match(req.url);
+            let m = await c.match(req);
+            if (!m && url.pathname.startsWith("/campo")) m = await c.match("/campo");
+            if (!m) m = await c.match("/") || await c.match(req.url);
             if (m) { cached = m; break; }
           }
         }
