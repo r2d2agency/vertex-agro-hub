@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api";
+import { idbGet, idbPut } from "@/lib/offline/idb";
 
 export type Tapper = {
   id: string;
@@ -308,10 +309,19 @@ export type TapperRotationState = {
 
 // A sequência de tabelas é por talhão: o mesmo sangrador pode ter mais de um
 // talhão e cada um tem o seu próprio percurso de sangria.
-export function getTapperRotation(companyId: string, tapperKey: string, plotId?: string) {
+export async function getTapperRotation(companyId: string, tapperKey: string, plotId?: string) {
   const qs = new URLSearchParams({ companyId, tapperKey });
   if (plotId) qs.set("plotId", plotId);
-  return apiRequest<TapperRotationState>(`/tappers/rotation?${qs.toString()}`);
+  const key = "tapper-rotation:" + companyId + ":" + tapperKey + ":" + (plotId || "");
+  try {
+    const data = await apiRequest<TapperRotationState>(`/tappers/rotation?${qs.toString()}`);
+    await idbPut("cache", { key, data, at: Date.now() });
+    return data;
+  } catch (e) {
+    const cached = await idbGet<{ key: string; data: TapperRotationState }>("cache", key);
+    if (cached && cached.data) return cached.data;
+    throw e;
+  }
 }
 
 export function upsertTapperRotation(input: {
