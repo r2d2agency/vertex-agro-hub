@@ -4,8 +4,8 @@
 
 ## Status atual
 - **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Corrigido o cache offline do Service Worker: build gera `offline-assets.json`, que o worker v9 usa para pré-carregar os chunks JS/CSS/assets do cliente, incluindo as rotas lazy de campo.
-- **Estado:** `npm run build` passou com Node 22; manifesto gerado com 242 assets e nenhum arquivo ausente. O usuário precisa abrir a nova versão online para o worker v9 instalar os assets antes de testar offline.
+- **Última ação:** Corrigida a identificação de sangrador nos registros existentes: registros sem `tapperId` são comparados pelo nome, evitando que um registro de um sangrador RH apareça como duplicidade para todos. O aceite de lançamento adicional também é enviado à API/fila offline.
+- **Estado:** `npm run build` passou com Node 22. Lint direcionado não passou por avisos de CRLF/prettier nos arquivos já existentes; validar a correção em aparelho offline com mais de um sangrador após publicar.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -39,6 +39,7 @@
 | `src/lib/field.functions.ts` | Enfileira correção de registro existente como PATCH | alterado |
 | `src/lib/sangrias.functions.ts` | Cache/fallback offline para histórico e resumo | alterado |
 | `src/routes/campo/sangria.tsx` | Usa fila ao corrigir lançamento offline | alterado |
+| `src/lib/field.functions.ts` | Encaminha `allowDuplicate` da sangria à API e fila de sincronização | alterado |
 | `src/lib/offline/prepare-field-data.ts` | Baixa dados de campo/frota e sequência para todos os atribuídos | novo |
 | `src/lib/offline/cached-request.ts` | GET com cache IndexedDB e fallback offline | novo |
 | `src/routes/campo/sincronizacao.tsx` | Ação de preparar dados offline | alterado |
@@ -58,6 +59,7 @@
 - Antes de ficar offline, abrir Campo → Sincronização e usar "Baixar dados para uso offline"; a preparação percorre os sangradores/talhões atribuídos e listas da frota para popular o IndexedDB.
 - Usuário relata que, mesmo após preparo de 1 fazenda, 12 sangradores e 16 talhões, abrir "Registrar sangria" exibe tela genérica de erro; a exceção original não estava visível. Nova versão mostra `name/message` em "Detalhe técnico do erro".
 - A mensagem literal `Sem conexão` é o fallback de navegação do Service Worker. O build possui chunks separados para Sangria, chuva, abastecimento e operação de máquina; antes do ajuste, esses chunks só eram cacheados depois de serem visitados.
+- Os avisos de sangria já realizada comparavam `tapperId === null` para identificadores sintéticos `rh:<userId>`, causando correspondência com qualquer registro sem vínculo legado. Agora a comparação usa o ID quando existe e recorre ao nome do sangrador nos registros legados sem ID.
 
 ## Pendências / Próximos passos
 - [x] Validar build após instalar as dependências locais ausentes (Node 22).
@@ -65,6 +67,7 @@
 - [ ] Obter detalhe técnico exibido ao abrir a rota de sangria offline e corrigir a causa específica.
 - [x] Validar build do manifesto offline e conferir que todos os assets listados existem.
 - [ ] Testar instalação/abertura da rota Sangria sem rede no aparelho após publicar.
+- [ ] Testar registro offline de sangrias para múltiplos sangradores após publicar, incluindo repetição autorizada do mesmo contexto.
 - [ ] Completar cache de dados locais pendentes para duplicidade/resumo e fila de upload de fotos/áudios.
 - [ ] Associar cache offline à identidade do usuário para evitar mistura de dados ao alternar contas.
 - [ ] Avaliar suporte offline dos módulos administrativos; hoje apenas o app de campo tem fila/cache parcial.
@@ -84,6 +87,8 @@
 | 2026-11-03 | Relato de erro genérico ao abrir sangria offline; adicionado detalhe técnico visível no error boundary e estado de erro no carregamento inicial. Build passou; diagnóstico raiz depende da nova mensagem no aparelho. |
 | 2026-11-03 | Erro "Sem conexão" rastreado ao fallback do Service Worker; criado manifesto de assets no build e pré-cache em lotes no worker v9 para incluir chunks lazy antes de desconectar. |
 | 2026-11-03 | Build Node 22 passou; `dist/client/offline-assets.json` contém 242 caminhos e todos os arquivos existem. |
+| 2026-11-03 | Corrigido falso alerta de duplicidade quando sangradores não têm `tapperId` (cadastros RH): registros legados passam a ser associados pelo nome. A confirmação de duplicidade agora segue no payload e na fila para validação do servidor. |
+| 2026-11-03 | Build de produção passou após a correção de duplicidade offline. Lint direcionado segue apontando CRLF/prettier em massa nos arquivos existentes. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 

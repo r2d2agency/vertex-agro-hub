@@ -171,6 +171,7 @@ export function submitTapping(input: {
   status?: string; quality?: string; tableCondition?: string;
   photoUrls?: string[]; audioUrl?: string | null;
   divergent?: boolean;
+  allowDuplicate?: boolean;
 }) {
   const data = { ...input };
   if (data.tapperId === null) delete data.tapperId;

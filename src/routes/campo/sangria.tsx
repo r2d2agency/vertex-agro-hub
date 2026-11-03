@@ -22,6 +22,11 @@ import { tappingRecordMoment } from "@/lib/tapping-dates";
 
 export const Route = createFileRoute("/campo/sangria")({ component: SangriaPage });
 
+function recordBelongsToTapper(record: TappingRecord, candidate: FieldTapper) {
+  if (record.tapperId) return record.tapperId === candidate.id;
+  return record.sangradorName.trim().toLocaleLowerCase() === candidate.fullName.trim().toLocaleLowerCase();
+}
+
 function SangriaPage() {
   const nav = useNavigate();
   const [me, setMe] = useState<FieldMe | null>(null);
@@ -48,8 +53,8 @@ function SangriaPage() {
   const [savingAuxiliary, setSavingAuxiliary] = useState(false);
   const [endPeriod, setEndPeriod] = useState("");
   const [recordDate, setRecordDate] = useState(() => getLocalIsoDate());
-  const [existingRecords, setExistingRecords] = useState<any[]>([]);
-  const [dateRecords, setDateRecords] = useState<any[]>([]);
+  const [existingRecords, setExistingRecords] = useState<TappingRecord[]>([]);
+  const [dateRecords, setDateRecords] = useState<TappingRecord[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [allowDuplicate, setAllowDuplicate] = useState(false);
 
@@ -208,9 +213,9 @@ function SangriaPage() {
   useEffect(() => {
     if (!farm || !plotId || !tappingTableId || !taskExtent || !recordDate) { setExistingRecords([]); return; }
     listTappingRecords(farm.companyId, { farmId: farm.id, plotId, from: recordDate, to: recordDate })
-      .then((records) => setExistingRecords(records.filter((r) => r.tapperId === (tapperId.startsWith("rh:") ? null : tapperId) && r.tappingTableId === tappingTableId && r.taskExtent === taskExtent)))
+      .then((records) => setExistingRecords(records.filter((r) => tapper && recordBelongsToTapper(r, tapper) && r.tappingTableId === tappingTableId && r.taskExtent === taskExtent)))
       .catch(() => setExistingRecords([]));
-  }, [farm, plotId, tappingTableId, taskExtent, recordDate, tapperId]);
+  }, [farm, plotId, tappingTableId, taskExtent, recordDate, tapper]);
 
   useEffect(() => {
     if (!farm) return;
@@ -296,6 +301,7 @@ function SangriaPage() {
         // id sintético "rh:<userId>" — não é uma linha real de Tapper, então
         // não pode ser enviado como tapperId (chave estrangeira).
         tapperId: tapper.id.startsWith("rh:") ? undefined : tapper.id,
+        allowDuplicate: allowDuplicate || undefined,
         taskExtent,
         endPeriod: endPeriod || undefined,
         treesExpected,
@@ -376,7 +382,7 @@ function SangriaPage() {
           ) : (
             <Select value={tapperId} onValueChange={setTapperId}>
               <SelectTrigger className="h-11 rounded-xl border-primary/50 bg-primary/5"><SelectValue placeholder={tappers.length ? "Selecione o sangrador" : "Nenhum sangrador vinculado a esta fazenda"} /></SelectTrigger>
-              <SelectContent>{tappers.map((t) => { const done = dateRecords.some((r) => (r.tapperId && r.tapperId === (t.id.startsWith("rh:") ? null : t.id)) || (!r.tapperId && r.sangradorName === t.fullName)); return <SelectItem key={t.id} value={t.id} className={done ? "bg-warning/15 text-warning" : ""}>{t.fullName}{done ? " · já realizou" : ""}</SelectItem>; })}</SelectContent>
+              <SelectContent>{tappers.map((t) => { const done = dateRecords.some((r) => recordBelongsToTapper(r, t)); return <SelectItem key={t.id} value={t.id} className={done ? "bg-warning/15 text-warning" : ""}>{t.fullName}{done ? " · já realizou" : ""}</SelectItem>; })}</SelectContent>
             </Select>
           )}
         </Field>
