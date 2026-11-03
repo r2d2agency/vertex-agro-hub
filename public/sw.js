@@ -1,9 +1,9 @@
 /* Vertex Agro — Service Worker (offline-capable) */
-const VERSION = "v5";
+const VERSION = "v6";
 const SHELL = `vertex-shell-${VERSION}`;
 const ASSETS = `vertex-assets-${VERSION}`;
 
-const SHELL_URLS = ["/", "/campo", "/auth"];
+const SHELL_URLS = ["/", "/campo", "/auth", "/campo/sangria", "/campo/producao", "/campo/ocorrencia", "/campo/avaliacao", "/campo/consultor", "/campo/mais", "/campo/sincronizacao"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
