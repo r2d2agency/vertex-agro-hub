@@ -61,6 +61,7 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 - Validação desta sessão: `npm run build` passou com Node 22. O `tsc --noEmit` não concluiu por erro sintático dentro de `node_modules/date-fns/isMatch.d.ts`; o ESLint falhou reportando CRLF/prettier em massa nos arquivos do workspace.
 - Para preparar o aparelho: depois de publicar/abrir a atualização com internet, abrir **Campo → Sincronização → Baixar dados para uso offline**. O cache inclui sangrias dos últimos 60 dias, configurações e listas atuais; sem essa etapa, dados nunca visitados podem não estar disponíveis.
 - Se a tela de erro ocorrer ao abrir Sangria, a aplicação agora apresenta `nome: mensagem` em **Detalhe técnico do erro** (ou mensagem de `getFieldMe` inline); enviar esse texto para localizar a exceção concreta.
+- O Service Worker agora pré-carrega todos os chunks e assets do build do cliente via `offline-assets.json` (incluindo os módulos lazy das rotas de campo). Após publicar, abrir a nova versão online uma vez para instalar o cache v9; depois disso, abrir Sangria offline não depende de já ter visitado a tela antes.
 
 ## Histórico
 | Data | Passo concluído |

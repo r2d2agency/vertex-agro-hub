@@ -1,5 +1,5 @@
 /* Vertex Agro — Service Worker (offline-capable) */
-const VERSION = "v8";
+const VERSION = "v9";
 const SHELL = `vertex-shell-${VERSION}`;
 const ASSETS = `vertex-assets-${VERSION}`;
 
@@ -13,7 +13,22 @@ const SHELL_URLS = [
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(SHELL);
-    await Promise.allSettled(SHELL_URLS.map((u) => cache.add(u).catch(() => {})));
+    const manifestResponse = await fetch("/offline-assets.json", { cache: "no-cache" });
+    if (!manifestResponse.ok) {
+      throw new Error(`Offline asset manifest request failed: ${manifestResponse.status}`);
+    }
+
+    const assetUrls = await manifestResponse.json();
+    if (!Array.isArray(assetUrls) || assetUrls.some((url) => typeof url !== "string")) {
+      throw new Error("Offline asset manifest has an invalid format");
+    }
+
+    const assetCache = await caches.open(ASSETS);
+    for (let i = 0; i < assetUrls.length; i += 25) {
+      await assetCache.addAll(assetUrls.slice(i, i + 25));
+    }
+
+    await Promise.allSettled(SHELL_URLS.map((url) => cache.add(url)));
     self.skipWaiting();
   })());
 });

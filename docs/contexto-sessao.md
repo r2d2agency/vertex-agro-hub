@@ -4,8 +4,8 @@
 
 ## Status atual
 - **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Após relato de tela genérica ao abrir sangria offline, a tela global de erro agora exibe nome/mensagem da exceção; o carregamento inicial de `getFieldMe` na sangria também mostra erro local explícito.
-- **Estado:** build de produção passou com Node 22. Ainda não foi possível identificar a exceção original reportada pelo aparelho, pois a interface anterior a escondia; precisa validar a nova mensagem técnica após publicar.
+- **Última ação:** Corrigido o cache offline do Service Worker: build gera `offline-assets.json`, que o worker v9 usa para pré-carregar os chunks JS/CSS/assets do cliente, incluindo as rotas lazy de campo.
+- **Estado:** `npm run build` passou com Node 22; manifesto gerado com 242 assets e nenhum arquivo ausente. O usuário precisa abrir a nova versão online para o worker v9 instalar os assets antes de testar offline.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -47,6 +47,7 @@
 | `src/routes/campo/abastecimento.tsx` | Cache de tanques e tratamento de erro no salvamento | alterado |
 | `src/lib/frota.functions.ts` / `src/lib/frota-ops.functions.ts` | Cache de listas usadas nas operações de campo | alterado |
 | `public/sw.js` | Atualiza cache do app e adiciona rotas de campo faltantes | alterado |
+| `vite.config.ts` | Emite manifesto de assets do cliente para pré-cache offline | alterado |
 | `src/routes/__root.tsx` | Exibe detalhe técnico no boundary para diagnosticar erro de render/rota | alterado |
 | `docs/plano-offline.md` | Diagnóstico, escopo offline e pendências | alterado |
 
@@ -56,11 +57,14 @@
 - Foco de implementação desta sessão: telas de campo de sangria; disponibilidade offline dos módulos administrativos permanece fora do escopo já implementado.
 - Antes de ficar offline, abrir Campo → Sincronização e usar "Baixar dados para uso offline"; a preparação percorre os sangradores/talhões atribuídos e listas da frota para popular o IndexedDB.
 - Usuário relata que, mesmo após preparo de 1 fazenda, 12 sangradores e 16 talhões, abrir "Registrar sangria" exibe tela genérica de erro; a exceção original não estava visível. Nova versão mostra `name/message` em "Detalhe técnico do erro".
+- A mensagem literal `Sem conexão` é o fallback de navegação do Service Worker. O build possui chunks separados para Sangria, chuva, abastecimento e operação de máquina; antes do ajuste, esses chunks só eram cacheados depois de serem visitados.
 
 ## Pendências / Próximos passos
 - [x] Validar build após instalar as dependências locais ausentes (Node 22).
 - [ ] Obter mensagem exata do erro de login online e logs correlatos para identificar causa de ambiente/backend.
 - [ ] Obter detalhe técnico exibido ao abrir a rota de sangria offline e corrigir a causa específica.
+- [x] Validar build do manifesto offline e conferir que todos os assets listados existem.
+- [ ] Testar instalação/abertura da rota Sangria sem rede no aparelho após publicar.
 - [ ] Completar cache de dados locais pendentes para duplicidade/resumo e fila de upload de fotos/áudios.
 - [ ] Associar cache offline à identidade do usuário para evitar mistura de dados ao alternar contas.
 - [ ] Avaliar suporte offline dos módulos administrativos; hoje apenas o app de campo tem fila/cache parcial.
@@ -78,6 +82,8 @@
 | 2026-11-03 | Analisado suporte offline: cache para histórico/resumo de sangria, PATCH enfileirado e preservação de tokens em falha de login; escopo e limites registrados em `docs/plano-offline.md`. |
 | 2026-11-03 | Preparação offline para sangradores, sequências, frota e sangrias recentes; operação de máquina iniciada localmente e rotas de campo adicionadas ao Service Worker. |
 | 2026-11-03 | Relato de erro genérico ao abrir sangria offline; adicionado detalhe técnico visível no error boundary e estado de erro no carregamento inicial. Build passou; diagnóstico raiz depende da nova mensagem no aparelho. |
+| 2026-11-03 | Erro "Sem conexão" rastreado ao fallback do Service Worker; criado manifesto de assets no build e pré-cache em lotes no worker v9 para incluir chunks lazy antes de desconectar. |
+| 2026-11-03 | Build Node 22 passou; `dist/client/offline-assets.json` contém 242 caminhos e todos os arquivos existem. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 
