@@ -175,16 +175,25 @@ export async function listTappingRecords(
   companyId: string,
   opts: { farmId?: string; plotId?: string; from?: string; to?: string } = {},
 ) {
+  const filterRecords = (records: TappingRecord[]) => records.filter((record) => {
+    if (opts.farmId && record.farmId !== opts.farmId) return false;
+    if (opts.plotId && record.plotId !== opts.plotId) return false;
+    const recordDate = record.date?.slice(0, 10);
+    if (opts.from && (!recordDate || recordDate < opts.from)) return false;
+    if (opts.to && (!recordDate || recordDate > opts.to)) return false;
+    return true;
+  });
   const qs = new URLSearchParams({ companyId });
   Object.entries(opts).forEach(([k, v]) => v && qs.set(k, v));
   const key = `tapping-records:${qs.toString()}`;
   try {
     const data = await apiRequest<TappingRecord[]>(`/tapping-records?${qs.toString()}`);
-    await idbPut("cache", { key, data, at: Date.now() });
-    return data;
+    const filtered = filterRecords(data);
+    await idbPut("cache", { key, data: filtered, at: Date.now() });
+    return filtered;
   } catch (error) {
     const cached = await idbGet<{ key: string; data: TappingRecord[] }>("cache", key);
-    if (cached) return cached.data;
+    if (cached) return filterRecords(cached.data);
     const recordsCache = (await idbGetAll<{ key: string; data: TappingRecord[] }>("cache"))
       .filter((entry) => entry.key.startsWith("tapping-records:"));
     for (const entry of recordsCache) {
@@ -200,7 +209,7 @@ export async function listTappingRecords(
       if (opts.to && (!cachedTo || cachedTo < opts.to)) continue;
       if (!opts.from && cachedFrom) continue;
       if (!opts.to && cachedTo) continue;
-      return entry.data;
+      return filterRecords(entry.data);
     }
     throw error;
   }

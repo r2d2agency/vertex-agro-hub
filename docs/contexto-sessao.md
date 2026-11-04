@@ -4,8 +4,8 @@
 
 ## Status atual
 - **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Corrigida a identificação de sangrador nos registros existentes: registros sem `tapperId` são comparados pelo nome, evitando que um registro de um sangrador RH apareça como duplicidade para todos. O aceite de lançamento adicional também é enviado à API/fila offline.
-- **Estado:** `npm run build` passou com Node 22. Lint direcionado não passou por avisos de CRLF/prettier nos arquivos já existentes; validar a correção em aparelho offline com mais de um sangrador após publicar.
+- **Última ação:** Corrigido o fallback offline do histórico de sangrias: quando havia cache de 60 dias, a consulta de um dia retornava todo o período e fazia registros antigos aparecerem como feitos hoje.
+- **Estado:** Build de produção passou com Node 22. Usuário confirmou que a fila sincroniza ao voltar a internet; a falha está no alerta local de duplicidade offline. A correção precisa ser publicada e testada no aparelho.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -40,6 +40,7 @@
 | `src/lib/sangrias.functions.ts` | Cache/fallback offline para histórico e resumo | alterado |
 | `src/routes/campo/sangria.tsx` | Usa fila ao corrigir lançamento offline | alterado |
 | `src/lib/field.functions.ts` | Encaminha `allowDuplicate` da sangria à API e fila de sincronização | alterado |
+| `src/lib/sangrias.functions.ts` | Aplica filtros de fazenda/talhão/data também ao resultado do cache offline | alterado |
 | `src/lib/offline/prepare-field-data.ts` | Baixa dados de campo/frota e sequência para todos os atribuídos | novo |
 | `src/lib/offline/cached-request.ts` | GET com cache IndexedDB e fallback offline | novo |
 | `src/routes/campo/sincronizacao.tsx` | Ação de preparar dados offline | alterado |
@@ -60,6 +61,7 @@
 - Usuário relata que, mesmo após preparo de 1 fazenda, 12 sangradores e 16 talhões, abrir "Registrar sangria" exibe tela genérica de erro; a exceção original não estava visível. Nova versão mostra `name/message` em "Detalhe técnico do erro".
 - A mensagem literal `Sem conexão` é o fallback de navegação do Service Worker. O build possui chunks separados para Sangria, chuva, abastecimento e operação de máquina; antes do ajuste, esses chunks só eram cacheados depois de serem visitados.
 - Os avisos de sangria já realizada comparavam `tapperId === null` para identificadores sintéticos `rh:<userId>`, causando correspondência com qualquer registro sem vínculo legado. Agora a comparação usa o ID quando existe e recorre ao nome do sangrador nos registros legados sem ID.
+- A preparação offline guarda sangrias recentes numa janela de 60 dias. O fallback offline validava que essa janela cobria a data pedida, mas devolvia todos os registros da janela sem filtrar o dia; assim, registros antigos podiam bloquear cada sangrador como se já tivesse sangrado hoje. Agora todos os resultados são limitados pelos filtros solicitados.
 
 ## Pendências / Próximos passos
 - [x] Validar build após instalar as dependências locais ausentes (Node 22).
@@ -89,6 +91,8 @@
 | 2026-11-03 | Build Node 22 passou; `dist/client/offline-assets.json` contém 242 caminhos e todos os arquivos existem. |
 | 2026-11-03 | Corrigido falso alerta de duplicidade quando sangradores não têm `tapperId` (cadastros RH): registros legados passam a ser associados pelo nome. A confirmação de duplicidade agora segue no payload e na fila para validação do servidor. |
 | 2026-11-03 | Build de produção passou após a correção de duplicidade offline. Lint direcionado segue apontando CRLF/prettier em massa nos arquivos existentes. |
+| 2026-11-03 | Causa raiz da falha persistente: fallback offline retornava a janela inteira de sangrias (até 60 dias) mesmo em consultas por um dia. Resultado do cache agora é filtrado por fazenda, talhão e datas solicitadas. |
+| 2026-11-04 | Usuário confirmou que a sincronização da fila ao voltar online funciona; build passou após filtrar os registros do cache offline por data, fazenda e talhão para impedir falsos alertas locais. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 
