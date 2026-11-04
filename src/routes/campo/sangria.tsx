@@ -34,6 +34,7 @@ function SangriaPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [farmId, setFarmId] = useState("");
+  const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
   const [tapperId, setTapperId] = useState("");
   const [tablesError, setTablesError] = useState<string | null>(null);
   const [tappers, setTappers] = useState<FieldTapper[]>([]);
@@ -67,6 +68,7 @@ function SangriaPage() {
   const [saving, setSaving] = useState(false);
   const [confirmDivergence, setConfirmDivergence] = useState(false);
   const [savedRecord, setSavedRecord] = useState<TappingRecord | null>(null);
+  const tapper = tappers.find((t) => t.id === tapperId);
 
   // Todas as combinações talhão–tabela do sangrador (ex.: "T10 – A"). Uma
   // tabela pode se repetir em talhões diferentes, então a escolha é sempre o
@@ -120,8 +122,6 @@ function SangriaPage() {
     });
   }, []);
 
-  const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
-  const tapper = tappers.find((t) => t.id === tapperId);
   // Parcela do resumo que pertence ao sangrador escolhido (id do vínculo ou
   // "rh:<userId>", ou o nome, quando o id não bate).
   const myTapperSummary = useMemo(() => {

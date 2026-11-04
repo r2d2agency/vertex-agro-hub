@@ -4,8 +4,8 @@
 
 ## Status atual
 - **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Ajustada a tela de sangria para não reaproveitar resultados de uma seleção anterior enquanto o histórico offline do novo sangrador/talhão está carregando; respostas atrasadas também são descartadas. Sangradores RH são associados pelo nome exibido.
-- **Estado:** A fila sincroniza quando a internet volta; o defeito observado é no estado/validação da tela offline. Correção anterior de filtro por datas e esta proteção contra dados de seleções anteriores precisam ser testadas após publicar.
+- **Última ação:** Corrigida a ordem de inicialização em `sangria.tsx`: as chaves de validação referenciavam `farm` antes de sua declaração, causando ReferenceError ao renderizar.
+- **Estado:** Ajuste aplicado; build precisa ser validado antes do teste no aparelho.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -95,6 +95,7 @@
 | 2026-11-03 | Causa raiz da falha persistente: fallback offline retornava a janela inteira de sangrias (até 60 dias) mesmo em consultas por um dia. Resultado do cache agora é filtrado por fazenda, talhão e datas solicitadas. |
 | 2026-11-04 | Usuário confirmou que a sincronização da fila ao voltar online funciona; build passou após filtrar os registros do cache offline por data, fazenda e talhão para impedir falsos alertas locais. |
 | 2026-11-04 | Relato persistente levou à correção de estado obsoleto na tela: validações de data e duplicidade passam a ser identificadas pela seleção e descartam respostas atrasadas; RH compara sangrador pelo nome mesmo quando o registro retornado tem tapperId legado. |
+| 2026-11-04 | Corrigido `ReferenceError: Cannot access '2' before initialization`: as chaves do cache de validação usavam `farm` antes da declaração; `farm` e `tapper` agora são definidos antes dos valores derivados. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 
