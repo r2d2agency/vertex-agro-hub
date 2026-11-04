@@ -4,8 +4,8 @@
 
 ## Status atual
 - **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Corrigido o fallback offline do histórico de sangrias: quando havia cache de 60 dias, a consulta de um dia retornava todo o período e fazia registros antigos aparecerem como feitos hoje.
-- **Estado:** Build de produção passou com Node 22. Usuário confirmou que a fila sincroniza ao voltar a internet; a falha está no alerta local de duplicidade offline. A correção precisa ser publicada e testada no aparelho.
+- **Última ação:** Ajustada a tela de sangria para não reaproveitar resultados de uma seleção anterior enquanto o histórico offline do novo sangrador/talhão está carregando; respostas atrasadas também são descartadas. Sangradores RH são associados pelo nome exibido.
+- **Estado:** A fila sincroniza quando a internet volta; o defeito observado é no estado/validação da tela offline. Correção anterior de filtro por datas e esta proteção contra dados de seleções anteriores precisam ser testadas após publicar.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -62,6 +62,7 @@
 - A mensagem literal `Sem conexão` é o fallback de navegação do Service Worker. O build possui chunks separados para Sangria, chuva, abastecimento e operação de máquina; antes do ajuste, esses chunks só eram cacheados depois de serem visitados.
 - Os avisos de sangria já realizada comparavam `tapperId === null` para identificadores sintéticos `rh:<userId>`, causando correspondência com qualquer registro sem vínculo legado. Agora a comparação usa o ID quando existe e recorre ao nome do sangrador nos registros legados sem ID.
 - A preparação offline guarda sangrias recentes numa janela de 60 dias. O fallback offline validava que essa janela cobria a data pedida, mas devolvia todos os registros da janela sem filtrar o dia; assim, registros antigos podiam bloquear cada sangrador como se já tivesse sangrado hoje. Agora todos os resultados são limitados pelos filtros solicitados.
+- A tela mantinha resultados de validação enquanto mudava sangrador, talhão, tarefa ou data, e requisições assíncronas antigas podiam sobrescrever a seleção atual. Agora o resultado só é exibido se sua chave ainda corresponder à seleção e callbacks obsoletos são ignorados.
 
 ## Pendências / Próximos passos
 - [x] Validar build após instalar as dependências locais ausentes (Node 22).
@@ -93,6 +94,7 @@
 | 2026-11-03 | Build de produção passou após a correção de duplicidade offline. Lint direcionado segue apontando CRLF/prettier em massa nos arquivos existentes. |
 | 2026-11-03 | Causa raiz da falha persistente: fallback offline retornava a janela inteira de sangrias (até 60 dias) mesmo em consultas por um dia. Resultado do cache agora é filtrado por fazenda, talhão e datas solicitadas. |
 | 2026-11-04 | Usuário confirmou que a sincronização da fila ao voltar online funciona; build passou após filtrar os registros do cache offline por data, fazenda e talhão para impedir falsos alertas locais. |
+| 2026-11-04 | Relato persistente levou à correção de estado obsoleto na tela: validações de data e duplicidade passam a ser identificadas pela seleção e descartam respostas atrasadas; RH compara sangrador pelo nome mesmo quando o registro retornado tem tapperId legado. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 
