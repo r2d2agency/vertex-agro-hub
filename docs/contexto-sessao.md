@@ -4,8 +4,8 @@
 
 ## Status atual
 - **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Service Worker v12 passa a usar o shell cacheado em navegação offline ou HTTP 5xx; `/auth` permanece como start_url porque apresenta login e `/campo` redireciona para autenticação quando não há sessão.
-- **Estado:** Validar sintaxe e publicar v12. Build anterior não pôde ser validado devido a dependências locais ausentes/corrompidas em `node_modules`; login offline só retoma sessão previamente autenticada.
+- **Última ação:** Restaurado `/campo` como destino da raiz e `start_url` PWA; Service Worker v13 prioriza o shell de `/campo` no fallback, mantendo `/auth` quando não existe sessão local.
+- **Estado:** Validar sintaxe e publicar v13. Build anterior não pôde ser validado devido a dependências locais ausentes/corrompidas em `node_modules`; login offline só retoma sessão previamente autenticada.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -49,7 +49,7 @@
 | `src/routes/campo/abastecimento.tsx` | Cache de tanques e tratamento de erro no salvamento | alterado |
 | `src/lib/frota.functions.ts` / `src/lib/frota-ops.functions.ts` | Cache de listas usadas nas operações de campo | alterado |
 | `public/sw.js` | Atualiza cache do app, fallback offline/5xx e rotas de campo | alterado |
-| `public/manifest.webmanifest` | Define `/auth` como entrada do PWA para lançamento offline | alterado |
+| `public/manifest.webmanifest` | Define `/campo` como entrada do PWA | alterado |
 | `vite.config.ts` | Emite manifesto de assets do cliente para pré-cache offline | alterado |
 | `src/routes/__root.tsx` | Exibe detalhe técnico no boundary para diagnosticar erro de render/rota | alterado |
 | `docs/plano-offline.md` | Diagnóstico, escopo offline e pendências | alterado |
@@ -65,7 +65,7 @@
 - A preparação offline guarda sangrias recentes numa janela de 60 dias. O fallback offline validava que essa janela cobria a data pedida, mas devolvia todos os registros da janela sem filtrar o dia; assim, registros antigos podiam bloquear cada sangrador como se já tivesse sangrado hoje. Agora todos os resultados são limitados pelos filtros solicitados.
 - A tela mantinha resultados de validação enquanto mudava sangrador, talhão, tarefa ou data, e requisições assíncronas antigas podiam sobrescrever a seleção atual. Agora o resultado só é exibido se sua chave ainda corresponder à seleção e callbacks obsoletos são ignorados.
 - Para abrir sem rede, o aparelho precisa ter instalado o Service Worker e os chunks enquanto ainda estava online. O login offline retoma sessão anterior; não é possível validar credenciais novas sem o servidor. O app de campo depende de dados previamente baixados, e os módulos administrativos ainda exigem conexão.
-- Uma página “Vertex temporariamente indisponível” não corresponde ao HTML do fallback local do worker; a versão v12 agora tenta servir o shell cacheado também quando o servidor responde HTTP 5xx. `/auth` é a rota esperada para o login; `/campo` exige sessão e redireciona se ela não existir.
+- Uma página “Vertex temporariamente indisponível” não corresponde ao HTML do fallback local do worker; a versão v12 passou a tentar servir o shell cacheado também quando o servidor responde HTTP 5xx. A entrada esperada do app é `/campo`; a própria rota envia para `/auth` quando não há sessão.
 
 ## Pendências / Próximos passos
 - [x] Validar build após instalar as dependências locais ausentes (Node 22).
@@ -104,6 +104,7 @@
 | 2026-11-04 | Usuário confirmou que a atualização do app resolveu o alerta falso de duplicidade offline; build do Service Worker v10 passou. |
 | 2026-11-05 | Usuário relata que o app não abre offline no iPhone/Android. PWA inicia agora em `/auth`, fallback do worker inclui a tela de login e versão v11 exige cache dos assets críticos; esclarecido limite de autenticação offline e necessidade de preparar dados online. |
 | 2026-11-05 | Investigada página “Vertex temporariamente indisponível”: não existe literal correspondente no app. Worker v12 agora usa fallback local também para respostas HTTP 5xx; `/auth` é intencional, pois `/campo` requer sessão. |
+| 2026-11-05 | Usuário confirmou que a raiz deve direcionar a `/campo`. Corrigidos o redirect da raiz, `start_url` PWA e a prioridade de fallback offline; Service Worker incrementado para v13. |
 | 2026-11-05 | Verificações estáticas do SW/manifesto passaram. Build bloqueado por instalação local de node_modules incompleta/corrompida (arquivos ausentes de lucide-react e Tailwind wasm); tentativa de restaurar dependência falhou com ENOENT/EPERM. |
 
 ## Notas rápidas

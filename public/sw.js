@@ -1,5 +1,5 @@
 /* Vertex Agro — Service Worker (offline-capable) */
-const VERSION = "v12";
+const VERSION = "v13";
 const SHELL = `vertex-shell-${VERSION}`;
 const ASSETS = `vertex-assets-${VERSION}`;
 
@@ -37,8 +37,8 @@ self.addEventListener("install", (event) => {
       throw new Error(`Failed to precache critical offline assets: ${failedCriticalAssets.join(", ")}`);
     }
 
-    await cache.add("/auth");
-    await Promise.allSettled(SHELL_URLS.filter((url) => url !== "/auth").map((url) => cache.add(url)));
+    await Promise.all([cache.add("/campo"), cache.add("/auth")]);
+    await Promise.allSettled(SHELL_URLS.filter((url) => url !== "/campo" && url !== "/auth").map((url) => cache.add(url)));
     self.skipWaiting();
   })());
 });
@@ -90,8 +90,8 @@ self.addEventListener("fetch", (event) => {
 
       let cached = await cache.match(req);
       if (!cached) cached = await cache.match(req.url);
+      if (!cached && (url.pathname === "/" || url.pathname.startsWith("/campo"))) cached = await cache.match("/campo");
       if (!cached) cached = await cache.match("/auth");
-      if (!cached && url.pathname.startsWith("/campo")) cached = await cache.match("/campo");
       if (!cached) cached = await cache.match("/");
       if (!cached) {
         const keys = await caches.keys();
@@ -99,8 +99,8 @@ self.addEventListener("fetch", (event) => {
           if (!k.startsWith("vertex-")) continue;
           const c = await caches.open(k);
           let m = await c.match(req);
+          if (!m && (url.pathname === "/" || url.pathname.startsWith("/campo"))) m = await c.match("/campo");
           if (!m) m = await c.match("/auth");
-          if (!m && url.pathname.startsWith("/campo")) m = await c.match("/campo");
           if (!m) m = await c.match("/") || await c.match(req.url);
           if (m) { cached = m; break; }
         }

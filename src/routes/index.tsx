@@ -10,8 +10,9 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  // A raiz não tem mais landing page: vai direto para o login.
+  // A raiz abre o app de campo; a rota protegida envia usuários sem sessão
+  // para o login.
   beforeLoad: () => {
-    throw redirect({ to: "/auth" });
+    throw redirect({ to: "/campo" });
   },
 });
