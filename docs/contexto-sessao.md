@@ -4,8 +4,8 @@
 
 ## Status atual
 - **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Corrigida a ordem de inicialização em `sangria.tsx`: as chaves de validação referenciavam `farm` antes de sua declaração, causando ReferenceError ao renderizar.
-- **Estado:** Ajuste aplicado; build precisa ser validado antes do teste no aparelho.
+- **Última ação:** PWA agora inicia em `/auth`, usa a tela de login como fallback e instala os assets JS/CSS críticos de forma validada no Service Worker v11.
+- **Estado:** Verificações de sintaxe do worker e JSON do manifesto passaram. O build não pôde ser validado por dependências locais ausentes/corrompidas em `node_modules` (`lucide-react` e pacote wasm do Tailwind); `npm install` também falhou por ENOENT/EPERM nessa pasta. Login offline só retoma sessão previamente autenticada; dados administrativos não baixados ainda dependem da API.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -49,6 +49,7 @@
 | `src/routes/campo/abastecimento.tsx` | Cache de tanques e tratamento de erro no salvamento | alterado |
 | `src/lib/frota.functions.ts` / `src/lib/frota-ops.functions.ts` | Cache de listas usadas nas operações de campo | alterado |
 | `public/sw.js` | Atualiza cache do app e adiciona rotas de campo faltantes | alterado |
+| `public/manifest.webmanifest` | Define `/auth` como entrada do PWA para lançamento offline | alterado |
 | `vite.config.ts` | Emite manifesto de assets do cliente para pré-cache offline | alterado |
 | `src/routes/__root.tsx` | Exibe detalhe técnico no boundary para diagnosticar erro de render/rota | alterado |
 | `docs/plano-offline.md` | Diagnóstico, escopo offline e pendências | alterado |
@@ -63,6 +64,7 @@
 - Os avisos de sangria já realizada comparavam `tapperId === null` para identificadores sintéticos `rh:<userId>`, causando correspondência com qualquer registro sem vínculo legado. Agora a comparação usa o ID quando existe e recorre ao nome do sangrador nos registros legados sem ID.
 - A preparação offline guarda sangrias recentes numa janela de 60 dias. O fallback offline validava que essa janela cobria a data pedida, mas devolvia todos os registros da janela sem filtrar o dia; assim, registros antigos podiam bloquear cada sangrador como se já tivesse sangrado hoje. Agora todos os resultados são limitados pelos filtros solicitados.
 - A tela mantinha resultados de validação enquanto mudava sangrador, talhão, tarefa ou data, e requisições assíncronas antigas podiam sobrescrever a seleção atual. Agora o resultado só é exibido se sua chave ainda corresponder à seleção e callbacks obsoletos são ignorados.
+- Para abrir sem rede, o aparelho precisa ter instalado o Service Worker e os chunks enquanto ainda estava online. O login offline retoma sessão anterior; não é possível validar credenciais novas sem o servidor. O app de campo depende de dados previamente baixados, e os módulos administrativos ainda exigem conexão.
 
 ## Pendências / Próximos passos
 - [x] Validar build após instalar as dependências locais ausentes (Node 22).
@@ -74,6 +76,7 @@
 - [ ] Completar cache de dados locais pendentes para duplicidade/resumo e fila de upload de fotos/áudios.
 - [ ] Associar cache offline à identidade do usuário para evitar mistura de dados ao alternar contas.
 - [ ] Avaliar suporte offline dos módulos administrativos; hoje apenas o app de campo tem fila/cache parcial.
+- [ ] Validar abertura offline em iOS e Android após instalar o Service Worker v11 e preparar dados.
 
 ## Migrations / Banco
 - **Migrations relevantes:** 
@@ -96,6 +99,10 @@
 | 2026-11-04 | Usuário confirmou que a sincronização da fila ao voltar online funciona; build passou após filtrar os registros do cache offline por data, fazenda e talhão para impedir falsos alertas locais. |
 | 2026-11-04 | Relato persistente levou à correção de estado obsoleto na tela: validações de data e duplicidade passam a ser identificadas pela seleção e descartam respostas atrasadas; RH compara sangrador pelo nome mesmo quando o registro retornado tem tapperId legado. |
 | 2026-11-04 | Corrigido `ReferenceError: Cannot access '2' before initialization`: as chaves do cache de validação usavam `farm` antes da declaração; `farm` e `tapper` agora são definidos antes dos valores derivados. |
+| 2026-11-04 | Incrementada versão do Service Worker v9→v10 para forçar atualização/precache dos bundles corrigidos; usuário reportava comportamento antigo ao testar offline. |
+| 2026-11-04 | Usuário confirmou que a atualização do app resolveu o alerta falso de duplicidade offline; build do Service Worker v10 passou. |
+| 2026-11-05 | Usuário relata que o app não abre offline no iPhone/Android. PWA inicia agora em `/auth`, fallback do worker inclui a tela de login e versão v11 exige cache dos assets críticos; esclarecido limite de autenticação offline e necessidade de preparar dados online. |
+| 2026-11-05 | Verificações estáticas do SW/manifesto passaram. Build bloqueado por instalação local de node_modules incompleta/corrompida (arquivos ausentes de lucide-react e Tailwind wasm); tentativa de restaurar dependência falhou com ENOENT/EPERM. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 

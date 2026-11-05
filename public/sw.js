@@ -1,5 +1,5 @@
 /* Vertex Agro — Service Worker (offline-capable) */
-const VERSION = "v9";
+const VERSION = "v11";
 const SHELL = `vertex-shell-${VERSION}`;
 const ASSETS = `vertex-assets-${VERSION}`;
 
@@ -24,11 +24,21 @@ self.addEventListener("install", (event) => {
     }
 
     const assetCache = await caches.open(ASSETS);
+    const failedCriticalAssets = [];
     for (let i = 0; i < assetUrls.length; i += 25) {
-      await assetCache.addAll(assetUrls.slice(i, i + 25));
+      const results = await Promise.allSettled(assetUrls.slice(i, i + 25).map((url) => assetCache.add(url)));
+      results.forEach((result, index) => {
+        if (result.status === "rejected" && /\.(js|css)(?:$|\?)/.test(assetUrls[i + index])) {
+          failedCriticalAssets.push(assetUrls[i + index]);
+        }
+      });
+    }
+    if (failedCriticalAssets.length) {
+      throw new Error(`Failed to precache critical offline assets: ${failedCriticalAssets.join(", ")}`);
     }
 
-    await Promise.allSettled(SHELL_URLS.map((url) => cache.add(url)));
+    await cache.add("/auth");
+    await Promise.allSettled(SHELL_URLS.filter((url) => url !== "/auth").map((url) => cache.add(url)));
     self.skipWaiting();
   })());
 });
@@ -74,6 +84,7 @@ self.addEventListener("fetch", (event) => {
       } catch (e) {
         let cached = await cache.match(req);
         if (!cached) cached = await cache.match(req.url);
+        if (!cached) cached = await cache.match("/auth");
         if (!cached && url.pathname.startsWith("/campo")) cached = await cache.match("/campo");
         if (!cached) cached = await cache.match("/");
         if (!cached) {
@@ -82,6 +93,7 @@ self.addEventListener("fetch", (event) => {
             if (!k.startsWith("vertex-")) continue;
             const c = await caches.open(k);
             let m = await c.match(req);
+            if (!m) m = await c.match("/auth");
             if (!m && url.pathname.startsWith("/campo")) m = await c.match("/campo");
             if (!m) m = await c.match("/") || await c.match(req.url);
             if (m) { cached = m; break; }
