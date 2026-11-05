@@ -1,5 +1,5 @@
 /* Vertex Agro — Service Worker (offline-capable) */
-const VERSION = "v13";
+const VERSION = "v14";
 const SHELL = `vertex-shell-${VERSION}`;
 const ASSETS = `vertex-assets-${VERSION}`;
 
@@ -83,7 +83,7 @@ self.addEventListener("fetch", (event) => {
           cache.put(req.url, res.clone());
           return res;
         }
-        if (res.status < 500) return res;
+        if (res.status < 500 && !(url.pathname === "/" && res.status === 404)) return res;
       } catch (e) {
         // Network failures and server 5xx responses use the cached app shell.
       }

@@ -13,7 +13,7 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 - [x] `src/routes/campo/sincronizacao.tsx` e `_authenticated/sincronizacao.tsx`
 - O suporte implementado é principalmente para o app de campo; o painel administrativo ainda depende da API.
 - O login offline é retomada de uma sessão já autenticada e dos dados previamente baixados; não valida senha nem cria sessão sem o servidor.
-- O PWA inicia em `/campo`; a raiz `/` também direciona para o app de campo. Se não houver sessão salva, `/campo` redireciona para `/auth`. O Service Worker v13 usa `/campo` como fallback principal de navegação offline e `/auth` como fallback secundário e de respostas HTTP 5xx do servidor. Para uso offline, é obrigatório abrir a nova versão online ao menos uma vez para instalar o worker e pré-carregar os arquivos do app.
+- O PWA inicia em `/campo`; a raiz `/` também direciona para o app de campo. Se não houver sessão salva, `/campo` redireciona para `/auth`. O Service Worker v14 usa `/campo` como fallback principal de navegação offline, erro 5xx e 404 da raiz, e `/auth` como fallback secundário. Para uso offline, é obrigatório abrir a nova versão online ao menos uma vez para instalar o worker e pré-carregar os arquivos do app.
 - A fila já aceita POST/PATCH/PUT/DELETE, mas anexos (fotos/áudios) continuam dependendo do upload online.
 
 ## Gaps a fechar
@@ -75,3 +75,4 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 | 2026-11-05 | PWA inicia em `/auth`, usa a tela de login como fallback offline e valida pré-cache dos arquivos críticos; documentado o fluxo necessário de primeira autenticação e preparação dos dados. |
 | 2026-11-05 | Worker v12 passa a servir o shell em cache também para respostas 5xx, evitando exibir a página de indisponibilidade do servidor quando já há app local. |
 | 2026-11-05 | Restaurada a navegação esperada: `/` e o ícone PWA abrem `/campo`; worker v13 prioriza o shell de `/campo` no fallback offline e mantém redirecionamento para `/auth` apenas sem sessão. |
+| 2026-11-05 | Worker v14 retorna o shell cacheado de `/campo` para a raiz quando o host/proxy responde 404, além das falhas offline e HTTP 5xx. |

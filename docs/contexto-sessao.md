@@ -4,8 +4,8 @@
 
 ## Status atual
 - **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Restaurado `/campo` como destino da raiz e `start_url` PWA; Service Worker v13 prioriza o shell de `/campo` no fallback, mantendo `/auth` quando não existe sessão local.
-- **Estado:** Validar sintaxe e publicar v13. Build anterior não pôde ser validado devido a dependências locais ausentes/corrompidas em `node_modules`; login offline só retoma sessão previamente autenticada.
+- **Última ação:** Ajustado o Service Worker v14 para responder `/` com o shell cacheado de `/campo` também quando o servidor/proxy responde 404; `/campo` continua como redirect da raiz e start_url do PWA.
+- **Estado:** Validar sintaxe do worker e publicar v14. Build anterior não pôde ser validado devido a dependências locais ausentes/corrompidas em `node_modules`; login offline só retoma sessão previamente autenticada.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -66,6 +66,7 @@
 - A tela mantinha resultados de validação enquanto mudava sangrador, talhão, tarefa ou data, e requisições assíncronas antigas podiam sobrescrever a seleção atual. Agora o resultado só é exibido se sua chave ainda corresponder à seleção e callbacks obsoletos são ignorados.
 - Para abrir sem rede, o aparelho precisa ter instalado o Service Worker e os chunks enquanto ainda estava online. O login offline retoma sessão anterior; não é possível validar credenciais novas sem o servidor. O app de campo depende de dados previamente baixados, e os módulos administrativos ainda exigem conexão.
 - Uma página “Vertex temporariamente indisponível” não corresponde ao HTML do fallback local do worker; a versão v12 passou a tentar servir o shell cacheado também quando o servidor responde HTTP 5xx. A entrada esperada do app é `/campo`; a própria rota envia para `/auth` quando não há sessão.
+- Se a raiz do host responder 404 enquanto `/campo` funciona, o worker agora usa o shell de `/campo` para a navegação raiz em vez de devolver a página 404 do host.
 
 ## Pendências / Próximos passos
 - [x] Validar build após instalar as dependências locais ausentes (Node 22).
@@ -105,6 +106,7 @@
 | 2026-11-05 | Usuário relata que o app não abre offline no iPhone/Android. PWA inicia agora em `/auth`, fallback do worker inclui a tela de login e versão v11 exige cache dos assets críticos; esclarecido limite de autenticação offline e necessidade de preparar dados online. |
 | 2026-11-05 | Investigada página “Vertex temporariamente indisponível”: não existe literal correspondente no app. Worker v12 agora usa fallback local também para respostas HTTP 5xx; `/auth` é intencional, pois `/campo` requer sessão. |
 | 2026-11-05 | Usuário confirmou que a raiz deve direcionar a `/campo`. Corrigidos o redirect da raiz, `start_url` PWA e a prioridade de fallback offline; Service Worker incrementado para v13. |
+| 2026-11-05 | Usuário ainda não consegue abrir o domínio raiz, mas `/campo` funciona. Worker v14 agora cai no shell cacheado de `/campo` quando a raiz recebe 404 do host/proxy. |
 | 2026-11-05 | Verificações estáticas do SW/manifesto passaram. Build bloqueado por instalação local de node_modules incompleta/corrompida (arquivos ausentes de lucide-react e Tailwind wasm); tentativa de restaurar dependência falhou com ENOENT/EPERM. |
 
 ## Notas rápidas
