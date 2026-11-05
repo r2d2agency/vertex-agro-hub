@@ -13,7 +13,7 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 - [x] `src/routes/campo/sincronizacao.tsx` e `_authenticated/sincronizacao.tsx`
 - O suporte implementado é principalmente para o app de campo; o painel administrativo ainda depende da API.
 - O login offline é retomada de uma sessão já autenticada e dos dados previamente baixados; não valida senha nem cria sessão sem o servidor.
-- O PWA inicia na tela `/auth` e o Service Worker v11 usa essa rota como fallback de navegação offline. Para uso offline, é obrigatório abrir a nova versão online ao menos uma vez para instalar o worker e pré-carregar os arquivos do app.
+- O PWA inicia na tela `/auth` e o Service Worker v12 usa essa rota como fallback de navegação offline e de respostas HTTP 5xx do servidor. Para uso offline, é obrigatório abrir a nova versão online ao menos uma vez para instalar o worker e pré-carregar os arquivos do app.
 - A fila já aceita POST/PATCH/PUT/DELETE, mas anexos (fotos/áudios) continuam dependendo do upload online.
 
 ## Gaps a fechar
@@ -64,6 +64,7 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 - Se a tela de erro ocorrer ao abrir Sangria, a aplicação agora apresenta `nome: mensagem` em **Detalhe técnico do erro** (ou mensagem de `getFieldMe` inline); enviar esse texto para localizar a exceção concreta.
 - O Service Worker pré-carrega os chunks e assets do build do cliente via `offline-assets.json` (incluindo os módulos lazy das rotas de campo). Após publicar, abrir a nova versão online uma vez para instalar o worker e seus assets; depois disso, abrir Sangria offline não depende de já ter visitado a tela antes.
 - Primeiro uso offline: com internet, abrir o app instalado, entrar online pelo menos uma vez e aguardar a tela carregar; em **Campo → Sincronização**, tocar **Baixar dados para uso offline**; depois fechar e reabrir o app conectado para receber atualizações do Service Worker. Só então ativar modo avião e testar. Para entrar offline, a conta precisa ter sido autenticada previamente; criar sessão ou validar credenciais novas requer internet. No iPhone, manter o app aberto alguns segundos após atualizar; no Android, fechar e reabrir depois da atualização.
+- `/auth` é a entrada do PWA para mostrar o login; `/campo` é uma área protegida que redireciona para `/auth` quando não há sessão local. O Service Worker retorna o shell em cache também quando o servidor responde com erro 5xx, não apenas quando a rede falha.
 - O painel administrativo e dados que não foram baixados não ficam disponíveis offline; o escopo offline implementado é o app de campo com cache e fila local.
 
 ## Histórico
@@ -72,3 +73,4 @@ Sistema deve funcionar 100% offline quando sem internet: login e sessão salvos 
 | 2026-10-31 | Arquivo criado com plano offline. |
 | 2026-11-03 | Diagnóstico dos fluxos de login/sangria; cache de histórico/resumo e fila PATCH de correção; preservação de sessão local em falha de login. |
 | 2026-11-05 | PWA inicia em `/auth`, usa a tela de login como fallback offline e valida pré-cache dos arquivos críticos; documentado o fluxo necessário de primeira autenticação e preparação dos dados. |
+| 2026-11-05 | Worker v12 passa a servir o shell em cache também para respostas 5xx, evitando exibir a página de indisponibilidade do servidor quando já há app local. |
