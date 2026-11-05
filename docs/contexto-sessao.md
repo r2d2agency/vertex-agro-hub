@@ -4,8 +4,8 @@
 
 ## Status atual
 - **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Ajustado o Service Worker v14 para responder `/` com o shell cacheado de `/campo` também quando o servidor/proxy responde 404; `/campo` continua como redirect da raiz e start_url do PWA.
-- **Estado:** Validar sintaxe do worker e publicar v14. Build anterior não pôde ser validado devido a dependências locais ausentes/corrompidas em `node_modules`; login offline só retoma sessão previamente autenticada.
+- **Última ação:** Navegações do Service Worker v15 agora usam primeiro o shell do Cache Storage e não tentam rede quando `navigator.onLine` está falso; conectadas, atualizam a cópia local em segundo plano.
+- **Estado:** Validar sintaxe do worker e publicar v15. Build anterior não pôde ser validado devido a dependências locais ausentes/corrompidas em `node_modules`; login offline só retoma sessão previamente autenticada.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -64,9 +64,10 @@
 - Os avisos de sangria já realizada comparavam `tapperId === null` para identificadores sintéticos `rh:<userId>`, causando correspondência com qualquer registro sem vínculo legado. Agora a comparação usa o ID quando existe e recorre ao nome do sangrador nos registros legados sem ID.
 - A preparação offline guarda sangrias recentes numa janela de 60 dias. O fallback offline validava que essa janela cobria a data pedida, mas devolvia todos os registros da janela sem filtrar o dia; assim, registros antigos podiam bloquear cada sangrador como se já tivesse sangrado hoje. Agora todos os resultados são limitados pelos filtros solicitados.
 - A tela mantinha resultados de validação enquanto mudava sangrador, talhão, tarefa ou data, e requisições assíncronas antigas podiam sobrescrever a seleção atual. Agora o resultado só é exibido se sua chave ainda corresponder à seleção e callbacks obsoletos são ignorados.
+- O shell do app usa Cache Storage do Service Worker (não o IndexedDB, que guarda dados de aplicação). Navegações servem primeiro essa cópia e, quando offline segundo `navigator.onLine`, não iniciam requisição de rede.
 - Para abrir sem rede, o aparelho precisa ter instalado o Service Worker e os chunks enquanto ainda estava online. O login offline retoma sessão anterior; não é possível validar credenciais novas sem o servidor. O app de campo depende de dados previamente baixados, e os módulos administrativos ainda exigem conexão.
 - Uma página “Vertex temporariamente indisponível” não corresponde ao HTML do fallback local do worker; a versão v12 passou a tentar servir o shell cacheado também quando o servidor responde HTTP 5xx. A entrada esperada do app é `/campo`; a própria rota envia para `/auth` quando não há sessão.
-- Se a raiz do host responder 404 enquanto `/campo` funciona, o worker agora usa o shell de `/campo` para a navegação raiz em vez de devolver a página 404 do host.
+- Se a raiz do host responder 404 enquanto `/campo` funciona, o worker usa o shell de `/campo` para a navegação raiz. Navegação agora é cache-first: deve servir primeiro o HTML já instalado, sem esperar por fetch online.
 
 ## Pendências / Próximos passos
 - [x] Validar build após instalar as dependências locais ausentes (Node 22).
@@ -107,6 +108,8 @@
 | 2026-11-05 | Investigada página “Vertex temporariamente indisponível”: não existe literal correspondente no app. Worker v12 agora usa fallback local também para respostas HTTP 5xx; `/auth` é intencional, pois `/campo` requer sessão. |
 | 2026-11-05 | Usuário confirmou que a raiz deve direcionar a `/campo`. Corrigidos o redirect da raiz, `start_url` PWA e a prioridade de fallback offline; Service Worker incrementado para v13. |
 | 2026-11-05 | Usuário ainda não consegue abrir o domínio raiz, mas `/campo` funciona. Worker v14 agora cai no shell cacheado de `/campo` quando a raiz recebe 404 do host/proxy. |
+| 2026-11-05 | Usuário esclarece que offline o PWA tenta a internet para abrir. Service Worker v15 passa navegações para cache-first, com atualização do HTML em segundo plano quando online. |
+| 2026-11-05 | Worker v15 evita pedidos de rede de navegação quando offline e serve o app shell do Cache Storage imediatamente; APIs mantêm estratégia de cache própria. |
 | 2026-11-05 | Verificações estáticas do SW/manifesto passaram. Build bloqueado por instalação local de node_modules incompleta/corrompida (arquivos ausentes de lucide-react e Tailwind wasm); tentativa de restaurar dependência falhou com ENOENT/EPERM. |
 
 ## Notas rápidas
