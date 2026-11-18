@@ -38,6 +38,7 @@ export type Occurrence = {
   description?: string | null;
   responsible?: string | null;
   resolvedAt?: string | null;
+  createdAt?: string;
 };
 
 export type OccurrenceInput = {
@@ -51,6 +52,39 @@ export type OccurrenceInput = {
   description?: string;
   responsible?: string;
 };
+
+export function occurrenceTitle(occurrence: Occurrence) {
+  if (occurrence.type !== "clima" || /\bmm\b/i.test(occurrence.title)) return occurrence.title;
+  const rainfall = /Milímetros de chuva:\s*([\d.,]+)\s*mm/i.exec(occurrence.description ?? "")?.[1];
+  return rainfall ? `Chuva ${rainfall} mm` : occurrence.title;
+}
+
+export function occurrenceSeverityLabel(occurrence: Pick<Occurrence, "type" | "severity">) {
+  if (occurrence.type !== "clima") return OCC_SEVERITIES.find((item) => item.value === occurrence.severity)?.label ?? occurrence.severity;
+  const ranges: Record<string, string> = {
+    baixa: "Baixa (<15 mm)",
+    media: "Média (15 a 49,9 mm)",
+    alta: "Alta (50 mm ou mais)",
+  };
+  return ranges[occurrence.severity] ?? OCC_SEVERITIES.find((item) => item.value === occurrence.severity)?.label ?? occurrence.severity;
+}
+
+export function occurrenceStatusLabel(occurrence: Pick<Occurrence, "type" | "status">) {
+  if (occurrence.type === "clima" && occurrence.status === "aberta") return "Em aberto";
+  return OCC_STATUS.find((item) => item.value === occurrence.status)?.label ?? occurrence.status;
+}
+
+export function occurrenceReportedAfter(occurrence: Pick<Occurrence, "date" | "createdAt">) {
+  if (!occurrence.createdAt) return false;
+  const date = occurrence.date.slice(0, 10);
+  const enteredDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(occurrence.createdAt));
+  return enteredDate > date;
+}
 
 export function listOccurrences(companyId: string, opts: { farmId?: string; status?: string; from?: string; to?: string } = {}) {
   const qs = new URLSearchParams({ companyId });

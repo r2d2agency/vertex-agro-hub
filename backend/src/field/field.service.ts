@@ -52,6 +52,43 @@ function tappingInstant(t: { date: Date; recordedAt?: Date | null }) {
   return isMidnightUtc ? civilDateToIso(t.date) : r.toISOString();
 }
 
+function occurrenceSummary(type: string, severity: string, status: string) {
+  if (type !== 'clima') return `${type} · ${severity} · ${status}`;
+  const intensity: Record<string, string> = {
+    baixa: 'baixa (menos de 15 mm)',
+    media: 'média (15 a 49,9 mm)',
+    alta: 'alta (50 mm ou mais)',
+  };
+  const state: Record<string, string> = {
+    aberta: 'em aberto',
+    em_andamento: 'em andamento',
+    resolvida: 'resolvida',
+    cancelada: 'cancelada',
+  };
+  return `Chuva · Intensidade ${intensity[severity] ?? severity} · ${state[status] ?? status}`;
+}
+
+function wasEnteredAfter(date: Date, enteredAt: Date) {
+  const operationalDate = date.toISOString().slice(0, 10);
+  const enteredDate = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(enteredAt);
+  return enteredDate > operationalDate;
+}
+
+function tappingEntryAt(record: { recordedAt?: Date | null; createdAt: Date }) {
+  const recordedAt = record.recordedAt;
+  const legacyMidnight = recordedAt
+    && recordedAt.getUTCHours() === 0
+    && recordedAt.getUTCMinutes() === 0
+    && recordedAt.getUTCSeconds() === 0
+    && recordedAt.getUTCMilliseconds() === 0;
+  return recordedAt && !legacyMidnight ? recordedAt : record.createdAt;
+}
+
 // Distância em metros entre duas coordenadas (fórmula de Haversine).
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371000;
@@ -457,16 +494,44 @@ export class FieldService {
       farmId?: string | null; meta?: Record<string, any>;
       status?: string | null;
     };
+    const editorIds = [...new Set(taps.map((record) => record.updatedById).filter((id): id is string => Boolean(id)))];
+    const editorUsers = editorIds.length
+      ? await this.prisma.user.findMany({ where: { id: { in: editorIds } }, select: { id: true, fullName: true, email: true } })
+      : [];
+    const editorNames = new Map(editorUsers.map((user) => [user.id, user.fullName || user.email || 'Usuário']));
     const events: Event[] = [];
 
-    for (const t of taps) events.push({
-      id: `tap-${t.id}`, kind: 'sangria', date: tappingInstant(t),
-      title: `Sangria — ${t.sangradorName}`,
-      subtitle: [t.liters != null ? `${t.liters} L` : null, t.dryKg != null ? `${t.dryKg} kg secos` : null].filter(Boolean).join(' · '),
-      farmId: t.farmId,
-      status: t.status,
-      meta: { tappingTableId: t.tappingTableId, taskExtent: t.taskExtent, endPeriod: t.endPeriod },
-    });
+    for (const t of taps) {
+      const enteredAt = tappingEntryAt(t);
+      const reportedAfter = wasEnteredAfter(t.date, enteredAt);
+      events.push({
+        id: `tap-${t.id}`, kind: 'sangria',
+        date: reportedAfter ? civilDateToIso(t.date) : tappingInstant(t),
+        title: `Sangria — ${t.sangradorName}`,
+        subtitle: [t.liters != null ? `${t.liters} L` : null, t.dryKg != null ? `${t.dryKg} kg secos` : null].filter(Boolean).join(' · '),
+        farmId: t.farmId,
+        status: t.status,
+        meta: {
+          recordId: t.id,
+          recordDate: t.date.toISOString().slice(0, 10),
+          sangradorName: t.sangradorName,
+          tapperId: t.tapperId,
+          plotId: t.plotId,
+          tappingTableId: t.tappingTableId,
+          taskExtent: t.taskExtent,
+          endPeriod: t.endPeriod,
+          treesExpected: t.treesExpected,
+          treesTapped: t.treesTapped,
+          notes: t.notes,
+          version: t.version,
+          updatedAt: t.updatedAt,
+          updatedById: t.updatedById,
+          updatedByName: editorNames.get(t.updatedById ?? '') ?? null,
+          enteredAt,
+          reportedAfter,
+        },
+      });
+    }
     for (const d of dels) events.push({
       id: `del-${d.id}`, kind: 'producao', date: civilDateToIso(d.deliveryDate),
       title: `Entrega ${d.latexType ?? ''}`.trim(),
@@ -476,8 +541,17 @@ export class FieldService {
     });
     for (const o of occ) events.push({
       id: `occ-${o.id}`, kind: 'ocorrencia', date: civilDateToIso(o.date),
-      title: o.title, subtitle: `${o.type} · ${o.severity} · ${o.status}`, farmId: o.farmId,
+      title: (() => {
+        const rainfall = /Milímetros de chuva:\s*([\d.,]+)\s*mm/i.exec(o.description ?? '')?.[1];
+        return o.type === 'clima' && rainfall && !/\bmm\b/i.test(o.title) ? `Chuva ${rainfall} mm` : o.title;
+      })(),
+      subtitle: occurrenceSummary(o.type, o.severity, o.status),
       status: o.status,
+      farmId: o.farmId,
+      meta: {
+        reportedAfter: wasEnteredAfter(o.date, o.createdAt),
+        enteredAt: o.createdAt,
+      },
     });
     for (const s of tasks) events.push({
       id: `task-${s.id}`, kind: 'agenda', date: s.scheduledAt.toISOString(),

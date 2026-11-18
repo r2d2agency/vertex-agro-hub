@@ -14,7 +14,10 @@ import { listPlots } from "@/lib/talhoes.functions";
 import { listFarmTeam } from "@/lib/people.functions";
 import { listMachines, listImplements } from "@/lib/frota.functions";
 import { listPhotos } from "@/lib/fotografias.functions";
-import { listOccurrences } from "@/lib/ocorrencias.functions";
+import {
+  listOccurrences, occurrenceReportedAfter, occurrenceSeverityLabel,
+  occurrenceStatusLabel, occurrenceTitle,
+} from "@/lib/ocorrencias.functions";
 import { listTappingRecords } from "@/lib/sangrias.functions";
 import { listConsultations } from "@/lib/consultor.functions";
 import { listDeliveries } from "@/lib/producao.functions";
@@ -104,7 +107,7 @@ export function FarmDetailDialog({
     // Occurrences
     occurrences.data?.forEach(o => events.push({
       id: o.id,
-      date: new Date(o.date),
+      date: new Date(`${o.date.slice(0, 10)}T15:00:00.000Z`),
       type: 'occurrence',
       content: o,
       label: 'Ocorrência'
@@ -246,9 +249,11 @@ export function FarmDetailDialog({
                               {event.type === 'tapping' && <Droplets className="h-3 w-3" />}
                               {event.label}
                             </span>
-                            <span className="text-[10px] opacity-50">
-                              {event.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                            {event.type !== 'occurrence' && (
+                              <span className="text-[10px] opacity-50">
+                                {event.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
                           </div>
 
                           {event.type === 'photo' && (
@@ -271,11 +276,13 @@ export function FarmDetailDialog({
 
                           {event.type === 'occurrence' && (
                             <div className="space-y-1">
-                              <p className="font-bold text-sm">{event.content.title}</p>
+                              <p className="font-bold text-sm">{occurrenceTitle(event.content)}</p>
                               <p className="text-xs opacity-80">{event.content.description}</p>
                               <div className="flex items-center gap-2 mt-2">
-                                <Badge variant="destructive" className="text-[8px] uppercase">{event.content.severity}</Badge>
-                                <Badge variant="outline" className="text-[8px] uppercase bg-background/50">{event.content.type}</Badge>
+                                <Badge variant="destructive" className="text-[8px] uppercase">{occurrenceSeverityLabel(event.content)}</Badge>
+                                <Badge variant="outline" className="text-[8px] uppercase bg-background/50">{event.content.type === "clima" ? "Chuva" : event.content.type}</Badge>
+                                <Badge variant="outline" className="text-[8px] uppercase bg-background/50">{occurrenceStatusLabel(event.content)}</Badge>
+                                {occurrenceReportedAfter(event.content) && <Badge variant="outline" className="text-[8px] uppercase text-sky-700">Lançada depois</Badge>}
                               </div>
                             </div>
                           )}

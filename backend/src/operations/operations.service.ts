@@ -11,11 +11,31 @@ import {
   UpdateTappingRecordDto,
 } from './dto';
 
+const FIELD_TIMEZONE = 'America/Sao_Paulo';
+
 function parseTappingDate(value: string | Date) {
   if (value instanceof Date) return value;
   // Data civil sem horário: meio-dia evita que o navegador mostre o dia anterior.
   // O app envia o dia civil (YYYY-MM-DD) e o instante real vai em `recordedAt`.
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00-03:00`) : new Date(value);
+}
+
+function enteredAtForRecord(record: { date: Date; recordedAt?: Date | null; createdAt: Date }) {
+  const recordedAt = record.recordedAt;
+  const isLegacyMidnight = recordedAt
+    && recordedAt.getUTCHours() === 0
+    && recordedAt.getUTCMinutes() === 0
+    && recordedAt.getUTCSeconds() === 0
+    && recordedAt.getUTCMilliseconds() === 0;
+  const enteredAt = recordedAt && !isLegacyMidnight ? recordedAt : record.createdAt;
+  const operationalDate = record.date.toISOString().slice(0, 10);
+  const enteredDate = new Intl.DateTimeFormat('en-CA', {
+    timeZone: FIELD_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(enteredAt);
+  return { enteredAt, reportedAfter: enteredDate > operationalDate };
 }
 
 @Injectable()
@@ -33,7 +53,7 @@ export class OperationsService {
     opts: { farmId?: string; plotId?: string; from?: string; to?: string } = {},
   ) {
     await this.access.ensureCompany(userId, companyId);
-    return this.prisma.tappingRecord.findMany({
+    const records = await this.prisma.tappingRecord.findMany({
       where: {
         companyId,
         isDeleted: false,
@@ -52,6 +72,26 @@ export class OperationsService {
       // Sem teto: o resumo mensal da home soma o mês inteiro, e um `take`
       // fixo truncaria a resposta sem sinalizar, distorcendo os totais.
     });
+    const editorNames = await this.getEditorNames(records.map((record) => record.updatedById));
+    return records.map((record) => {
+      const { enteredAt, reportedAfter } = enteredAtForRecord(record);
+      return {
+        ...record,
+        enteredAt,
+        reportedAfter,
+        updatedByName: editorNames.get(record.updatedById ?? "") ?? null,
+      };
+    });
+  }
+
+  private async getEditorNames(userIds: Array<string | null | undefined>) {
+    const ids = [...new Set(userIds.filter((id): id is string => Boolean(id)))];
+    if (ids.length === 0) return new Map<string, string>();
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, fullName: true, email: true },
+    });
+    return new Map(users.map((user) => [user.id, user.fullName || user.email || "Usuário"]));
   }
 
   // A capacidade é DO SANGRADOR, não do talhão: o treeCount do vínculo

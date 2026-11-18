@@ -146,6 +146,12 @@ export type TappingRecord = {
   tableCondition?: string | null;
   photoUrls?: string[] | null;
   audioUrl?: string | null;
+  version?: number;
+  updatedAt?: string | null;
+  updatedById?: string | null;
+  updatedByName?: string | null;
+  enteredAt?: string | null;
+  reportedAfter?: boolean;
 };
 
 export type TappingInput = {
@@ -169,6 +175,19 @@ export type TappingInput = {
   quality?: string;
   tableCondition?: string;
   allowDuplicate?: boolean;
+};
+
+export type TappingCorrection = {
+  date: string;
+  sangradorName: string;
+  tapperId?: string | null;
+  plotId?: string | null;
+  tappingTableId?: string | null;
+  taskExtent?: string | null;
+  endPeriod?: string | null;
+  treesExpected?: number | null;
+  treesTapped?: number | null;
+  notes?: string | null;
 };
 
 export async function listTappingRecords(
@@ -226,6 +245,13 @@ export function updateTappingRecord(id: string, v: TappingInput) {
   return apiRequest<TappingRecord>(`/tapping-records/${id}`, {
     method: "PATCH",
     body: JSON.stringify(clean(v)),
+  });
+}
+
+export function correctTappingRecord(id: string, patch: TappingCorrection) {
+  return apiRequest<TappingRecord>(`/tapping-records/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
   });
 }
 

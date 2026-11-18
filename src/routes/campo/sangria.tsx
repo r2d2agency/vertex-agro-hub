@@ -312,7 +312,7 @@ function SangriaPage() {
         // `date` como @db.Date: mandar o ISO completo do aparelho fazia o registro
         // cair no dia seguinte quando o instante local ainda não tinha virado o dia
         // em UTC. O horário real vai na descrição, que é onde ele pertence.
-        date: editingId ? recordDate : getLocalIsoDate(),
+        date: recordDate,
         // Instante real de gravação, para a linha de confirmação mostrar hora junto
         // com a data. Dia civil (que é o que vai para `date`) não tem hora real.
         ...(editingId ? {} : { recordedAt: new Date().toISOString() }),
@@ -380,7 +380,7 @@ function SangriaPage() {
       <FieldCard className="space-y-4">
         <Field label="Data da sangria">
           <input type="date" className="flex h-11 w-full rounded-xl border border-border/60 bg-background/40 px-3 text-sm" value={recordDate} max={getLocalIsoDate()} onChange={(e) => { setRecordDate(e.target.value); setAllowDuplicate(false); setEditingId(null); }} />
-          {recordDate < getLocalIsoDate() && <p className="mt-1 text-xs text-warning">Lançamento fora da data da sangria.</p>}
+          {recordDate < getLocalIsoDate() && <p className="mt-1 text-xs text-warning">Data retroativa: o histórico indicará que esta sangria foi lançada depois.</p>}
         </Field>
         {me.assignments.length > 1 ? (
           <Field label="Fazenda">

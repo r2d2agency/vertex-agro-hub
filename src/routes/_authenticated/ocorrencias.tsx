@@ -20,9 +20,11 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CompanyPicker, NoCompanyCard, useSelectedCompany } from "@/components/vertex/company-picker";
 import { listFarms } from "@/lib/fazendas.functions";
+import { getLocalIsoDate } from "@/lib/date-utils";
 import {
   createOccurrence, deleteOccurrence, listOccurrences, updateOccurrence,
   OCC_TYPES, OCC_SEVERITIES, OCC_STATUS,
+  occurrenceReportedAfter, occurrenceSeverityLabel, occurrenceStatusLabel, occurrenceTitle,
   type Occurrence, type OccurrenceInput,
 } from "@/lib/ocorrencias.functions";
 
@@ -35,7 +37,7 @@ export const Route = createFileRoute("/_authenticated/ocorrencias")({
   component: OccurrencesPage,
 });
 
-const today = () => "2026-08-12";
+const today = () => getLocalIsoDate();
 const empty: OccurrenceInput = {
   farmId: "", date: today(), type: "outro", severity: "media", status: "aberta",
   title: "", description: "", responsible: "",
@@ -86,13 +88,14 @@ function OccurrencesPage() {
     const farmName = (id?: string | null) => farms.find((f) => f.id === id)?.name ?? "";
     downloadCsv(`ocorrencias-${new Date().toISOString().slice(0, 10)}`, data, [
       { key: "date", label: "Data", format: fmtDateBR },
-      { key: "title", label: "Título" },
+      { key: "title", label: "Título", format: (_value, row) => occurrenceTitle(row) },
       { key: "farmId", label: "Fazenda", format: (v) => farmName(v) },
-      { key: "type", label: "Tipo", format: (v) => label(OCC_TYPES, v) },
-      { key: "severity", label: "Severidade", format: (v) => label(OCC_SEVERITIES, v) },
-      { key: "status", label: "Status", format: (v) => label(OCC_STATUS, v) },
+      { key: "type", label: "Tipo", format: (v) => v === "clima" ? "Chuva" : label(OCC_TYPES, v) },
+      { key: "severity", label: "Severidade", format: (_value, row) => occurrenceSeverityLabel(row) },
+      { key: "status", label: "Status", format: (_value, row) => occurrenceStatusLabel(row) },
       { key: "responsible", label: "Responsável" },
       { key: "description", label: "Descrição" },
+      { key: "reportedAfter", label: "Lançada depois", format: (_value, row) => occurrenceReportedAfter(row) ? "Sim" : "Não" },
     ]);
   };
 
@@ -194,12 +197,15 @@ function OccurrencesPage() {
                   <TableBody>
                     {data.map((o) => (
                       <TableRow key={o.id}>
-                        <TableCell>{o.date.slice(0, 10).split("-").reverse().join("/")}</TableCell>
-                        <TableCell className="font-medium">{o.title}</TableCell>
+                        <TableCell>
+                          <div>{o.date.slice(0, 10).split("-").reverse().join("/")}</div>
+                          {occurrenceReportedAfter(o) && <div className="mt-1 text-[10px] text-sky-700">Lançada depois</div>}
+                        </TableCell>
+                        <TableCell className="font-medium">{occurrenceTitle(o)}</TableCell>
                         <TableCell>{farmName(o.farmId)}</TableCell>
-                        <TableCell>{label(OCC_TYPES, o.type)}</TableCell>
-                        <TableCell><Badge className={sevColor[o.severity]}>{label(OCC_SEVERITIES, o.severity)}</Badge></TableCell>
-                        <TableCell><Badge className={statusColor[o.status]}>{label(OCC_STATUS, o.status)}</Badge></TableCell>
+                        <TableCell>{o.type === "clima" ? "Chuva" : label(OCC_TYPES, o.type)}</TableCell>
+                        <TableCell><Badge className={sevColor[o.severity]}>{occurrenceSeverityLabel(o)}</Badge></TableCell>
+                        <TableCell><Badge className={statusColor[o.status]}>{occurrenceStatusLabel(o)}</Badge></TableCell>
                         <TableCell>{o.responsible ?? "—"}</TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(o)}><Pencil className="h-4 w-4" /></Button>

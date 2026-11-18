@@ -3,9 +3,9 @@
 > Fonte única para retomar o trabalho entre sessões. Atualizado automaticamente pelo assistente.
 
 ## Status atual
-- **Objetivo:** Fazer o app funcionar offline, com foco nos erros de login e registro de sangria.
-- **Última ação:** Navegações do Service Worker v15 agora usam primeiro o shell do Cache Storage e não tentam rede quando `navigator.onLine` está falso; conectadas, atualizam a cópia local em segundo plano.
-- **Estado:** Validar sintaxe do worker e publicar v15. Build anterior não pôde ser validado devido a dependências locais ausentes/corrompidas em `node_modules`; login offline só retoma sessão previamente autenticada.
+- **Objetivo:** Permitir corrigir marcações de sangria com auditoria e deixar claros os lançamentos retroativos e dados de chuva.
+- **Última ação:** Edição pelo histórico, identificação de autoria/horário, data operacional retroativa, rótulos/intensidade do clima e exibição dos milímetros foram implementados.
+- **Estado:** `git diff --check` passou; build/type-check bloqueados pela declaração local truncada de `date-fns/isMatch.d.ts`, pelo ícone ausente em `lucide-react` e pelo Nest CLI ausente. ESLint nas áreas alteradas não apontou erros além de regras/preexistências do repositório.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -37,8 +37,17 @@
 | --- | --- | --- |
 | `src/lib/api.ts` | Login mantém sessão local caso a tentativa online falhe | alterado |
 | `src/lib/field.functions.ts` | Enfileira correção de registro existente como PATCH | alterado |
-| `src/lib/sangrias.functions.ts` | Cache/fallback offline para histórico e resumo | alterado |
-| `src/routes/campo/sangria.tsx` | Usa fila ao corrigir lançamento offline | alterado |
+| `src/lib/sangrias.functions.ts` | Cache/fallback do histórico, tipos de auditoria e PATCH direto para correção | alterado |
+| `src/routes/campo/sangria.tsx` | Envia a data operacional selecionada e avisa sobre registro retroativo | alterado |
+| `src/routes/campo/index.tsx` | Mantém total previsto no período, calcula saldo realizado e exibe período/tarefa no resumo da home | alterado |
+| `src/routes/campo/historico.tsx` | Mantém janela de 7 dias, mostra período/tarefa, permite corrigir e apresenta auditoria/retroatividade | alterado |
+| `backend/src/field/field.service.ts` | Inclui auditoria e datas de entrada, além de rótulos claros para clima/chuva na linha do tempo | alterado |
+| `backend/src/operations/operations.service.ts` | Retorna autoria da última edição e metadados do lançamento retroativo | alterado |
+| `src/lib/ocorrencias.functions.ts` | Centraliza rótulos de chuva, intensidade, status e detecção de lançamento posterior | alterado |
+| `src/routes/campo/chuva.tsx` | Valida milímetros/período, explica intensidade e avisa sobre data retroativa | alterado |
+| `src/routes/_authenticated/ocorrencias.tsx` | Exibe valores de chuva, rótulos climáticos e indicador de lançamento posterior | alterado |
+| `src/components/vertex/farm-detail-dialog.tsx` | Usa os mesmos rótulos e indicador de retroatividade no detalhe da fazenda | alterado |
+| `src/routes/index.tsx` | Rota `/` redireciona para `/campo`; verificada no diagnóstico dos domínios | verificado, sem alteração |
 | `src/lib/field.functions.ts` | Encaminha `allowDuplicate` da sangria à API e fila de sincronização | alterado |
 | `src/lib/sangrias.functions.ts` | Aplica filtros de fazenda/talhão/data também ao resultado do cache offline | alterado |
 | `src/lib/offline/prepare-field-data.ts` | Baixa dados de campo/frota e sequência para todos os atribuídos | novo |
@@ -65,6 +74,12 @@
 - A preparação offline guarda sangrias recentes numa janela de 60 dias. O fallback offline validava que essa janela cobria a data pedida, mas devolvia todos os registros da janela sem filtrar o dia; assim, registros antigos podiam bloquear cada sangrador como se já tivesse sangrado hoje. Agora todos os resultados são limitados pelos filtros solicitados.
 - A tela mantinha resultados de validação enquanto mudava sangrador, talhão, tarefa ou data, e requisições assíncronas antigas podiam sobrescrever a seleção atual. Agora o resultado só é exibido se sua chave ainda corresponder à seleção e callbacks obsoletos são ignorados.
 - O shell do app usa Cache Storage do Service Worker (não o IndexedDB, que guarda dados de aplicação). Navegações servem primeiro essa cópia e, quando offline segundo `navigator.onLine`, não iniciam requisição de rede.
+- O endereço confirmado pelo usuário é `vertex.gleego.com.br`; o domínio `vertex.gleeglo.com.br` foi apenas um erro de digitação. No teste de 2026-11-05, a raiz do domínio correto respondeu 307 para `/campo`, que respondeu 200. Não foi feita alteração de código nem de configuração externa.
+- Na home, `Previstas` é o total fixo de dias/sangrador no período; `Saldo` é `Previstas - Realizadas`. A visão padrão segue os últimos 7 dias, como no histórico.
+- O histórico de sangrias usa `taskExtent` para o nome da tarefa e `endPeriod` para manhã/tarde/noite; o endpoint da linha do tempo agora inclui `endPeriod` em `meta`.
+- A correção de sangrias no histórico usa PATCH online direto: uma falha de conexão é informada e não é apresentada como sucesso até sincronizar. O servidor incrementa `version`, registra `updatedById`/`updatedAt` e a interface mostra nome e horário.
+- A data operacional de uma sangria permanece separada de `recordedAt`; lançamentos em data posterior ficam agrupados pela data operacional e mostram quando foram efetivamente enviados. Registros legados com `recordedAt` à meia-noite UTC usam `createdAt` como fallback.
+- Para clima/chuva, a interface usa “Chuva”, mostra milímetros e intensidade (baixa: <15 mm; média: 15–49,9 mm; alta: ≥50 mm) e traduz status “aberta” para “em aberto”. A marcação de lançamento posterior compara a data operacional com `createdAt` em `America/Sao_Paulo`.
 - Para abrir sem rede, o aparelho precisa ter instalado o Service Worker e os chunks enquanto ainda estava online. O login offline retoma sessão anterior; não é possível validar credenciais novas sem o servidor. O app de campo depende de dados previamente baixados, e os módulos administrativos ainda exigem conexão.
 - Uma página “Vertex temporariamente indisponível” não corresponde ao HTML do fallback local do worker; a versão v12 passou a tentar servir o shell cacheado também quando o servidor responde HTTP 5xx. A entrada esperada do app é `/campo`; a própria rota envia para `/auth` quando não há sessão.
 - Se a raiz do host responder 404 enquanto `/campo` funciona, o worker usa o shell de `/campo` para a navegação raiz. Navegação agora é cache-first: deve servir primeiro o HTML já instalado, sem esperar por fetch online.
@@ -80,6 +95,8 @@
 - [ ] Associar cache offline à identidade do usuário para evitar mistura de dados ao alternar contas.
 - [ ] Avaliar suporte offline dos módulos administrativos; hoje apenas o app de campo tem fila/cache parcial.
 - [ ] Validar abertura offline em iOS e Android após instalar o Service Worker v11 e preparar dados.
+- [ ] Revalidar builds do frontend e backend após restaurar dependências locais (`lucide-react`/`date-fns` incompletos no frontend; Nest CLI ausente no backend).
+- [ ] Validar em aparelho a correção de marcações, especialmente usuário/horário da auditoria, registro de domingo lançado na segunda-feira e valores de chuva no histórico.
 
 ## Migrations / Banco
 - **Migrations relevantes:** 
@@ -111,6 +128,10 @@
 | 2026-11-05 | Usuário esclarece que offline o PWA tenta a internet para abrir. Service Worker v15 passa navegações para cache-first, com atualização do HTML em segundo plano quando online. |
 | 2026-11-05 | Worker v15 evita pedidos de rede de navegação quando offline e serve o app shell do Cache Storage imediatamente; APIs mantêm estratégia de cache própria. |
 | 2026-11-05 | Verificações estáticas do SW/manifesto passaram. Build bloqueado por instalação local de node_modules incompleta/corrompida (arquivos ausentes de lucide-react e Tailwind wasm); tentativa de restaurar dependência falhou com ENOENT/EPERM. |
+| 2026-11-05 | Domínio atual `vertex.gleego.com.br` validado: `/` retorna 307 para `/campo` e `/campo` retorna 200. Domínio desejado informado como `vertex.gleeglo.com.br` não resolve DNS; pendente confirmar grafia/configurar domínio no provedor. |
+| 2026-11-05 | Usuário confirmou que o domínio correto é `vertex.gleego.com.br`; `gleeglo` foi erro de digitação. Sem pendência de DNS para o domínio correto; redirect da raiz para `/campo` já foi verificado. |
+| 2026-11-18 | Home de campo ajustada para manter previstas e mostrar saldo separado, com últimos 7 dias por padrão; histórico passa a exibir período, tarefa/tabela e a nomenclatura "Antecipada". Lint direcionado sem erros; builds/type-check aguardam reparo das dependências locais. Código commitado e enviado para `origin/main` em `c00ffe9`. |
+| 2026-11-18 | Adicionada correção de sangrias pelo histórico com autoria/horário, registro retroativo agrupado pela data operacional e rótulos claros de chuva com milímetros/intensidade. `git diff --check` passou; type-check/build continuam bloqueados por dependências locais incompletas. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 

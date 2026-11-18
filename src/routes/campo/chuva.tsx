@@ -61,11 +61,14 @@ function ChuvaPage() {
     if (!farm) return;
     setSaving(true);
     try {
-      const mm = Number(mmChuva.replace(",", ".")) || 0;
+      const mmInput = mmChuva.trim().replace(",", ".");
+      const mm = mmInput ? Number(mmInput) : 0;
       const areaNames = plots.filter((p) => affectedPlotIds.includes(p.id)).map((p) => p.name);
       // datetime-local vazio vira "" e new Date("") é Invalid Date — cairia no
       // dia errado em vez de avisar. Sem início não há como datar a chuva.
       if (!ini) { toast.error("Informe o início aproximado da chuva"); return; }
+      if (!Number.isFinite(mm) || mm < 0) { toast.error("Informe um valor válido de milímetros de chuva."); return; }
+      if (fim && new Date(fim).getTime() < new Date(ini).getTime()) { toast.error("O fim da chuva não pode ser anterior ao início."); return; }
       const res = await submitOccurrence({
         companyId: farm.companyId, farmId: farm.id,
         // Data civil (YYYY-MM-DD) no fuso de Brasília. O backend grava o campo
@@ -74,11 +77,11 @@ function ChuvaPage() {
         // em UTC. O horário real vai na descrição, que é onde ele pertence.
         date: getLocalIsoDate(new Date(ini)),
         type: "clima", severity: severityFromMm(mm), status: "aberta",
-        title: `Chuva ${mmChuva ? `${mmChuva} mm` : ""}`.trim(),
+        title: `Chuva ${mmInput ? `${mm} mm` : ""}`.trim(),
         description: [
           `Início: ${ini}`,
           fim && `Fim: ${fim}`,
-          mmChuva && `Milímetros de chuva: ${mmChuva} mm`,
+          mmInput && `Milímetros de chuva: ${mm} mm`,
           areaNames.length && `Áreas afetadas: ${areaNames.join(", ")}`,
           notes,
           photo && `Foto: ${photo}`,
@@ -108,8 +111,14 @@ function ChuvaPage() {
           </Select>
         </F>
         <F label="Início aproximado"><Input type="datetime-local" className="h-11 rounded-xl" value={ini} onChange={(e) => setIni(e.target.value)} /></F>
+        {ini && getLocalIsoDate(new Date(ini)) < getLocalIsoDate() && (
+          <p className="-mt-3 text-xs text-warning">Data retroativa: a chuva aparecerá no histórico como lançada depois.</p>
+        )}
         <F label="Fim aproximado"><Input type="datetime-local" className="h-11 rounded-xl" value={fim} onChange={(e) => setFim(e.target.value)} /></F>
         <F label="Milímetros de chuva"><Input inputMode="decimal" className="h-11 rounded-xl" value={mmChuva} onChange={(e) => setMmChuva(e.target.value)} placeholder="Ex.: 25" /></F>
+        <p className="-mt-3 text-xs text-muted-foreground">
+          Intensidade estimada: baixa (menos de 15 mm), média (15 a 49,9 mm) e alta (50 mm ou mais).
+        </p>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label className="text-xs font-medium text-muted-foreground">Áreas afetadas</Label>

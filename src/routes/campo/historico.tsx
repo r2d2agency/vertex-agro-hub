@@ -1,17 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Trees } from "lucide-react";
+import { CalendarDays, Loader2, Pencil, Trees } from "lucide-react";
 import { getFieldMe, listFieldTappers, listFieldTapperTables, listFieldTappingTables, type FieldMe, type FieldTapper, type FieldTapperTable } from "@/lib/field.functions";
 import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
-import { listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask, TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
+import { correctTappingRecord, listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask, TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
 import { tappingRecordMoment } from "@/lib/tapping-dates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { CalendarDays } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getLocalIsoDate } from "@/lib/date-utils";
 import type { DateRange } from "react-day-picker";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/campo/historico")({ component: HistoricoPage });
 
@@ -40,6 +43,20 @@ const PERIODS = [
 type Period = typeof PERIODS[number]["value"];
 
 type IsoRange = { from: string; to: string };
+type TappingEditDraft = {
+  date: string;
+  sangradorName: string;
+  tapperId: string | null;
+  plotId: string;
+  tappingTableId: string;
+  taskExtent: string;
+  endPeriod: string;
+  treesExpected: string;
+  treesTapped: string;
+  notes: string;
+};
+
+const EMPTY_VALUE = "__none__";
 
 function isoRange(from?: Date | null, to?: Date | null): IsoRange {
   return { from: getLocalIsoDate(from ?? new Date()), to: getLocalIsoDate(to ?? from ?? new Date()) };
@@ -51,11 +68,6 @@ function rangeFor(period: Period, custom: IsoRange | null): IsoRange {
   if (period === "hoje") return { from: to, to };
   const days = period === "semana" ? 7 : 30;
   return { from: getLocalIsoDate(new Date(Date.now() - (days - 1) * 86400000)), to };
-}
-
-function taskLabel(taskExtent?: string | null) {
-  if (!taskExtent) return null;
-  return taskExtent.split(",").map((v) => TASK_EXTENTS.find((t) => t.value === v)?.label ?? v).join(" + ");
 }
 
 // Nome da tarefa via catálogo da empresa, com fallback para TASK_EXTENTS
@@ -100,6 +112,11 @@ function HistoricoPage() {
   const [tableNames, setTableNames] = useState<Map<string, Map<string, string>>>(new Map());
   const [taskNames, setTaskNames] = useState<Map<string, string>>(new Map());
   const [earlyCode, setEarlyCode] = useState("/");
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [editingRecord, setEditingRecord] = useState<TappingRecord | null>(null);
+  const [editDraft, setEditDraft] = useState<TappingEditDraft | null>(null);
+  const [editTappers, setEditTappers] = useState<FieldTapper[]>([]);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // modo por sangrador
   const [tappers, setTappers] = useState<FieldTapper[]>([]);
@@ -190,7 +207,7 @@ function HistoricoPage() {
         setEntries(all);
       } catch { setEntries([]); } finally { setLoadingTimeline(false); }
     })();
-  }, [me, mode, farm, range.from, range.to]);
+  }, [me, mode, farm, range.from, range.to, refreshToken]);
 
   // Modo por sangrador precisa de uma fazenda selecionada (tabelas/sangradores são por fazenda).
   useEffect(() => {
@@ -218,7 +235,112 @@ function HistoricoPage() {
         setTapperTables(tables);
       })
       .finally(() => setLoadingSangrador(false));
-  }, [farm, tapperId, range.from, range.to, tappers]);
+  }, [farm, tapperId, range.from, range.to, tappers, refreshToken]);
+
+  const editingFarm = useMemo(
+    () => me?.assignments.find((assignment) => assignment.farm.id === editingRecord?.farmId),
+    [me, editingRecord?.farmId],
+  );
+  const editingCompanyId = editingRecord?.companyId;
+  const editTaskOptions = useMemo(() => {
+    const companyPrefix = editingCompanyId ? `${editingCompanyId}:` : "";
+    const catalogTasks = Array.from(taskNames.entries())
+      .filter(([key]) => companyPrefix && key.startsWith(companyPrefix))
+      .map(([key, label]) => ({ code: key.slice(companyPrefix.length), label }));
+    const byCode = new Map(TASK_EXTENTS.map((task) => [task.value, task.label]));
+    for (const task of catalogTasks) byCode.set(task.code, task.label);
+    if (editDraft?.taskExtent && !byCode.has(editDraft.taskExtent)) byCode.set(editDraft.taskExtent, editDraft.taskExtent);
+    return Array.from(byCode, ([code, label]) => ({ code, label }));
+  }, [editingCompanyId, editDraft?.taskExtent, taskNames]);
+
+  useEffect(() => {
+    let active = true;
+    setEditTappers([]);
+    if (!editingRecord?.farmId || !editingFarm) return () => { active = false; };
+    listFieldTappers(editingFarm.farm.companyId, editingRecord.farmId)
+      .then((items) => { if (active) setEditTappers(items); })
+      .catch((error) => {
+        console.error("[historico] falha ao carregar sangradores para correção", error);
+        if (active) toast.error("Não foi possível carregar os sangradores para a correção.");
+      });
+    return () => { active = false; };
+  }, [editingRecord?.farmId, editingFarm]);
+
+  function openRecordEditor(record: TappingRecord) {
+    setEditingRecord(record);
+    setEditDraft({
+      date: record.date.slice(0, 10),
+      sangradorName: record.sangradorName,
+      tapperId: record.tapperId ?? null,
+      plotId: record.plotId ?? "",
+      tappingTableId: record.tappingTableId ?? "",
+      taskExtent: record.taskExtent ?? "",
+      endPeriod: record.endPeriod ?? "",
+      treesExpected: record.treesExpected == null ? "" : String(record.treesExpected),
+      treesTapped: record.treesTapped == null ? "" : String(record.treesTapped),
+      notes: record.notes ?? "",
+    });
+  }
+
+  function openEventEditor(event: HistoryEvent) {
+    const meta = event.meta ?? {};
+    const recordId = typeof meta.recordId === "string" ? meta.recordId : event.id.replace(/^tap-/, "");
+    openRecordEditor({
+      id: recordId,
+      companyId: companyIdForEvent(event),
+      farmId: event.farmId ?? null,
+      plotId: meta.plotId ?? null,
+      tappingTableId: meta.tappingTableId ?? null,
+      date: String(meta.recordDate ?? event.date),
+      sangradorName: String(meta.sangradorName ?? event.title.replace(/^Sangria — /, "")),
+      tapperId: meta.tapperId ?? null,
+      taskExtent: meta.taskExtent ?? null,
+      endPeriod: meta.endPeriod ?? null,
+      treesExpected: meta.treesExpected ?? null,
+      treesTapped: meta.treesTapped ?? null,
+      notes: meta.notes ?? null,
+      version: Number(meta.version ?? 1),
+      updatedAt: meta.updatedAt ?? null,
+      updatedById: meta.updatedById ?? null,
+      updatedByName: meta.updatedByName ?? null,
+    });
+  }
+
+  async function saveRecordEdit() {
+    if (!editingRecord || !editDraft) return;
+    if (!editDraft.date || !editDraft.sangradorName.trim()) {
+      toast.error("Informe a data e o nome do sangrador.");
+      return;
+    }
+    const treeCounts = [editDraft.treesExpected, editDraft.treesTapped].filter((value) => value !== "");
+    if (treeCounts.some((value) => !Number.isInteger(Number(value)) || Number(value) < 0)) {
+      toast.error("Informe quantidades de árvores válidas.");
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await correctTappingRecord(editingRecord.id, {
+        date: editDraft.date,
+        sangradorName: editDraft.sangradorName.trim(),
+        tapperId: editDraft.tapperId,
+        plotId: editDraft.plotId || null,
+        tappingTableId: editDraft.tappingTableId || null,
+        taskExtent: editDraft.taskExtent || null,
+        endPeriod: editDraft.endPeriod || null,
+        treesExpected: editDraft.treesExpected === "" ? null : Number(editDraft.treesExpected),
+        treesTapped: editDraft.treesTapped === "" ? null : Number(editDraft.treesTapped),
+        notes: editDraft.notes.trim(),
+      });
+      setEditingRecord(null);
+      setEditDraft(null);
+      toast.success("Sangria corrigida e auditoria atualizada.");
+      setRefreshToken((value) => value + 1);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível corrigir a sangria.");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   const tableName = (id?: string | null) => tapperTables.find((t) => t.id === id)?.name;
 
@@ -375,10 +497,12 @@ function HistoricoPage() {
                     const tLabel = e.kind === "sangria" ? taskLabelForEvent(e) : null;
                     const tName = e.kind === "sangria" ? tableNameForEvent(e) : null;
                     const endPeriod = e.kind === "sangria" ? periodLabelForEvent(e) : null;
+                    const edited = e.kind === "sangria" && Number(e.meta?.version ?? 1) > 1;
+                    const reportedAfter = Boolean(e.meta?.reportedAfter);
                     return (
                       <li key={e.id} className={`flex items-start gap-3 rounded-2xl border p-3 ${early ? "border-warning/40 bg-warning/5" : "border-border/60 bg-card"}`}>
                         <div className="w-14 shrink-0 text-sm font-semibold">
-                          {formatDate(e.date, { hour: "2-digit", minute: "2-digit" }, timezoneForEvent(e))}
+                          {reportedAfter ? "—" : formatDate(e.date, { hour: "2-digit", minute: "2-digit" }, timezoneForEvent(e))}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="mb-1 flex items-center gap-2">
@@ -395,13 +519,40 @@ function HistoricoPage() {
                                 {endPeriod}
                               </span>
                             )}
+                            {edited && (
+                              <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-700">
+                                Editado
+                              </span>
+                            )}
+                            {reportedAfter && (
+                              <span className="rounded-md bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-sky-700">
+                                Lançado depois
+                              </span>
+                            )}
                           </div>
                           <div className="truncate text-sm font-medium">{e.title}</div>
                           {e.subtitle && <div className="truncate text-[11px] text-muted-foreground">{e.subtitle}</div>}
+                          {edited && (
+                            <div className="mt-1 text-[10px] text-muted-foreground">
+                              Editado por {e.meta?.updatedByName ?? "usuário não identificado"}
+                              {e.meta?.updatedAt ? ` · ${formatDate(String(e.meta.updatedAt), { dateStyle: "short", timeStyle: "short" }, timezoneForEvent(e))}` : ""}
+                            </div>
+                          )}
+                          {reportedAfter && e.meta?.enteredAt && (
+                            <div className="mt-1 text-[10px] text-muted-foreground">
+                              Data do registro: {formatDate(`${String(e.meta?.recordDate ?? e.date).slice(0, 10)}T15:00:00.000Z`, { dateStyle: "short" }, timezoneForEvent(e))}
+                              {" · "}Lançado em {formatDate(String(e.meta.enteredAt), { dateStyle: "short", timeStyle: "short" }, timezoneForEvent(e))}
+                            </div>
+                          )}
                           {e.kind === "sangria" && (tName || tLabel) && (
                             <div className={`mt-0.5 truncate text-[11px] ${early ? "text-warning" : "text-primary"}`}>
                               {tLabel}{tName ? ` · ${tName}` : ""}
                             </div>
+                          )}
+                          {e.kind === "sangria" && (
+                            <Button type="button" size="sm" variant="outline" className="mt-2 h-8" onClick={() => openEventEditor(e)}>
+                              <Pencil className="mr-1.5 h-3.5 w-3.5" /> Corrigir marcação
+                            </Button>
                           )}
                         </div>
                       </li>
@@ -437,28 +588,46 @@ function HistoricoPage() {
                     <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma sangria no período.</p>
                   ) : (
                     <ul className="space-y-2">
-                      {tapperRecords.map((r) => (
-                        <li key={r.id} className="rounded-2xl border border-border/60 bg-card p-3">
-                          <div className="mb-1 flex items-center justify-between">
-                            <span className="text-sm font-semibold">
-                              {formatDate(tappingRecordMoment(r), { day: "2-digit", month: "short" }, timezone ?? "America/Sao_Paulo")}
-                            </span>
-                            {r.endPeriod && (
-                              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                                {END_PERIODS.find((p) => p.value === r.endPeriod)?.label ?? r.endPeriod}
+                      {tapperRecords.map((r) => {
+                        const recordTask = taskLabelFor(farm.companyId, r.taskExtent, taskNames);
+                        return (
+                          <li key={r.id} className="rounded-2xl border border-border/60 bg-card p-3">
+                            <div className="mb-1 flex items-center justify-between">
+                              <span className="text-sm font-semibold">
+                                {formatDate(`${r.date.slice(0, 10)}T15:00:00.000Z`, { day: "2-digit", month: "short" }, timezone)}
                               </span>
+                              {r.endPeriod && (
+                                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                  {END_PERIODS.find((p) => p.value === r.endPeriod)?.label ?? r.endPeriod}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-sm">
+                              <Trees className="h-3.5 w-3.5 text-primary" />
+                              {tableName(r.tappingTableId ?? undefined) ?? "Sem tabela"}
+                            </div>
+                            {recordTask && (
+                              <div className="mt-1 text-[11px] text-muted-foreground">Tarefa: {recordTask}</div>
                             )}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-sm">
-                            <Trees className="h-3.5 w-3.5 text-primary" />
-                            {tableName(r.tappingTableId ?? undefined) ?? "Sem tabela"}
-                          </div>
-                          {taskLabel(r.taskExtent) && (
-                            <div className="mt-1 text-[11px] text-muted-foreground">Tarefa: {taskLabel(r.taskExtent)}</div>
-                          )}
-                          {r.notes && <div className="mt-1 text-[11px] text-muted-foreground">{r.notes}</div>}
-                        </li>
-                      ))}
+                            {r.reportedAfter && (
+                              <div className="mt-1 text-[10px] text-sky-700">
+                                Lançado depois{r.enteredAt ? ` · ${formatDate(r.enteredAt, { dateStyle: "short", timeStyle: "short" }, timezone)}` : ""}
+                              </div>
+                            )}
+                            {r.notes && <div className="mt-1 text-[11px] text-muted-foreground">{r.notes}</div>}
+                            {Number(r.version ?? 1) > 1 && (
+                              <div className="mt-2 text-[10px] text-muted-foreground">
+                                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-semibold uppercase text-amber-700">Editado</span>
+                                {" "}por {r.updatedByName ?? "usuário não identificado"}
+                                {r.updatedAt ? ` · ${formatDate(r.updatedAt, { dateStyle: "short", timeStyle: "short" }, timezone)}` : ""}
+                              </div>
+                            )}
+                            <Button type="button" size="sm" variant="outline" className="mt-2 h-8" onClick={() => openRecordEditor(r)}>
+                              <Pencil className="mr-1.5 h-3.5 w-3.5" /> Corrigir marcação
+                            </Button>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </>
@@ -467,6 +636,130 @@ function HistoricoPage() {
           )}
         </>
       )}
+      <Dialog
+        open={!!editingRecord && !!editDraft}
+        onOpenChange={(open) => {
+          if (!open && !savingEdit) {
+            setEditingRecord(null);
+            setEditDraft(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[85dvh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Corrigir marcação de sangria</DialogTitle>
+            <DialogDescription>Ao salvar, o sistema registra quem fez a alteração e a data/hora.</DialogDescription>
+          </DialogHeader>
+          {editDraft && editingRecord && (
+            <div className="space-y-3">
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Data da sangria
+                <Input type="date" max={getLocalIsoDate()} value={editDraft.date} onChange={(event) => setEditDraft({ ...editDraft, date: event.target.value })} />
+              </label>
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Sangrador
+                <Select
+                  value={editDraft.tapperId ?? (editTappers.find((tapper) => tapper.fullName === editDraft.sangradorName)?.id ?? EMPTY_VALUE)}
+                  onValueChange={(value) => {
+                    if (value === EMPTY_VALUE) {
+                      setEditDraft({ ...editDraft, tapperId: null });
+                      return;
+                    }
+                    const selected = editTappers.find((tapper) => tapper.id === value);
+                    if (selected) setEditDraft({ ...editDraft, tapperId: selected.id.startsWith("rh:") ? null : selected.id, sangradorName: selected.fullName });
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione o sangrador" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_VALUE}>Manter nome sem vínculo</SelectItem>
+                    {editDraft.tapperId && !editTappers.some((tapper) => tapper.id === editDraft.tapperId) && (
+                      <SelectItem value={editDraft.tapperId}>{editDraft.sangradorName}</SelectItem>
+                    )}
+                    {editTappers.map((tapper) => <SelectItem key={tapper.id} value={tapper.id}>{tapper.fullName}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={editDraft.sangradorName}
+                  onChange={(event) => setEditDraft({ ...editDraft, sangradorName: event.target.value, tapperId: null })}
+                  aria-label="Nome do sangrador"
+                />
+              </label>
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Talhão
+                <Select value={editDraft.plotId || EMPTY_VALUE} onValueChange={(value) => setEditDraft({ ...editDraft, plotId: value === EMPTY_VALUE ? "" : value })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o talhão" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_VALUE}>Sem talhão</SelectItem>
+                    {editDraft.plotId && !editingFarm?.farm.plots.some((plot) => plot.id === editDraft.plotId) && (
+                      <SelectItem value={editDraft.plotId}>Talhão atual</SelectItem>
+                    )}
+                    {editingFarm?.farm.plots.map((plot) => <SelectItem key={plot.id} value={plot.id}>{plot.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Tabela
+                <Select value={editDraft.tappingTableId || EMPTY_VALUE} onValueChange={(value) => setEditDraft({ ...editDraft, tappingTableId: value === EMPTY_VALUE ? "" : value })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a tabela" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_VALUE}>Sem tabela</SelectItem>
+                    {editDraft.tappingTableId && !tableNames.get(editingRecord.companyId)?.has(editDraft.tappingTableId) && (
+                      <SelectItem value={editDraft.tappingTableId}>Tabela atual</SelectItem>
+                    )}
+                    {[...(tableNames.get(editingRecord.companyId)?.entries() ?? [])].map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Tarefa
+                <Select value={editDraft.taskExtent || EMPTY_VALUE} onValueChange={(value) => setEditDraft({ ...editDraft, taskExtent: value === EMPTY_VALUE ? "" : value })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a tarefa" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_VALUE}>Sem tarefa</SelectItem>
+                    {editTaskOptions.map((task) => <SelectItem key={task.code} value={task.code}>{task.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Período
+                <Select value={editDraft.endPeriod || EMPTY_VALUE} onValueChange={(value) => setEditDraft({ ...editDraft, endPeriod: value === EMPTY_VALUE ? "" : value })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o período" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_VALUE}>Sem período</SelectItem>
+                    {END_PERIODS.map((period) => <SelectItem key={period.value} value={period.value}>{period.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block space-y-1 text-xs text-muted-foreground">
+                  Árvores previstas
+                  <Input type="number" min="0" step="1" value={editDraft.treesExpected} onChange={(event) => setEditDraft({ ...editDraft, treesExpected: event.target.value })} />
+                </label>
+                <label className="block space-y-1 text-xs text-muted-foreground">
+                  Árvores realizadas
+                  <Input type="number" min="0" step="1" value={editDraft.treesTapped} onChange={(event) => setEditDraft({ ...editDraft, treesTapped: event.target.value })} />
+                </label>
+              </div>
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Observações
+                <Textarea rows={3} value={editDraft.notes} onChange={(event) => setEditDraft({ ...editDraft, notes: event.target.value })} />
+              </label>
+              {Number(editingRecord.version ?? 1) > 1 && (
+                <p className="text-xs text-muted-foreground">
+                  Última edição: {editingRecord.updatedByName ?? "usuário não identificado"}
+                  {editingRecord.updatedAt ? ` · ${formatDate(editingRecord.updatedAt, { dateStyle: "short", timeStyle: "short" }, timezone)}` : ""}
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={savingEdit} onClick={() => { setEditingRecord(null); setEditDraft(null); }}>Cancelar</Button>
+            <Button type="button" disabled={savingEdit || !editDraft?.date || !editDraft.sangradorName.trim()} onClick={saveRecordEdit}>
+              {savingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar correção
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
