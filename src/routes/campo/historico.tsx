@@ -50,7 +50,7 @@ function rangeFor(period: Period, custom: IsoRange | null): IsoRange {
   if (period === "custom") return custom ?? isoRange();
   if (period === "hoje") return { from: to, to };
   const days = period === "semana" ? 7 : 30;
-  return { from: getLocalIsoDate(new Date(Date.now() - days * 86400000)), to };
+  return { from: getLocalIsoDate(new Date(Date.now() - (days - 1) * 86400000)), to };
 }
 
 function taskLabel(taskExtent?: string | null) {
@@ -243,6 +243,11 @@ function HistoricoPage() {
     return taskLabelFor(cid, event.meta?.taskExtent as string | undefined, taskNames);
   };
 
+  const periodLabelForEvent = (event: HistoryEvent) => {
+    const value = event.meta?.endPeriod;
+    return END_PERIODS.find((period) => period.value === value)?.label ?? null;
+  };
+
   // Verifica se um evento de sangria é "adiantada"
   const isEarlyEvent = (event: HistoryEvent) => {
     return isEarlyTask(event.meta?.taskExtent as string | undefined, earlyCode);
@@ -369,6 +374,7 @@ function HistoricoPage() {
                     const early = e.kind === "sangria" && isEarlyEvent(e);
                     const tLabel = e.kind === "sangria" ? taskLabelForEvent(e) : null;
                     const tName = e.kind === "sangria" ? tableNameForEvent(e) : null;
+                    const endPeriod = e.kind === "sangria" ? periodLabelForEvent(e) : null;
                     return (
                       <li key={e.id} className={`flex items-start gap-3 rounded-2xl border p-3 ${early ? "border-warning/40 bg-warning/5" : "border-border/60 bg-card"}`}>
                         <div className="w-14 shrink-0 text-sm font-semibold">
@@ -381,7 +387,12 @@ function HistoricoPage() {
                             </span>
                             {early && (
                               <span className="rounded-md bg-warning/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-warning">
-                                Adiantada
+                                Antecipada
+                              </span>
+                            )}
+                            {endPeriod && (
+                              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                                {endPeriod}
                               </span>
                             )}
                           </div>

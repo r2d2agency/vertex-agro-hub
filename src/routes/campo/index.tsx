@@ -9,7 +9,7 @@ import {
 import { getFieldMe, type FieldMe, type Coords, captureLocation, type FieldTapper, listFieldTappers, listFieldTappingTables, type FieldTappingTable, listFieldTapperTables, type FieldTapperTable } from "@/lib/field.functions";
 import { toast } from "sonner";
 import { listTasks, categoryLabel, categoryStyle, type ScheduledTask } from "@/lib/agenda.functions";
-import { listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask } from "@/lib/sangrias.functions";
+import { END_PERIODS, listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask } from "@/lib/sangrias.functions";
 import { getLocalIsoDate, monthRange, monthLabel } from "@/lib/date-utils";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
 
@@ -32,7 +32,7 @@ const QUICK_ACTIONS: Array<{ to: string; label: string; emoji: string; roles?: s
   { to: "/campo/operacao-maquina", label: "Operação de máquina", emoji: "🚜" },
 ];
 
-type SangriaCategory = "possible" | "done" | "overdue" | "early";
+type SangriaCategory = "possible" | "remaining" | "done" | "overdue" | "early";
 // Um "dia-sangrador": a mesma pessoa pode aparecer em mais de um balde
 // no mesmo período, com um item por dia trabalhado. No modo diário o
 // período tem 1 dia, então o comportamento é idêntico ao anterior.
@@ -47,6 +47,7 @@ type SangriaSummary = Record<SangriaCategory, SangriaDay[]>;
 
 const CATEGORY_LABEL: Record<SangriaCategory, string> = {
   possible: "Sangrias previstas",
+  remaining: "Saldo a realizar",
   done: "Sangrias realizadas",
   overdue: "Sangrias atrasadas",
   early: "Sangrias antecipadas",
@@ -95,7 +96,7 @@ function FieldHome() {
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
   const [checkinSheetOpen, setCheckinSheetOpen] = useState(false);
   const [checkinCoords, setCheckinCoords] = useState<Coords | null>(null);
-  const [sangriaSummary, setSangriaSummary] = useState<SangriaSummary>({ possible: [], done: [], overdue: [], early: [] });
+  const [sangriaSummary, setSangriaSummary] = useState<SangriaSummary>({ possible: [], remaining: [], done: [], overdue: [], early: [] });
   // `${companyId}:${code}` → nome da tarefa, para exibir rótulo em vez de código.
   const [taskNames, setTaskNames] = useState<Map<string, string>>(new Map());
   // companyId → (tableId → nome), para mostrar o nome da tabela no detalhe.
@@ -104,9 +105,8 @@ function FieldHome() {
   const [earlyCode, setEarlyCode] = useState("/");
   // 0 = mês atual, -1 = mês anterior, -2 = dois meses atrás…
   const [monthOffset, setMonthOffset] = useState(0);
-  // "Hoje" é o padrão: o monitor abre a tela pra ver o dia que está
-  // trabalhando, e um período de 30 dias escondia isso num mar de cards.
-  const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("hoje");
+  // Mantém a visão conhecida pela equipe no histórico: os últimos 7 dias.
+  const [period, setPeriod] = useState<(typeof PERIOD_OPTIONS)[number]["value"]>("semana");
   const [sangriaDetail, setSangriaDetail] = useState<SangriaCategory | null>(null);
   const [selectedTapper, setSelectedTapper] = useState<SangriaDay | null>(null);
 
@@ -170,7 +170,7 @@ function FieldHome() {
     const today = getLocalIsoDate();
 
     let cancelled = false;
-    setSangriaSummary({ possible: [], done: [], overdue: [], early: [] });
+    setSangriaSummary({ possible: [], remaining: [], done: [], overdue: [], early: [] });
     (async () => {
       try {
         const cids = Array.from(new Set(farms.map((a) => a.farm.companyId)));
@@ -259,7 +259,7 @@ function FieldHome() {
           return map;
         }, new Map<string, Map<string, string>>());
         setTableNames(tables);
-        const summary: SangriaSummary = { possible: [], done: [], overdue: [], early: [] };
+        const summary: SangriaSummary = { possible: [], remaining: [], done: [], overdue: [], early: [] };
         // Chave: sangrador + fazenda + data. Nomes gravados sem acento ou
         // com caixa diferente ainda casam, porque a comparação ignora ambos.
         const byTapperDay = safe("o agrupamento por dia", () => {
@@ -325,13 +325,13 @@ function FieldHome() {
           }
         }
         for (const day of possibleDays) {
-          // "Previstas" = o que ainda NÃO foi feito. O que já tem registro é
-          // "Realizada" e não pode aparecer aqui — senão a aba mostrava o
-          // histórico do dia em vez da pendência.
+          // A previsão é fixa no período: dias realizados continuam no total.
+          // O saldo separa somente os dias ainda sem registro.
+          summary.possible.push(day);
           if (day.records.length > 0) {
             summary.done.push(day);
           } else {
-            summary.possible.push(day);
+            summary.remaining.push(day);
             if (day.date < today) {
               // Atrasada: passou e não foi realizada.
               summary.overdue.push(day);
@@ -464,6 +464,7 @@ function FieldHome() {
         <div className="grid grid-cols-2 gap-2">
           <SummaryCell value={sangriaSummary.possible.length} label="Previstas" tone="muted" onClick={() => setSangriaDetail("possible")} />
           <SummaryCell value={sangriaSummary.done.length} label="Realizadas" tone="primary" onClick={() => setSangriaDetail("done")} />
+          <SummaryCell value={sangriaSummary.remaining.length} label="Saldo" tone="warning" onClick={() => setSangriaDetail("remaining")} />
           <SummaryCell value={sangriaSummary.overdue.length} label="Atrasadas" tone="destructive" onClick={() => setSangriaDetail("overdue")} />
           <SummaryCell value={sangriaSummary.early.length} label="Antecipadas" tone="warning" onClick={() => setSangriaDetail("early")} />
         </div>
@@ -609,6 +610,8 @@ function DailySangriaDialog({
   // genérico como reserva quando o código não está no catálogo.
   const labelFor = (record: TappingRecord) =>
     taskNames.get(`${record.companyId}:${record.taskExtent ?? ""}`) ?? TASK_LABEL[record.taskExtent ?? ""] ?? "Sem tarefa";
+  const periodFor = (record: TappingRecord) =>
+    END_PERIODS.find((period) => period.value === record.endPeriod)?.label ?? "";
   // Nome da tabela, quando a tela de campo carregou o catálogo. Sem ele,
   // mostra só o id curto em vez de omitir a informação.
   const tableName = (record: TappingRecord) => {
@@ -722,6 +725,7 @@ function DailySangriaDialog({
                     <span key={record.id} className={`mt-0.5 block truncate text-[11px] ${isEarly(record) ? "text-warning" : "text-primary"}`}>
                       {labelFor(record)}
                       {record.tappingTableId ? ` · ${tableName(record)}` : ""}
+                      {periodFor(record) ? ` · ${periodFor(record)}` : ""}
                     </span>
                   ))}
                   {/* Sem registro não há tabela feita: mostra a pendência. */}
