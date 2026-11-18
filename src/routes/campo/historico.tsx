@@ -36,7 +36,7 @@ type KindTab = typeof KIND_TABS[number];
 
 const PERIODS = [
   { value: "hoje", label: "Hoje" },
-  { value: "dia", label: "Data específica" },
+  { value: "dia", label: "Escolher data" },
   { value: "semana", label: "7 dias" },
   { value: "mes", label: "30 dias" },
   { value: "custom", label: "Personalizado" },
@@ -405,11 +405,11 @@ function HistoricoPage() {
       const when = tappingRecordMoment(r);
       return Number.isNaN(when.getTime()) ? [] : [new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(when)];
     }));
-    const periodDays = period === "hoje" ? 1 : period === "semana" ? 7 : period === "custom" && custom
+    const periodDays = period === "hoje" || period === "dia" ? 1 : period === "semana" ? 7 : period === "custom" && custom
       ? Math.round((new Date(`${custom.to}T15:00:00.000Z`).getTime() - new Date(`${custom.from}T15:00:00.000Z`).getTime()) / 86400000) + 1
       : 30;
     return { total: tapperRecords.length, daysWithRecord: days.size, periodDays };
-  }, [tapperRecords, period]);
+  }, [tapperRecords, period, custom]);
 
   if (!me) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
@@ -451,7 +451,7 @@ function HistoricoPage() {
         {period === "dia" && (
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="col-span-2 h-10 justify-start rounded-xl font-normal">
+              <Button type="button" variant="outline" className="col-span-2 h-10 justify-start rounded-xl font-normal">
                 <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />
                 {formatDate(`${selectedDate}T15:00:00.000Z`, { dateStyle: "long" }, timezone)}
               </Button>
@@ -459,6 +459,7 @@ function HistoricoPage() {
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
+                captionLayout="dropdown"
                 defaultMonth={datePickerDate}
                 selected={datePickerDate}
                 onSelect={(date) => {

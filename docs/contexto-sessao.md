@@ -3,9 +3,9 @@
 > Fonte única para retomar o trabalho entre sessões. Atualizado automaticamente pelo assistente.
 
 ## Status atual
-- **Objetivo:** Permitir filtrar o histórico por uma data escolhida, além dos períodos predefinidos.
-- **Última ação:** Adicionado filtro "Data específica" com calendário de seleção de dia, reaproveitando a consulta existente da linha do tempo e do histórico por sangrador.
-- **Estado:** Alteração local; aguardando lint/diff-check e commit. Builds/type-check anteriores seguem bloqueados por dependências locais incompletas.
+- **Objetivo:** Permitir escolher diretamente a data no histórico, sem depender só dos períodos predefinidos.
+- **Última ação:** Reforçado o filtro "Escolher data": calendário com seleção de mês/ano, nome mais direto e contagem correta de dias no modo "Por sangrador".
+- **Estado:** Alteração local; `git diff --check` passou. Type-check/build seguem bloqueados pela declaração local truncada de `date-fns/isMatch.d.ts` e pela versão do Node local incompatível com o bundler. PWA em cache pode exigir atualização forçada no aparelho para ver a mudança.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -133,6 +133,7 @@
 | 2026-11-18 | Home de campo ajustada para manter previstas e mostrar saldo separado, com últimos 7 dias por padrão; histórico passa a exibir período, tarefa/tabela e a nomenclatura "Antecipada". Lint direcionado sem erros; builds/type-check aguardam reparo das dependências locais. Código commitado e enviado para `origin/main` em `c00ffe9`. |
 | 2026-11-18 | Adicionada correção de sangrias pelo histórico com autoria/horário, registro retroativo agrupado pela data operacional e rótulos claros de chuva com milímetros/intensidade. `git diff --check` passou; type-check/build continuam bloqueados por dependências locais incompletas. |
 | 2026-11-18 | Histórico de campo agora oferece "Data específica" com calendário de dia único, além de Hoje, 7 dias, 30 dias e Personalizado. |
+| 2026-11-18 | Filtro de dia único renomeado para "Escolher data", com seletor de mês/ano no calendário e contagem de 1 dia no resumo "Por sangrador"; relato do usuário indica que o PWA pode estar servindo bundle antigo. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 
