@@ -3,9 +3,9 @@
 > Fonte única para retomar o trabalho entre sessões. Atualizado automaticamente pelo assistente.
 
 ## Status atual
-- **Objetivo:** Permitir corrigir marcações de sangria com auditoria e deixar claros os lançamentos retroativos e dados de chuva.
-- **Última ação:** Edição pelo histórico, identificação de autoria/horário, data operacional retroativa, rótulos/intensidade do clima e exibição dos milímetros foram implementados.
-- **Estado:** `git diff --check` passou; build/type-check bloqueados pela declaração local truncada de `date-fns/isMatch.d.ts`, pelo ícone ausente em `lucide-react` e pelo Nest CLI ausente. ESLint nas áreas alteradas não apontou erros além de regras/preexistências do repositório.
+- **Objetivo:** Permitir filtrar o histórico por uma data escolhida, além dos períodos predefinidos.
+- **Última ação:** Adicionado filtro "Data específica" com calendário de seleção de dia, reaproveitando a consulta existente da linha do tempo e do histórico por sangrador.
+- **Estado:** Alteração local; aguardando lint/diff-check e commit. Builds/type-check anteriores seguem bloqueados por dependências locais incompletas.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -132,6 +132,7 @@
 | 2026-11-05 | Usuário confirmou que o domínio correto é `vertex.gleego.com.br`; `gleeglo` foi erro de digitação. Sem pendência de DNS para o domínio correto; redirect da raiz para `/campo` já foi verificado. |
 | 2026-11-18 | Home de campo ajustada para manter previstas e mostrar saldo separado, com últimos 7 dias por padrão; histórico passa a exibir período, tarefa/tabela e a nomenclatura "Antecipada". Lint direcionado sem erros; builds/type-check aguardam reparo das dependências locais. Código commitado e enviado para `origin/main` em `c00ffe9`. |
 | 2026-11-18 | Adicionada correção de sangrias pelo histórico com autoria/horário, registro retroativo agrupado pela data operacional e rótulos claros de chuva com milímetros/intensidade. `git diff --check` passou; type-check/build continuam bloqueados por dependências locais incompletas. |
+| 2026-11-18 | Histórico de campo agora oferece "Data específica" com calendário de dia único, além de Hoje, 7 dias, 30 dias e Personalizado. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 

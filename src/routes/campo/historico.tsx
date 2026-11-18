@@ -36,6 +36,7 @@ type KindTab = typeof KIND_TABS[number];
 
 const PERIODS = [
   { value: "hoje", label: "Hoje" },
+  { value: "dia", label: "Data específica" },
   { value: "semana", label: "7 dias" },
   { value: "mes", label: "30 dias" },
   { value: "custom", label: "Personalizado" },
@@ -62,9 +63,17 @@ function isoRange(from?: Date | null, to?: Date | null): IsoRange {
   return { from: getLocalIsoDate(from ?? new Date()), to: getLocalIsoDate(to ?? from ?? new Date()) };
 }
 
-function rangeFor(period: Period, custom: IsoRange | null): IsoRange {
+function dateToIso(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function rangeFor(period: Period, custom: IsoRange | null, selectedDate: string): IsoRange {
   const to = getLocalIsoDate();
   if (period === "custom") return custom ?? isoRange();
+  if (period === "dia") return { from: selectedDate, to: selectedDate };
   if (period === "hoje") return { from: to, to };
   const days = period === "semana" ? 7 : 30;
   return { from: getLocalIsoDate(new Date(Date.now() - (days - 1) * 86400000)), to };
@@ -102,6 +111,7 @@ function HistoricoPage() {
   const [mode, setMode] = useState<"linha" | "sangrador">("linha");
   const [period, setPeriod] = useState<Period>("semana");
   const [custom, setCustom] = useState<IsoRange | null>(null);
+  const [selectedDate, setSelectedDate] = useState(() => getLocalIsoDate());
   const [farmId, setFarmId] = useState<string>(""); // "" = todas as fazendas
 
   // modo linha do tempo
@@ -133,8 +143,9 @@ function HistoricoPage() {
   }, []);
 
   const farm = useMemo(() => me?.assignments.find((a) => a.farm.id === farmId)?.farm, [me, farmId]);
-  const range = useMemo(() => rangeFor(period, custom), [period, custom]);
+  const range = useMemo(() => rangeFor(period, custom, selectedDate), [period, custom, selectedDate]);
   const timezone = safeZone(farm?.timezone);
+  const datePickerDate = new Date(`${selectedDate}T12:00:00`);
   const timezoneForEvent = (event: HistoryEvent) =>
     safeZone(event.farmId ? me?.assignments.find((a) => a.farm.id === event.farmId)?.farm.timezone : timezone);
   const formatDate = (value: string | Date, options: Intl.DateTimeFormatOptions, zone: string) => {
@@ -437,6 +448,28 @@ function HistoricoPage() {
             {PERIODS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        {period === "dia" && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="col-span-2 h-10 justify-start rounded-xl font-normal">
+                <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />
+                {formatDate(`${selectedDate}T15:00:00.000Z`, { dateStyle: "long" }, timezone)}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                defaultMonth={datePickerDate}
+                selected={datePickerDate}
+                onSelect={(date) => {
+                  if (date) setSelectedDate(dateToIso(date));
+                }}
+                disabled={{ after: new Date() }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        )}
         {period === "custom" && (
           <Popover>
             <PopoverTrigger asChild>
