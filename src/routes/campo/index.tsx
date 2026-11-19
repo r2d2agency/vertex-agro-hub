@@ -403,8 +403,11 @@ function FieldHome() {
     return tasks.find((t) => t.status !== "concluida" && new Date(t.scheduledAt).getTime() >= now - 60_000);
   }, [tasks]);
 
-  const [greeting, setGreeting] = useState(() => greetingAt(new Date()));
+  const [greeting, setGreeting] = useState("");
   useEffect(() => {
+    // A saudação depende da hora do aparelho. Calculá-la no primeiro render
+    // fazia o HTML do servidor divergir do cliente (React #418).
+    setGreeting(greetingAt(new Date()));
     // Recalcula o bom dia/boa tarde/boa noite quando o app volta pra frente.
     const onVisible = () => { if (!document.hidden) setGreeting(greetingAt(new Date())); };
     document.addEventListener("visibilitychange", onVisible);

@@ -5,7 +5,7 @@
 ## Status atual
 - **Objetivo:** Ajustar nomenclatura e categorias do resumo de sangrias na home do app de campo.
 - **Última ação:** Renomeado "Antecipadas" para "Adiantamento"; atrasadas sem execução e com apontamento de chuva passam a "Justificada por chuva"; criado o item "Reposição" para atrasadas realizadas pela tarefa de reposição.
-- **Estado:** Alteração local; `git diff --check` passou. ESLint aponta apenas ruído conhecido de CRLF/Prettier no repositório; type-check segue bloqueado pela declaração truncada de `date-fns/isMatch.d.ts`.
+- **Estado:** Corrigida hidratação do React (#418) na home: saudação passou a ser calculada após a montagem, para não divergir entre servidor e navegador. `git diff --check` passou; type-check segue bloqueado pela declaração truncada de `date-fns/isMatch.d.ts`.
 - **Branch:** main
 
 ## Lógica / Domínio
