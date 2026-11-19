@@ -12,6 +12,7 @@ import { listTasks, categoryLabel, categoryStyle, type ScheduledTask } from "@/l
 import { END_PERIODS, listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask } from "@/lib/sangrias.functions";
 import { getLocalIsoDate, monthRange, monthLabel } from "@/lib/date-utils";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
+import { listOccurrences, type Occurrence } from "@/lib/ocorrencias.functions";
 
 // Saudação por horário do aparelho: bom dia até o meio-dia, boa tarde até o
 // fim da tarde, boa noite depois. Fica fixa no primeiro render para não
@@ -32,7 +33,7 @@ const QUICK_ACTIONS: Array<{ to: string; label: string; emoji: string; roles?: s
   { to: "/campo/operacao-maquina", label: "Operação de máquina", emoji: "🚜" },
 ];
 
-type SangriaCategory = "possible" | "remaining" | "done" | "overdue" | "early";
+type SangriaCategory = "possible" | "remaining" | "done" | "overdue" | "rain" | "early" | "replacement";
 // Um "dia-sangrador": a mesma pessoa pode aparecer em mais de um balde
 // no mesmo período, com um item por dia trabalhado. No modo diário o
 // período tem 1 dia, então o comportamento é idêntico ao anterior.
@@ -49,8 +50,10 @@ const CATEGORY_LABEL: Record<SangriaCategory, string> = {
   possible: "Sangrias previstas",
   remaining: "Saldo a realizar",
   done: "Sangrias realizadas",
-  overdue: "Sangrias atrasadas",
-  early: "Sangrias antecipadas",
+  overdue: "Atrasadas",
+  rain: "Justificada por chuva",
+  early: "Adiantamento",
+  replacement: "Reposição",
 };
 
 // Nomes das tarefas (catálogo por empresa). Uma sangria é classificada pelo
@@ -96,7 +99,7 @@ function FieldHome() {
   const [activeCheckin, setActiveCheckin] = useState<{ farmId?: string; plotId?: string; at: number } | null>(null);
   const [checkinSheetOpen, setCheckinSheetOpen] = useState(false);
   const [checkinCoords, setCheckinCoords] = useState<Coords | null>(null);
-  const [sangriaSummary, setSangriaSummary] = useState<SangriaSummary>({ possible: [], remaining: [], done: [], overdue: [], early: [] });
+  const [sangriaSummary, setSangriaSummary] = useState<SangriaSummary>({ possible: [], remaining: [], done: [], overdue: [], rain: [], early: [], replacement: [] });
   // `${companyId}:${code}` → nome da tarefa, para exibir rótulo em vez de código.
   const [taskNames, setTaskNames] = useState<Map<string, string>>(new Map());
   // companyId → (tableId → nome), para mostrar o nome da tabela no detalhe.
@@ -154,12 +157,10 @@ function FieldHome() {
   // "Previstas" = sangradores ativos × dias do período (cada sangrador faz 1 sangria/dia).
   // "Realizadas" = dias com registro.
   // "Atrasadas" = previstas que passaram e não foram realizadas.
-  // "Antecipadas" = realizadas antes do dia previsto.
+  // "Justificadas por chuva" = atrasadas com ocorrência de chuva no dia.
+  // "Adiantamento" = realizadas com a tarefa de adiantamento do catálogo.
+  // "Reposição" = atrasadas que foram realizadas depois (tarefa de reposição).
   // A tarefa vem do catálogo da empresa, nunca do código.
-  // "Antecipada" = a tarefa da sangria é a "adiantada" do catálogo (o código
-  // continua gravado em `taskExtent`; a tela mostra o nome). Antes isso era
-  // `day.date < today`, que nunca é verdade no período padrão "hoje" — a aba
-  // ficava sempre zerada.
   useEffect(() => {
     const farms = me?.assignments ?? [];
     if (farms.length === 0) return;
@@ -170,11 +171,11 @@ function FieldHome() {
     const today = getLocalIsoDate();
 
     let cancelled = false;
-    setSangriaSummary({ possible: [], remaining: [], done: [], overdue: [], early: [] });
+    setSangriaSummary({ possible: [], remaining: [], done: [], overdue: [], rain: [], early: [], replacement: [] });
     (async () => {
       try {
         const cids = Array.from(new Set(farms.map((a) => a.farm.companyId)));
-        const [recordLists, taskLists, tableLists, tapperLists] = await Promise.all([
+        const [recordLists, taskLists, tableLists, tapperLists, occurrenceLists] = await Promise.all([
           // .catch por chamada: uma falha isolada zera só a parte dela, sem
           // derrubar o resumo inteiro. O erro é logado, não escondido.
           Promise.all(farms.map((a) => listTappingRecords(a.farm.companyId, { farmId: a.farm.id, from, to })
@@ -185,6 +186,10 @@ function FieldHome() {
             .catch((e) => { console.error("[resumo] tabelas", cid, e); return [] as FieldTappingTable[]; }))),
           Promise.all(farms.map((a) => listFieldTappers(a.farm.companyId, a.farm.id)
             .catch((e) => { console.error("[resumo] sangradores", a.farm.id, e); return [] as FieldTapper[]; }))),
+          // Ocorrências de clima da fazenda no período: uma chuva no dia justifica
+          // a sangria não realizada, sem tirá-la do saldo.
+          Promise.all(farms.map((a) => listOccurrences(a.farm.companyId, { farmId: a.farm.id, from, to })
+            .catch((e) => { console.error("[resumo] ocorrências", a.farm.id, e); return [] as Occurrence[]; }))),
         ]);
         if (cancelled) return;
         // A API pode devolver algo que não é lista (null num 204, ou objeto
@@ -201,6 +206,18 @@ function FieldHome() {
           }
         };
         const records = safe("as sangrias", () => recordLists.flatMap(asList<TappingRecord>), [] as TappingRecord[]);
+        const rainDaysByFarm = safe("as chuvas", () => {
+          const map = new Map<string, Set<string>>();
+          farms.forEach((assignment, index) => {
+            const days = new Set<string>();
+            for (const occurrence of asList<Occurrence>(occurrenceLists[index])) {
+              if (occurrence?.type !== "clima" || !/chuva/i.test(`${occurrence.title ?? ""} ${occurrence.description ?? ""}`)) continue;
+              days.add(String(occurrence.date ?? "").slice(0, 10));
+            }
+            map.set(assignment.farm.id, days);
+          });
+          return map;
+        }, new Map<string, Set<string>>());
         // Código → nome, do catálogo de cada empresa. É o nome que a UI
         // mostra; o código serve só de chave de junção.
         const catalog = safe("o catalogo de tarefas", () => {
@@ -225,8 +242,8 @@ function FieldHome() {
           return map;
         }, new Map<string, string>());
         // Código da tarefa "adiantada" — o que o monitor chama de
-        // "antecipada" na aba de resumo. Sem catálogo, cai no código legado.
-        const resolvedEarlyCode = safe("o codigo da tarefa antecipada", () => {
+        // "Adiantamento" no resumo. Sem catálogo, cai no código legado.
+        const resolvedEarlyCode = safe("o codigo da tarefa de adiantamento", () => {
           const preferred = codeByName.get("Tabela adiantada");
           if (preferred) return preferred;
           // Fallback: qualquer tarefa ativa cujo nome mencione "adiant".
@@ -236,15 +253,24 @@ function FieldHome() {
           return "/";
         }, "/");
         setEarlyCode(resolvedEarlyCode);
-        // Um dia é "antecipada" se algum registro tem o código da tarefa
-        // adiantada na lista `taskExtent` (separada por vírgula).
-        const hasEarlyTask = (day: SangriaDay) =>
-          (day.records ?? []).some((record) =>
-            String(record.taskExtent ?? "")
-              .split(",")
-              .map((code) => code.trim())
-              .includes(resolvedEarlyCode),
-          );
+        // Reposição também é identificada pelo nome da tarefa no catálogo.
+        const resolvedReplacementCode = safe("o codigo da tarefa de reposicao", () => {
+          const preferred = codeByName.get("Reposição");
+          if (preferred) return preferred;
+          for (const [label, code] of codeByName) {
+            if (/reposi/i.test(label)) return code;
+          }
+          return "1";
+        }, "1");
+        // Um dia é de adiantamento/reposição se algum registro tem o código da
+        // tarefa na lista `taskExtent` (separada por vírgula).
+        const taskCodes = (day: SangriaDay) => (day.records ?? []).flatMap((record) =>
+          String(record.taskExtent ?? "")
+            .split(",")
+            .map((code) => code.trim()),
+        );
+        const hasEarlyTask = (day: SangriaDay) => taskCodes(day).includes(resolvedEarlyCode);
+        const hasReplacementTask = (day: SangriaDay) => taskCodes(day).includes(resolvedReplacementCode);
         // Tabelas por empresa: cada chamada já vem escopada a uma empresa,
         // então o zip com cids é seguro.
         const tables = safe("o catalogo de tabelas", () => {
@@ -259,7 +285,7 @@ function FieldHome() {
           return map;
         }, new Map<string, Map<string, string>>());
         setTableNames(tables);
-        const summary: SangriaSummary = { possible: [], remaining: [], done: [], overdue: [], early: [] };
+        const summary: SangriaSummary = { possible: [], remaining: [], done: [], overdue: [], rain: [], early: [], replacement: [] };
         // Chave: sangrador + fazenda + data. Nomes gravados sem acento ou
         // com caixa diferente ainda casam, porque a comparação ignora ambos.
         const byTapperDay = safe("o agrupamento por dia", () => {
@@ -328,18 +354,23 @@ function FieldHome() {
           // A previsão é fixa no período: dias realizados continuam no total.
           // O saldo separa somente os dias ainda sem registro.
           summary.possible.push(day);
+          const isReplacement = hasReplacementTask(day);
           if (day.records.length > 0) {
             summary.done.push(day);
+            if (isReplacement) summary.replacement.push(day);
           } else {
             summary.remaining.push(day);
             if (day.date < today) {
-              // Atrasada: passou e não foi realizada.
-              summary.overdue.push(day);
+              // Atrasada: passou e não foi realizada. Com chuva no dia, fica
+              // em "Justificada por chuva" e sai da lista de atrasadas.
+              const rainDays = rainDaysByFarm.get(day.farmId);
+              if (rainDays?.has(day.date)) {
+                summary.rain.push(day);
+              } else {
+                summary.overdue.push(day);
+              }
             }
           }
-          // "Antecipada" = a tarefa da sangria é a "adiantada" do catálogo.
-          // Um dia realizado também pode ser antecipado, então isso é avaliado
-          // fora do if/else de realização.
           if (hasEarlyTask(day)) {
             summary.early.push(day);
           }
@@ -372,8 +403,11 @@ function FieldHome() {
     return tasks.find((t) => t.status !== "concluida" && new Date(t.scheduledAt).getTime() >= now - 60_000);
   }, [tasks]);
 
-  const [greeting, setGreeting] = useState(() => greetingAt(new Date()));
+  const [greeting, setGreeting] = useState("");
   useEffect(() => {
+    // A saudação depende da hora do aparelho. Calculá-la no primeiro render
+    // fazia o HTML do servidor divergir do cliente (React #418).
+    setGreeting(greetingAt(new Date()));
     // Recalcula o bom dia/boa tarde/boa noite quando o app volta pra frente.
     const onVisible = () => { if (!document.hidden) setGreeting(greetingAt(new Date())); };
     document.addEventListener("visibilitychange", onVisible);
@@ -466,7 +500,9 @@ function FieldHome() {
           <SummaryCell value={sangriaSummary.done.length} label="Realizadas" tone="primary" onClick={() => setSangriaDetail("done")} />
           <SummaryCell value={sangriaSummary.remaining.length} label="Saldo" tone="warning" onClick={() => setSangriaDetail("remaining")} />
           <SummaryCell value={sangriaSummary.overdue.length} label="Atrasadas" tone="destructive" onClick={() => setSangriaDetail("overdue")} />
-          <SummaryCell value={sangriaSummary.early.length} label="Antecipadas" tone="warning" onClick={() => setSangriaDetail("early")} />
+          <SummaryCell value={sangriaSummary.rain.length} label="Justificada por chuva" tone="warning" onClick={() => setSangriaDetail("rain")} />
+          <SummaryCell value={sangriaSummary.early.length} label="Adiantamento" tone="warning" onClick={() => setSangriaDetail("early")} />
+          <SummaryCell value={sangriaSummary.replacement.length} label="Reposição" tone="primary" onClick={() => setSangriaDetail("replacement")} />
         </div>
         {sangriaSummary.possible.length > 0 && (
           <p className="mt-2 text-[11px] text-muted-foreground">
@@ -619,9 +655,10 @@ function DailySangriaDialog({
     const name = tables?.get(record.tappingTableId ?? "");
     return name ?? (record.tappingTableId ? `#${record.tappingTableId.slice(0, 6)}` : "");
   };
-  // Verifica se um registro é "adiantada"
+  // Verifica se um registro é de adiantamento
   const isEarly = (record: TappingRecord) =>
     String(record.taskExtent ?? "").split(",").map((c) => c.trim()).includes(earlyCode);
+  const hasRain = (day: SangriaDay) => category === "rain";
   // Hora do registro — fica logo abaixo do nome, na mesma linha da data.
   // Vem de recordedAt (quando o monitor gravou); sem ele, não há hora pra
   // mostrar, e a linha mostra só a data em vez de um "--:--" inventado.
@@ -680,6 +717,9 @@ function DailySangriaDialog({
       <DialogContent className="max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{category ? CATEGORY_LABEL[category] : "Sangrias"}</DialogTitle>
+          {category === "rain" && (
+            <p className="text-[11px] text-muted-foreground">Não realizadas no dia em que houve apontamento de chuva na fazenda.</p>
+          )}
           <p className="text-xs text-muted-foreground">{monthLabel(monthOffset)}</p>
         </DialogHeader>
         <div className="space-y-2">
@@ -715,9 +755,10 @@ function DailySangriaDialog({
             {sorted.map((day, index) => {
               const tapperName = day.tapper?.fullName?.trim() || "Sangrador não identificado";
               const dayHasEarly = (day.records ?? []).some(isEarly);
+              const highlighted = dayHasEarly || hasRain(day);
               return (
-              <button key={`${day.tapper?.id ?? "unknown"}:${day.farmId ?? ""}:${day.date ?? ""}:${index}`} type="button" onClick={() => onSelectTapper(day)} className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition ${dayHasEarly ? "border-warning/40 bg-warning/5 hover:border-warning/60 hover:bg-warning/10" : "border-border/60 bg-card hover:border-primary/60 hover:bg-primary/5"}`}>
-                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${dayHasEarly ? "bg-warning/15 text-warning" : "bg-primary/10 text-primary"}`}><UserRound className="h-4 w-4" /></span>
+              <button key={`${day.tapper?.id ?? "unknown"}:${day.farmId ?? ""}:${day.date ?? ""}:${index}`} type="button" onClick={() => onSelectTapper(day)} className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition ${highlighted ? "border-warning/40 bg-warning/5 hover:border-warning/60 hover:bg-warning/10" : "border-border/60 bg-card hover:border-primary/60 hover:bg-primary/5"}`}>
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${highlighted ? "bg-warning/15 text-warning" : "bg-primary/10 text-primary"}`}><UserRound className="h-4 w-4" /></span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{tapperName}</span>
                   {/* Uma linha por registro: a tarefa vem do catálogo, pelo nome. */}
@@ -731,7 +772,7 @@ function DailySangriaDialog({
                   {/* Sem registro não há tabela feita: mostra a pendência. */}
                   {(day.records ?? []).length === 0 && (
                     <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                      A fazer
+                      {hasRain(day) ? "Justificada por chuva" : TO_DO_LABEL}
                     </span>
                   )}
                 </span>
