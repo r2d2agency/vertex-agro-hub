@@ -4,6 +4,7 @@ import { CalendarDays, Loader2, Pencil, Trees } from "lucide-react";
 import { getFieldMe, listFieldTappers, listFieldTapperTables, listFieldTappingTables, type FieldMe, type FieldTapper, type FieldTapperTable } from "@/lib/field.functions";
 import { listHistory, type HistoryEvent } from "@/lib/historico.functions";
 import { correctTappingRecord, listTappingRecords, listTappingTasks, type TappingRecord, type TappingTask, TASK_EXTENTS, END_PERIODS } from "@/lib/sangrias.functions";
+import { listOccurrences, updateOccurrence, type Occurrence } from "@/lib/ocorrencias.functions";
 import { tappingRecordMoment } from "@/lib/tapping-dates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getLocalIsoDate } from "@/lib/date-utils";
+import { getLocalDatetimeInputValue, getLocalIsoDate } from "@/lib/date-utils";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 
@@ -44,6 +45,14 @@ const PERIODS = [
 type Period = typeof PERIODS[number]["value"];
 
 type IsoRange = { from: string; to: string };
+type RainEditDraft = {
+  date: string;
+  startedAt: string;
+  endedAt: string;
+  mm: string;
+  notes: string;
+};
+
 type TappingEditDraft = {
   date: string;
   sangradorName: string;
@@ -58,6 +67,30 @@ type TappingEditDraft = {
 };
 
 const EMPTY_VALUE = "__none__";
+
+// A tela de chuva grava o horário real na descrição, não em `date` (que é um
+// dia civil). Para corrigir, preservamos as demais linhas — inclusive a foto —
+// e reescrevemos apenas os campos que o monitor pode alterar aqui.
+function rainDescription(draft: RainEditDraft, original?: string | null) {
+  const preserved = (original ?? "")
+    .split("\n")
+    .filter((line) => !/^(Início|Fim|Milímetros de chuva|Observações):/i.test(line.trim()))
+    .join("\n");
+  return [
+    `Início: ${draft.startedAt}`,
+    draft.endedAt && `Fim: ${draft.endedAt}`,
+    `Milímetros de chuva: ${draft.mm.replace(",", ".")} mm`,
+    draft.notes.trim() && `Observações: ${draft.notes.trim()}`,
+    preserved,
+  ].filter(Boolean).join("\n");
+}
+
+function rainSeverity(mm: string) {
+  const value = Number(mm.trim().replace(",", "."));
+  if (value >= 50) return "alta";
+  if (value >= 15) return "media";
+  return "baixa";
+}
 
 function isoRange(from?: Date | null, to?: Date | null): IsoRange {
   return { from: getLocalIsoDate(from ?? new Date()), to: getLocalIsoDate(to ?? from ?? new Date()) };
@@ -127,6 +160,9 @@ function HistoricoPage() {
   const [editDraft, setEditDraft] = useState<TappingEditDraft | null>(null);
   const [editTappers, setEditTappers] = useState<FieldTapper[]>([]);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editingRain, setEditingRain] = useState<Occurrence | null>(null);
+  const [rainDraft, setRainDraft] = useState<RainEditDraft | null>(null);
+  const [savingRain, setSavingRain] = useState(false);
 
   // modo por sangrador
   const [tappers, setTappers] = useState<FieldTapper[]>([]);
@@ -350,6 +386,76 @@ function HistoricoPage() {
       toast.error(error instanceof Error ? error.message : "Não foi possível corrigir a sangria.");
     } finally {
       setSavingEdit(false);
+    }
+  }
+
+  function openRainEditor(event: HistoryEvent) {
+    const id = event.id.replace(/^occ-/, "");
+    const companyId = companyIdForEvent(event);
+    if (!companyId) {
+      toast.error("Não foi possível identificar a empresa desta chuva.");
+      return;
+    }
+    // A linha do tempo não traz a descrição; buscamos a ocorrência para
+    // preservar áreas afetadas, foto e qualquer outra informação original.
+    listOccurrences(companyId, { from: range.from, to: range.to })
+      .then((items) => {
+        const occurrence = items.find((item) => item.id === id && item.type === "clima");
+        if (!occurrence) {
+          toast.error("Chuva não encontrada para correção.");
+          return;
+        }
+        const description = occurrence.description ?? "";
+        const value = /Milímetros de chuva:\s*([\d.,]+)\s*mm/i.exec(description)?.[1] ?? "";
+        setEditingRain(occurrence);
+        setRainDraft({
+          date: occurrence.date.slice(0, 10),
+          startedAt: /^Início:\s*(.+)$/im.exec(description)?.[1].trim() ?? getLocalDatetimeInputValue(),
+          endedAt: /^Fim:\s*(.+)$/im.exec(description)?.[1].trim() ?? "",
+          mm: value,
+          notes: /^Observações:\s*(.+)$/im.exec(description)?.[1].trim() ?? "",
+        });
+      })
+      .catch(() => toast.error("Não foi possível carregar os dados da chuva."));
+  }
+
+  async function saveRainEdit() {
+    if (!editingRain || !rainDraft) return;
+    const mm = rainDraft.mm.trim().replace(",", ".");
+    if (!rainDraft.date || !rainDraft.startedAt) {
+      toast.error("Informe a data e o início da chuva.");
+      return;
+    }
+    if (!Number.isFinite(Number(mm)) || Number(mm) < 0) {
+      toast.error("Informe um valor válido de milímetros de chuva.");
+      return;
+    }
+    if (rainDraft.endedAt && new Date(rainDraft.endedAt).getTime() < new Date(rainDraft.startedAt).getTime()) {
+      toast.error("O fim da chuva não pode ser anterior ao início.");
+      return;
+    }
+    setSavingRain(true);
+    try {
+      const description = rainDescription(rainDraft, editingRain.description);
+      await updateOccurrence(editingRain.id, {
+        farmId: editingRain.farmId ?? undefined,
+        plotId: editingRain.plotId ?? undefined,
+        date: rainDraft.date,
+        type: "clima",
+        severity: rainSeverity(mm),
+        status: editingRain.status,
+        title: `Chuva ${Number(mm)} mm`,
+        description,
+        responsible: editingRain.responsible ?? undefined,
+      });
+      setEditingRain(null);
+      setRainDraft(null);
+      toast.success("Chuva corrigida e auditoria atualizada.");
+      setRefreshToken((value) => value + 1);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível corrigir a chuva.");
+    } finally {
+      setSavingRain(false);
     }
   }
 
@@ -588,6 +694,11 @@ function HistoricoPage() {
                               <Pencil className="mr-1.5 h-3.5 w-3.5" /> Corrigir marcação
                             </Button>
                           )}
+                          {e.kind === "ocorrencia" && e.id.startsWith("occ-") && (
+                            <Button type="button" size="sm" variant="outline" className="mt-2 h-8" onClick={() => openRainEditor(e)}>
+                              <Pencil className="mr-1.5 h-3.5 w-3.5" /> Corrigir chuva
+                            </Button>
+                          )}
                         </div>
                       </li>
                     );
@@ -790,6 +901,55 @@ function HistoricoPage() {
             <Button type="button" variant="outline" disabled={savingEdit} onClick={() => { setEditingRecord(null); setEditDraft(null); }}>Cancelar</Button>
             <Button type="button" disabled={savingEdit || !editDraft?.date || !editDraft.sangradorName.trim()} onClick={saveRecordEdit}>
               {savingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar correção
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!editingRain && !!rainDraft}
+        onOpenChange={(open) => {
+          if (!open && !savingRain) {
+            setEditingRain(null);
+            setRainDraft(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[85dvh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Corrigir chuva</DialogTitle>
+            <DialogDescription>A correção fica registrada na auditoria da ocorrência.</DialogDescription>
+          </DialogHeader>
+          {rainDraft && (
+            <div className="space-y-3">
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Data da chuva
+                <Input type="date" max={getLocalIsoDate()} value={rainDraft.date} onChange={(event) => setRainDraft({ ...rainDraft, date: event.target.value })} />
+              </label>
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Início aproximado
+                <Input type="datetime-local" value={rainDraft.startedAt} onChange={(event) => setRainDraft({ ...rainDraft, startedAt: event.target.value })} />
+              </label>
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Fim aproximado
+                <Input type="datetime-local" value={rainDraft.endedAt} onChange={(event) => setRainDraft({ ...rainDraft, endedAt: event.target.value })} />
+              </label>
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Milímetros de chuva
+                <Input inputMode="decimal" value={rainDraft.mm} onChange={(event) => setRainDraft({ ...rainDraft, mm: event.target.value })} placeholder="Ex.: 25" />
+              </label>
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Observações
+                <Textarea rows={3} value={rainDraft.notes} onChange={(event) => setRainDraft({ ...rainDraft, notes: event.target.value })} />
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Intensidade: baixa (menos de 15 mm), média (15 a 49,9 mm) e alta (50 mm ou mais).
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={savingRain} onClick={() => { setEditingRain(null); setRainDraft(null); }}>Cancelar</Button>
+            <Button type="button" disabled={savingRain || !rainDraft?.date || !rainDraft.startedAt} onClick={saveRainEdit}>
+              {savingRain && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar correção
             </Button>
           </DialogFooter>
         </DialogContent>
