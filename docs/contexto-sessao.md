@@ -3,9 +3,9 @@
 > Fonte única para retomar o trabalho entre sessões. Atualizado automaticamente pelo assistente.
 
 ## Status atual
-- **Objetivo:** Ajustar nomenclatura e categorias do resumo de sangrias na home do app de campo.
-- **Última ação:** Renomeado "Antecipadas" para "Adiantamento"; atrasadas sem execução e com apontamento de chuva passam a "Justificada por chuva"; criado o item "Reposição" para atrasadas realizadas pela tarefa de reposição.
-- **Estado:** Corrigida hidratação do React (#418) na home: saudação passou a ser calculada após a montagem, para não divergir entre servidor e navegador. `git diff --check` passou; type-check segue bloqueado pela declaração truncada de `date-fns/isMatch.d.ts`.
+- **Objetivo:** Permitir escolher diretamente a data no histórico, sem depender só dos períodos predefinidos.
+- **Última ação:** Reforçado o filtro "Escolher data": calendário com seleção de mês/ano, nome mais direto e contagem correta de dias no modo "Por sangrador".
+- **Estado:** Alteração local; `git diff --check` passou. Type-check/build seguem bloqueados pela declaração local truncada de `date-fns/isMatch.d.ts` e pela versão do Node local incompatível com o bundler. PWA em cache pode exigir atualização forçada no aparelho para ver a mudança.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -39,7 +39,7 @@
 | `src/lib/field.functions.ts` | Enfileira correção de registro existente como PATCH | alterado |
 | `src/lib/sangrias.functions.ts` | Cache/fallback do histórico, tipos de auditoria e PATCH direto para correção | alterado |
 | `src/routes/campo/sangria.tsx` | Envia a data operacional selecionada e avisa sobre registro retroativo | alterado |
-| `src/routes/campo/index.tsx` | Home do campo: total previsto, saldo, realizadas, atrasadas, justificadas por chuva, adiantamento e reposição | alterado |
+| `src/routes/campo/index.tsx` | Mantém total previsto no período, calcula saldo realizado e exibe período/tarefa no resumo da home | alterado |
 | `src/routes/campo/historico.tsx` | Mantém janela de 7 dias, mostra período/tarefa, permite corrigir e apresenta auditoria/retroatividade | alterado |
 | `backend/src/field/field.service.ts` | Inclui auditoria e datas de entrada, além de rótulos claros para clima/chuva na linha do tempo | alterado |
 | `backend/src/operations/operations.service.ts` | Retorna autoria da última edição e metadados do lançamento retroativo | alterado |
@@ -75,9 +75,7 @@
 - A tela mantinha resultados de validação enquanto mudava sangrador, talhão, tarefa ou data, e requisições assíncronas antigas podiam sobrescrever a seleção atual. Agora o resultado só é exibido se sua chave ainda corresponder à seleção e callbacks obsoletos são ignorados.
 - O shell do app usa Cache Storage do Service Worker (não o IndexedDB, que guarda dados de aplicação). Navegações servem primeiro essa cópia e, quando offline segundo `navigator.onLine`, não iniciam requisição de rede.
 - O endereço confirmado pelo usuário é `vertex.gleego.com.br`; o domínio `vertex.gleeglo.com.br` foi apenas um erro de digitação. No teste de 2026-11-05, a raiz do domínio correto respondeu 307 para `/campo`, que respondeu 200. Não foi feita alteração de código nem de configuração externa.
-- Na home, `Previstas` é o total fixo de dias/sangrador no período; `Saldo` mantém os dias ainda sem registro. A visão padrão segue os últimos 7 dias, como no histórico.
-- "Atrasadas" são as previstas que passaram e não foram realizadas sem apontamento de chuva; quando existe ocorrência de clima com chuva na fazenda e no dia, o item entra em "Justificada por chuva" (continua no saldo, mas sai de atrasadas).
-- "Adiantamento" e "Reposição" são classificadas pelo nome/código da tarefa no catálogo (`/` e `1` como fallback legado). Reposição conta como realizada; adiantamento pode se sobrepor a outras categorias do mesmo dia.
+- Na home, `Previstas` é o total fixo de dias/sangrador no período; `Saldo` é `Previstas - Realizadas`. A visão padrão segue os últimos 7 dias, como no histórico.
 - O histórico de sangrias usa `taskExtent` para o nome da tarefa e `endPeriod` para manhã/tarde/noite; o endpoint da linha do tempo agora inclui `endPeriod` em `meta`.
 - A correção de sangrias no histórico usa PATCH online direto: uma falha de conexão é informada e não é apresentada como sucesso até sincronizar. O servidor incrementa `version`, registra `updatedById`/`updatedAt` e a interface mostra nome e horário.
 - A data operacional de uma sangria permanece separada de `recordedAt`; lançamentos em data posterior ficam agrupados pela data operacional e mostram quando foram efetivamente enviados. Registros legados com `recordedAt` à meia-noite UTC usam `createdAt` como fallback.
@@ -136,8 +134,6 @@
 | 2026-11-18 | Adicionada correção de sangrias pelo histórico com autoria/horário, registro retroativo agrupado pela data operacional e rótulos claros de chuva com milímetros/intensidade. `git diff --check` passou; type-check/build continuam bloqueados por dependências locais incompletas. |
 | 2026-11-18 | Histórico de campo agora oferece "Data específica" com calendário de dia único, além de Hoje, 7 dias, 30 dias e Personalizado. |
 | 2026-11-18 | Filtro de dia único renomeado para "Escolher data", com seletor de mês/ano no calendário e contagem de 1 dia no resumo "Por sangrador"; relato do usuário indica que o PWA pode estar servindo bundle antigo. |
-| 2026-11-18 | Histórico de campo ganhou correção de chuva na linha do tempo, com atualização da ocorrência, recálculo da intensidade e preservação dos demais dados da descrição original. |
-| 2026-11-19 | Home do campo: "Antecipadas" renomeado para "Adiantamento"; dias não realizados com chuva passaram a "Justificada por chuva" e foram separados de "Atrasadas"; novo contador/diálogo "Reposição" para atrasadas realizadas com tarefa de reposição. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 
