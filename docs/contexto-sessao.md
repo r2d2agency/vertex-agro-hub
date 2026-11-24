@@ -3,9 +3,9 @@
 > Fonte única para retomar o trabalho entre sessões. Atualizado automaticamente pelo assistente.
 
 ## Status atual
-- **Objetivo:** Ajustar nomenclatura e categorias do resumo de sangrias na home do app de campo.
-- **Última ação:** Renomeado "Antecipadas" para "Adiantamento"; atrasadas sem execução e com apontamento de chuva passam a "Justificada por chuva"; criado o item "Reposição" para atrasadas realizadas pela tarefa de reposição.
-- **Estado:** Corrigida hidratação do React (#418) na home: saudação passou a ser calculada após a montagem, para não divergir entre servidor e navegador. `git diff --check` passou; type-check segue bloqueado pela declaração truncada de `date-fns/isMatch.d.ts`.
+- **Objetivo:** Diagnosticar falhas 404 na sincronização do app de campo e mostrar a data/hora de cada item com falha.
+- **Última ação:** A fila agora registra `lastFailedAt` a cada tentativa frustrada; a tela de sincronização mostra "Lançado em" e "Última falha" por item, com "não registrada" para itens antigos sem esse campo.
+- **Estado:** Commit `1bd1534` publicado em `origin/main`. `git diff --check` passou; type-check segue bloqueado pela declaração truncada de `date-fns/isMatch.d.ts`. Ambiente confirmado pelo usuário: PostgreSQL local no EasyPanel, sem Supabase.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -52,7 +52,8 @@
 | `src/lib/sangrias.functions.ts` | Aplica filtros de fazenda/talhão/data também ao resultado do cache offline | alterado |
 | `src/lib/offline/prepare-field-data.ts` | Baixa dados de campo/frota e sequência para todos os atribuídos | novo |
 | `src/lib/offline/cached-request.ts` | GET com cache IndexedDB e fallback offline | novo |
-| `src/routes/campo/sincronizacao.tsx` | Ação de preparar dados offline | alterado |
+| `src/routes/campo/sincronizacao.tsx` | Ação de preparar dados offline; mostra data/hora dos itens com falha | alterado |
+| `src/lib/offline/queue.ts` | Fila de mutações offline; registra `lastFailedAt` | alterado |
 | `src/routes/campo/operacao-maquina.tsx` | Início local e envio da operação ao finalizar offline | alterado |
 | `src/routes/campo/chuva.tsx` | Mensagem explícita e tratamento de erro no salvamento | alterado |
 | `src/routes/campo/abastecimento.tsx` | Cache de tanques e tratamento de erro no salvamento | alterado |
@@ -78,6 +79,9 @@
 - Na home, `Previstas` é o total fixo de dias/sangrador no período; `Saldo` mantém os dias ainda sem registro. A visão padrão segue os últimos 7 dias, como no histórico.
 - "Atrasadas" são as previstas que passaram e não foram realizadas sem apontamento de chuva; quando existe ocorrência de clima com chuva na fazenda e no dia, o item entra em "Justificada por chuva" (continua no saldo, mas sai de atrasadas).
 - "Adiantamento" e "Reposição" são classificadas pelo nome/código da tarefa no catálogo (`/` e `1` como fallback legado). Reposição conta como realizada; adiantamento pode se sobrepor a outras categorias do mesmo dia.
+- A fila offline (`IndexedDB vertex-offline`, store `outbox`) guarda `createdAt`, `attempts`, `lastError` e agora `lastFailedAt`. Um item vira `permanentlyFailed` ao receber erro de texto com 400/401/403/404 ou após 5 tentativas; esses itens são pulados pelo auto-flush e só saem com descarte manual.
+- Telas administrativas "Dispositivos" e "Sincronização" derivam dispositivos de `sync_session` (`device_id`, `started_at`), preenchida apenas por `/sync/push`. O app de campo grava direto nos endpoints de entidade e não gera `deviceId` nem heartbeat, por isso os aparelhos não aparecem como conectados.
+- Ambiente de produção confirmado: PostgreSQL local no EasyPanel; variáveis Supabase presentes no repositório não são usadas pelo fluxo atual.
 - O histórico de sangrias usa `taskExtent` para o nome da tarefa e `endPeriod` para manhã/tarde/noite; o endpoint da linha do tempo agora inclui `endPeriod` em `meta`.
 - A correção de sangrias no histórico usa PATCH online direto: uma falha de conexão é informada e não é apresentada como sucesso até sincronizar. O servidor incrementa `version`, registra `updatedById`/`updatedAt` e a interface mostra nome e horário.
 - A data operacional de uma sangria permanece separada de `recordedAt`; lançamentos em data posterior ficam agrupados pela data operacional e mostram quando foram efetivamente enviados. Registros legados com `recordedAt` à meia-noite UTC usam `createdAt` como fallback.
@@ -138,6 +142,7 @@
 | 2026-11-18 | Filtro de dia único renomeado para "Escolher data", com seletor de mês/ano no calendário e contagem de 1 dia no resumo "Por sangrador"; relato do usuário indica que o PWA pode estar servindo bundle antigo. |
 | 2026-11-18 | Histórico de campo ganhou correção de chuva na linha do tempo, com atualização da ocorrência, recálculo da intensidade e preservação dos demais dados da descrição original. |
 | 2026-11-19 | Home do campo: "Antecipadas" renomeado para "Adiantamento"; dias não realizados com chuva passaram a "Justificada por chuva" e foram separados de "Atrasadas"; novo contador/diálogo "Reposição" para atrasadas realizadas com tarefa de reposição. |
+| 2026-11-24 | Diagnosticados 8 itens com falha 404 na fila do aparelho: o frontend marca erro 400/401/403/404 como permanente e não tenta novamente; a tela agora mostra data/hora de criação e da última falha. Confirmado que "dispositivos conectados" no admin vem de `sync_session`/`/sync/push`, que o app de campo não alimenta. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 
