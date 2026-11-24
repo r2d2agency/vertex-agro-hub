@@ -3,9 +3,9 @@
 > Fonte única para retomar o trabalho entre sessões. Atualizado automaticamente pelo assistente.
 
 ## Status atual
-- **Objetivo:** Diagnosticar falhas 404 na sincronização do app de campo e mostrar a data/hora de cada item com falha.
-- **Última ação:** A fila agora registra `lastFailedAt` a cada tentativa frustrada; a tela de sincronização mostra "Lançado em" e "Última falha" por item, com "não registrada" para itens antigos sem esse campo.
-- **Estado:** Commit `1bd1534` publicado em `origin/main`. `git diff --check` passou; type-check segue bloqueado pela declaração truncada de `date-fns/isMatch.d.ts`. Ambiente confirmado pelo usuário: PostgreSQL local no EasyPanel, sem Supabase.
+- **Objetivo:** Diagnosticar falhas 404 na sincronização do app de campo e fazer os aparelhos aparecerem no administrativo.
+- **Última ação:** Fila registra `lastFailedAt` e a tela mostra data/hora por item falho; app de campo envia presença do dispositivo a cada minuto e o admin exibe online/última atividade em Sincronização.
+- **Estado:** Commits `1bd1534` e `c104631` publicados em `origin/main`. `git diff --check` passou; type-check segue bloqueado pela declaração truncada de `date-fns/isMatch.d.ts`. Ambiente confirmado: PostgreSQL local no EasyPanel, sem Supabase.
 - **Branch:** main
 
 ## Lógica / Domínio
@@ -80,7 +80,9 @@
 - "Atrasadas" são as previstas que passaram e não foram realizadas sem apontamento de chuva; quando existe ocorrência de clima com chuva na fazenda e no dia, o item entra em "Justificada por chuva" (continua no saldo, mas sai de atrasadas).
 - "Adiantamento" e "Reposição" são classificadas pelo nome/código da tarefa no catálogo (`/` e `1` como fallback legado). Reposição conta como realizada; adiantamento pode se sobrepor a outras categorias do mesmo dia.
 - A fila offline (`IndexedDB vertex-offline`, store `outbox`) guarda `createdAt`, `attempts`, `lastError` e agora `lastFailedAt`. Um item vira `permanentlyFailed` ao receber erro de texto com 400/401/403/404 ou após 5 tentativas; esses itens são pulados pelo auto-flush e só saem com descarte manual.
-- Telas administrativas "Dispositivos" e "Sincronização" derivam dispositivos de `sync_session` (`device_id`, `started_at`), preenchida apenas por `/sync/push`. O app de campo grava direto nos endpoints de entidade e não gera `deviceId` nem heartbeat, por isso os aparelhos não aparecem como conectados.
+- A suspeita para os 8 itens 404 é `PATCH /tapping-records/:id` ("Correção de sangria") com ID antigo/de outro aparelho/apagado: `operations.service.ts` devolve `NotFoundException` e o frontend torna a falha permanente. Confirmação depende de ver o rótulo/path no aparelho após a atualização que mostra datas.
+- Presença do app de campo: `src/lib/field-presence.ts` gera um UUID estável por aparelho no localStorage e chama `POST /field/presence` a cada minuto, ao voltar online e ao abrir o app. Backend atualiza uma linha em `sync_session` com `note='presença'`; `/sync/health` devolve `online` quando essa linha tem menos de 24 h. A tela administrativa Sincronização mostra "Online" ou "Último acesso" e a data/hora da última atividade.
+- A tela administrativa "Dispositivos" continua derivando contadores de `device_id`/`sync_status`/`updated_at` das entidades; para presença em tempo real, use a tela Sincronização.
 - Ambiente de produção confirmado: PostgreSQL local no EasyPanel; variáveis Supabase presentes no repositório não são usadas pelo fluxo atual.
 - O histórico de sangrias usa `taskExtent` para o nome da tarefa e `endPeriod` para manhã/tarde/noite; o endpoint da linha do tempo agora inclui `endPeriod` em `meta`.
 - A correção de sangrias no histórico usa PATCH online direto: uma falha de conexão é informada e não é apresentada como sucesso até sincronizar. O servidor incrementa `version`, registra `updatedById`/`updatedAt` e a interface mostra nome e horário.
@@ -142,7 +144,8 @@
 | 2026-11-18 | Filtro de dia único renomeado para "Escolher data", com seletor de mês/ano no calendário e contagem de 1 dia no resumo "Por sangrador"; relato do usuário indica que o PWA pode estar servindo bundle antigo. |
 | 2026-11-18 | Histórico de campo ganhou correção de chuva na linha do tempo, com atualização da ocorrência, recálculo da intensidade e preservação dos demais dados da descrição original. |
 | 2026-11-19 | Home do campo: "Antecipadas" renomeado para "Adiantamento"; dias não realizados com chuva passaram a "Justificada por chuva" e foram separados de "Atrasadas"; novo contador/diálogo "Reposição" para atrasadas realizadas com tarefa de reposição. |
-| 2026-11-24 | Diagnosticados 8 itens com falha 404 na fila do aparelho: o frontend marca erro 400/401/403/404 como permanente e não tenta novamente; a tela agora mostra data/hora de criação e da última falha. Confirmado que "dispositivos conectados" no admin vem de `sync_session`/`/sync/push`, que o app de campo não alimenta. |
+| 2026-11-24 | Diagnosticados 8 itens com falha 404 na fila do aparelho: o frontend marca erro 400/401/403/404 como permanente e não tenta novamente; a tela agora mostra data/hora de criação e da última falha. Confirmado que "dispositivos conectados" no admin vinha de `sync_session`/`/sync/push`, que o app de campo não alimentava. |
+| 2026-11-24 | App de campo passou a informar presença do aparelho (`POST /field/presence`) e admin mostra online/última atividade; implementação usa `sync_session` com `note='presença'`, sem migration nova. |
 
 ## Notas rápidas
 - Solicitação original do usuário preservada na mensagem da sessão; resumo estruturado acima. 
