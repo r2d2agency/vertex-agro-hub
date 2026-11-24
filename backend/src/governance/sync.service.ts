@@ -128,11 +128,17 @@ export class SyncService {
       this.prisma.syncSession.aggregate({ where: { companyId, startedAt: { gte: since24 } }, _sum: { conflicts: true } }),
       this.prisma.syncSession.findMany({
         where: { companyId }, orderBy: { startedAt: 'desc' }, distinct: ['deviceId'], take: 20,
+        select: { deviceId: true, startedAt: true, userId: true, note: true },
       }),
     ]);
     return {
       last24h: { sessions: sessions24, conflicts: conflicts24._sum.conflicts ?? 0 },
-      activeDevices: devices.map((d) => ({ deviceId: d.deviceId, lastSync: d.startedAt, userId: d.userId })),
+      activeDevices: devices.map((d) => ({
+        deviceId: d.deviceId,
+        lastSync: d.startedAt,
+        userId: d.userId,
+        online: d.startedAt >= since24 && d.note === 'presença',
+      })),
     };
   }
 }

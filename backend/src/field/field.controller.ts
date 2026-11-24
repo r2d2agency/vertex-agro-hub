@@ -25,6 +25,17 @@ export class FieldController {
   @Get('field/me')
   fieldMe(@Req() req: any) { return this.svc.fieldMe(req.user.sub); }
 
+  // Presença do aparelho: o app de campo chama este endpoint periodicamente e
+  // no retorno da rede. Não exige papel administrativo — qualquer usuário de
+  // campo pode informar a atividade do próprio dispositivo.
+  @Post('field/presence')
+  async presence(@Req() req: any, @Body() body: { companyId?: string; deviceId?: string }) {
+    const deviceId = body?.deviceId?.trim();
+    if (!deviceId) throw new BadRequestException('deviceId é obrigatório');
+    const session = await this.svc.recordPresence(req.user.sub, need(body?.companyId), deviceId);
+    return { ok: true, sessionId: session.id, lastSeen: session.startedAt };
+  }
+
   @Get('field/tappers')
   listTappers(@Req() req: any, @Query('companyId') companyId?: string, @Query('farmId') farmId?: string) {
     return this.svc.listTappersForFarm(req.user.sub, need(companyId), need(farmId));

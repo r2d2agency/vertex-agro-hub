@@ -120,8 +120,8 @@ function SyncPage() {
             <CardContent className="text-3xl font-semibold">{health?.last24h.conflicts ?? 0}</CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Dispositivos ativos</CardTitle></CardHeader>
-            <CardContent className="text-3xl font-semibold">{health?.activeDevices.length ?? 0}</CardContent>
+            <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Dispositivos online (24h)</CardTitle></CardHeader>
+            <CardContent className="text-3xl font-semibold">{health?.activeDevices.filter((d) => d.online).length ?? 0}</CardContent>
           </Card>
         </div>
       )}
@@ -131,11 +131,19 @@ function SyncPage() {
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Smartphone className="h-4 w-4" /> Dispositivos</CardTitle></CardHeader>
           <CardContent className="grid gap-2">
             {(health?.activeDevices ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum dispositivo sincronizou ainda.</p>
+              <p className="text-sm text-muted-foreground">Nenhum dispositivo informou atividade ainda.</p>
             ) : (health?.activeDevices ?? []).map((d) => (
-              <div key={d.deviceId} className="flex items-center justify-between rounded-md border p-3 text-sm">
-                <div className="font-mono">{d.deviceId}</div>
-                <div className="text-muted-foreground">Último sync: {new Date(d.lastSync).toLocaleString("pt-BR")}</div>
+              <div key={d.deviceId} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm">
+                <div>
+                  <div className="font-medium">{d.userId ? "Aparelho de campo" : "Aparelho não identificado"}</div>
+                  <div className="font-mono text-xs text-muted-foreground">{d.deviceId}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${d.online ? "bg-emerald-500/15 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                    {d.online ? "Online" : "Último acesso"}
+                  </span>
+                  <div className="text-muted-foreground">Última atividade: {new Date(d.lastSync).toLocaleString("pt-BR")}</div>
+                </div>
               </div>
             ))}
           </CardContent>

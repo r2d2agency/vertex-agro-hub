@@ -8,6 +8,7 @@ import { hasAuthTokens, logout } from "@/lib/api";
 import { getFieldMe, type FieldMe, type Coords } from "@/lib/field.functions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { subscribeOutbox, flushOutbox } from "@/lib/offline/queue";
+import { installFieldPresence } from "@/lib/field-presence";
 import { FieldBottomNav, FieldDesktopNav } from "@/components/vertex/field/bottom-nav";
 import { CheckinSheet } from "@/components/vertex/field/checkin-sheet";
 import { Button } from "@/components/ui/button";
@@ -148,6 +149,8 @@ function FieldShell() {
 
   useEffect(() => { setCheckin(readCheckin()); }, []);
   useEffect(() => { getFieldMe().then(setMe).catch((e) => setError(e?.message ?? "Falha ao carregar")); }, []);
+
+  useEffect(() => { installFieldPresence(); }, []);
 
   useEffect(() => {
     if (typeof navigator !== "undefined") setOnline(navigator.onLine);

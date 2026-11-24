@@ -7,7 +7,9 @@ export type SyncSession = {
 };
 export type SyncHealth = {
   last24h: { sessions: number; conflicts: number };
-  activeDevices: Array<{ deviceId: string; lastSync: string; userId?: string | null }>;
+  activeDevices: Array<{
+    deviceId: string; lastSync: string; userId?: string | null; online: boolean;
+  }>;
 };
 
 export function listSessions(companyId: string, opts: { deviceId?: string; limit?: number } = {}) {

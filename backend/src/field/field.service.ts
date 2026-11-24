@@ -178,6 +178,24 @@ export class FieldService {
     };
   }
 
+  // Cada chamada renova a presença do aparelho. Reaproveitamos `sync_session`
+  // para não criar outra tabela, atualizando a linha do aparelho em vez de
+  // gerar uma nova a cada minuto.
+  async recordPresence(userId: string, companyId: string, deviceId: string) {
+    await this.access.ensureCompany(userId, companyId);
+    const existing = await this.prisma.syncSession.findFirst({
+      where: { companyId, deviceId, note: 'presença' },
+      orderBy: { startedAt: 'desc' },
+      select: { id: true },
+    });
+    const data = { userId, startedAt: new Date() };
+    return existing
+      ? this.prisma.syncSession.update({ where: { id: existing.id }, data })
+      : this.prisma.syncSession.create({
+          data: { companyId, userId, deviceId, startedAt: data.startedAt, pushed: 0, pulled: 0, conflicts: 0, note: 'presença' },
+        });
+  }
+
   // ---------- Sangradores e tabelas (leitura, acessível a qualquer papel de campo) ----------
   async listTappersForFarm(userId: string, companyId: string, farmId: string) {
     await this.access.ensureCompany(userId, companyId);
