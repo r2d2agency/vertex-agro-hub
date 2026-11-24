@@ -22,6 +22,9 @@ export type OutboxItem = {
   createdAt: number;
   attempts: number;
   lastError?: string;
+  // É registrado a cada falha de envio. Itens antigos podem não ter este campo,
+  // pois ele não existia quando a falha aconteceu.
+  lastFailedAt?: number;
   // true quando o item não deve mais ser reenviado automaticamente (erro de
   // validação/permissão/rota inexistente, ou excedeu o limite de tentativas)
   // — precisa de ação manual (descartar) em vez de ficar tentando para sempre.
@@ -103,6 +106,7 @@ export async function flushOutbox(): Promise<{ sent: number; failed: number }> {
       } catch (e: any) {
         it.attempts = (it.attempts ?? 0) + 1;
         it.lastError = String(e?.message ?? e).slice(0, 300);
+        it.lastFailedAt = Date.now();
 
         // 400/401/403/404: erro de validação, permissão ou rota inexistente —
         // nunca vai se resolver sozinho reenviando. Acima de 5 tentativas,

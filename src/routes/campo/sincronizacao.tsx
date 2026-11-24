@@ -59,6 +59,12 @@ function SyncPage() {
 
   const pendingItems = items.filter((it) => !it.permanentlyFailed);
   const failedItems = items.filter((it) => it.permanentlyFailed);
+  // A fila guarda epoch ms. Itens antigos podem não ter `lastFailedAt`, porque
+  // o campo passou a existir depois que a falha aconteceu: não inventamos data.
+  const formatWhen = (value?: number) =>
+    typeof value === "number" && Number.isFinite(value)
+      ? new Date(value).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+      : "não registrada";
 
   return (
     <div className="space-y-4">
@@ -131,6 +137,9 @@ function SyncPage() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">{it.label ?? it.path}</div>
                   <div className="truncate text-[11px] text-destructive">{it.lastError ?? "Falha ao enviar"}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Lançado em {formatWhen(it.createdAt)} · Última falha {formatWhen(it.lastFailedAt)}
+                  </div>
                   <div className="text-[10px] text-muted-foreground">Este registro não será reenviado automaticamente.</div>
                 </div>
                 <button
