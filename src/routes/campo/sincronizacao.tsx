@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Loader2, RefreshCw, Trash2, Wifi, WifiOff } from "lucide-react";
-import { clearOutboxItem, flushOutbox, listOutbox, subscribeOutbox, type OutboxItem } from "@/lib/offline/queue";
+import { clearFailedOutboxItems, clearOutboxItem, flushOutbox, listOutbox, retryOutboxItem, subscribeOutbox, type OutboxItem } from "@/lib/offline/queue";
 import { prepareFieldOfflineData } from "@/lib/offline/prepare-field-data";
 import { FieldCard } from "@/components/vertex/field/step-header";
 import { toast } from "sonner";
@@ -16,9 +16,43 @@ function SyncPage() {
   const [items, setItems] = useState<OutboxItem[]>([]);
   const [lastSync, setLastSync] = useState<string>("—");
   const [preparing, setPreparing] = useState(false);
+  const [retryingId, setRetryingId] = useState<number | null>(null);
+  const [clearingFailed, setClearingFailed] = useState(false);
   const [prepared, setPrepared] = useState<{ farms: number; tappers: number; plots: number; errors: string[] } | null>(null);
 
   const refresh = async () => setItems(await listOutbox());
+
+  async function clearFailed() {
+    if (!window.confirm(`Apagar ${failedCount} item(ns) com falha? Esses registros não voltam para a fila.`)) return;
+    setClearingFailed(true);
+    try {
+      const removed = await clearFailedOutboxItems();
+      toast.success(`${removed} item(ns) com falha apagado(s).`);
+      await refresh();
+    } catch (error) {
+      toast.error("Não foi possível apagar os itens com falha.", {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setClearingFailed(false);
+    }
+  }
+
+  async function retryItem(item: OutboxItem) {
+    if (item.id == null || retryingId != null) return;
+    setRetryingId(item.id);
+    try {
+      const result = await retryOutboxItem(item.id);
+      if (result.ok) {
+        toast.success("Item sincronizado com sucesso.");
+      } else {
+        toast.error("Falha ao sincronizar item.", { description: result.error ?? "erro desconhecido" });
+      }
+      await refresh();
+    } finally {
+      setRetryingId(null);
+    }
+  }
 
   async function prepareOffline() {
     setPreparing(true);
@@ -125,9 +159,20 @@ function SyncPage() {
 
       {failedItems.length > 0 && (
         <section>
-          <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-destructive">
-            <AlertTriangle className="h-4 w-4" /> Itens com falha
-          </h2>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-destructive">
+              <AlertTriangle className="h-4 w-4" /> Itens com falha
+            </h2>
+            <button
+              type="button"
+              onClick={clearFailed}
+              disabled={!online || clearingFailed || running}
+              className="flex items-center gap-1 rounded-lg border border-destructive/40 px-2 py-1 text-[11px] font-medium text-destructive disabled:opacity-50"
+            >
+              {clearingFailed ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+              Apagar todos
+            </button>
+          </div>
           <ul className="space-y-2">
             {failedItems.map((it) => (
               <li key={it.id} className="flex items-start gap-3 rounded-2xl border border-destructive/40 bg-destructive/5 p-3">
@@ -142,13 +187,25 @@ function SyncPage() {
                   </div>
                   <div className="text-[10px] text-muted-foreground">Este registro não será reenviado automaticamente.</div>
                 </div>
-                <button
-                  onClick={() => clearOutboxItem(it.id!)}
-                  className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  title="Descartar"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => retryItem(it)}
+                    disabled={!online || running || retryingId != null}
+                    className="rounded-lg p-2 text-primary hover:bg-primary/10 disabled:opacity-40"
+                    title="Tentar sincronizar novamente"
+                    aria-label="Tentar sincronizar novamente"
+                  >
+                    {retryingId === it.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  </button>
+                  <button
+                    onClick={() => clearOutboxItem(it.id!)}
+                    className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    title="Descartar"
+                    aria-label="Descartar"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
